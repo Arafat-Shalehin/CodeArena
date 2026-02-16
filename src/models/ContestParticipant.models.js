@@ -1,0 +1,26 @@
+import mongoose from "mongoose";
+
+const participantSchema = new mongoose.Schema({
+  contestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Contest",
+    required: true,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  score: {
+    type: Number,
+    default: 0,
+  },
+  rank: { type: Number },
+});
+
+participantSchema.index({ contestId: 1, score: -1 });
+
+export const ContestParticipant = mongoose.model(
+  "ContestParticipant",
+  participantSchema,
+);
