@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Code execution service
+  code-executor:
+    build:
+      context: ./docker/executors
+      dockerfile: Dockerfile.base
+    container_name: codearena-executor
+    privileged: false
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+    networks:
+      - codearena-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - NODE_ENV=production
+      - MAX_EXECUTION_TIME=10000
+      - MAX_MEMORY=512m
+      - MAX_CPU_CORES=1
+    restart: unless-stopped
+
+networks:
+  codearena-network:
+    driver: bridge
+
+volumes:
+  executor-cache:
+    driver: local
