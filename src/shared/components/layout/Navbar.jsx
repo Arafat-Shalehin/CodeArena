@@ -2,24 +2,31 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Button from '../ui/Button';
+
+// Shared Components
+import Button from '@/shared/components/ui/Button';
+
+// Navigation Data
+const NAV_LINKS = [
+    { name: 'Problems', href: '/problems' },
+    { name: 'Contests', href: '/contests' },
+    { name: 'Leaderboard', href: '/leaderboard' },
+    { name: 'Practice', href: '/practice' },
+];
 
 /**
- * Navbar Component
+ * @component Navbar
+ * @description The main site navigation bar.
+ * Features:
+ * - Sticky positioning with glassmorphism
+ * - Responsive hamburger menu for mobile
+ * - Search functionality
+ * - Authentication and CTA buttons
  * 
- * The main application navigation bar.
- * Sticky at the top of the viewport.
- * Features a responsive mobile menu.
+ * @returns {JSX.Element} The rendered Navbar.
  */
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    const navLinks = [
-        { name: 'Problems', href: '/problems' },
-        { name: 'Contests', href: '/contests' },
-        { name: 'Leaderboard', href: '/leaderboard' },
-        { name: 'Practice', href: '/practice' },
-    ];
 
     return (
         <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/70 border-b border-zinc-200/50 supports-[backdrop-filter]:bg-white/60">
@@ -37,7 +44,7 @@ export default function Navbar() {
                     </Link>
 
                     <nav className="hidden md:flex items-center gap-1">
-                        {navLinks.map((link) => (
+                        {NAV_LINKS.map((link) => (
                             <Link
                                 key={link.name}
                                 href={link.href}
@@ -109,7 +116,7 @@ export default function Navbar() {
 
                         {/* Mobile Links */}
                         <nav className="grid gap-1">
-                            {navLinks.map((link) => (
+                            {NAV_LINKS.map((link) => (
                                 <Link
                                     key={link.name}
                                     href={link.href}

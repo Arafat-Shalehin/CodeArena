@@ -1,12 +1,19 @@
 import React from 'react';
 
 /**
- * ProblemCard Component
- * 
- * Displays a summary of a coding problem including:
- * - Difficulty badge (color-coded)
- * - Title and tags
- * - Solved count and success rate
+ * @constant DIFFICULTY_COLORS
+ * @description Color mapping for problem difficulty levels.
+ */
+const DIFFICULTY_COLORS = {
+    Easy: "bg-emerald-50 text-emerald-700",
+    Medium: "bg-amber-50 text-amber-700",
+    Hard: "bg-red-50 text-red-700"
+};
+
+/**
+ * @component ProblemCard
+ * @description Displays a summary card for a coding problem.
+ * Includes difficulty badge, title, tags, and success rate metrics.
  * 
  * @param {Object} props
  * @param {string} props.title - The title of the problem.
@@ -16,14 +23,7 @@ import React from 'react';
  * @param {string} props.successRate - Percentage of successful submissions.
  */
 export default function ProblemCard({ title, difficulty, solvedCount, tags, successRate }) {
-    // Color mapping for difficulty badges
-    const difficultyColors = {
-        Easy: "bg-emerald-50 text-emerald-700",
-        Medium: "bg-amber-50 text-amber-700",
-        Hard: "bg-red-50 text-red-700"
-    };
-
-    const difficultyClass = difficultyColors[difficulty] || "bg-zinc-50 text-zinc-700";
+    const difficultyClass = DIFFICULTY_COLORS[difficulty] || "bg-zinc-50 text-zinc-700";
 
     return (
         <div className="matte-surface p-8 rounded-2xl hover:border-primary/50 transition-all cursor-pointer group shadow-sm">

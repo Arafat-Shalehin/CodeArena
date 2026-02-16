@@ -1,16 +1,19 @@
 import React from 'react';
-import Button from '../../../shared/components/ui/Button';
+
+// Shared Components
+import Button from '@/shared/components/ui/Button';
+
+// Local Components
 import CodeEditorPreview from './CodeEditorPreview';
 
 /**
- * Hero Component
- * 
- * The main landing section of the homepage.
- * Contains:
- * - Headline and subheadline
- * - Call to Action (CTA) buttons
- * - Social proof stats (Active Coders, Global Sponsors)
- * - CodeEditorPreview component
+ * @component Hero
+ * @description The main landing section of the homepage.
+ * Features:
+ * - High-impact headline and subheadline
+ * - Primary and secondary Call to Action (CTA) buttons
+ * - Social proof statistics
+ * - Interactive CodeEditorPreview visualization
  * 
  * @returns {JSX.Element} The rendered Hero section.
  */

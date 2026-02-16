@@ -1,9 +1,16 @@
 import Link from 'next/link';
 
+// Constants
+const SOCIAL_LINKS = ['github', 'twitter', 'discord'];
+const PLATFORM_LINKS = ['Problems', 'Contests', 'Leaderboard', 'API'];
+const COMPANY_LINKS = ['About', 'Careers', 'Blog', 'Contact'];
+
 /**
- * Footer Component
+ * @component Footer
+ * @description Site-wide footer containing navigation links, newsletter signup, and branding.
+ * Organized into a 4-column grid layout on desktop.
  * 
- * Site-wide footer containing links, newsletter signup, and branding.
+ * @returns {JSX.Element} The rendered Footer.
  */
 export default function Footer() {
     return (
@@ -28,7 +35,7 @@ export default function Footer() {
                         </p>
                         {/* Social Icons */}
                         <div className="flex gap-4">
-                            {['github', 'twitter', 'discord'].map((icon) => (
+                            {SOCIAL_LINKS.map((icon) => (
                                 <a key={icon} href="#" className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 hover:bg-zinc-900 hover:text-white transition-all">
                                     <span className="text-xs">{icon[0].toUpperCase()}</span>
                                 </a>
@@ -40,7 +47,7 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-text-main mb-6">Platform</h4>
                         <ul className="space-y-3 text-sm text-text-muted">
-                            {['Problems', 'Contests', 'Leaderboard', 'API'].map(item => (
+                            {PLATFORM_LINKS.map(item => (
                                 <li key={item}><a href="#" className="hover:text-primary transition-colors">{item}</a></li>
                             ))}
                         </ul>
@@ -49,7 +56,7 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-text-main mb-6">Company</h4>
                         <ul className="space-y-3 text-sm text-text-muted">
-                            {['About', 'Careers', 'Blog', 'Contact'].map(item => (
+                            {COMPANY_LINKS.map(item => (
                                 <li key={item}><a href="#" className="hover:text-primary transition-colors">{item}</a></li>
                             ))}
                         </ul>

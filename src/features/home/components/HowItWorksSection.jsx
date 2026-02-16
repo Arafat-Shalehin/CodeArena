@@ -1,11 +1,12 @@
 import React from 'react';
+
+// Data
 import { stepsData } from '../data/steps.data';
 
 /**
- * HowItWorksSection Component
- * 
- * Visualizes the user journey steps.
- * Uses a dashed line design to connect the steps.
+ * @component HowItWorksSection
+ * @description Visualizes the user journey steps from joining to competing.
+ * Uses a horizontal dashed line connector on desktop to indicate flow.
  * 
  * @returns {JSX.Element} The rendered How It Works section.
  */

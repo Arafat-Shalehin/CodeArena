@@ -1,13 +1,14 @@
 import React from 'react';
+
+// Data
 import { featuresData } from '../data/features.data';
 
 /**
- * FeaturesSection Component
+ * @component FeaturesSection
+ * @description Displays key platform value propositions in a bento-grid style layout.
+ * Highlights the "Built for Engineers" messaging with icon-based features.
  * 
- * Displays key platform properties in a Bento Grid layout.
- * Used to highlight "Built for Engineers" value propositions.
- * 
- * @returns {JSX.Element} The rendered features section.
+ * @returns {JSX.Element} The rendered Features section.
  */
 export default function FeaturesSection() {
     return (

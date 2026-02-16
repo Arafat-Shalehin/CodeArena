@@ -1,10 +1,13 @@
 import React from 'react';
 
 /**
- * CodeEditorPreview Component
- * 
- * Displays a visual representation of a code editor with a Python solution.
- * Used in the Hero section to emphasize the coding focus of the platform.
+ * @component CodeEditorPreview
+ * @description A visual representation of a code editor with a Python solution.
+ * Used in the Hero section to emphasize the coding-centric nature of the platform.
+ * Features:
+ * - Syntax highlighting simulation
+ * - Line numbers and status bar
+ * - Glassmorphism effects
  * 
  * @returns {JSX.Element} The rendered code editor visualization.
  */

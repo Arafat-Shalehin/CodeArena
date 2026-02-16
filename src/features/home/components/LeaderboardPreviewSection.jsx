@@ -1,13 +1,20 @@
 import React from 'react';
-import Button from '../../../shared/components/ui/Button';
+
+// Shared Components
+import Button from '@/shared/components/ui/Button';
+
+// Data
 import { leaderboardData } from '../../leaderboard/data/leaderboard.data';
 
 /**
- * LeaderboardPreviewSection Component
+ * @component LeaderboardPreviewSection
+ * @description Displays a preview table of top-ranked users to encourage competition.
+ * Features:
+ * - Top 3 ranked users
+ * - Avatar, solved count, and ELO rating
+ * - CTA to view full leaderboard
  * 
- * Displays a preview table of top-ranked users.
- * 
- * @returns {JSX.Element} The rendered leaderboard section.
+ * @returns {JSX.Element} The rendered Leaderboard preview section.
  */
 export default function LeaderboardPreviewSection() {
     return (

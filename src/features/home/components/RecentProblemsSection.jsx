@@ -1,15 +1,20 @@
 import React from 'react';
-import { problemsData } from '../../problems/data/problems.data';
-import ProblemCard from '../../problems/components/ProblemCard';
-import Button from '../../../shared/components/ui/Button';
+
+// Shared Components
+import Button from '@/shared/components/ui/Button';
+
+// Feature Components
+import ProblemCard from '@/features/problems/components/ProblemCard';
+
+// Data
+import { problemsData } from '@/features/problems/data/problems.data';
 
 /**
- * RecentProblemsSection Component
+ * @component RecentProblemsSection
+ * @description Displays a grid of curated coding problems to spark interest.
+ * Fetches data from the shared `problemsData` source.
  * 
- * Displays a grid of curated coding problems.
- * Fetches data from shared problem data source.
- * 
- * @returns {JSX.Element} The rendered problems section.
+ * @returns {JSX.Element} The rendered Recent Problems section.
  */
 export default function RecentProblemsSection() {
     return (
