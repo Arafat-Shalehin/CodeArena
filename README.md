@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+# ⚔️ CodeArena
 
-First, run the development server:
+> **The Ultimate Competitive Programming Platform**  
+> Battle, learn, and climb the global ranks in an environment built for high-performance engineering.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+CodeArena is a modern, real-time competitive programming platform designed to help developers master algorithms and data structures through curated challenges and live contests.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **UI Architecture**: React 19, Server Components, Lucide Icons
+- **Font**: Inter, Bricolage Grotesque, JetBrains Mono
+- **State Management**: React Hooks (`useState`, `useEffect`)
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Prerequisites
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Node.js 18+  
+- npm or yarn
 
-## Deploy on Vercel
+### Installation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Start-Up-Team-Project/CodeArena-TeamProject.git
+   cd CodeArena-TeamProject
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+---
+
+## 🎯 Target Users
+
+- 👩‍💻 CS students & bootcamp learners
+- 🧠 Aspiring competitive programmers
+- 🛠️ Junior devs preparing for interviews
+- 🏆 Coders seeking timed challenges & real feedback
+
+## 🔒 Security Model
+
+All user code is executed in isolated Docker containers with strict CPU, memory, and time limits to ensure fairness, prevent abuse, and maintain platform integrity.
+
+## 🌐 Real-Time System Architecture
+
+WebSockets power all real-time features:
+- Live submission verdicts
+- Real-time contest countdowns
+- Auto-refreshing leaderboards
+
+## ✨ Planned Pages
+
+| Page                     | Description |
+|--------------------------|-------------|
+| `/`                      | Landing Page (with CTA) |
+| `/login`, `/signup`      | Authentication |
+| `/dashboard`            | User overview, stats, quick links |
+| `/problems`             | Problem list, filters, search |
+| `/problems/[id]`        | Problem detail + editor |
+| `/contests`             | Upcoming, Live, Past contests |
+| `/contests/[id]`        | Contest dashboard (problems, submissions, leaderboard) |
+| `/profile/[username]`   | User submissions, performance |
+| `/admin/problems`       | Admin problem manager |
+| `/admin/contests`       | Admin contest manager |
+
+## 🧪 Verdict Types
+
+- ✅ Accepted
+- ❌ Wrong Answer
+- 🕒 Time Limit Exceeded
+- 🛑 Runtime Error
+- ⚠️ Compilation Error
+
+## 🧩 Design Philosophy
+
+> Clean. Fast. Developer-centric.
+
+- Minimal, distraction-free UI inspired by **Vercel** & **HackerRank**
+- Tailored for keyboard-heavy interaction and fast iteration
+- Clean sans-serif fonts, high-contrast code-friendly themes
+- Real-time, zero-fluff experience — no unnecessary visuals or animations
+
+## 🧠 Learn More
+
+CodeArena isn't just a code executor — it's a learning platform for high-performance problem solving. Build habits. Get feedback. Improve every submission.
+
+---
+
+## 📌 Credits
+
+- Team Lead: *Rabiul Islam*  
+- Team: 6 Members  
+- Duration: 6–7 Weeks
+
+
+
+---
+
+## 📬 Contact / Feedback
+
+We’d love to hear your feedback. Whether you're a beta user, reviewer, or contributor — feel free to open an issue or get in touch!
+
