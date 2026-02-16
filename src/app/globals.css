@@ -8,34 +8,64 @@
 @theme {
   /* Brand Colors */
   --color-primary: #059669;
-  /* Emerald 600 - Main brand color */
+  /* Emerald 600 */
+  --color-primary-foreground: #FFFFFF;
+
   --color-secondary: #FAFAFA;
-  /* Zinc 50 - Secondary backgrounds */
-  --color-accent: #059669;
-  /* Emerald 600 - Interactive accents */
+  /* Zinc 50 */
+  --color-secondary-foreground: #1A1A1A;
+  /* Zinc 900 */
+
+  --color-accent: #F4F4F5;
+  /* Zinc 100 */
+  --color-accent-foreground: #1A1A1A;
+
+  --color-destructive: #EF4444;
+  /* Red 500 */
+  --color-destructive-foreground: #FFFFFF;
 
   /* Layout Colors */
   --color-background: #FFFFFF;
-  /* Main background */
+  --color-foreground: #1A1A1A;
+  /* Zinc 900 */
+
   --color-surface: #FAFAFA;
-  /* Zinc 50 - Card/Surface background */
+  /* Legacy support */
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1A1A1A;
+
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #1A1A1A;
+
+  --color-muted: #FAFAFA;
+  /* Zinc 50 */
+  --color-muted-foreground: #71717A;
+  /* Zinc 500 */
+
+  /* Borders & Inputs */
+  --color-border: #E4E4E7;
+  /* Zinc 200 */
   --color-border-base: #E4E4E7;
-  /* Zinc 200 - Default borders */
+  /* Legacy support */
   --color-border-highlight: #D4D4D8;
-  /* Zinc 300 - Highlighted borders */
+  /* Legacy support */
+  --color-input: #E4E4E7;
+  --color-ring: #059669;
 
-  /* Typography Colors */
+  /* Typography Colors (Legacy Mappings) */
   --color-text-main: #1A1A1A;
-  /* Zinc 900 - Primary text */
   --color-text-muted: #52525B;
-  /* Zinc 600 - Secondary text */
+  /* Zinc 600 */
   --color-text-light: #A1A1AA;
-  /* Zinc 400 - De-emphasized text */
+  /* Zinc 400 */
 
-  /* Font Families - Mapped from Next.js Layout */
+  /* Font Families */
   --font-sans: var(--font-inter);
   --font-display: var(--font-bricolage);
   --font-mono: var(--font-jetbrains);
+
+  /* Radius */
+  --radius: 0.5rem;
 }
 
 /**

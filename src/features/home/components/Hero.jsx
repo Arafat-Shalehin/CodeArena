@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Shared Components
-import Button from '@/shared/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 // Local Components
 import CodeEditorPreview from './CodeEditorPreview';
@@ -36,11 +36,11 @@ export default function Hero() {
 
                     {/* CTA Buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 pt-2 justify-center lg:justify-start">
-                        <Button variant="primary" size="lg" className="shadow-md hover:shadow-lg w-full sm:w-auto">
+                        <Button variant="default" size="lg" className="shadow-md hover:shadow-lg w-full sm:w-auto h-12 px-8 text-base">
                             Browse 2,500+ problems
-                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            <span className="material-symbols-outlined text-sm ml-2">arrow_forward</span>
                         </Button>
-                        <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                        <Button variant="secondary" size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-white hover:bg-zinc-50 border border-border-base">
                             Explore contests
                         </Button>
                     </div>

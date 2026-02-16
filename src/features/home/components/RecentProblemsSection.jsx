@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Shared Components
-import Button from '@/shared/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 // Feature Components
 import ProblemCard from '@/features/problems/components/ProblemCard';
@@ -40,9 +40,9 @@ export default function RecentProblemsSection() {
 
             {/* View All Problems Button (Moved below grid) */}
             <div className="mt-12 text-center">
-                <Button variant="outline" size="md" className="w-full sm:w-auto bg-white hover:bg-zinc-50 border-zinc-200">
+                <Button variant="outline" size="default" className="w-full sm:w-auto bg-white hover:bg-zinc-50 border-zinc-200">
                     All problems
-                    <span className="material-symbols-outlined text-sm">north_east</span>
+                    <span className="material-symbols-outlined text-sm ml-2">north_east</span>
                 </Button>
             </div>
         </section>

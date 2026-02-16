@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 // Constants
 const SOCIAL_LINKS = ['github', 'twitter', 'discord'];
@@ -68,14 +69,14 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-text-main mb-6">Stay Updated</h4>
                         <div className="flex flex-col sm:flex-row gap-2">
-                            <input
+                            <Input
                                 type="email"
                                 placeholder="Enter your email"
-                                className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary/50 w-full"
+                                className="bg-zinc-50 border-zinc-200"
                             />
-                            <button className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800 transition-colors w-full sm:w-auto">
+                            <Button className="bg-zinc-900 text-white hover:bg-zinc-800 w-full sm:w-auto">
                                 Subscribe
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 // Shared Components
-import Button from '@/shared/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 // Navigation Data
 const NAV_LINKS = [
@@ -79,7 +79,7 @@ export default function Navbar() {
                     <button className="text-sm font-bold text-text-muted hover:text-text-main px-3 py-2 transition-colors">
                         Sign in
                     </button>
-                    <Button variant="primary" size="md">
+                    <Button variant="default" size="default">
                         Join the next contest
                     </Button>
                 </div>
@@ -142,7 +142,7 @@ export default function Navbar() {
                             <Button variant="secondary" size="lg" className="w-full">
                                 Sign in
                             </Button>
-                            <Button variant="primary" size="lg" className="w-full">
+                            <Button variant="default" size="lg" className="w-full">
                                 Join the next contest
                             </Button>
                         </div>

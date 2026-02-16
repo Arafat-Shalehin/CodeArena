@@ -1,7 +1,9 @@
 import React from 'react';
 
 // Shared Components
-import Button from '@/shared/components/ui/Button';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Data
 import { leaderboardData } from '../../leaderboard/data/leaderboard.data';
@@ -31,83 +33,88 @@ export default function LeaderboardPreviewSection() {
                 </div>
 
                 {/* Leaderboard Table Card */}
-                <div className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-white/50">
-                    {/* Desktop Table View */}
-                    <table className="hidden lg:table w-full text-left" aria-label="Global Leaderboard Preview">
-                        <thead>
-                            <tr className="bg-zinc-50 border-b border-zinc-100">
-                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Rank</th>
-                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Architect</th>
-                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-center">Solved</th>
-                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-right">ELO Rating</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-50 bg-white">
+                <Card className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-white/50 bg-white/80 backdrop-blur-md">
+                    <CardContent className="p-0">
+                        {/* Desktop Table View */}
+                        <table className="hidden lg:table w-full text-left" aria-label="Global Leaderboard Preview">
+                            <thead>
+                                <tr className="bg-zinc-50 border-b border-zinc-100">
+                                    <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Rank</th>
+                                    <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Architect</th>
+                                    <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-center">Solved</th>
+                                    <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-right">ELO Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-50 bg-white">
+                                {leaderboardData.map((row, idx) => (
+                                    <tr key={idx} className="group hover:bg-zinc-50/50 transition-colors">
+                                        <td className="px-10 py-8">
+                                            <span className="text-3xl font-display font-extrabold text-zinc-200 group-hover:text-primary/20 transition-colors italic">{row.rank}</span>
+                                        </td>
+                                        <td className="px-10 py-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} p-[2px]`}>
+                                                    <Avatar className="h-full w-full rounded-[14px]">
+                                                        <AvatarImage
+                                                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.seed}`}
+                                                            alt={`${row.user}'s avatar`}
+                                                        />
+                                                        <AvatarFallback>{row.user.substring(0, 2)}</AvatarFallback>
+                                                    </Avatar>
+                                                </div>
+                                                <div>
+                                                    <div className="font-display font-extrabold text-text-main text-lg italic">{row.user}</div>
+                                                    <div className="text-xs font-bold text-text-light uppercase tracking-widest mt-1">{row.title}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-10 py-8 text-center">
+                                            <span className="font-mono font-bold text-text-main">{row.solved}</span>
+                                        </td>
+                                        <td className="px-10 py-8 text-right">
+                                            <span className="font-mono font-bold text-primary text-lg">{row.elo}</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {/* Mobile Card List View */}
+                        <div className="lg:hidden divide-y divide-zinc-50 bg-white">
                             {leaderboardData.map((row, idx) => (
-                                <tr key={idx} className="group hover:bg-zinc-50/50 transition-colors">
-                                    <td className="px-10 py-8">
-                                        <span className="text-3xl font-display font-extrabold text-zinc-200 group-hover:text-primary/20 transition-colors italic">{row.rank}</span>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} overflow-hidden`}>
-                                                <img
+                                <div key={idx} className="p-6 flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-2xl font-display font-extrabold text-zinc-200 italic min-w-[2rem]">{row.rank}</span>
+                                        <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} p-[2px] shrink-0`}>
+                                            <Avatar className="h-full w-full rounded-[14px]">
+                                                <AvatarImage
                                                     src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.seed}`}
                                                     alt={`${row.user}'s avatar`}
-                                                    loading="lazy"
                                                 />
-                                            </div>
-                                            <div>
-                                                <div className="font-display font-extrabold text-text-main text-lg italic">{row.user}</div>
-                                                <div className="text-xs font-bold text-text-light uppercase tracking-widest mt-1">{row.title}</div>
-                                            </div>
+                                                <AvatarFallback>{row.user.substring(0, 2)}</AvatarFallback>
+                                            </Avatar>
                                         </div>
-                                    </td>
-                                    <td className="px-10 py-8 text-center">
-                                        <span className="font-mono font-bold text-text-main">{row.solved}</span>
-                                    </td>
-                                    <td className="px-10 py-8 text-right">
-                                        <span className="font-mono font-bold text-primary text-lg">{row.elo}</span>
-                                    </td>
-                                </tr>
+                                        <div>
+                                            <div className="font-display font-extrabold text-text-main text-base italic">{row.user}</div>
+                                            <div className="text-[10px] font-bold text-text-light uppercase tracking-widest mt-0.5">{row.title}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-mono font-bold text-primary text-base">{row.elo}</div>
+                                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">ELO</div>
+                                    </div>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
 
-                    {/* Mobile Card List View */}
-                    <div className="lg:hidden divide-y divide-zinc-50 bg-white">
-                        {leaderboardData.map((row, idx) => (
-                            <div key={idx} className="p-6 flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-2xl font-display font-extrabold text-zinc-200 italic min-w-[2rem]">{row.rank}</span>
-                                    <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} overflow-hidden shrink-0`}>
-                                        <img
-                                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.seed}`}
-                                            alt={`${row.user}'s avatar`}
-                                            loading="lazy"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <div>
-                                        <div className="font-display font-extrabold text-text-main text-base italic">{row.user}</div>
-                                        <div className="text-[10px] font-bold text-text-light uppercase tracking-widest mt-0.5">{row.title}</div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-mono font-bold text-primary text-base">{row.elo}</div>
-                                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">ELO</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* View All Button */}
-                    <div className="p-6 text-center bg-zinc-50 border-t border-zinc-100">
-                        <Button variant="outline" size="md" className="bg-white hover:bg-zinc-100">
-                            View all legends
-                        </Button>
-                    </div>
-                </div>
+                        {/* View All Button */}
+                        <div className="p-6 text-center bg-zinc-50 border-t border-zinc-100">
+                            <Button variant="outline" size="default" className="bg-white hover:bg-zinc-100">
+                                View all legends
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </section>
     );

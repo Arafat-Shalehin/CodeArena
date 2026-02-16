@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Data
 import { stepsData } from '../data/steps.data';
@@ -34,8 +35,10 @@ export default function HowItWorksSection() {
                                 <div className="absolute left-0 size-12 bg-white border-2 border-zinc-200 rounded-full flex items-center justify-center font-display font-bold text-lg shadow-sm z-10 text-text-main">
                                     {item.step}
                                 </div>
-                                <h4 className="font-display font-extrabold text-lg text-text-main mb-1">{item.title}</h4>
-                                <p className="text-text-muted text-sm leading-relaxed">{item.desc}</p>
+                                <Card className="border-none shadow-none bg-transparent">
+                                    <h4 className="font-display font-extrabold text-lg text-text-main mb-1">{item.title}</h4>
+                                    <p className="text-text-muted text-sm leading-relaxed">{item.desc}</p>
+                                </Card>
                             </div>
                         ))}
                     </div>
