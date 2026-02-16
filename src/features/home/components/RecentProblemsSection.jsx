@@ -19,8 +19,8 @@ import { problemsData } from '@/features/problems/data/problems.data';
 export default function RecentProblemsSection() {
     return (
         <section className="py-24 max-w-7xl mx-auto px-4">
-            {/* Section Header with Action */}
-            <div className="flex items-end justify-between mb-16 border-b border-border-base pb-8">
+            {/* Section Header */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 border-b border-border-base pb-8">
                 <div className="max-w-xl">
                     <h2 className="text-4xl md:text-5xl font-display font-bold text-text-main mb-4 tracking-tight">
                         Curated <span className="text-primary italic">challenges.</span>
@@ -29,11 +29,6 @@ export default function RecentProblemsSection() {
                         A hand-picked selection of problems designed to sharpen your algorithmic intuition. No fluff, just pure logic.
                     </p>
                 </div>
-
-                <Button variant="outline" size="sm" className="bg-white hover:bg-zinc-50 border-zinc-200">
-                    All problems
-                    <span className="material-symbols-outlined text-sm">north_east</span>
-                </Button>
             </div>
 
             {/* Problems Grid */}
@@ -41,6 +36,14 @@ export default function RecentProblemsSection() {
                 {problemsData.map((problem, idx) => (
                     <ProblemCard key={idx} {...problem} />
                 ))}
+            </div>
+
+            {/* View All Problems Button (Moved below grid) */}
+            <div className="mt-12 text-center">
+                <Button variant="outline" size="md" className="w-full sm:w-auto bg-white hover:bg-zinc-50 border-zinc-200">
+                    All problems
+                    <span className="material-symbols-outlined text-sm">north_east</span>
+                </Button>
             </div>
         </section>
     );

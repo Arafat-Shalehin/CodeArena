@@ -91,16 +91,22 @@ export default function Navbar() {
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                         aria-label="Toggle navigation menu"
                     >
-                        <span className="material-symbols-outlined">
-                            {isMenuOpen ? 'close' : 'menu'}
-                        </span>
+                        {isMenuOpen ? (
+                            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        )}
                     </button>
                 </div>
             </div>
 
             {/* Mobile Navigation Overlay */}
             {isMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-zinc-200 shadow-xl py-6 px-4 animate-in fade-in slide-in-from-top-4 duration-200">
+                <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-white z-40 overflow-y-auto border-t border-zinc-200 shadow-xl py-6 px-4 duration-200 flex flex-col">
                     <div className="space-y-4">
                         {/* Mobile Search */}
                         <div className="relative">

@@ -13,7 +13,7 @@ import React from 'react';
  */
 export default function CodeEditorPreview() {
     return (
-        <div className="relative group hidden lg:block">
+        <div className="relative group">
             {/* Background Glow Effect */}
             <div className="absolute -inset-4 bg-gradient-to-tr from-primary/5 to-transparent rounded-[2rem] blur-2xl"></div>
 

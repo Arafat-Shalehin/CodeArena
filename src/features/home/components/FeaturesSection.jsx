@@ -12,9 +12,9 @@ import { featuresData } from '../data/features.data';
  */
 export default function FeaturesSection() {
     return (
-        <section className="py-24 max-w-7xl mx-auto px-4">
+        <section className="py-18 max-w-7xl mx-auto px-4">
             {/* Section Header */}
-            <div className="text-center mb-16">
+            <div className="text-center mb-12">
                 <h2 className="text-4xl md:text-5xl font-display font-bold text-text-main mb-6 tracking-tight">
                     Built for <span className="text-primary italic">engineers.</span>
                 </h2>
@@ -24,9 +24,9 @@ export default function FeaturesSection() {
             </div>
 
             {/* Grid Layout */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {featuresData.map((feature, idx) => (
-                    <div key={idx} className="p-8 rounded-2xl bg-white border border-border-base hover:border-primary/50 transition-all group shadow-sm flex flex-col items-start">
+                    <div key={idx} className="p-4 md:p-8 rounded-2xl bg-white border border-border-base hover:border-primary/50 transition-all group shadow-sm flex flex-col items-start">
                         <div className="size-12 rounded-xl bg-primary/5 flex items-center justify-center mb-6 group-hover:bg-primary/10 transition-colors">
                             <span className="material-symbols-outlined text-primary text-2xl group-hover:scale-110 transition-transform">
                                 {feature.icon}

@@ -18,7 +18,7 @@ import { leaderboardData } from '../../leaderboard/data/leaderboard.data';
  */
 export default function LeaderboardPreviewSection() {
     return (
-        <section className="py-24 bg-secondary/20">
+        <section className="py-12 bg-secondary/20">
             <div className="max-w-5xl mx-auto px-4">
                 {/* Section Header */}
                 <div className="text-center max-w-2xl mx-auto mb-20">
@@ -32,13 +32,14 @@ export default function LeaderboardPreviewSection() {
 
                 {/* Leaderboard Table Card */}
                 <div className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-white/50">
-                    <table className="w-full text-left" aria-label="Global Leaderboard Preview">
+                    {/* Desktop Table View */}
+                    <table className="hidden lg:table w-full text-left" aria-label="Global Leaderboard Preview">
                         <thead>
                             <tr className="bg-zinc-50 border-b border-zinc-100">
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest">Rank</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest">Architect</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest text-center">Solved</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest text-right">ELO Rating</th>
+                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Rank</th>
+                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Architect</th>
+                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-center">Solved</th>
+                                <th className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-right">ELO Rating</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-50 bg-white">
@@ -49,7 +50,6 @@ export default function LeaderboardPreviewSection() {
                                     </td>
                                     <td className="px-10 py-8">
                                         <div className="flex items-center gap-4">
-                                            {/* Avatar */}
                                             <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} overflow-hidden`}>
                                                 <img
                                                     src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.seed}`}
@@ -57,10 +57,9 @@ export default function LeaderboardPreviewSection() {
                                                     loading="lazy"
                                                 />
                                             </div>
-                                            {/* User Info */}
                                             <div>
                                                 <div className="font-display font-extrabold text-text-main text-lg italic">{row.user}</div>
-                                                <div className="text-[10px] font-bold text-text-light uppercase tracking-widest mt-1">{row.title}</div>
+                                                <div className="text-xs font-bold text-text-light uppercase tracking-widest mt-1">{row.title}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -75,8 +74,35 @@ export default function LeaderboardPreviewSection() {
                         </tbody>
                     </table>
 
+                    {/* Mobile Card List View */}
+                    <div className="lg:hidden divide-y divide-zinc-50 bg-white">
+                        {leaderboardData.map((row, idx) => (
+                            <div key={idx} className="p-6 flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-2xl font-display font-extrabold text-zinc-200 italic min-w-[2rem]">{row.rank}</span>
+                                    <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} overflow-hidden shrink-0`}>
+                                        <img
+                                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.seed}`}
+                                            alt={`${row.user}'s avatar`}
+                                            loading="lazy"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="font-display font-extrabold text-text-main text-base italic">{row.user}</div>
+                                        <div className="text-[10px] font-bold text-text-light uppercase tracking-widest mt-0.5">{row.title}</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-mono font-bold text-primary text-base">{row.elo}</div>
+                                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">ELO</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
                     {/* View All Button */}
-                    <div className="p-10 text-center bg-zinc-50 border-t border-zinc-100">
+                    <div className="p-6 text-center bg-zinc-50 border-t border-zinc-100">
                         <Button variant="outline" size="md" className="bg-white hover:bg-zinc-100">
                             View all legends
                         </Button>

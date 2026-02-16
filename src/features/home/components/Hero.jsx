@@ -19,47 +19,62 @@ import CodeEditorPreview from './CodeEditorPreview';
  */
 export default function Hero() {
     return (
-        <section className="relative overflow-hidden pt-10 pb-18 hero-gradient">
+        <section className="relative overflow-hidden pt-10 pb-2 hero-gradient">
             <div className="max-w-7xl mx-auto px-4 grid lg:grid-cols-2 gap-16 items-center">
                 {/* Left Column: Content */}
-                <div className="relative z-10 space-y-8">
+                <div className="relative z-10 space-y-8 text-center lg:text-left">
                     {/* Headline */}
-                    <h1 className="text-6xl lg:text-8xl font-display font-extrabold text-text-main leading-[0.95] tracking-[-0.04em]">
-                        Master the <span className="text-primary italic font-serif">machine.</span>
+                    <h1 className="text-6xl sm:text-7xl lg:text-8xl font-display font-extrabold text-text-main pt-3 leading-[0.9] tracking-[-0.04em]">
+                        Master the <br className="lg:hidden" /> <span className="text-primary italic font-serif">machine.</span>
                     </h1>
 
                     {/* Subheadline */}
-                    <p className="text-lg md:text-xl text-text-muted leading-relaxed max-w-xl">
+                    <p className="text-lg md:text-xl text-text-muted leading-relaxed max-w-xl mx-auto lg:mx-0">
                         The ultimate playground for competitive programmers. Solve curated problems, join high-stakes
                         contests, and build your technical legacy.
                     </p>
 
                     {/* CTA Buttons */}
-                    <div className="flex flex-wrap gap-4 pt-4">
-                        <Button variant="primary" size="lg" className="shadow-md hover:shadow-lg">
+                    <div className="flex flex-col sm:flex-row gap-4 pt-2 justify-center lg:justify-start">
+                        <Button variant="primary" size="lg" className="shadow-md hover:shadow-lg w-full sm:w-auto">
                             Browse 2,500+ problems
                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
                         </Button>
-                        <Button variant="secondary" size="lg">
+                        <Button variant="secondary" size="lg" className="w-full sm:w-auto">
                             Explore contests
                         </Button>
                     </div>
 
-                    {/* Social Proof Stats */}
-                    <div className="flex items-center gap-12 pt-10 border-t border-border-base">
+                    {/* Social Proof Stats (Desktop Only) */}
+                    <div className="hidden lg:flex items-center gap-12 pt-10 border-t border-border-base">
                         <div>
                             <div className="text-2xl font-display font-extrabold text-text-main tracking-tight">100k+</div>
-                            <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Active Coders</div>
+                            <div className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Active Coders</div>
                         </div>
                         <div>
                             <div className="text-2xl font-display font-extrabold text-text-main tracking-tight">25+</div>
-                            <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Global Sponsors</div>
+                            <div className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Global Sponsors</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Right Column: Visual */}
-                <CodeEditorPreview />
+                <CodeEditorPreview className="mx-auto lg:mx-0" />
+            </div>
+
+            {/* Mobile Stats (Below everything on mobile) */}
+            <div className="lg:hidden mt-12 pt-8 border-t border-zinc-100 bg-zinc-50/50 -mx-4 px-4">
+                <div className="flex justify-center items-center gap-12">
+                    <div className="text-center">
+                        <div className="text-3xl font-display font-black text-text-main tracking-tight">100k+</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Active Coders</div>
+                    </div>
+                    <div className="h-10 w-px bg-zinc-200"></div>
+                    <div className="text-center">
+                        <div className="text-3xl font-display font-black text-text-main tracking-tight">25+</div>
+                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Global Sponsors</div>
+                    </div>
+                </div>
             </div>
         </section>
     );

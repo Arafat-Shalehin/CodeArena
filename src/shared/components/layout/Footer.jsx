@@ -43,35 +43,37 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    {/* Navigation Columns */}
-                    <div>
-                        <h4 className="font-bold text-text-main mb-6">Platform</h4>
-                        <ul className="space-y-3 text-sm text-text-muted">
-                            {PLATFORM_LINKS.map(item => (
-                                <li key={item}><a href="#" className="hover:text-primary transition-colors">{item}</a></li>
-                            ))}
-                        </ul>
-                    </div>
+                    {/* Navigation Columns (Grouped for Mobile Row) */}
+                    <div className="grid grid-cols-2 gap-8 md:grid-cols-2 lg:contents  lg:gap-0">
+                        <div>
+                            <h4 className="font-bold text-text-main mb-6">Platform</h4>
+                            <ul className="space-y-3 text-sm text-text-muted">
+                                {PLATFORM_LINKS.map(item => (
+                                    <li key={item}><a href="#" className="hover:text-primary transition-colors">{item}</a></li>
+                                ))}
+                            </ul>
+                        </div>
 
-                    <div>
-                        <h4 className="font-bold text-text-main mb-6">Company</h4>
-                        <ul className="space-y-3 text-sm text-text-muted">
-                            {COMPANY_LINKS.map(item => (
-                                <li key={item}><a href="#" className="hover:text-primary transition-colors">{item}</a></li>
-                            ))}
-                        </ul>
+                        <div>
+                            <h4 className="font-bold text-text-main mb-6">Company</h4>
+                            <ul className="space-y-3 text-sm text-text-muted">
+                                {COMPANY_LINKS.map(item => (
+                                    <li key={item}><a href="#" className="hover:text-primary transition-colors">{item}</a></li>
+                                ))}
+                            </ul>
+                        </div>
                     </div>
 
                     {/* Newsletter Column */}
                     <div>
                         <h4 className="font-bold text-text-main mb-6">Stay Updated</h4>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                             <input
                                 type="email"
                                 placeholder="Enter your email"
                                 className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary/50 w-full"
                             />
-                            <button className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800 transition-colors">
+                            <button className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800 transition-colors w-full sm:w-auto">
                                 Subscribe
                             </button>
                         </div>
@@ -81,7 +83,7 @@ export default function Footer() {
                 {/* Footer Bottom */}
                 <div className="border-t border-zinc-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-zinc-400">
                     <div>© 2024 CodeArena Inc. All rights reserved.</div>
-                    <div className="flex gap-8">
+                    <div className="flex flex-wrap gap-4 md:gap-8 justify-center">
                         <a href="#" className="hover:text-zinc-900">Privacy Policy</a>
                         <a href="#" className="hover:text-zinc-900">Terms of Service</a>
                         <a href="#" className="hover:text-zinc-900">Cookie Policy</a>

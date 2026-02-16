@@ -12,10 +12,10 @@ import { stepsData } from '../data/steps.data';
  */
 export default function HowItWorksSection() {
     return (
-        <section className="py-24 bg-secondary/30 overflow-hidden">
+        <section className="py-12 bg-secondary/30 overflow-hidden">
             <div className="max-w-7xl mx-auto px-4">
                 {/* Section Header */}
-                <h2 className="text-center text-4xl font-display font-extrabold text-text-main mb-20 italic">
+                <h2 className="text-center text-4xl font-display font-extrabold text-text-main mb-12 italic">
                     How It <span className="text-primary italic">Works.</span>
                 </h2>
 
@@ -24,7 +24,24 @@ export default function HowItWorksSection() {
                     {/* Connecting Line (Desktop Only) */}
                     <div className="absolute top-8 left-0 w-full h-[1px] bg-zinc-100 hidden md:block border-b border-dashed border-zinc-200"></div>
 
-                    <div className="grid md:grid-cols-4 gap-12">
+                    {/* Mobile Vertical Flow (lg:hidden) */}
+                    <div className="lg:hidden space-y-8 relative text-left">
+                        {/* Vertical Connector Line */}
+                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-zinc-200"></div>
+
+                        {stepsData.map((item, idx) => (
+                            <div key={idx} className="relative pl-16">
+                                <div className="absolute left-0 size-12 bg-white border-2 border-zinc-200 rounded-full flex items-center justify-center font-display font-bold text-lg shadow-sm z-10 text-text-main">
+                                    {item.step}
+                                </div>
+                                <h4 className="font-display font-extrabold text-lg text-text-main mb-1">{item.title}</h4>
+                                <p className="text-text-muted text-sm leading-relaxed">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop Horizontal Flow (hidden lg:grid) */}
+                    <div className="hidden lg:grid md:grid-cols-4 gap-12">
                         {stepsData.map((item, idx) => (
                             <div key={idx} className="relative z-10 flex flex-col items-center text-center group">
                                 {/* Step Number Circle */}
