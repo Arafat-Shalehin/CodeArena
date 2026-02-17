@@ -19,34 +19,34 @@ import { leaderboardStats } from '../data/leaderboard.data';
 export function PlatformStats() {
     return (
         <section className="overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="flex md:grid md:grid-cols-4 gap-4 min-w-max md:min-w-0">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {leaderboardStats.map((stat, idx) => (
                     <Card
                         key={idx}
-                        className="w-44 md:w-auto p-4 md:p-5 bg-bg-subtle border-border shadow-sm"
+                        className="p-5 bg-bg-subtle border border-border/50 hover:border-border transition-colors shadow-sm hover:shadow-md"
                     >
                         {/* Label */}
-                        <p className="text-xs text-text-muted font-bold uppercase tracking-wider mb-1">
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                             {stat.label}
                         </p>
 
                         {/* Value and Trend */}
-                        <div className="flex items-end justify-between md:justify-start md:gap-2 mt-1">
-                            <span className="text-xl md:text-2xl font-bold md:font-black text-text-primary leading-none">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-3xl font-display font-bold text-text-primary tracking-tight">
                                 {stat.value}
                             </span>
 
                             {/* Trend Indicator */}
                             {stat.trendUp !== null ? (
-                                <span className={`text-xs font-bold flex items-center mb-1 ${stat.trendUp ? 'text-success' : 'text-error'
+                                <div className={`flex items-center text-xs font-medium ${stat.trendUp ? 'text-success' : 'text-error'
                                     }`}>
-                                    <span className="material-symbols-outlined text-xs mr-0.5">
+                                    <span className="material-symbols-outlined text-[16px] mr-1">
                                         {stat.trendUp ? 'trending_up' : 'trending_down'}
                                     </span>
                                     {stat.trend}
-                                </span>
+                                </div>
                             ) : (
-                                <span className="text-text-muted text-xs font-bold mb-1">
+                                <span className="text-text-muted text-xs font-medium">
                                     {stat.trend}
                                 </span>
                             )}
