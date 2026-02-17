@@ -1,13 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 
 // Shared Components
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-
-// Data
-import { leaderboardUsers } from '../../leaderboard/data/leaderboard.data';
 
 /**
  * @component LeaderboardPreviewSection
@@ -20,6 +18,20 @@ import { leaderboardUsers } from '../../leaderboard/data/leaderboard.data';
  * @returns {JSX.Element} The rendered Leaderboard preview section.
  */
 export default function LeaderboardPreviewSection() {
+    const { users: leaderboardUsers, isLoading, error } = useLeaderboard();
+
+    if (isLoading) {
+        return <div className="py-24 text-center text-text-muted animate-pulse">Loading Global Hall of Fame...</div>;
+    }
+
+    if (error) {
+        return <div className="py-24 text-center text-red-500">Unable to load leaderboard. Please try again later.</div>;
+    }
+
+    if (!leaderboardUsers || leaderboardUsers.length === 0) {
+        return null;
+    }
+
     return (
         <section className="py-12 bg-bg-subtle">
             <div className="max-w-5xl mx-auto px-4">
