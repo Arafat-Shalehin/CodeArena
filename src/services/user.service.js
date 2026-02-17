@@ -54,5 +54,10 @@ export async function getUserById(id) {
 }
 
 export async function deleteUser(id) {
-  return User.findByIdAndDelete(id);
+  const user = await User.findByIdAndDelete(id);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+  return user;
 }
+

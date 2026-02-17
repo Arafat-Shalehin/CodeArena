@@ -10,10 +10,17 @@ import dbConnect from "@/lib/mongodb";
  */
 
 export async function GET() {
-  await dbConnect();
-
-  return Response.json({
-    dbState: mongoose.connection.readyState,
-    dbName: mongoose.connection.name,
-  });
+  try {
+    await dbConnect();
+    return Response.json({
+      status: 'healthy',
+      dbState: mongoose.connection.readyState,
+      dbName: mongoose.connection.name,
+    });
+  } catch (error) {
+    return Response.json(
+      { status: 'unhealthy', error: error.message },
+      { status: 503 }
+    );
+  }
 }

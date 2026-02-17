@@ -1,12 +1,13 @@
 import dbConnect from "@/lib/mongodb";
 import { fetchUserById, removeUser } from "@/controllers/user.controller";
+import { asyncHandler } from "@/lib/asyncHandler";
 
-export async function GET(req, context) {
+export const GET = asyncHandler(async (req) => {
   await dbConnect();
-  return fetchUserById(req, context);
-}
+  return fetchUserById();
+})
 
-export async function DELETE(req, context) {
+export const DELETE = asyncHandler(async (req) => {
   await dbConnect();
-  return removeUser(req, context);
-}
+  return removeUser();
+})

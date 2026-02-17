@@ -3,12 +3,10 @@ export function asyncHandler(fn) {
     try {
       return await fn(req, context);
     } catch (error) {
+      const status = error.status || error.statusCode || 500;
       return Response.json(
-        {
-          success: false,
-          message: error.message || "Internal Server Error",
-        },
-        { status: 400 },
+        { success: false, message: error.message || "Internal Server Error" },
+        { status }
       );
     }
   };
