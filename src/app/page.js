@@ -1,5 +1,5 @@
-import Navbar from '../shared/components/layout/Navbar';
-import Footer from '../shared/components/layout/Footer';
+import Navbar from '../components/layout/Navbar';
+import Footer from '../components/layout/Footer';
 import Hero from '../features/home/components/Hero';
 import FeaturesSection from '../features/home/components/FeaturesSection';
 import HowItWorksSection from '../features/home/components/HowItWorksSection';

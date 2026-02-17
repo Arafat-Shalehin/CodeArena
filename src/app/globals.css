@@ -1,91 +1,576 @@
 @import "tailwindcss";
-
-/**
- * 🎨 THEME CONFIGURATION
- * Defines all design tokens including colors, fonts, and spacing.
- * This replaces the legacy tailwind.config.js definitions.
+/*
+ * ============================================================
+ * CodeArena Design Tokens
+ * ============================================================
+ * THIS IS THE SINGLE SOURCE OF TRUTH for all visual values.
+ *
+ * HOW TO USE:
+ *   - Never hardcode a color like #02BA4C directly in a component.
+ *   - Always use the Tailwind class that maps to these variables.
+ *   - This way, if the brand color changes, you update it HERE,
+ *     and it automatically updates everywhere on the site.
+ *
+ * Tailwind v4 picks these up via the @theme block in globals.css.
+ * ============================================================
  */
-@theme {
-  /* Brand Colors */
-  --color-primary: #059669;
-  /* Emerald 600 - Main brand color */
-  --color-secondary: #FAFAFA;
-  /* Zinc 50 - Secondary backgrounds */
-  --color-accent: #059669;
-  /* Emerald 600 - Interactive accents */
 
-  /* Layout Colors */
-  --color-background: #FFFFFF;
-  /* Main background */
-  --color-surface: #FAFAFA;
-  /* Zinc 50 - Card/Surface background */
-  --color-border-base: #E4E4E7;
-  /* Zinc 200 - Default borders */
-  --color-border-highlight: #D4D4D8;
-  /* Zinc 300 - Highlighted borders */
+:root {
 
-  /* Typography Colors */
-  --color-text-main: #1A1A1A;
-  /* Zinc 900 - Primary text */
-  --color-text-muted: #52525B;
-  /* Zinc 600 - Secondary text */
-  --color-text-light: #A1A1AA;
-  /* Zinc 400 - De-emphasized text */
+  /* ----------------------------------------------------------
+   * COLORS
+   * ---------------------------------------------------------- */
 
-  /* Font Families - Mapped from Next.js Layout */
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-bricolage);
-  --font-mono: var(--font-jetbrains);
+  /* Backgrounds */
+  --color-bg-page: #FFFFFF;
+  --color-bg-subtle: #F7F8FA;
+  --color-bg-muted: #EDEEF0;
+
+  /* Text */
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #9CA3AF;
+  --color-text-inverse: #FFFFFF;
+
+  /* Brand Accent (HackerRank green) */
+  --color-accent: #02BA4C;
+  --color-accent-hover: #029E40;
+  --color-accent-light: #E6F9ED;
+  --color-accent-text: #016B2C;
+
+  /* Borders */
+  --color-border: #E5E7EB;
+  --color-border-strong: #D1D5DB;
+
+  /* Feedback — Success */
+  --color-success: #16A34A;
+  --color-success-light: #DCFCE7;
+
+  /* Feedback — Error */
+  --color-error: #DC2626;
+  --color-error-light: #FEE2E2;
+
+  /* Feedback — Warning */
+  --color-warning: #D97706;
+  --color-warning-light: #FEF3C7;
+
+  /* Feedback — Info */
+  --color-info: #2563EB;
+  --color-info-light: #DBEAFE;
+
+  /* Competitive ranking colors */
+  --color-rank-gold: #F59E0B;
+  --color-rank-silver: #9CA3AF;
+  --color-rank-bronze: #B45309;
+
+
+  /* ----------------------------------------------------------
+   * TYPOGRAPHY
+   * ---------------------------------------------------------- */
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+
+  /* ----------------------------------------------------------
+   * SHADOWS
+   * ---------------------------------------------------------- */
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
+  --shadow-accent-glow: 0 0 20px rgba(2, 186, 76, 0.25);
+  --shadow-gold-glow: 0 0 20px rgba(245, 158, 11, 0.25);
+
+
+  /* ----------------------------------------------------------
+   * TRANSITIONS
+   * ---------------------------------------------------------- */
+
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 250ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+
+  /* ----------------------------------------------------------
+   * Z-INDEX SCALE
+   * ---------------------------------------------------------- */
+
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+
+  /* ----------------------------------------------------------
+   * LAYOUT
+   * ---------------------------------------------------------- */
+
+  --container-max: 1280px;
+  --container-px: 1.5rem;
+  --container-px-lg: 2rem;
+
+  /* Border Radius */
+  --radius: 0.5rem;
+}
+
+
+/* ----------------------------------------------------------
+ * DARK MODE OVERRIDES
+ * ----------------------------------------------------------
+ * When the <html> element has class="dark", these override
+ * the light-mode tokens above. Components automatically
+ * adapt — they just use var(--color-bg-page) etc.
+ * ---------------------------------------------------------- */
+
+.dark {
+  --color-bg-page: #0F1117;
+  --color-bg-subtle: #161B22;
+  --color-bg-muted: #21262D;
+
+  --color-text-primary: #F0F6FC;
+  --color-text-secondary: #8B949E;
+  --color-text-muted: #484F58;
+  --color-text-inverse: #0F1117;
+
+  --color-accent: #02BA4C;
+  --color-accent-hover: #03D658;
+  --color-accent-light: #0D2818;
+  --color-accent-text: #4ADE80;
+
+  --color-border: #21262D;
+  --color-border-strong: #30363D;
+
+  --color-success-light: #0D2818;
+  --color-error-light: #2D1117;
+  --color-warning-light: #2D1B00;
+  --color-info-light: #0D1F47;
 }
 
 /**
- * 🛠️ UTILITY LAYERS
- * Custom utility classes that abstract common styling patterns.
- * Organized by purpose: Visuals, Layout, Text.
+ * ============================================================
+ * CodeArena — globals.css
+ * ============================================================
+ * Loads Tailwind, imports design tokens, and maps them to
+ * the Tailwind v4 @theme system. Also provides base resets,
+ * reusable component classes, and utility helpers.
+ *
+ * RULES:
+ *   - Never hardcode colors. Always use token-based classes.
+ *   - If you need a new color, add it to tokens.css first.
+ * ============================================================
  */
+
+
+/* ============================================================
+ * @theme — Bridge tokens.css → Tailwind utility classes
+ * ============================================================ */
+@theme {
+
+  /* ── BACKGROUNDS ────────────────────────── */
+  --color-bg-page: var(--color-bg-page);
+  --color-bg-subtle: var(--color-bg-subtle);
+  --color-bg-muted: var(--color-bg-muted);
+
+  /* ── TEXT ────────────────────────────────── */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-inverse: var(--color-text-inverse);
+
+  /* ── BRAND ACCENT ───────────────────────── */
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-text: var(--color-accent-text);
+
+  /* ── BORDERS ────────────────────────────── */
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+
+  /* ── FEEDBACK ───────────────────────────── */
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-error: var(--color-error);
+  --color-error-light: var(--color-error-light);
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+  --color-info: var(--color-info);
+  --color-info-light: var(--color-info-light);
+
+  /* ── RANKING ────────────────────────────── */
+  --color-rank-gold: var(--color-rank-gold);
+  --color-rank-silver: var(--color-rank-silver);
+  --color-rank-bronze: var(--color-rank-bronze);
+
+  /* ── BACKWARDS COMPAT (legacy class names) ── */
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: #FFFFFF;
+  --color-background: var(--color-bg-page);
+  --color-foreground: var(--color-text-primary);
+  --color-surface: var(--color-bg-subtle);
+  --color-card: var(--color-bg-page);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-bg-page);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-secondary: var(--color-bg-subtle);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-muted: var(--color-bg-subtle);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: #FFFFFF;
+  --color-input: var(--color-border);
+  --color-ring: var(--color-accent);
+  --color-text-main: var(--color-text-primary);
+  --color-text-light: var(--color-text-muted);
+  --color-border-base: var(--color-border);
+  --color-border-highlight: var(--color-border-strong);
+
+  /* ── LEADERBOARD LEGACY ── */
+  --color-gold: #FFD700;
+  --color-silver: #C0C0C0;
+  --color-bronze: #CD7F32;
+  --color-arena-dark: #0b1120;
+  --color-arena-card: #111827;
+  --color-arena-blue: #3b82f6;
+  --color-arena-gold: #fbbf24;
+  --color-arena-silver: #9ca3af;
+  --color-arena-bronze: #d97706;
+  --color-background-light: #f6f6f8;
+  --color-background-dark: #111621;
+
+  /* ── FONTS ──────────────────────────────── */
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+  /* ── RADIUS ─────────────────────────────── */
+  --radius: 0.5rem;
+
+  /* ── MAX WIDTH ──────────────────────────── */
+  --container-max: 1280px;
+}
+
+
+/* ============================================================
+ * BASE LAYER — Global resets using the design tokens
+ * ============================================================ */
+@layer base {
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-bg-page text-text-primary font-sans antialiased;
+  }
+
+  /* Headings */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text-primary);
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* Links use accent by default */
+  a {
+    color: var(--color-accent-text);
+    text-decoration: none;
+    transition: color var(--duration-normal) var(--ease-default);
+  }
+
+  a:hover {
+    color: var(--color-accent);
+  }
+
+  /* Code elements use mono font */
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+
+  /* Inherit font on form elements */
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  /* Focus ring — keyboard only */
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Horizontal rule */
+  hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 1.5rem 0;
+  }
+
+  /* Images don't overflow */
+  img,
+  video {
+    max-width: 100%;
+    display: block;
+  }
+}
+
+
+/* ============================================================
+ * COMPONENT LAYER — Reusable classes (all references to built-in
+ * Tailwind utilities only — no cross-referencing custom classes)
+ * ============================================================ */
+@layer components {
+
+  /* ── Page layout ── */
+  .page-container {
+    max-width: var(--container-max);
+    @apply mx-auto px-4 md:px-6;
+  }
+
+  .section-wrapper {
+    @apply py-16;
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-accent text-white disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: background-color var(--duration-normal) var(--ease-default);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-accent-hover);
+  }
+
+  .btn-primary:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-bg-subtle text-text-primary border border-border disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: background-color var(--duration-normal) var(--ease-default);
+  }
+
+  .btn-secondary:hover {
+    @apply bg-bg-muted;
+  }
+
+  .btn-secondary:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-error text-white disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: background-color var(--duration-normal) var(--ease-default);
+  }
+
+  .btn-danger:hover {
+    @apply bg-red-700;
+  }
+
+  .btn-danger:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: color var(--duration-normal) var(--ease-default),
+      background-color var(--duration-normal) var(--ease-default);
+  }
+
+  .btn-ghost:hover {
+    @apply text-text-primary bg-bg-subtle;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-bg-subtle border border-border rounded-lg p-6;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-hover {
+    @apply bg-bg-subtle border border-border rounded-lg p-6 cursor-pointer;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--duration-normal) var(--ease-default);
+  }
+
+  .card-hover:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-accent {
+    @apply bg-accent-light border border-accent rounded-lg p-6;
+  }
+
+  /* ── Inputs ── */
+  .input-base {
+    @apply w-full px-3 py-2 bg-bg-page border border-border rounded-md text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent;
+    transition: border-color var(--duration-normal) var(--ease-default);
+  }
+
+  /* ── Badges ── */
+  .badge-success {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light text-success;
+  }
+
+  .badge-error {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-light text-error;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-light text-warning;
+  }
+
+  .badge-info {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info-light text-info;
+  }
+
+  .badge-accent {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-light text-accent-text;
+  }
+
+  .badge-neutral {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-bg-muted text-text-secondary;
+  }
+
+  /* ── Difficulty badges (CodeArena-specific) ── */
+  .difficulty-easy {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light text-success;
+  }
+
+  .difficulty-medium {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-light text-warning;
+  }
+
+  .difficulty-hard {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-light text-error;
+  }
+
+  /* ── Section headings ── */
+  .section-title {
+    @apply text-2xl font-semibold text-text-primary mb-1;
+  }
+
+  .section-subtitle {
+    @apply text-sm text-text-secondary mb-6;
+  }
+}
+
+
+/* ============================================================
+ * UTILITY LAYER — One-off helpers
+ * ============================================================ */
 @layer utilities {
 
-  /* 
-   * Glassmorphism & Surface Effects 
-   * Used for cards, panels, and floating elements.
-   * "Matte" provides a subtle frosted glass effect.
-   */
-  .matte-surface {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  /* Hide scrollbar but keep scroll */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  /*
-   * Hero Section Gradients
-   * Creates the signature radial glow background for the hero section.
-   */
-  .hero-gradient {
-    background:
-      radial-gradient(circle at 15% 50%, rgba(5, 150, 105, 0.08) 0%, transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(5, 150, 105, 0.05) 0%, transparent 25%);
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
-  /*
-   * Smooth Text Rendering
-   * Improves font legibility on webkit and moz browsers.
-   */
+  /* Text truncation (2-line) */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Gradient text (accent) */
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Smooth text rendering */
   .text-rendering-optimize {
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-}
 
-/**
- * 🧱 BASE STYLES
- * Global defaults for HTML elements.
- */
-@layer base {
-  body {
-    @apply bg-background text-text-main antialiased selection:bg-primary/10 selection:text-primary;
+  /* Glassmorphism / Matte */
+  .matte-surface {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
   }
 
-  /* Smooth scrolling for anchor links */
-  html {
-    scroll-behavior: smooth;
+  /* Hero gradient */
+  .hero-gradient {
+    background:
+      radial-gradient(circle at 15% 50%, rgba(2, 186, 76, 0.08) 0%, transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(2, 186, 76, 0.05) 0%, transparent 25%);
+  }
+
+  /* ── Leaderboard-specific utilities ── */
+  .podium-gradient-1 {
+    background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0) 100%);
+  }
+
+  .podium-gradient-2 {
+    background: linear-gradient(180deg, rgba(192, 192, 192, 0.2) 0%, rgba(192, 192, 192, 0) 100%);
+  }
+
+  .podium-gradient-3 {
+    background: linear-gradient(180deg, rgba(205, 127, 50, 0.2) 0%, rgba(205, 127, 50, 0) 100%);
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
+  }
+
+  .silver-glow {
+    box-shadow: 0 0 25px rgba(156, 163, 175, 0.15);
+  }
+
+  .bronze-glow {
+    box-shadow: 0 0 20px rgba(217, 119, 6, 0.15);
+  }
+
+  .champion-badge-bg {
+    background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
   }
 }
