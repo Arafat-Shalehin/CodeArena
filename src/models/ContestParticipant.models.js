@@ -20,7 +20,6 @@ const participantSchema = new mongoose.Schema({
 
 participantSchema.index({ contestId: 1, score: -1 });
 
-export const ContestParticipant = mongoose.model(
-  "ContestParticipant",
-  participantSchema,
-);
+export const ContestParticipant =
+  mongoose.models.ContestParticipant ||
+  mongoose.model("ContestParticipant", participantSchema);
