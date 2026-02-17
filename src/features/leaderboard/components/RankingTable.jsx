@@ -24,9 +24,9 @@ export function RankingTable({ data, currentUser }) {
     }
 
     const TableRow = ({ row, index }) => {
-        const isTop3 = index < 3;
+        const isTop3 = row.rank <= 3;
         const isCurrentUser = row.username === currentUser;
-        const rankColor = index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-500' : 'text-text-muted';
+        const rankColor = row.rank === 1 ? 'text-yellow-500' : row.rank === 2 ? 'text-gray-400' : row.rank === 3 ? 'text-orange-500' : 'text-text-muted';
 
         return (
             <tr className={`group transition-colors border-b border-border-light last:border-0 relative ${isCurrentUser ? 'bg-accent/5 hover:bg-accent/10' : 'hover:bg-bg-subtle/50'}`}>

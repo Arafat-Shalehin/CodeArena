@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
  */
 export function FilterBar({ searchQuery, onSearchChange, onFilterChange }) {
     return (
-        <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-bg-subtle/50 backdrop-blur-sm p-4 rounded-2xl border-border shadow-sm sticky top-20 z-30">
+        <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-bg-page p-4 rounded-2xl border-border shadow-sm">
             {/* Search */}
             <div className="relative w-full md:w-96">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">

@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 // Shared Components
 import { Button } from '@/components/ui/button';
@@ -109,9 +110,11 @@ export default function LeaderboardPreviewSection() {
 
                         {/* View All Button */}
                         <div className="p-6 text-center bg-bg-subtle border-t border-border">
-                            <Button variant="outline" size="default" className="bg-bg-page hover:bg-bg-muted">
-                                View all legends
-                            </Button>
+                            <Link href="/leaderboard">
+                                <Button variant="outline" size="default" className="bg-bg-page hover:bg-bg-muted">
+                                    View all legends
+                                </Button>
+                            </Link>
                         </div>
                     </CardContent>
                 </Card>
