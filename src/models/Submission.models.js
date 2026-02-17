@@ -18,11 +18,11 @@ const submissionSchema = new mongoose.Schema(
     },
     code: {
       type: String,
-      required: true,
+      required: [true, "Need to write some code before try to submit."],
     },
     language: {
       type: String,
-      enum: ["javascript", "python", "cpp"],
+      enum: ["javascript", "java", "python", "cpp"],
       required: true,
     },
     status: {
@@ -49,4 +49,4 @@ const submissionSchema = new mongoose.Schema(
 submissionSchema.index({ userId: 1, problemId: 1 });
 submissionSchema.index({ contestId: 1 });
 
-export const Submission = mongoose.model("Submission", submissionSchema);
+export const Submission = mongoose.models.Submission || mongoose.model("Submission", submissionSchema);
