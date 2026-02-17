@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 
+export const dynamic = 'force-dynamic';
+
 /**
  * This function will help us to know if 
  * our backend is connecting to DB properly or not.
