@@ -3,6 +3,10 @@ import * as SeparatorPrimitive from "@radix-ui/react-separator"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Separator Component
+ * Visually separates content in a list or group
+ */
 const Separator = React.forwardRef(
     (
         { className, orientation = "horizontal", decorative = true, ...props },

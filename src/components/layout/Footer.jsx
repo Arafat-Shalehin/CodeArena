@@ -83,7 +83,7 @@ export default function Footer() {
 
                 {/* Footer Bottom */}
                 <div className="border-t border-zinc-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-zinc-400">
-                    <div>© 2024 CodeArena Inc. All rights reserved.</div>
+                    <div>© 2026 CodeArena Inc. All rights reserved.</div>
                     <div className="flex flex-wrap gap-4 md:gap-8 justify-center">
                         <a href="#" className="hover:text-zinc-900">Privacy Policy</a>
                         <a href="#" className="hover:text-zinc-900">Terms of Service</a>

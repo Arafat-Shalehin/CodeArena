@@ -3,6 +3,10 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Avatar Component
+ * Displays an image or a fallback initial
+ */
 const Avatar = React.forwardRef(({ className, ...props }, ref) => (
     <AvatarPrimitive.Root
         ref={ref}
@@ -11,6 +15,10 @@ const Avatar = React.forwardRef(({ className, ...props }, ref) => (
 ))
 Avatar.displayName = AvatarPrimitive.Root.displayName
 
+/**
+ * AvatarImage Component
+ * The image to be displayed
+ */
 const AvatarImage = React.forwardRef(({ className, ...props }, ref) => (
     <AvatarPrimitive.Image
         ref={ref}
@@ -19,6 +27,10 @@ const AvatarImage = React.forwardRef(({ className, ...props }, ref) => (
 ))
 AvatarImage.displayName = AvatarPrimitive.Image.displayName
 
+/**
+ * AvatarFallback Component
+ * The fallback element when the image is not available
+ */
 const AvatarFallback = React.forwardRef(({ className, ...props }, ref) => (
     <AvatarPrimitive.Fallback
         ref={ref}

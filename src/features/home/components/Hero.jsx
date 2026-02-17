@@ -24,12 +24,12 @@ export default function Hero() {
                 {/* Left Column: Content */}
                 <div className="relative z-10 space-y-8 text-center lg:text-left">
                     {/* Headline */}
-                    <h1 className="text-6xl sm:text-7xl lg:text-8xl font-display font-extrabold text-text-main pt-3 leading-[0.9] tracking-[-0.04em]">
-                        Master the <br className="lg:hidden" /> <span className="text-primary italic font-serif">machine.</span>
+                    <h1 className="text-6xl sm:text-7xl lg:text-8xl font-sans font-extrabold text-text-primary pt-3 leading-[0.9] tracking-[-0.04em]">
+                        Master the <br className="lg:hidden" /> <span className="text-accent italic font-serif">machine.</span>
                     </h1>
 
                     {/* Subheadline */}
-                    <p className="text-lg md:text-xl text-text-muted leading-relaxed max-w-xl mx-auto lg:mx-0">
+                    <p className="text-lg md:text-xl text-text-secondary leading-relaxed max-w-xl mx-auto lg:mx-0">
                         The ultimate playground for competitive programmers. Solve curated problems, join high-stakes
                         contests, and build your technical legacy.
                     </p>
@@ -40,19 +40,19 @@ export default function Hero() {
                             Browse 2,500+ problems
                             <span className="material-symbols-outlined text-sm ml-2">arrow_forward</span>
                         </Button>
-                        <Button variant="secondary" size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-white hover:bg-zinc-50 border border-border-base">
+                        <Button variant="secondary" size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-bg-page hover:bg-bg-subtle border border-border">
                             Explore contests
                         </Button>
                     </div>
 
                     {/* Social Proof Stats (Desktop Only) */}
-                    <div className="hidden lg:flex items-center gap-12 pt-10 border-t border-border-base">
+                    <div className="hidden lg:flex items-center gap-12 pt-10 border-t border-border">
                         <div>
-                            <div className="text-2xl font-display font-extrabold text-text-main tracking-tight">100k+</div>
+                            <div className="text-2xl font-sans font-extrabold text-text-primary tracking-tight">100k+</div>
                             <div className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Active Coders</div>
                         </div>
                         <div>
-                            <div className="text-2xl font-display font-extrabold text-text-main tracking-tight">25+</div>
+                            <div className="text-2xl font-sans font-extrabold text-text-primary tracking-tight">25+</div>
                             <div className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Global Sponsors</div>
                         </div>
                     </div>
@@ -63,15 +63,15 @@ export default function Hero() {
             </div>
 
             {/* Mobile Stats (Below everything on mobile) */}
-            <div className="lg:hidden mt-12 pt-8 border-t border-zinc-100 bg-zinc-50/50 -mx-4 px-4">
+            <div className="lg:hidden mt-12 pt-8 border-t border-border bg-bg-subtle/50 -mx-4 px-4">
                 <div className="flex justify-center items-center gap-12">
                     <div className="text-center">
-                        <div className="text-3xl font-display font-black text-text-main tracking-tight">100k+</div>
+                        <div className="text-3xl font-sans font-black text-text-primary tracking-tight">100k+</div>
                         <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Active Coders</div>
                     </div>
-                    <div className="h-10 w-px bg-zinc-200"></div>
+                    <div className="h-10 w-px border-border"></div>
                     <div className="text-center">
-                        <div className="text-3xl font-display font-black text-text-main tracking-tight">25+</div>
+                        <div className="text-3xl font-sans font-black text-text-primary tracking-tight">25+</div>
                         <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Global Sponsors</div>
                     </div>
                 </div>

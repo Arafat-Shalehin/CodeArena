@@ -29,7 +29,7 @@ export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
-        <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/70 border-b border-zinc-200/50 supports-[backdrop-filter]:bg-white/60">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-bg-page/80 border-b border-border">
             <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 
                 {/* Logo & Desktop Navigation */}
@@ -38,7 +38,7 @@ export default function Navbar() {
                         <div className="size-8 group-hover:scale-110 transition-transform">
                             <img src="/logo.svg" alt="CodeArena Logo" className="w-full h-full" />
                         </div>
-                        <span className="font-display font-bold text-xl tracking-tight text-text-main group-hover:text-primary transition-colors">
+                        <span className="font-sans font-bold text-xl tracking-tight text-text-primary group-hover:text-accent transition-colors">
                             CodeArena
                         </span>
                     </Link>
@@ -48,7 +48,7 @@ export default function Navbar() {
                             <Link
                                 key={link.name}
                                 href={link.href}
-                                className="px-3 py-2 text-sm font-medium text-text-muted hover:text-text-main hover:bg-black/5 rounded-lg transition-colors"
+                                className="px-3 py-2 text-sm font-medium text-text-muted hover:text-text-primary hover:bg-bg-subtle rounded-lg transition-colors"
                             >
                                 {link.name}
                             </Link>
@@ -59,24 +59,24 @@ export default function Navbar() {
                 {/* Desktop Search Bar */}
                 <div className="flex-1 max-w-md hidden lg:block">
                     <div className="relative group">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-primary transition-colors text-lg">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors text-lg">
                             search
                         </span>
                         <input
                             type="text"
                             placeholder="Search problems..."
-                            className="w-full pl-10 pr-4 py-2 bg-zinc-100/50 border border-transparent rounded-xl text-sm focus:outline-none focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-zinc-400"
+                            className="w-full pl-10 pr-4 py-2 bg-bg-subtle border border-border rounded-xl text-sm focus:outline-none focus:bg-bg-page focus:border-accent/20 focus:ring-4 focus:ring-accent/5 transition-all placeholder:text-text-muted"
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                            <span className="text-[10px] bg-white border border-zinc-200 rounded px-1.5 py-0.5 text-zinc-400">Ctrl</span>
-                            <span className="text-[10px] bg-white border border-zinc-200 rounded px-1.5 py-0.5 text-zinc-400">K</span>
+                            <span className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted">Ctrl</span>
+                            <span className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted">K</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Action Buttons (Desktop) */}
                 <div className="hidden md:flex items-center gap-3">
-                    <button className="text-sm font-bold text-text-muted hover:text-text-main px-3 py-2 transition-colors">
+                    <button className="text-sm font-bold text-text-muted hover:text-text-primary px-3 py-2 transition-colors">
                         Sign in
                     </button>
                     <Button variant="default" size="default">
@@ -87,7 +87,7 @@ export default function Navbar() {
                 {/* Mobile Menu Toggle */}
                 <div className="md:hidden flex items-center gap-2">
                     <button
-                        className="size-10 flex items-center justify-center rounded-xl bg-zinc-100 text-text-main"
+                        className="size-10 flex items-center justify-center rounded-lg bg-bg-subtle text-text-primary"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                         aria-label="Toggle navigation menu"
                     >
@@ -106,17 +106,17 @@ export default function Navbar() {
 
             {/* Mobile Navigation Overlay */}
             {isMenuOpen && (
-                <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-white z-40 overflow-y-auto border-t border-zinc-200 shadow-xl py-6 px-4 duration-200 flex flex-col">
+                <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-bg-page z-40 overflow-y-auto border-t border-border shadow-xl py-6 px-4 duration-200 flex flex-col">
                     <div className="space-y-4">
                         {/* Mobile Search */}
                         <div className="relative">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-lg">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-lg">
                                 search
                             </span>
                             <input
                                 type="text"
                                 placeholder="Search..."
-                                className="w-full pl-10 pr-4 py-3 bg-zinc-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full pl-10 pr-4 py-3 bg-bg-subtle rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
                             />
                         </div>
 
@@ -127,10 +127,10 @@ export default function Navbar() {
                                     key={link.name}
                                     href={link.href}
                                     onClick={() => setIsMenuOpen(false)}
-                                    className="px-4 py-3 text-base font-bold text-text-main hover:bg-zinc-50 rounded-xl transition-colors flex items-center justify-between group"
+                                    className="px-4 py-3 text-base font-bold text-text-primary hover:bg-bg-subtle rounded-xl transition-colors flex items-center justify-between group"
                                 >
                                     {link.name}
-                                    <span className="material-symbols-outlined text-zinc-300 group-hover:text-primary transition-colors text-lg">
+                                    <span className="material-symbols-outlined text-text-muted group-hover:text-accent transition-colors text-lg">
                                         chevron_right
                                     </span>
                                 </Link>
@@ -138,7 +138,7 @@ export default function Navbar() {
                         </nav>
 
                         {/* Mobile Actions */}
-                        <div className="pt-4 grid gap-3 border-t border-zinc-100">
+                        <div className="pt-4 grid gap-3 border-t border-border">
                             <Button variant="secondary" size="lg" className="w-full">
                                 Sign in
                             </Button>

@@ -1,0 +1,154 @@
+/*
+ * ============================================================
+ * CodeArena Design Tokens
+ * ============================================================
+ * THIS IS THE SINGLE SOURCE OF TRUTH for all visual values.
+ *
+ * HOW TO USE:
+ *   - Never hardcode a color like #02BA4C directly in a component.
+ *   - Always use the Tailwind class that maps to these variables.
+ *   - This way, if the brand color changes, you update it HERE,
+ *     and it automatically updates everywhere on the site.
+ *
+ * Tailwind v4 picks these up via the @theme block in globals.css.
+ * ============================================================
+ */
+
+:root {
+
+    /* ----------------------------------------------------------
+   * COLORS
+   * ---------------------------------------------------------- */
+
+    /* Backgrounds */
+    --color-bg-page: #FFFFFF;
+    --color-bg-subtle: #F7F8FA;
+    --color-bg-muted: #EDEEF0;
+
+    /* Text */
+    --color-text-primary: #111827;
+    --color-text-secondary: #4B5563;
+    --color-text-muted: #9CA3AF;
+    --color-text-inverse: #FFFFFF;
+
+    /* Brand Accent (HackerRank green) */
+    --color-accent: #02BA4C;
+    --color-accent-hover: #029E40;
+    --color-accent-light: #E6F9ED;
+    --color-accent-text: #016B2C;
+
+    /* Borders */
+    --color-border: #E5E7EB;
+    --color-border-strong: #D1D5DB;
+
+    /* Feedback — Success */
+    --color-success: #16A34A;
+    --color-success-light: #DCFCE7;
+
+    /* Feedback — Error */
+    --color-error: #DC2626;
+    --color-error-light: #FEE2E2;
+
+    /* Feedback — Warning */
+    --color-warning: #D97706;
+    --color-warning-light: #FEF3C7;
+
+    /* Feedback — Info */
+    --color-info: #2563EB;
+    --color-info-light: #DBEAFE;
+
+    /* Competitive ranking colors */
+    --color-rank-gold: #F59E0B;
+    --color-rank-silver: #9CA3AF;
+    --color-rank-bronze: #B45309;
+
+
+    /* ----------------------------------------------------------
+   * TYPOGRAPHY
+   * ---------------------------------------------------------- */
+
+    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+
+    /* ----------------------------------------------------------
+   * SHADOWS
+   * ---------------------------------------------------------- */
+
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.07);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
+    --shadow-accent-glow: 0 0 20px rgba(2, 186, 76, 0.25);
+    --shadow-gold-glow: 0 0 20px rgba(245, 158, 11, 0.25);
+
+
+    /* ----------------------------------------------------------
+   * TRANSITIONS
+   * ---------------------------------------------------------- */
+
+    --duration-fast: 100ms;
+    --duration-normal: 150ms;
+    --duration-slow: 250ms;
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+
+    /* ----------------------------------------------------------
+   * Z-INDEX SCALE
+   * ---------------------------------------------------------- */
+
+    --z-base: 0;
+    --z-raised: 10;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-overlay: 300;
+    --z-modal: 400;
+    --z-toast: 500;
+
+
+    /* ----------------------------------------------------------
+   * LAYOUT
+   * ---------------------------------------------------------- */
+
+    --container-max: 1280px;
+    --container-px: 1.5rem;
+    --container-px-lg: 2rem;
+
+    /* Border Radius */
+    --radius: 0.5rem;
+}
+
+
+/* ----------------------------------------------------------
+ * DARK MODE OVERRIDES
+ * ----------------------------------------------------------
+ * When the <html> element has class="dark", these override
+ * the light-mode tokens above. Components automatically
+ * adapt — they just use var(--color-bg-page) etc.
+ * ---------------------------------------------------------- */
+
+.dark {
+    --color-bg-page: #0F1117;
+    --color-bg-subtle: #161B22;
+    --color-bg-muted: #21262D;
+
+    --color-text-primary: #F0F6FC;
+    --color-text-secondary: #8B949E;
+    --color-text-muted: #484F58;
+    --color-text-inverse: #0F1117;
+
+    --color-accent: #02BA4C;
+    --color-accent-hover: #03D658;
+    --color-accent-light: #0D2818;
+    --color-accent-text: #4ADE80;
+
+    --color-border: #21262D;
+    --color-border-strong: #30363D;
+
+    --color-success-light: #0D2818;
+    --color-error-light: #2D1117;
+    --color-warning-light: #2D1B00;
+    --color-info-light: #0D1F47;
+}

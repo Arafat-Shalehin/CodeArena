@@ -1,5 +1,9 @@
 import { cn } from "@/lib/utils"
 
+/**
+ * Skeleton Component
+ * A placeholder loading state for content
+ */
 function Skeleton({
     className,
     ...props

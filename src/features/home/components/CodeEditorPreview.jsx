@@ -18,7 +18,7 @@ export default function CodeEditorPreview() {
             <div className="absolute -inset-4 bg-gradient-to-tr from-primary/5 to-transparent rounded-[2rem] blur-2xl"></div>
 
             {/* Editor Container */}
-            <div className="relative matte-surface border-zinc-200/50 rounded-2xl overflow-hidden shadow-2xl transition-transform duration-500 group-hover:-translate-y-2">
+            <div className="relative matte-surface border-zinc-200/50 rounded-2xl overflow-hidden shadow-2xl">
 
                 {/* Editor Title Bar */}
                 <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-3 flex items-center justify-between">
