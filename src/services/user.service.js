@@ -2,19 +2,23 @@ import { User } from "@/models/User.models";
 import { signToken } from "@/lib/jwt";
 
 export async function registerUser(data) {
-  const existing = await User.findOne({ email: data.email });
-  if (existing) {
-    throw new Error("User already exists with this email.");
+  try {
+    const user = await User.create(data);
+
+    return {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+  } catch (error) {
+    if (error.code === 11000) {
+      const err = new Error("Email already exists.");
+      err.status = 400;
+      throw err;
+    }
+    throw error;
   }
-
-  const user = await User.create(data);
-
-  return {
-    id: user._id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  };
 }
 
 export async function loginUser(email, password) {
@@ -56,8 +60,7 @@ export async function getUserById(id) {
 export async function deleteUser(id) {
   const user = await User.findByIdAndDelete(id);
   if (!user) {
-    throw new Error('User not found.');
+    throw new Error("User not found.");
   }
   return user;
 }
-

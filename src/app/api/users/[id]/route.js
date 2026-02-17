@@ -4,10 +4,10 @@ import { asyncHandler } from "@/lib/asyncHandler";
 
 export const GET = asyncHandler(async (req, { params }) => {
   await dbConnect();
-  return fetchUserById(req, { params });
-})
+  return fetchUserById();
+});
 
 export const DELETE = asyncHandler(async (req, { params }) => {
   await dbConnect();
-  return removeUser(req, { params });
-})
+  return removeUser();
+});
