@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { Check, X } from "lucide-react";
 import Link from "next/link";
+import RegisterAside from "@/components/layout/RegisterAside";
 
 export default function SignUpPage() {
   const {
@@ -54,7 +55,12 @@ export default function SignUpPage() {
       {/*Registation page container Container */}
 
       <div className="bg-white w-full max-w-5xl rounded-xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-gray-100">
-        {/* Right Side: Form Section (Equal width/height) */}
+        {/* Left Side: Aside  */}
+
+        <div className="flex-1 w-full  flex flex-col justify-center">
+          <RegisterAside />
+        </div>
+        {/* Right Side :form */}
         <div className="flex-1 p-8 md:p-12 flex flex-col justify-center bg-white">
           <div className="max-w-md mx-auto w-full">
             <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
