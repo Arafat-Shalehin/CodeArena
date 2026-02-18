@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(user =>
                 user.username.toLowerCase().includes(query) ||
-                user.location.toLowerCase().includes(query)
+                user.country.toLowerCase().includes(query)
             );
         }
 
@@ -62,7 +62,7 @@ export default function LeaderboardPage() {
             } else if (leagueFilter === 'company') {
                 // Mock: Show users from top tech hubs as "company"
                 const techHubs = ['USA', 'China', 'India', 'Germany', 'UK', 'Canada'];
-                filtered = filtered.filter(user => techHubs.includes(user.location));
+                filtered = filtered.filter(user => techHubs.includes(user.country));
             }
         }
 
@@ -75,8 +75,8 @@ export default function LeaderboardPage() {
             // Mock: Monthly based on 'solved' counts (partial correlation)
             filtered.sort((a, b) => b.solved - a.solved);
         } else {
-            // Default: All Time (based on points)
-            filtered.sort((a, b) => b.points - a.points);
+            // Default: All Time (based on points/score)
+            filtered.sort((a, b) => b.score - a.score);
         }
 
         return filtered;

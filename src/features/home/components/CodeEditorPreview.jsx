@@ -1,4 +1,6 @@
 import React from 'react';
+import PropTypes from 'prop-types';
+import { cn } from '@/lib/utils';
 
 /**
  * @component CodeEditorPreview
@@ -11,9 +13,9 @@ import React from 'react';
  * 
  * @returns {JSX.Element} The rendered code editor visualization.
  */
-export default function CodeEditorPreview() {
+export default function CodeEditorPreview({ className }) {
     return (
-        <div className="relative group">
+        <div className={cn("relative group", className)}>
             {/* Background Glow Effect */}
             <div className="absolute -inset-4 bg-gradient-to-tr from-primary/5 to-transparent rounded-[2rem] blur-2xl"></div>
 
@@ -85,3 +87,7 @@ export default function CodeEditorPreview() {
         </div>
     );
 }
+
+CodeEditorPreview.propTypes = {
+    className: PropTypes.string,
+};
