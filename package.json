@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "docker:build": "bash docker/scripts/build-images.sh"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -16,6 +17,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dockerode": "^4.0.9",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.564.0",
     "mongoose": "^9.2.1",
@@ -24,7 +26,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "swr": "^2.4.0",
-    "tailwind-merge": "^3.4.1"
+    "tailwind-merge": "^3.4.1",
+    "tar-stream": "^3.1.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
