@@ -1,11 +1,14 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { Check, X } from "lucide-react";
+import { Check, Eye, EyeOff, X } from "lucide-react";
 import Link from "next/link";
 import RegisterAside from "@/components/layout/RegisterAside";
+import { useState } from "react";
 
 export default function SignUpPage() {
+  const [showPassword, setShowPassword] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -52,7 +55,7 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center py-10 px-4">
-      {/*Registation page container Container */}
+      {/*Registation page container */}
 
       <div className="bg-white w-full max-w-5xl rounded-xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-gray-100">
         {/* Left Side: Aside  */}
@@ -63,19 +66,22 @@ export default function SignUpPage() {
         {/* Right Side :form */}
         <div className="flex-1 p-8 md:p-12 flex flex-col justify-center bg-white">
           <div className="max-w-md mx-auto w-full">
-            <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
+            <h2 className="text-2xl font-bold  text-text-primary text-center mb-2">
               Create your account
             </h2>
-            <p className="text-center text-gray-500 mb-6">
+            <p className="text-center mb-6 text-text-secondary">
               Join CodeArena and start competing
             </p>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Full Name */}
               <div>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Full name
+                </label>
                 <input
                   type="text"
-                  placeholder="Full Name"
+                  placeholder="Jhon dae"
                   className={inputStyle}
                   {...register("fullName", {
                     required: "Full name is required",
@@ -90,9 +96,12 @@ export default function SignUpPage() {
 
               {/* Username */}
               <div>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  UserName
+                </label>
                 <input
                   type="text"
-                  placeholder="Username"
+                  placeholder="Username007"
                   className={inputStyle}
                   {...register("username", {
                     required: "Username is required",
@@ -107,9 +116,12 @@ export default function SignUpPage() {
 
               {/* Email */}
               <div>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder="yahoo@mail.com"
                   className={inputStyle}
                   {...register("email", {
                     required: "Email is required",
@@ -125,14 +137,33 @@ export default function SignUpPage() {
 
               {/* Password */}
               <div>
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className={inputStyle}
-                  {...register("password", {
-                    required: "Password is required",
-                  })}
-                />
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  password
+                </label>
+                <div className="relative">
+                  {" "}
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="******"
+                    className={inputStyle}
+                    {...register("password", {
+                      required: "Password is required",
+                    })}
+                  />{" "}
+                  <span
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 overflow-hidden cursor-pointer text-gray-500 hover:text-gray-700"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        setShowPassword(!showPassword);
+                      }
+                    }}
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </span>
+                </div>
                 <div className="bg-gray-50 p-3 rounded-md space-y-1 mt-2 border border-gray-100">
                   <RuleItem
                     label="At least 8 characters"
@@ -152,16 +183,34 @@ export default function SignUpPage() {
 
               {/* Confirm Password */}
               <div>
-                <input
-                  type="password"
-                  placeholder="Confirm Password"
-                  className={inputStyle}
-                  {...register("confirmPassword", {
-                    required: "Please confirm password",
-                    validate: (value) =>
-                      value === password || "Passwords do not match",
-                  })}
-                />
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Confirm password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="*****"
+                    className={inputStyle}
+                    {...register("confirmPassword", {
+                      required: "Please confirm password",
+                      validate: (value) =>
+                        value === password || "Passwords do not match",
+                    })}
+                  />{" "}
+                  <span
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 overflow-hidden cursor-pointer text-gray-500 hover:text-gray-700"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        setShowPassword(!showPassword);
+                      }
+                    }}
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </span>
+                </div>
                 {errors.confirmPassword && (
                   <p className="text-red-500 text-xs mt-1">
                     {errors.confirmPassword.message}
