@@ -2,6 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import Link from "next/link";
+import LoginAside from "@/components/layout/LoginAside";
 
 export default function SignInPage() {
   const {
@@ -23,6 +24,11 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center py-10 px-4">
       {/* Main Container: overflow-hidden corners এর জন্য */}
       <div className=" w-full max-w-5xl rounded-xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-gray-100">
+        {/* Left Side: LoginAside (Equal height/width) */}
+        <div className="bg-gradient-to-br  from-(--color-accent) via-(--color-accent-hover)_30% to-(--color-accent-text) flex-1  flex flex-col justify-center">
+          <LoginAside />
+        </div>
+
         {/* Right Side: Form Section (Equal height/width) */}
         <div className="flex-1 p-8 md:p-12 flex flex-col justify-center">
           <div className="max-w-md mx-auto w-full">
