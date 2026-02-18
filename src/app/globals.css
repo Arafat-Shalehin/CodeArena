@@ -16,53 +16,51 @@
  */
 
 :root {
-
   /* ----------------------------------------------------------
    * COLORS
    * ---------------------------------------------------------- */
 
   /* Backgrounds */
-  --color-bg-page: #FFFFFF;
-  --color-bg-subtle: #F7F8FA;
-  --color-bg-muted: #EDEEF0;
+  --color-bg-page: #ffffff;
+  --color-bg-subtle: #f7f8fa;
+  --color-bg-muted: #edeef0;
 
   /* Text */
   --color-text-primary: #111827;
-  --color-text-secondary: #4B5563;
-  --color-text-muted: #9CA3AF;
-  --color-text-inverse: #FFFFFF;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-text-inverse: #ffffff;
 
   /* Brand Accent (HackerRank green) */
-  --color-accent: #02BA4C;
-  --color-accent-hover: #029E40;
-  --color-accent-light: #E6F9ED;
-  --color-accent-text: #016B2C;
+  --color-accent: #02ba4c;
+  --color-accent-hover: #029e40;
+  --color-accent-light: #e6f9ed;
+  --color-accent-text: #016b2c;
 
   /* Borders */
-  --color-border: #E5E7EB;
-  --color-border-strong: #D1D5DB;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
 
   /* Feedback — Success */
-  --color-success: #16A34A;
-  --color-success-light: #DCFCE7;
+  --color-success: #16a34a;
+  --color-success-light: #dcfce7;
 
   /* Feedback — Error */
-  --color-error: #DC2626;
-  --color-error-light: #FEE2E2;
+  --color-error: #dc2626;
+  --color-error-light: #fee2e2;
 
   /* Feedback — Warning */
-  --color-warning: #D97706;
-  --color-warning-light: #FEF3C7;
+  --color-warning: #d97706;
+  --color-warning-light: #fef3c7;
 
   /* Feedback — Info */
-  --color-info: #2563EB;
-  --color-info-light: #DBEAFE;
+  --color-info: #2563eb;
+  --color-info-light: #dbeafe;
 
   /* Competitive ranking colors */
-  --color-rank-gold: #F59E0B;
-  --color-rank-silver: #9CA3AF;
-  --color-rank-bronze: #B45309;
-
+  --color-rank-gold: #f59e0b;
+  --color-rank-silver: #9ca3af;
+  --color-rank-bronze: #b45309;
 
   /* ----------------------------------------------------------
    * TYPOGRAPHY
@@ -70,21 +68,23 @@
 
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-display: var(--font-bricolage), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
-
+  --font-mono: var(--font-jetbrains), "Fira Code", monospace;
 
   /* ----------------------------------------------------------
    * SHADOWS
    * ---------------------------------------------------------- */
 
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.07);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
+  --shadow-sm:
+    0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.07);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
+  --shadow-xl:
+    0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
   --shadow-accent-glow: 0 0 20px rgba(2, 186, 76, 0.25);
   --shadow-gold-glow: 0 0 20px rgba(245, 158, 11, 0.25);
-
 
   /* ----------------------------------------------------------
    * TRANSITIONS
@@ -94,7 +94,6 @@
   --duration-normal: 150ms;
   --duration-slow: 250ms;
   --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
-
 
   /* ----------------------------------------------------------
    * Z-INDEX SCALE
@@ -108,7 +107,6 @@
   --z-modal: 400;
   --z-toast: 500;
 
-
   /* ----------------------------------------------------------
    * LAYOUT
    * ---------------------------------------------------------- */
@@ -121,7 +119,6 @@
   --radius: 0.5rem;
 }
 
-
 /* ----------------------------------------------------------
  * DARK MODE OVERRIDES
  * ----------------------------------------------------------
@@ -131,27 +128,27 @@
  * ---------------------------------------------------------- */
 
 .dark {
-  --color-bg-page: #0F1117;
-  --color-bg-subtle: #161B22;
-  --color-bg-muted: #21262D;
+  --color-bg-page: #0f1117;
+  --color-bg-subtle: #161b22;
+  --color-bg-muted: #21262d;
 
-  --color-text-primary: #F0F6FC;
-  --color-text-secondary: #8B949E;
-  --color-text-muted: #484F58;
-  --color-text-inverse: #0F1117;
+  --color-text-primary: #f0f6fc;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #484f58;
+  --color-text-inverse: #0f1117;
 
-  --color-accent: #02BA4C;
-  --color-accent-hover: #03D658;
-  --color-accent-light: #0D2818;
-  --color-accent-text: #4ADE80;
+  --color-accent: #02ba4c;
+  --color-accent-hover: #03d658;
+  --color-accent-light: #0d2818;
+  --color-accent-text: #4ade80;
 
-  --color-border: #21262D;
-  --color-border-strong: #30363D;
+  --color-border: #21262d;
+  --color-border-strong: #30363d;
 
-  --color-success-light: #0D2818;
-  --color-error-light: #2D1117;
-  --color-warning-light: #2D1B00;
-  --color-info-light: #0D1F47;
+  --color-success-light: #0d2818;
+  --color-error-light: #2d1117;
+  --color-warning-light: #2d1b00;
+  --color-info-light: #0d1f47;
 }
 
 /**
@@ -168,12 +165,10 @@
  * ============================================================
  */
 
-
 /* ============================================================
  * @theme — Bridge tokens.css → Tailwind utility classes
  * ============================================================ */
 @theme {
-
   /* ── BACKGROUNDS ────────────────────────── */
   --color-bg-page: var(--color-bg-page);
   --color-bg-subtle: var(--color-bg-subtle);
@@ -212,7 +207,7 @@
 
   /* ── BACKWARDS COMPAT (legacy class names) ── */
   --color-primary: var(--color-accent);
-  --color-primary-foreground: #FFFFFF;
+  --color-primary-foreground: #ffffff;
   --color-background: var(--color-bg-page);
   --color-foreground: var(--color-text-primary);
   --color-surface: var(--color-bg-subtle);
@@ -225,7 +220,7 @@
   --color-muted: var(--color-bg-subtle);
   --color-muted-foreground: var(--color-text-secondary);
   --color-destructive: var(--color-error);
-  --color-destructive-foreground: #FFFFFF;
+  --color-destructive-foreground: #ffffff;
   --color-input: var(--color-border);
   --color-ring: var(--color-accent);
   --color-text-main: var(--color-text-primary);
@@ -234,9 +229,9 @@
   --color-border-highlight: var(--color-border-strong);
 
   /* ── LEADERBOARD LEGACY ── */
-  --color-gold: #FFD700;
-  --color-silver: #C0C0C0;
-  --color-bronze: #CD7F32;
+  --color-gold: #ffd700;
+  --color-silver: #c0c0c0;
+  --color-bronze: #cd7f32;
   --color-arena-dark: #0b1120;
   --color-arena-card: #111827;
   --color-arena-blue: #3b82f6;
@@ -249,7 +244,7 @@
   /* ── FONTS ──────────────────────────────── */
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-display: var(--font-bricolage), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+  --font-mono: var(--font-jetbrains), "Fira Code", monospace;
 
   /* ── RADIUS ─────────────────────────────── */
   --radius: 0.5rem;
@@ -258,12 +253,10 @@
   --container-max: 1280px;
 }
 
-
 /* ============================================================
  * BASE LAYER — Global resets using the design tokens
  * ============================================================ */
 @layer base {
-
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
@@ -346,13 +339,11 @@
   }
 }
 
-
 /* ============================================================
  * COMPONENT LAYER — Reusable classes (all references to built-in
  * Tailwind utilities only — no cross-referencing custom classes)
  * ============================================================ */
 @layer components {
-
   /* ── Page layout ── */
   .page-container {
     max-width: var(--container-max);
@@ -405,7 +396,8 @@
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed;
-    transition: color var(--duration-normal) var(--ease-default),
+    transition:
+      color var(--duration-normal) var(--ease-default),
       background-color var(--duration-normal) var(--ease-default);
   }
 
@@ -487,12 +479,10 @@
   }
 }
 
-
 /* ============================================================
  * UTILITY LAYER — One-off helpers
  * ============================================================ */
 @layer utilities {
-
   /* Hide scrollbar but keep scroll */
   .no-scrollbar {
     -ms-overflow-style: none;
@@ -514,7 +504,11 @@
 
   /* Gradient text (accent) */
   .text-gradient {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
+    background: linear-gradient(
+      135deg,
+      var(--color-accent),
+      var(--color-accent-hover)
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -535,21 +529,41 @@
   /* Hero gradient */
   .hero-gradient {
     background:
-      radial-gradient(circle at 15% 50%, rgba(2, 186, 76, 0.08) 0%, transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(2, 186, 76, 0.05) 0%, transparent 25%);
+      radial-gradient(
+        circle at 15% 50%,
+        rgba(2, 186, 76, 0.08) 0%,
+        transparent 25%
+      ),
+      radial-gradient(
+        circle at 85% 30%,
+        rgba(2, 186, 76, 0.05) 0%,
+        transparent 25%
+      );
   }
 
   /* ── Leaderboard-specific utilities ── */
   .podium-gradient-1 {
-    background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0) 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(255, 215, 0, 0.2) 0%,
+      rgba(255, 215, 0, 0) 100%
+    );
   }
 
   .podium-gradient-2 {
-    background: linear-gradient(180deg, rgba(192, 192, 192, 0.2) 0%, rgba(192, 192, 192, 0) 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(192, 192, 192, 0.2) 0%,
+      rgba(192, 192, 192, 0) 100%
+    );
   }
 
   .podium-gradient-3 {
-    background: linear-gradient(180deg, rgba(205, 127, 50, 0.2) 0%, rgba(205, 127, 50, 0) 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(205, 127, 50, 0.2) 0%,
+      rgba(205, 127, 50, 0) 100%
+    );
   }
 
   .glass-effect {
