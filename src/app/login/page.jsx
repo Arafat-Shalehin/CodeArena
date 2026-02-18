@@ -3,8 +3,12 @@
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import LoginAside from "@/components/layout/LoginAside";
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignInPage() {
+  const [showPassword, setShowPassword] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -14,7 +18,7 @@ export default function SignInPage() {
   });
 
   const onSubmit = (data) => {
-    console.log("LOGIN DATA 👉", data);
+    console.log("LOGIN DATA ", data);
   };
 
   const inputStyle =
@@ -22,9 +26,9 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center py-10 px-4">
-      {/* Main Container: overflow-hidden corners এর জন্য */}
+      {/* Main Container*/}
       <div className=" w-full max-w-5xl rounded-xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-gray-100">
-        {/* Left Side: LoginAside (Equal height/width) */}
+        {/* Left Side: LoginAside  */}
         <div className="bg-gradient-to-br  from-(--color-accent) via-(--color-accent-hover)_30% to-(--color-accent-text) flex-1  flex flex-col justify-center">
           <LoginAside />
         </div>
@@ -33,18 +37,20 @@ export default function SignInPage() {
         <div className="flex-1 p-8 md:p-12 flex flex-col justify-center">
           <div className="max-w-md mx-auto w-full">
             {/* Header */}
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            <div className="mb-8 text-center font-sans">
+              <h2 className="text-2xl font-bold text-text-primary mb-2">
                 Welcome back
               </h2>
-              <p className="text-gray-500">Login to continue to CodeArena</p>
+              <p className="text-text-secondary">
+                Login to continue to CodeArena
+              </p>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Email or Username input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-text-muted mb-1">
                   Email or Username
                 </label>
                 <input
@@ -66,7 +72,7 @@ export default function SignInPage() {
               {/* Password */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-text-muted">
                     Password
                   </label>
                   <Link
@@ -76,14 +82,29 @@ export default function SignInPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className={inputStyle}
-                  {...register("password", {
-                    required: "Password is required",
-                  })}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className={inputStyle}
+                    {...register("password", {
+                      required: "Password is required",
+                    })}
+                  />
+                  <span
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 overflow-hidden cursor-pointer text-gray-500 hover:text-gray-700"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        setShowPassword(!showPassword);
+                      }
+                    }}
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </span>
+                </div>
                 {errors.password && (
                   <p className="text-red-500 text-xs mt-1">
                     {errors.password.message}
