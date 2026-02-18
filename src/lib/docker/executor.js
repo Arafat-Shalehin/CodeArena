@@ -169,39 +169,40 @@ async function runContainer(container, timeLimit) {
             AttachStdout: true,
             AttachStderr: true,
             User: 'coderunner',
-            Tty: true,
         });
 
         // Start execution with timeout
         const execStream = await exec.start({ Detach: false, Tty: false });
 
-        // Create streams for stdout and stderr
-        const outputStream = new PassThrough();
-        const errorStream = new PassThrough();
+        // Collect output using PassThrough streams to handle Docker's multiplexing
+        const stdoutStream = new PassThrough();
+        const stderrStream = new PassThrough();
 
-        // Demultiplex stream (separates stdout from stderr and strips headers)
-        docker.modem.demuxStream(execStream, outputStream, errorStream);
+        // Use container's modem to demultiplex the stream (separates stdout from stderr and removes headers)
+        container.modem.demuxStream(execStream, stdoutStream, stderrStream);
 
         let output = '';
+        const streamPromise = new Promise((resolve, reject) => {
+            stdoutStream.on('data', (chunk) => {
+                output += chunk.toString('utf8');
+            });
+            stderrStream.on('data', (chunk) => {
+                output += chunk.toString('utf8');
+            });
+
+            // Resolve when the main stream ends
+            execStream.on('end', resolve);
+            execStream.on('close', resolve);
+
+            // Handle errors
+            execStream.on('error', reject);
+        });
+
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('TIME_LIMIT_EXCEEDED')), timeLimit + 1000)
         );
 
-        outputStream.on('data', (chunk) => {
-            output += chunk.toString('utf8');
-        });
-
-        errorStream.on('data', (chunk) => {
-            output += chunk.toString('utf8');
-        });
-
-        const outputPromise = new Promise((resolve) => {
-            execStream.on('end', () => {
-                resolve();
-            });
-        });
-
-        await Promise.race([outputPromise, timeoutPromise]);
+        await Promise.race([streamPromise, timeoutPromise]);
 
         const executionTime = Date.now() - startTime;
 

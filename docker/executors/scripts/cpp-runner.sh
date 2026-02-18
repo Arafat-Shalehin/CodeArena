@@ -21,9 +21,8 @@ if ! g++ -std=c++17 -O2 -Wall "$SOURCE_FILE" -o "$BINARY_FILE" 2>"$ERROR_FILE"; 
     exit 1
 fi
 
-# Make binary executable and Ensure ownership
+# Make binary executable
 chmod +x "$BINARY_FILE"
-
 
 # Execute with time and memory limits
 echo "Executing C++ code..."

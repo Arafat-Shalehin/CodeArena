@@ -1,54 +1,100 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
+import {
+    Play,
+    Terminal,
+    FileCode,
+    Settings,
+    Cpu,
+    CheckCircle2,
+    AlertCircle,
+    XCircle,
+    Copy,
+    Trash2,
+    Maximize2,
+    Minimize2,
+    ChevronRight,
+    Loader2
+} from 'lucide-react';
 
+// Sample codes for different languages
 const SAMPLE_CODES = {
-    python: `# Simple addition program
+    python: {
+        file: 'main.py',
+        code: `# Simple addition program
 a, b = map(int, input().split())
-print(a + b)`,
-    cpp: `#include <iostream>
+print(f"Sum: {a + b}")`
+    },
+    cpp: {
+        file: 'solution.cpp',
+        code: `#include <iostream>
 using namespace std;
 
 int main() {
     int a, b;
-    cin >> a >> b;
-    cout << a + b << endl;
+    if (cin >> a >> b) {
+        cout << "Sum: " << a + b << endl;
+    }
     return 0;
-}`,
-    java: `import java.util.Scanner;
+}`
+    },
+    java: {
+        file: 'Solution.java',
+        code: `import java.util.Scanner;
 
 public class Solution {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        int a = sc.nextInt();
-        int b = sc.nextInt();
-        System.out.println(a + b);
+        if (sc.hasNextInt()) {
+            int a = sc.nextInt();
+            int b = sc.nextInt();
+            System.out.println("Sum: " + (a + b));
+        }
+        sc.close();
     }
-}`,
-    javascript: `const readline = require('readline');
+}`
+    },
+    javascript: {
+        file: 'script.js',
+        code: `const readline = require('readline');
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
 rl.on('line', (line) => {
-    const [a, b] = line.split(' ').map(Number);
-    console.log(a + b);
+    const parts = line.split(' ');
+    if (parts.length >= 2) {
+        const a = parseInt(parts[0]);
+        const b = parseInt(parts[1]);
+        console.log("Sum:", a + b);
+    }
     rl.close();
-});`,
+});`
+    },
 };
 
-export default function DockerTestPage() {
+export default function DockerIDEPage() {
+    // State
     const [language, setLanguage] = useState('python');
-    const [code, setCode] = useState(SAMPLE_CODES.python);
+    const [code, setCode] = useState(SAMPLE_CODES.python.code);
     const [input, setInput] = useState('5 10');
-    const [result, setResult] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [output, setOutput] = useState('');
+    const [isRunning, setIsRunning] = useState(false);
+    const [activeTab, setActiveTab] = useState('TERMINAL'); // TERMINAL, OUTPUT, DEBUG
     const [systemStatus, setSystemStatus] = useState(null);
+    const [sidebarActive, setSidebarActive] = useState('EXPLORER'); // EXPLORER, SETTINGS
+
+    // Initial load
+    useEffect(() => {
+        checkSystemStatus();
+    }, []);
 
     const handleLanguageChange = (lang) => {
         setLanguage(lang);
-        setCode(SAMPLE_CODES[lang]);
+        setCode(SAMPLE_CODES[lang].code);
     };
 
     const checkSystemStatus = async () => {
@@ -62,9 +108,10 @@ export default function DockerTestPage() {
         }
     };
 
-    const executeCode = async () => {
-        setLoading(true);
-        setResult(null);
+    const runCode = async () => {
+        setIsRunning(true);
+        setActiveTab('OUTPUT');
+        setOutput('Running code...\n');
 
         try {
             const response = await fetch('/api/evaluation/execute', {
@@ -80,234 +127,235 @@ export default function DockerTestPage() {
             });
 
             const data = await response.json();
-            setResult(data);
+
+            if (data.success) {
+                const { output: execOutput, error: execError, executionTime, memoryUsed, verdict } = data.result;
+                let finalOutput = '';
+
+                if (execOutput) finalOutput += execOutput;
+                if (execError) finalOutput += `\nError:\n${execError}`;
+
+                finalOutput += `\n\n=== Execution Details ===\n`;
+                finalOutput += `Verdict: ${verdict}\n`;
+                finalOutput += `Time: ${executionTime}ms\n`;
+                finalOutput += `Memory: ${memoryUsed}KB`;
+
+                setOutput(finalOutput);
+            } else {
+                setOutput(`System Error: ${data.error}\n${data.message || ''}`);
+            }
         } catch (error) {
-            setResult({
-                success: false,
-                error: error.message,
-            });
+            setOutput(`Network Error: ${error.message}`);
         } finally {
-            setLoading(false);
-        }
-    };
-
-    const testWithTestCase = async () => {
-        setLoading(true);
-        setResult(null);
-
-        try {
-            const response = await fetch('/api/evaluation/test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code,
-                    language,
-                    testCase: {
-                        input: input,
-                        output: '15', // Expected output for 5 + 10
-                    },
-                    timeLimit: 5000,
-                    memoryLimit: 512000,
-                }),
-            });
-
-            const data = await response.json();
-            setResult(data);
-        } catch (error) {
-            setResult({
-                success: false,
-                error: error.message,
-            });
-        } finally {
-            setLoading(false);
+            setIsRunning(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-6xl mx-auto">
-                <h1 className="text-4xl font-bold mb-2">Docker Code Execution Test</h1>
-                <p className="text-gray-600 mb-8">
-                    Test the Docker-based code execution system
-                </p>
+        <div className="flex h-screen w-full bg-[#1e1e1e] text-gray-300 font-sans overflow-hidden">
+            {/* Activity Bar (Leftmost narrow strip) */}
+            <div className="w-12 bg-[#333333] flex flex-col items-center py-4 gap-4 border-r border-[#1e1e1e]">
+                <button
+                    onClick={() => setSidebarActive('EXPLORER')}
+                    className={`p-2 rounded ${sidebarActive === 'EXPLORER' ? 'text-white border-l-2 border-blue-500 bg-[#252526]' : 'text-gray-500 hover:text-white'}`}
+                    title="Explorer"
+                >
+                    <FileCode size={24} />
+                </button>
+                <button
+                    onClick={() => {
+                        setSidebarActive('SETTINGS');
+                        checkSystemStatus();
+                    }}
+                    className={`p-2 rounded ${sidebarActive === 'SETTINGS' ? 'text-white border-l-2 border-blue-500 bg-[#252526]' : 'text-gray-500 hover:text-white'}`}
+                    title="System Status"
+                >
+                    <Cpu size={24} />
+                </button>
+                <div className="flex-grow" />
+                <button className="p-2 text-gray-500 hover:text-white" title="Settings">
+                    <Settings size={24} />
+                </button>
+            </div>
 
-                {/* System Status */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold">System Status</h2>
-                        <button
-                            onClick={checkSystemStatus}
-                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                            Check Status
-                        </button>
-                    </div>
-
-                    {systemStatus && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium">Docker:</span>
-                                <span className={systemStatus.docker?.available ? 'text-green-600' : 'text-red-600'}>
-                                    {systemStatus.docker?.available ? '✓ Available' : '✗ Not Available'}
-                                </span>
-                            </div>
-
-                            {systemStatus.languages && (
-                                <div className="mt-4">
-                                    <p className="font-medium mb-2">Languages:</p>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                        {systemStatus.languages.map((lang) => (
-                                            <div
-                                                key={lang.language}
-                                                className={`p-2 rounded ${lang.ready ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                    }`}
-                                            >
-                                                {lang.name} {lang.ready ? '✓' : '✗'}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
+            {/* Sidebar (Explorer / Status) */}
+            <div className="w-64 bg-[#252526] flex flex-col border-r border-[#1e1e1e]">
+                <div className="h-10 px-4 flex items-center text-xs font-bold tracking-wider text-gray-400 uppercase bg-[#252526]">
+                    {sidebarActive}
                 </div>
 
-                {/* Code Editor */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">Language</label>
-                        <div className="flex gap-2 flex-wrap">
+                {sidebarActive === 'EXPLORER' && (
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="px-2 py-1 text-xs font-bold text-gray-500 uppercase flex items-center cursor-pointer hover:text-white">
+                            <ChevronRight size={14} className="mr-1" />
+                            CODEARENA WORKSPACE
+                        </div>
+                        <div className="mt-1">
                             {Object.keys(SAMPLE_CODES).map((lang) => (
-                                <button
+                                <div
                                     key={lang}
                                     onClick={() => handleLanguageChange(lang)}
-                                    className={`px-4 py-2 rounded ${language === lang
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                                        }`}
+                                    className={`flex items-center px-4 py-1.5 cursor-pointer text-sm ${language === lang ? 'bg-[#37373d] text-white' : 'text-gray-400 hover:bg-[#2a2d2e] hover:text-gray-200'}`}
                                 >
-                                    {lang.charAt(0).toUpperCase() + lang.slice(1)}
-                                </button>
+                                    <span className={`w-3 h-3 rounded-full mr-2 ${lang === 'python' ? 'bg-blue-400' :
+                                        lang === 'javascript' ? 'bg-yellow-400' :
+                                            lang === 'java' ? 'bg-red-400' : 'bg-purple-400'
+                                        }`}></span>
+                                    {SAMPLE_CODES[lang].file}
+                                </div>
                             ))}
                         </div>
                     </div>
+                )}
 
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">Code</label>
-                        <textarea
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                            className="w-full h-64 p-3 border rounded font-mono text-sm"
-                            spellCheck="false"
-                        />
-                    </div>
-
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">Input</label>
-                        <textarea
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            className="w-full h-24 p-3 border rounded font-mono text-sm"
-                            placeholder="Enter input here..."
-                        />
-                    </div>
-
-                    <div className="flex gap-4">
+                {sidebarActive === 'SETTINGS' && (
+                    <div className="flex-1 p-4">
+                        <h3 className="text-sm font-semibold mb-4 text-white">System Status</h3>
+                        {systemStatus ? (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span>Docker Engine</span>
+                                    {systemStatus.docker?.available ?
+                                        <CheckCircle2 size={16} className="text-green-500" /> :
+                                        <XCircle size={16} className="text-red-500" />
+                                    }
+                                </div>
+                                <div className="h-px bg-gray-700 my-2"></div>
+                                <div className="space-y-2">
+                                    <p className="text-xs text-gray-500 uppercase">Languages</p>
+                                    {systemStatus.languages?.map(lang => (
+                                        <div key={lang.language} className="flex items-center justify-between text-sm">
+                                            <span className="capitalize">{lang.name}</span>
+                                            {lang.ready ?
+                                                <span className="text-xs text-green-500 bg-green-500/10 px-2 py-0.5 rounded">Ready</span> :
+                                                <span className="text-xs text-red-500 bg-red-500/10 px-2 py-0.5 rounded">Error</span>
+                                            }
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 size={24} className="animate-spin text-blue-500" />
+                            </div>
+                        )}
                         <button
-                            onClick={executeCode}
-                            disabled={loading}
-                            className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400"
+                            onClick={checkSystemStatus}
+                            className="mt-6 w-full py-2 bg-[#007acc] hover:bg-[#0062a3] text-white text-sm rounded flex items-center justify-center gap-2"
                         >
-                            {loading ? 'Executing...' : 'Execute Code'}
+                            Refresh Status
                         </button>
+                    </div>
+                )}
+            </div>
 
+            {/* Main Area */}
+            <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e]">
+                {/* Editor Tabs */}
+                <div className="h-9 bg-[#252526] flex items-center overflow-x-auto">
+                    <div className="bg-[#1e1e1e] text-white px-3 py-2 text-sm flex items-center border-t-2 border-blue-500 min-w-[120px]">
+                        <span className={`w-3 h-3 rounded-full mr-2 ${language === 'python' ? 'bg-blue-400' :
+                            language === 'javascript' ? 'bg-yellow-400' :
+                                language === 'java' ? 'bg-red-400' : 'bg-purple-400'
+                            }`}></span>
+                        {SAMPLE_CODES[language].file}
+                        <button className="ml-auto text-gray-400 hover:text-white">×</button>
+                    </div>
+                    {/* Placeholder action bar in tab area */}
+                    <div className="ml-auto px-2 flex items-center gap-2">
                         <button
-                            onClick={testWithTestCase}
-                            disabled={loading}
-                            className="px-6 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
+                            onClick={runCode}
+                            disabled={isRunning}
+                            className={`p-1.5 rounded hover:bg-[#333] ${isRunning ? 'opacity-50 cursor-not-allowed' : 'text-green-500'}`}
+                            title="Run Code (Ctrl+Enter)"
                         >
-                            {loading ? 'Testing...' : 'Test (Expected: 15)'}
+                            {isRunning ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                         </button>
                     </div>
                 </div>
 
-                {/* Results */}
-                {result && (
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <h2 className="text-xl font-semibold mb-4">Result</h2>
+                {/* Breadcrumbs / Toolbar */}
+                <div className="h-6 bg-[#1e1e1e] flex items-center px-4 text-xs text-gray-500 border-b border-[#2b2b2b]">
+                    src &gt; examples &gt; {SAMPLE_CODES[language].file}
+                </div>
 
-                        {result.success ? (
-                            <div className="space-y-4">
-                                {result.result && (
-                                    <>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">Verdict:</span>
-                                            <span
-                                                className={`px-3 py-1 rounded ${result.result.verdict === 'SUCCESS' || result.result.verdict === 'ACCEPTED'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : result.result.verdict === 'WRONG_ANSWER'
-                                                        ? 'bg-red-100 text-red-800'
-                                                        : result.result.verdict === 'TIME_LIMIT_EXCEEDED'
-                                                            ? 'bg-orange-100 text-orange-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}
-                                            >
-                                                {result.result.verdict}
-                                            </span>
-                                        </div>
+                {/* Monaco Editor */}
+                <div className="flex-1 relative">
+                    <Editor
+                        height="100%"
+                        language={language === 'c++' ? 'cpp' : language}
+                        value={code}
+                        theme="vs-dark"
+                        onChange={(value) => setCode(value || '')}
+                        options={{
+                            minimap: { enabled: true },
+                            fontSize: 14,
+                            fontFamily: "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
+                            automaticLayout: true,
+                            scrollBeyondLastLine: false,
+                            wordWrap: 'on',
+                            padding: { top: 16 }
+                        }}
+                    />
+                </div>
 
-                                        {result.result.executionTime !== undefined && (
-                                            <div>
-                                                <span className="font-medium">Execution Time:</span>{' '}
-                                                {result.result.executionTime}ms
-                                            </div>
-                                        )}
+                {/* Bottom Panel (Terminal) */}
+                <div className="h-64 bg-[#1e1e1e] border-t border-[#2b2b2b] flex flex-col">
+                    {/* Panel Tabs */}
+                    <div className="flex items-center px-4 py-2 border-b border-[#2b2b2b] gap-6 text-xs font-semibold tracking-wide">
+                        <button
+                            onClick={() => setActiveTab('TERMINAL')}
+                            className={`${activeTab === 'TERMINAL' ? 'text-white border-b-2 border-white pb-1' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            TERMINAL (INPUT)
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('OUTPUT')}
+                            className={`${activeTab === 'OUTPUT' ? 'text-white border-b-2 border-white pb-1' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            OUTPUT
+                        </button>
+                        <button className="text-gray-500 hover:text-gray-300">DEBUG CONSOLE</button>
+                        <div className="ml-auto flex items-center gap-2 text-gray-500">
+                            <Trash2 size={14} className="cursor-pointer hover:text-white" onClick={() => { setOutput(''); setInput(''); }} />
+                            <Maximize2 size={14} className="cursor-pointer hover:text-white" />
+                        </div>
+                    </div>
 
-                                        {result.result.memoryUsed !== undefined && (
-                                            <div>
-                                                <span className="font-medium">Memory Used:</span>{' '}
-                                                {result.result.memoryUsed}KB
-                                            </div>
-                                        )}
-
-                                        {result.result.output && (
-                                            <div>
-                                                <p className="font-medium mb-2">Output:</p>
-                                                <pre className="bg-gray-100 p-3 rounded overflow-x-auto">
-                                                    {result.result.output}
-                                                </pre>
-                                            </div>
-                                        )}
-
-                                        {result.result.actualOutput && (
-                                            <div>
-                                                <p className="font-medium mb-2">Actual Output:</p>
-                                                <pre className="bg-gray-100 p-3 rounded overflow-x-auto">
-                                                    {result.result.actualOutput}
-                                                </pre>
-                                            </div>
-                                        )}
-
-                                        {result.result.error && (
-                                            <div>
-                                                <p className="font-medium mb-2 text-red-600">Error:</p>
-                                                <pre className="bg-red-50 p-3 rounded overflow-x-auto text-red-800">
-                                                    {result.result.error}
-                                                </pre>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="bg-red-50 text-red-800 p-4 rounded">
-                                <p className="font-medium">Error:</p>
-                                <p>{result.error || 'Failed to execute code'}</p>
-                                {result.message && <p className="mt-2 text-sm">{result.message}</p>}
+                    {/* Panel Content */}
+                    <div className="flex-1 p-4 overflow-y-auto font-mono text-sm">
+                        {activeTab === 'TERMINAL' && (
+                            <div className="h-full flex flex-col">
+                                <label className="text-gray-500 mb-2 text-xs">Standard Input (stdin):</label>
+                                <textarea
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    className="flex-1 bg-[#1e1e1e] text-gray-300 outline-none resize-none border border-[#333] p-2 rounded focus:border-blue-500"
+                                    placeholder="Enter input here..."
+                                    spellCheck="false"
+                                />
                             </div>
                         )}
+                        {activeTab === 'OUTPUT' && (
+                            <pre className="whitespace-pre-wrap text-gray-300 font-mono">
+                                {output || <span className="text-gray-600 italic">No output yet. Click &apos;Run&apos; to execute code.</span>}
+                            </pre>
+                        )}
                     </div>
-                )}
+                </div>
+
+                {/* Status Bar */}
+                <div className="h-6 bg-[#007acc] text-white flex items-center px-3 text-xs justify-between select-none">
+                    <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1"><Terminal size={12} /> Ready</span>
+                        <span>Ln 1, Col 1</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span>UTF-8</span>
+                        <span>{language.toUpperCase()}</span>
+                        <span className="hover:bg-white/20 px-1 rounded cursor-pointer">Run Application</span>
+                    </div>
+                </div>
             </div>
         </div>
     );

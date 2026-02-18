@@ -90,7 +90,10 @@ export const getDockerRunConfig = (language) => {
             CapDrop: SANDBOX_CONFIG.security.capDrop,
             SecurityOpt: SANDBOX_CONFIG.security.securityOpt,
             Tmpfs: {
-                ...SANDBOX_CONFIG.filesystem.tmpfs,
+                // Mount /tmp and /var/tmp as noexec for security
+                '/tmp': 'rw,noexec,nosuid,size=65536k',
+                '/var/tmp': 'rw,noexec,nosuid,size=65536k',
+                // Workspace must allow execution for compiled languages (C++, Go)
                 '/workspace': 'rw,exec,nosuid,size=65536k',
             },
         },
