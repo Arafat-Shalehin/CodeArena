@@ -34,9 +34,9 @@ describe('LeaderboardPreviewSection', () => {
 
     it('renders users when data is available', () => {
         const mockUsers = [
-            { rank: 1, username: 'User1', title: 'Dev', points: 1000, solved: 10 },
-            { rank: 2, username: 'User2', title: 'Dev', points: 900, solved: 9 },
-            { rank: 3, username: 'User3', title: 'Dev', points: 800, solved: 8 }
+            { rank: 1, username: 'User1', title: 'Dev', score: 1000, solved: 10 },
+            { rank: 2, username: 'User2', title: 'Dev', score: 900, solved: 9 },
+            { rank: 3, username: 'User3', title: 'Dev', score: 800, solved: 8 }
         ];
 
         useLeaderboard.mockReturnValue({

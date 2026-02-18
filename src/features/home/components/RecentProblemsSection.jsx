@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 
 // Shared Components
 import { Button } from '@/components/ui/button';
@@ -40,9 +41,13 @@ export default function RecentProblemsSection() {
 
             {/* View All Problems Button (Moved below grid) */}
             <div className="mt-12 text-center">
-                <Button variant="outline" size="default" className="w-full sm:w-auto bg-white hover:bg-zinc-50 border-zinc-200">
+                <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full sm:w-auto bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-600 hover:text-primary hover:border-primary/20 transition-all duration-300 group"
+                >
                     All problems
-                    <span className="material-symbols-outlined text-sm ml-2">north_east</span>
+                    <ArrowUpRight className="w-4 h-4 ml-2 opacity-60 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </Button>
             </div>
         </section>
