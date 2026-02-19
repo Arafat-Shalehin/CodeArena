@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
@@ -18,6 +18,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 /**
  * @component LeaderboardPreviewSection
  * @description Displays a preview table of top-ranked users to encourage competition.
@@ -29,10 +31,36 @@ import {
  * @returns {JSX.Element} The rendered Leaderboard preview section.
  */
 export default function LeaderboardPreviewSection() {
+
     const { users: leaderboardUsers, isLoading, error } = useLeaderboard();
 
     if (isLoading) {
-        return <div className="py-24 text-center text-text-muted animate-pulse">Loading Global Hall of Fame...</div>;
+        return (
+            <section className="py-12 bg-bg-subtle">
+                <div className="max-w-5xl mx-auto px-4">
+                    <div className="text-center max-w-2xl mx-auto mb-20 space-y-4">
+                        <Skeleton className="h-12 w-3/4 mx-auto" />
+                        <Skeleton className="h-4 w-1/2 mx-auto" />
+                    </div>
+                    <Card className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-bg-page/80">
+                        <CardContent className="p-0">
+                            <div className="space-y-4 p-8">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex items-center gap-4">
+                                        <Skeleton className="h-12 w-12 rounded-full" />
+                                        <div className="space-y-2 flex-1">
+                                            <Skeleton className="h-4 w-[200px]" />
+                                            <Skeleton className="h-4 w-[150px]" />
+                                        </div>
+                                        <Skeleton className="h-8 w-20" />
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </section>
+        );
     }
 
     if (error) {

@@ -3,6 +3,8 @@ import { fetchProblems, create } from "@/controllers/problem.controller";
 import { asyncHandler } from "@/lib/asyncHandler";
 import { authorize } from "@/middlewares/role.middleware";
 
+export const dynamic = 'force-dynamic';
+
 export const GET = asyncHandler(async (req) => {
     await dbConnect();
     return fetchProblems(req);

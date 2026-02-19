@@ -573,4 +573,50 @@
   .champion-badge-bg {
     background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
   }
+
+  /* ── Custom Animations ── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes soft-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    50% { box-shadow: 0 0 0 8px rgba(245, 159, 11, 0.2); }
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.35s cubic-bezier(.4, 0, .2, 1) both;
+  }
+
+  .animate-soft-pulse {
+    animation: soft-pulse 2.5s ease-in-out infinite;
+  }
+
+  /* ── Auth Vector Animations ── */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-float-slow {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-float-medium {
+    animation: float 5s ease-in-out infinite 1s;
+  }
+  
+  .animate-float-fast {
+    animation: float 4s ease-in-out infinite 0.5s;
+  }
+  
+  .animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
+  }
 }
