@@ -1,3 +1,4 @@
+import ProblemStats from "@/features/Profile/Component/ProblemStats";
 import ProfileHero from "@/features/Profile/Component/ProfileHero";
 import RecentSubmissions from "@/features/Profile/Component/RecentSubmissions";
 import StatsGrid from "@/features/Profile/Component/StatsGrid";
@@ -79,6 +80,7 @@ export default function ProfilePage() {
 
           {/* Right Side (40%) */}
           <div className="lg:col-span-4 space-y-8">
+            <ProblemStats></ProblemStats>
             {/* Languages */}
             <section className="bg-bg-subtle border border-border rounded-lg p-6">
               <h3 className="text-xl font-semibold text-text-primary mb-4">
