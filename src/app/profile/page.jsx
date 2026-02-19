@@ -1,3 +1,4 @@
+import Achievements from "@/features/Profile/Component/achievement";
 import ContestPerformance from "@/features/Profile/Component/ContestPerformance";
 import ProblemStats from "@/features/Profile/Component/ProblemStats";
 import ProfileHero from "@/features/Profile/Component/ProfileHero";
@@ -110,6 +111,7 @@ export default function ProfilePage() {
               </div>
             </section>
             <ContestPerformance></ContestPerformance>
+            <Achievements></Achievements>
           </div>
         </div>
       </main>
