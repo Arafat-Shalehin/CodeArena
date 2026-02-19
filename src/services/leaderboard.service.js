@@ -1,24 +1,155 @@
-import { leaderboardUsers, leaderboardStats } from '@/features/leaderboard/data/leaderboard.data';
+import mongoose from "mongoose";
+import { Leaderboard } from "@/models/Leaderboard.models";
+import { Contest } from "@/models/Contest.models";
+import { ContestParticipant } from "@/models/ContestParticipant.models";
 
-export const leaderboardService = {
-    /**
-     * Fetches the global leaderboard rankings.
-     * @param {Object} params - Filtering and pagination parameters.
-     * @returns {Promise<Array>} List of user rankings.
-     */
-    getRankings: async (params = {}) => {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return leaderboardUsers;
-    },
+/**
+ * Compute & finalize leaderboard for a contest
+ * - Only allowed when contest is completed
+ * - Runs inside a transaction
+ * - Idempotent (will not duplicate entries)
+ */
+export async function computeLeaderboard(contestId) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    /**
-     * Fetches platform-wide statistics.
-     * @returns {Promise<Array>} List of platform stats.
-     */
-    getStats: async () => {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return leaderboardStats;
+    try {
+        const contest = await Contest.findById(contestId).session(session);
+
+        if (!contest) {
+            throw new Error("Contest not found.");
+        }
+
+        if (contest.status !== "completed") {
+            throw new Error("Leaderboard can only be computed after contest completion.");
+        }
+
+        // Prevent recomputation if already finalized
+        const alreadyExists = await Leaderboard.exists({ contestId });
+        if (alreadyExists) {
+            throw new Error("Leaderboard already finalized for this contest.");
+        }
+
+        // Fetch participants sorted by scoring logic
+        const participants = await ContestParticipant.find({ contestId })
+            .sort({
+                score: -1,
+                penalty: 1,           // lower penalty wins (if exists)
+                lastSubmissionAt: 1,  // earlier submission wins
+            })
+            .session(session);
+
+        if (!participants.length) {
+            throw new Error("No participants found for this contest.");
+        }
+
+        let currentRank = 1;
+        let previousScore = null;
+        let previousPenalty = null;
+
+        const bulkOps = [];
+
+        participants.forEach((p, index) => {
+            // Tie handling (same score + penalty)
+            if (
+                previousScore !== null &&
+                (p.score !== previousScore || p.penalty !== previousPenalty)
+            ) {
+                currentRank = index + 1;
+            }
+
+            bulkOps.push({
+                insertOne: {
+                    document: {
+                        contestId,
+                        userId: p.userId,
+                        score: p.score,
+                        rank: currentRank,
+                        submissions: p.submissions || 0,
+                        penalty: p.penalty || 0,
+                        lastSubmissionAt: p.lastSubmissionAt || null,
+                        finalized: true,
+                    },
+                },
+            });
+
+            previousScore = p.score;
+            previousPenalty = p.penalty;
+        });
+
+        if (bulkOps.length) {
+            await Leaderboard.bulkWrite(bulkOps, { session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return {
+            success: true,
+            totalParticipants: participants.length,
+        };
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        throw error;
     }
-};
+}
+
+/**
+ * Get leaderboard (paginated)
+ * Optimized for read-heavy workloads
+ */
+export async function getLeaderboard(contestId, query = {}) {
+    const page = Math.max(parseInt(query.page) || 1, 1);
+    const limit = Math.min(parseInt(query.limit) || 20, 100);
+    const skip = (page - 1) * limit;
+
+    const filter = { contestId };
+
+    const leaderboard = await Leaderboard.find(filter)
+        .populate("userId", "name email stats")
+        .sort({ rank: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await Leaderboard.countDocuments(filter);
+
+    return {
+        leaderboard,
+        pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit),
+        },
+    };
+}
+
+/**
+ * Get single user's rank in contest
+ * O(log n) due to index on (contestId, userId)
+ */
+export async function getUserRank(contestId, userId) {
+    const entry = await Leaderboard.findOne({ contestId, userId })
+        .select("rank score penalty submissions")
+        .lean();
+
+    if (!entry) {
+        throw new Error("User not found in leaderboard.");
+    }
+
+    return entry;
+}
+
+/**
+ * Delete leaderboard (admin use only)
+ * Used if contest needs re-evaluation
+ */
+export async function resetLeaderboard(contestId) {
+    const result = await Leaderboard.deleteMany({ contestId });
+
+    return {
+        deletedEntries: result.deletedCount,
+    };
+}
