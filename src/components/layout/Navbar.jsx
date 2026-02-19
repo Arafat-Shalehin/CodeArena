@@ -166,9 +166,11 @@ export default function Navbar() {
 
             {/* Mobile Actions */}
             <div className="pt-4 grid gap-3 border-t border-border">
-              <Button variant="secondary" size="lg" className="w-full">
-                <Link href="/login"> Sign in</Link>
-              </Button>
+              <Link href="login">
+                <Button variant="secondary" size="lg" className="w-full">
+                  Sign in
+                </Button>
+              </Link>
               <Button variant="default" size="lg" className="w-full">
                 Join the next contest
               </Button>
