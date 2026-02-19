@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { leaderboardUsers } from '../data/leaderboard.data';
@@ -89,9 +91,8 @@ function PodiumPosition({ user, rank, delay }) {
 
     return (
         <div
-            className="flex flex-col items-center"
+            className="flex flex-col items-center animate-fade-up"
             style={{
-                animation: 'fadeUp 0.35s cubic-bezier(.4,0,.2,1) both',
                 animationDelay: `${delay}ms`,
             }}
         >
@@ -109,13 +110,10 @@ function PodiumPosition({ user, rank, delay }) {
 
                 {/* Avatar */}
                 <Avatar
-                    className={`${c.avatarSize} border-2 ${rank === 1 ? 'shadow-md' : ''} bg-bg-page`}
+                    className={`${c.avatarSize} border-2 ${rank === 1 ? 'shadow-md animate-soft-pulse' : ''} bg-bg-page`}
                     style={{
                         borderColor: c.color,
                         padding: '2px',
-                        ...(rank === 1 && {
-                            animation: 'softPulse 2.5s ease-in-out infinite',
-                        }),
                     }}
                 >
                     <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.username}`} alt={user.username} />
@@ -212,49 +210,36 @@ export function TopThreePodium() {
     const [first, second, third] = leaderboardUsers.slice(0, 3);
 
     return (
-        <>
-            <style jsx>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes softPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-          50%      { box-shadow: 0 0 0 8px rgba(245, 159, 11, 0.2); }
-        }
-      `}</style>
+        <section className="my-12 md:my-16" aria-label="Top 3 competitors">
 
-            <section className="my-12 md:my-16" aria-label="Top 3 competitors">
+            {/* ── DESKTOP: 2-1-3 podium layout ────────────────── */}
+            <div className="hidden md:grid md:grid-cols-3 gap-6 items-end px-8 md:px-16 max-w-4xl mx-auto">
 
-                {/* ── DESKTOP: 2-1-3 podium layout ────────────────── */}
-                <div className="hidden md:grid md:grid-cols-3 gap-6 items-end px-8 md:px-16 max-w-4xl mx-auto">
+                {/* #2 Silver — left, shorter */}
+                <PodiumPosition user={second} rank={2} delay={100} />
 
-                    {/* #2 Silver — left, shorter */}
+                {/* #1 Gold — centre, tallest */}
+                <PodiumPosition user={first} rank={1} delay={0} />
+
+                {/* #3 Bronze — right, shortest */}
+                <PodiumPosition user={third} rank={3} delay={200} />
+
+            </div>
+
+            {/* ── MOBILE: 1st full, 2nd/3rd grid ──────────────── */}
+            <div className="md:hidden space-y-4">
+
+                {/* #1 Gold — full width */}
+                <PodiumPosition user={first} rank={1} delay={0} />
+
+                {/* #2 + #3 — side by side */}
+                <div className="grid grid-cols-2 gap-3">
                     <PodiumPosition user={second} rank={2} delay={100} />
-
-                    {/* #1 Gold — centre, tallest */}
-                    <PodiumPosition user={first} rank={1} delay={0} />
-
-                    {/* #3 Bronze — right, shortest */}
                     <PodiumPosition user={third} rank={3} delay={200} />
-
                 </div>
 
-                {/* ── MOBILE: 1st full, 2nd/3rd grid ──────────────── */}
-                <div className="md:hidden space-y-4">
+            </div>
 
-                    {/* #1 Gold — full width */}
-                    <PodiumPosition user={first} rank={1} delay={0} />
-
-                    {/* #2 + #3 — side by side */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <PodiumPosition user={second} rank={2} delay={100} />
-                        <PodiumPosition user={third} rank={3} delay={200} />
-                    </div>
-
-                </div>
-
-            </section>
-        </>
+        </section>
     );
 }
