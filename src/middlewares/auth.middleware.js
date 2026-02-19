@@ -5,6 +5,8 @@ export async function protect(req) {
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new Error("Not authorized.");
+    error.status = 401;
+    throw error;
   }
 
   const token = authHeader.split(" ")[1];
@@ -12,10 +14,14 @@ export async function protect(req) {
     const decoded = verifyToken(token);
     return decoded;
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      throw new Error('Token expired. Please login again.');
+    if (error.name === "TokenExpiredError") {
+      const err = new Error("Token expired. Please login again.");
+      err.status = 401;
+      throw err;
     }
-    throw new Error('Invalid token.');
-  }
 
+    const err = new Error("Invalid token.");
+    err.status = 401;
+    throw err;
+  }
 }

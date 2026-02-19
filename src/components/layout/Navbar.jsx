@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Search, Menu, X, ChevronRight, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Shared Components
 import { Button } from '@/components/ui/button';
@@ -59,46 +61,44 @@ export default function Navbar() {
                 {/* Desktop Search Bar */}
                 <div className="flex-1 max-w-md hidden lg:block">
                     <div className="relative group">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors text-lg">
-                            search
-                        </span>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors size-4" />
                         <input
                             type="text"
                             placeholder="Search problems..."
                             className="w-full pl-10 pr-4 py-2 bg-bg-subtle border border-border rounded-xl text-sm focus:outline-none focus:bg-bg-page focus:border-accent/20 focus:ring-4 focus:ring-accent/5 transition-all placeholder:text-text-muted"
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                            <span className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted">Ctrl</span>
-                            <span className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted">K</span>
+                            <kbd className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted font-sans cursor-default select-none">Ctrl</kbd>
+                            <kbd className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted font-sans cursor-default select-none">K</kbd>
                         </div>
                     </div>
                 </div>
 
                 {/* Action Buttons (Desktop) */}
                 <div className="hidden md:flex items-center gap-3">
-                    <button className="text-sm font-bold text-text-muted hover:text-text-primary px-3 py-2 transition-colors">
-                        Sign in
-                    </button>
-                    <Button variant="default" size="default">
-                        Join the next contest
-                    </Button>
+                    <Link href="/login">
+                        <Button variant="ghost" className="text-sm font-bold text-text-muted hover:text-text-primary">
+                            Sign in
+                        </Button>
+                    </Link>
+                    <Link href="/signup">
+                        <Button variant="default" size="default">
+                            Sign Up
+                        </Button>
+                    </Link>
                 </div>
 
                 {/* Mobile Menu Toggle */}
                 <div className="md:hidden flex items-center gap-2">
                     <button
-                        className="size-10 flex items-center justify-center rounded-lg bg-bg-subtle text-text-primary"
+                        className="size-10 flex items-center justify-center rounded-lg bg-bg-subtle text-text-primary hover:bg-bg-subtle/80 transition-colors"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                         aria-label="Toggle navigation menu"
                     >
                         {isMenuOpen ? (
-                            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="size-6" />
                         ) : (
-                            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
+                            <Menu className="size-6" />
                         )}
                     </button>
                 </div>
@@ -106,13 +106,11 @@ export default function Navbar() {
 
             {/* Mobile Navigation Overlay */}
             {isMenuOpen && (
-                <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-bg-page z-40 overflow-y-auto border-t border-border shadow-xl py-6 px-4 duration-200 flex flex-col">
+                <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-bg-page z-40 overflow-y-auto border-t border-border shadow-xl py-6 px-4 duration-200 flex flex-col animate-in slide-in-from-top-4 fade-in-0">
                     <div className="space-y-4">
                         {/* Mobile Search */}
                         <div className="relative">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-lg">
-                                search
-                            </span>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted size-4" />
                             <input
                                 type="text"
                                 placeholder="Search..."
@@ -130,21 +128,23 @@ export default function Navbar() {
                                     className="px-4 py-3 text-base font-bold text-text-primary hover:bg-bg-subtle rounded-xl transition-colors flex items-center justify-between group"
                                 >
                                     {link.name}
-                                    <span className="material-symbols-outlined text-text-muted group-hover:text-accent transition-colors text-lg">
-                                        chevron_right
-                                    </span>
+                                    <ChevronRight className="text-text-muted group-hover:text-accent transition-colors size-5" />
                                 </Link>
                             ))}
                         </nav>
 
                         {/* Mobile Actions */}
                         <div className="pt-4 grid gap-3 border-t border-border">
-                            <Button variant="secondary" size="lg" className="w-full">
-                                Sign in
-                            </Button>
-                            <Button variant="default" size="lg" className="w-full">
-                                Join the next contest
-                            </Button>
+                            <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                                <Button variant="secondary" size="lg" fullWidth>
+                                    Sign in
+                                </Button>
+                            </Link>
+                            <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
+                                <Button variant="default" size="lg" fullWidth>
+                                    Sign Up
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>

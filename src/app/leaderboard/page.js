@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { useState } from 'react';
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar';
@@ -33,10 +33,10 @@ import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data';
 export default function LeaderboardPage() {
     // TODO: Implement state management for search, filters, pagination
     // State for filters and pagination
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [leagueFilter, setLeagueFilter] = React.useState('all');
-    const [timeframeFilter, setTimeframeFilter] = React.useState('all_time');
-    const [currentPage, setCurrentPage] = React.useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [leagueFilter, setLeagueFilter] = useState('all');
+    const [timeframeFilter, setTimeframeFilter] = useState('all_time');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const ITEMS_PER_PAGE = 30;
 
@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(user =>
                 user.username.toLowerCase().includes(query) ||
-                user.location.toLowerCase().includes(query)
+                user.country.toLowerCase().includes(query)
             );
         }
 
@@ -62,7 +62,7 @@ export default function LeaderboardPage() {
             } else if (leagueFilter === 'company') {
                 // Mock: Show users from top tech hubs as "company"
                 const techHubs = ['USA', 'China', 'India', 'Germany', 'UK', 'Canada'];
-                filtered = filtered.filter(user => techHubs.includes(user.location));
+                filtered = filtered.filter(user => techHubs.includes(user.country));
             }
         }
 
@@ -75,8 +75,8 @@ export default function LeaderboardPage() {
             // Mock: Monthly based on 'solved' counts (partial correlation)
             filtered.sort((a, b) => b.solved - a.solved);
         } else {
-            // Default: All Time (based on points)
-            filtered.sort((a, b) => b.points - a.points);
+            // Default: All Time (based on points/score)
+            filtered.sort((a, b) => b.score - a.score);
         }
 
         return filtered;

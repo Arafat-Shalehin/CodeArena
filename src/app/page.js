@@ -6,6 +6,8 @@ import HowItWorksSection from '../features/home/components/HowItWorksSection';
 import RecentProblemsSection from '../features/home/components/RecentProblemsSection';
 import LeaderboardPreviewSection from '../features/home/components/LeaderboardPreviewSection';
 
+import ErrorBoundary from '../components/ui/error-boundary';
+
 /**
  * Home Page
  * 
@@ -25,11 +27,25 @@ export default function Home() {
       <Navbar />
 
       <main className="flex-grow">
-        <Hero />
-        <FeaturesSection />
-        <HowItWorksSection />
-        <RecentProblemsSection />
-        <LeaderboardPreviewSection />
+        <ErrorBoundary>
+          <Hero />
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <FeaturesSection />
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <HowItWorksSection />
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <RecentProblemsSection />
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <LeaderboardPreviewSection />
+        </ErrorBoundary>
       </main>
 
       <Footer />
