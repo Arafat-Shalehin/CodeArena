@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { useState } from 'react';
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar';
@@ -33,10 +33,10 @@ import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data';
 export default function LeaderboardPage() {
     // TODO: Implement state management for search, filters, pagination
     // State for filters and pagination
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [leagueFilter, setLeagueFilter] = React.useState('all');
-    const [timeframeFilter, setTimeframeFilter] = React.useState('all_time');
-    const [currentPage, setCurrentPage] = React.useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [leagueFilter, setLeagueFilter] = useState('all');
+    const [timeframeFilter, setTimeframeFilter] = useState('all_time');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const ITEMS_PER_PAGE = 30;
 
