@@ -1,13 +1,40 @@
-// src/app/profile/page.jsx
 import ProfileHero from "@/features/Profile/Component/ProfileHero";
 import RecentSubmissions from "@/features/Profile/Component/RecentSubmissions";
 import StatsGrid from "@/features/Profile/Component/StatsGrid";
+import { Dot } from "lucide-react";
 
 export default function ProfilePage() {
+  const languages = [
+    {
+      language: "javascript",
+      improve_parcentage: 60,
+    },
+    {
+      language: "python",
+      improve_parcentage: 15,
+    },
+    {
+      language: "java",
+      improve_parcentage: 5,
+    },
+    {
+      language: "cotlin",
+      improve_parcentage: 20,
+    },
+  ];
+  const biggerPercentage = [...languages].sort(
+    (a, b) => b.improve_parcentage - a.improve_parcentage,
+  );
+  const getColor = (index) => {
+    if (index == 0) return "text-green-600";
+    if (index == 1) return "text-yellow-600";
+    if (index == 2) return "text-red-600";
+    return " ";
+  };
   return (
     <div className="bg-bg-page min-h-screen">
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        {/* Hero & Stats */}
+        {/* Hero & Status cards */}
         <ProfileHero />
         <StatsGrid />
 
@@ -15,7 +42,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
           {/* Left Side (60%) */}
           <div className="lg:col-span-6 space-y-8">
-            {/* Heatmap Section */}
+            {/* Submition activity Section */}
             <section className="bg-bg-subtle border border-border rounded-lg p-6">
               <h3 className="text-xl font-semibold text-text-primary mb-6">
                 Submission Activity
@@ -43,21 +70,8 @@ export default function ProfilePage() {
               </div>
               <div className="divide-y divide-border">
                 {/* Single Row Item */}
-                <div className="p-4 flex justify-between items-center hover:bg-bg-muted/50 transition-colors">
-                  <div className="flex gap-4 items-center">
-                    <span className="text-success text-xl">●</span>
-                    <div>
-                      <p className="text-sm font-semibold text-text-primary font-mono">
-                        Two Sum
-                      </p>
-                      <p className="text-xs text-text-muted">
-                        2 hours ago • C++
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-success-light text-success">
-                    Accepted
-                  </span>
+                <div className="p-4  hover:bg-bg-muted/50 transition-colors">
+                  <RecentSubmissions></RecentSubmissions>
                 </div>
               </div>
             </section>
@@ -65,7 +79,7 @@ export default function ProfilePage() {
 
           {/* Right Side (40%) */}
           <div className="lg:col-span-4 space-y-8">
-            {/* Language Breakdown */}
+            {/* Languages */}
             <section className="bg-bg-subtle border border-border rounded-lg p-6">
               <h3 className="text-xl font-semibold text-text-primary mb-4">
                 Languages
@@ -76,13 +90,21 @@ export default function ProfilePage() {
                 <div className="bg-info" style={{ width: "15%" }}></div>
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-text-secondary">C++</span>
-                  <span className="text-text-primary">60%</span>
+                <div className="grid grid-cols-2  text-xs gap-5 font-medium">
+                  {biggerPercentage.map((language, index) => (
+                    <div className="flex justify-between">
+                      <span className="text-left text-text-secondary flex items-center ">
+                        <Dot className={`${getColor(index)}`} size={30}></Dot>
+                        {language.language}
+                      </span>
+                      <span className="text-left text-text-muted">
+                        {language.improve_parcentage} %
+                      </span>
+                    </div>
+                  ))}
                 </div>
                 {/* Add more as needed */}
               </div>
-              <RecentSubmissions></RecentSubmissions>
             </section>
           </div>
         </div>
