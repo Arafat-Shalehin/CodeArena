@@ -1,90 +1,85 @@
-import mongoose from "mongoose";
-import { Log } from "@/models/log.model";
+import { Log } from "@/models/Log.models";
 
 /**
- * Allowed log types for consistency.
- * Extend this list if needed.
+ * Create a log entry
+ * Used internally across services/controllers
  */
-export const LOG_TYPES = {
-    ERROR: "error",
-    INFO: "info",
-    WARNING: "warning",
-    AUTH: "auth",
-    SUBMISSION: "submission",
-    CONTEST: "contest",
-    SYSTEM: "system",
-};
-
-/**
- * Create a new log entry
- * @param {Object} payload
- * @param {string} payload.type - log category
- * @param {string} payload.message - log message
- * @param {Object} [payload.meta] - optional metadata
- */
-export async function createLog({ type, message, meta = {} }) {
-    if (!type || !message) {
-        throw new Error("Log type and message are required.");
-    }
-
-    const log = await Log.create({
-        type,
-        message,
-        meta,
-    });
-
-    return log;
-}
-
-/**
- * Convenience method for error logging
- */
-export async function logError(message, meta = {}) {
-    return createLog({
-        type: LOG_TYPES.ERROR,
-        message,
-        meta,
-    });
-}
-
-/**
- * Fetch logs with filters & pagination
- * @param {Object} filters
- * @param {string} [filters.type]
- * @param {Date} [filters.from]
- * @param {Date} [filters.to]
- * @param {number} [page=1]
- * @param {number} [limit=20]
- */
-export async function getLogs({
+export async function createLog({
     type,
-    from,
-    to,
-    page = 1,
-    limit = 20,
+    level = "info",
+    message,
+    meta = {},
+    userId = null,
+    contestId = null,
+    submissionId = null,
+    ipAddress = null,
+    requestId = null,
 }) {
-    const query = {};
-
-    if (type) {
-        query.type = type;
+    if (!type || !level || !message) {
+        throw new Error("type, level and message are required to create a log.");
     }
 
-    if (from || to) {
-        query.createdAt = {};
-        if (from) query.createdAt.$gte = new Date(from);
-        if (to) query.createdAt.$lte = new Date(to);
-    }
+    return Log.create({
+        type,
+        level,
+        message,
+        meta,
+        userId,
+        contestId,
+        submissionId,
+        ipAddress,
+        requestId,
+    });
+}
 
+/**
+ * Get logs with filtering & pagination
+ * Used for Admin dashboard
+ */
+export async function getLogs(query = {}) {
+    const page = parseInt(query.page) || 1;
+    const limit = parseInt(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [logs, total] = await Promise.all([
-        Log.find(query)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean(),
-        Log.countDocuments(query),
-    ]);
+    const filter = {};
+
+    if (query.type) {
+        filter.type = query.type;
+    }
+
+    if (query.level) {
+        filter.level = query.level;
+    }
+
+    if (query.userId) {
+        filter.userId = query.userId;
+    }
+
+    if (query.contestId) {
+        filter.contestId = query.contestId;
+    }
+
+    if (query.submissionId) {
+        filter.submissionId = query.submissionId;
+    }
+
+    if (query.from || query.to) {
+        filter.createdAt = {};
+        if (query.from) {
+            filter.createdAt.$gte = new Date(query.from);
+        }
+        if (query.to) {
+            filter.createdAt.$lte = new Date(query.to);
+        }
+    }
+
+    const logs = await Log.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await Log.countDocuments(filter);
 
     return {
         logs,
@@ -98,16 +93,27 @@ export async function getLogs({
 }
 
 /**
- * Delete logs older than X days
- * Useful for cleanup cron jobs
+ * Get single log by ID
  */
-export async function deleteOldLogs(days = 15) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
+export async function getLogById(id) {
+    const log = await Log.findById(id);
 
-    const result = await Log.deleteMany({
-        createdAt: { $lt: cutoffDate },
-    });
+    if (!log) {
+        throw new Error("Log not found.");
+    }
 
-    return result.deletedCount;
+    return log;
+}
+
+/**
+ * Delete log (admin maintenance use-case)
+ */
+export async function deleteLog(id) {
+    const log = await Log.findByIdAndDelete(id);
+
+    if (!log) {
+        throw new Error("Log not found.");
+    }
+
+    return log;
 }

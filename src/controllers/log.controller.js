@@ -1,19 +1,73 @@
 import {
     createLog,
     getLogs,
-    deleteOldLogs,
-    LOG_TYPES,
+    getLogById,
+    deleteLog,
 } from "@/services/log.service";
 
 /**
- * POST /api/logs
- * Create a log entry manually (rarely used externally)
+ * GET /api/admin/logs
+ * Query logs with filters & pagination
  */
-export const createLogEntry = async (req) => {
-    const body = await req.json();
-    const { type, message, meta } = body;
+export async function fetchLogs(req) {
+    const { searchParams } = new URL(req.url);
 
-    const log = await createLog({ type, message, meta });
+    const query = {
+        page: searchParams.get("page"),
+        limit: searchParams.get("limit"),
+        type: searchParams.get("type"),
+        level: searchParams.get("level"),
+        userId: searchParams.get("userId"),
+        contestId: searchParams.get("contestId"),
+        submissionId: searchParams.get("submissionId"),
+        from: searchParams.get("from"),
+        to: searchParams.get("to"),
+    };
+
+    const result = await getLogs(query);
+
+    return Response.json({
+        success: true,
+        data: result.logs,
+        pagination: result.pagination,
+    });
+}
+
+/**
+ * GET /api/admin/logs/[id]
+ * Get single log
+ */
+export async function fetchLogById(req, { params }) {
+    const log = await getLogById(params.id);
+
+    return Response.json({
+        success: true,
+        data: log,
+    });
+}
+
+/**
+ * DELETE /api/admin/logs/[id]
+ * Delete log entry
+ */
+export async function removeLog(req, { params }) {
+    await deleteLog(params.id);
+
+    return Response.json({
+        success: true,
+        message: "Log deleted successfully.",
+    });
+}
+
+/**
+ * OPTIONAL (Internal use)
+ * POST /api/admin/logs
+ * Manually create log (rarely used, mostly for testing)
+ */
+export async function createManualLog(req) {
+    const body = await req.json();
+
+    const log = await createLog(body);
 
     return Response.json(
         {
@@ -22,58 +76,4 @@ export const createLogEntry = async (req) => {
         },
         { status: 201 }
     );
-};
-
-/**
- * GET /api/logs
- * Query params:
- * ?type=error
- * ?page=1
- * ?limit=20
- * ?from=2026-01-01
- * ?to=2026-01-31
- */
-export const fetchLogs = async (req) => {
-    const { searchParams } = new URL(req.url);
-
-    const type = searchParams.get("type");
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 20;
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
-
-    const result = await getLogs({
-        type,
-        page,
-        limit,
-        from,
-        to,
-    });
-
-    return Response.json(
-        {
-            success: true,
-            ...result,
-        },
-        { status: 200 }
-    );
-};
-
-/**
- * DELETE /api/logs/cleanup
- * ?days=30
- */
-export const cleanupLogs = async (req) => {
-    const { searchParams } = new URL(req.url);
-    const days = Number(searchParams.get("days")) || 30;
-
-    const deletedCount = await deleteOldLogs(days);
-
-    return Response.json(
-        {
-            success: true,
-            message: `${deletedCount} logs deleted`,
-        },
-        { status: 200 }
-    );
-};
+}
