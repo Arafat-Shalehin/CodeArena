@@ -90,7 +90,9 @@ export async function getAllUsers() {
 export async function getUserById(id) {
   const user = await User.findById(id).select("-password");
   if (!user) {
-    throw new Error("User not found.");
+    const err = new Error("User not found");
+    err.status = 404;
+    throw err;
   }
   return user;
 }
@@ -104,7 +106,9 @@ export async function getUserById(id) {
 export async function deleteUser(id) {
   const user = await User.findByIdAndDelete(id);
   if (!user) {
-    throw new Error("User not found.");
+    const err = new Error("User not found");
+    err.status = 404;
+    throw err;
   }
   return user;
 }

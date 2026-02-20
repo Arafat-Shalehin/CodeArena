@@ -8,10 +8,10 @@ import {
 /**
  * POST /api/submissions
  */
-export async function submitCode(req) {
+export async function submitCode(req, user) {
     try {
+        const userId = user.id;
         const body = await req.json();
-        const userId = req.user.id;
 
         // Whitelist allowed fields
         const { problemId, code, language, contestId } = body;
@@ -53,10 +53,9 @@ export async function submitCode(req) {
 /**
  * GET /api/submissions
  */
-export async function fetchSubmissions(req) {
+export async function fetchSubmissions(req, user) {
     try {
         const { searchParams } = new URL(req.url);
-        const user = req.user;
 
         const query = {
             page: searchParams.get("page"),
@@ -91,11 +90,11 @@ export async function fetchSubmissions(req) {
 /**
  * GET /api/submissions/[id]
  */
-export async function fetchSubmissionById(req, { params }) {
+export async function fetchSubmissionById(req, context, user) {
     try {
-        const user = req.user;
+        const { id } = await context.params;
 
-        if (!mongoose.Types.ObjectId.isValid(params.id)) {
+        if (!mongoose.Types.ObjectId.isValid(id)) {
             return Response.json(
                 { success: false, message: "Invalid submission ID." },
                 { status: 400 }
@@ -103,7 +102,14 @@ export async function fetchSubmissionById(req, { params }) {
         }
 
         // Authorization handled in service
-        const submission = await getSubmissionById(params.id, user);
+        const submission = await getSubmissionById(id);
+
+        if (user.role !== "admin" && submission.userId._id.toString() !== user.id) {
+            return Response.json(
+                { success: false, message: "Access denied." },
+                { status: 403 }
+            );
+        }
 
         return Response.json({
             success: true,

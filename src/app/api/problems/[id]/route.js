@@ -7,6 +7,7 @@ import {
 import { asyncHandler } from "@/lib/asyncHandler";
 import { authorize } from "@/middlewares/role.middleware";
 import mongoose from "mongoose";
+import { protect } from "@/middlewares/auth.middleware";
 
 export const GET = asyncHandler(async (req, context) => {
   const { id } = context.params;
@@ -23,12 +24,20 @@ export const GET = asyncHandler(async (req, context) => {
 
 export const PUT = asyncHandler(async (req, context) => {
   await dbConnect();
+
+  const user = await protect(req);
+  req.user = user;
+
   await authorize(["admin"])(req, context);
   return update(req, context);
 });
 
 export const DELETE = asyncHandler(async (req, context) => {
   await dbConnect();
+
+  const user = await protect(req);
+  req.user = user;
+
   await authorize(["admin"])(req, context);
   return remove(req, context);
 });
