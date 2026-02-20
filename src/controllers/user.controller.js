@@ -14,17 +14,10 @@ export async function createUser(req) {
 }
 
 export async function login(req) {
-  try {
-    const { email, password } = await req.json();
-    const user = await loginUser(email, password);
+  const { email, password } = await req.json();
+  const user = await loginUser(email, password);
 
-    return Response.json({ success: true, data: user });
-  } catch (error) {
-    return Response.json(
-      { success: false, message: error.message },
-      { status: 401 },
-    );
-  }
+  return Response.json({ success: true, data: user });
 }
 
 export async function fetchUsers() {
@@ -33,25 +26,11 @@ export async function fetchUsers() {
 }
 
 export async function fetchUserById(req, { params }) {
-  try {
-    const user = await getUserById(params.id);
-    return Response.json({ success: true, data: user });
-  } catch (error) {
-    return Response.json(
-      { success: false, message: error.message },
-      { status: 404 },
-    );
-  }
+  const user = await getUserById(params.id);
+  return Response.json({ success: true, data: user });
 }
 
 export async function removeUser(req, { params }) {
-  try {
-    await deleteUser(params.id);
-    return Response.json({ success: true, message: "User deleted." });
-  } catch (error) {
-    return Response.json(
-      { success: false, message: error.message },
-      { status: 400 },
-    );
-  }
+  await deleteUser(params.id);
+  return Response.json({ success: true, message: "User deleted." });
 }

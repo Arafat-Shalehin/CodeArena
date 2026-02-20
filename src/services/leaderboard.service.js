@@ -17,17 +17,22 @@ export async function computeLeaderboard(contestId) {
         const contest = await Contest.findById(contestId).session(session);
 
         if (!contest) {
-            throw new Error("Contest not found.");
+            const err = new Error("Contest not found.");
+            err.status = 404;
+            throw err;
         }
-
         if (contest.status !== "completed") {
-            throw new Error("Leaderboard can only be computed after contest completion.");
+            const err = new Error("Leaderboard can only be computed after contest completion.");
+            err.status = 400;
+            throw err;
         }
 
         // Prevent recomputation if already finalized
         const alreadyExists = await Leaderboard.exists({ contestId });
         if (alreadyExists) {
-            throw new Error("Leaderboard already finalized for this contest.");
+            const err = new Error("Leaderboard already finalized for this contest.");
+            err.status = 409;
+            throw err;
         }
 
         // Fetch participants sorted by scoring logic

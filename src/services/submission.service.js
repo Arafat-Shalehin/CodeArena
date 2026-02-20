@@ -2,10 +2,10 @@ import mongoose from "mongoose";
 import { Submission } from "@/models/Submission.models";
 import { User } from "@/models/User.models";
 import { Problem } from "@/models/Problem.models";
-import { Contest } from "@/models/Contest.models";
+import { ContestParticipant } from "@/models/ContestParticipant.models";
 
 /**
- * Create a new submission (transaction-safe)
+ * Create a new submission
  */
 export async function createSubmission(data) {
     const { userId, problemId, code, language, contestId } = data;
@@ -49,7 +49,7 @@ export async function createSubmission(data) {
 
         // 4️⃣ Contest validation (if provided)
         if (contestId) {
-            const contest = await Contest.findById(contestId).session(session);
+            const contest = await ContestParticipant.findById(contestId).session(session);
             if (!contest) {
                 throw new Error("Contest not found.");
             }
@@ -64,14 +64,13 @@ export async function createSubmission(data) {
                 throw new Error("Contest has already ended.");
             }
 
-            // Optional participant check
-            if (
-                contest.participants &&
-                !contest.participants.some(
-                    (participantId) =>
-                        participantId.toString() === userId.toString()
-                )
-            ) {
+            // Check participant registration via ContestParticipant collection
+            const isRegistered = await ContestParticipant.findOne({
+                contestId,
+                userId,
+            }).session(session);
+
+            if (!isRegistered) {
                 throw new Error("User is not registered for this contest.");
             }
         }
@@ -111,7 +110,7 @@ export async function createSubmission(data) {
 }
 
 /**
- * Get all submissions with filtering + safe pagination
+ * Get all submissions (with filtering)
  */
 export async function getAllSubmissions(query) {
     const page = Math.max(parseInt(query.page) || 1, 1);
@@ -150,26 +149,17 @@ export async function getAllSubmissions(query) {
 }
 
 /**
- * Get submission by ID with authorization
+ * Get submission by ID
  */
-export async function getSubmissionById(id, requestingUser) {
+export async function getSubmissionById(id) {
     const submission = await Submission.findById(id)
-        .populate("userId", "name email role")
-        .populate("problemId", "title difficulty")
-        .lean();
+        .populate("userId", "name email")
+        .populate("problemId", "title difficulty");
 
     if (!submission) {
-        throw new Error("Submission not found.");
-    }
-
-    // Authorization: only owner or admin
-    const isOwner =
-        submission.userId._id.toString() === requestingUser._id.toString();
-
-    const isAdmin = requestingUser.role === "admin";
-
-    if (!isOwner && !isAdmin) {
-        throw new Error("Unauthorized access to submission.");
+        const err = new Error("Submission not found.");
+        err.status = 404;
+        throw err;
     }
 
     return submission;

@@ -1,94 +1,80 @@
 import mongoose from "mongoose";
 import { ContestParticipant } from "@/models/ContestParticipant.models";
 import { Contest } from "@/models/Contest.models";
-import { User } from "@/models/User.models";
+import { logger } from "@/lib/logger";
 
 /**
  * Register a user for a contest
  */
 export async function registerUserForContest(contestId, userId) {
-    if (!mongoose.Types.ObjectId.isValid(contestId)) {
-        throw new Error("Invalid contest ID.");
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-        throw new Error("Invalid user ID.");
-    }
-
-    // Validate contest existence
-    const contest = await Contest.findById(contestId).lean();
+    const contest = await Contest.findById(contestId);
     if (!contest) {
-        throw new Error("Contest not found.");
+        const err = new Error("Contest not found.");
+        err.status = 404;
+        throw err;
     }
 
-    // Prevent registration if contest completed
     if (contest.status === "completed") {
-        throw new Error("Cannot register for a completed contest.");
-    }
-
-    // prevent registration after contest start
-    if (contest.startTime && contest.startTime < new Date()) {
-        throw new Error("Registration closed. Contest already started.");
-    }
-
-    // Validate user existence
-    const user = await User.findById(userId).lean();
-    if (!user) {
-        throw new Error("User not found.");
-    }
-
-    try {
-        const participant = await ContestParticipant.create({
+        await logger.contest.warn("Registration attempt on completed contest.", {
             contestId,
             userId,
         });
-
-        return participant;
-    } catch (error) {
-        // Handle duplicate registration via unique index
-        if (error.code === 11000) {
-            throw new Error("User already registered for this contest.");
-        }
-        throw error;
+        const err = new Error("Cannot register for a completed contest.");
+        err.status = 400;
+        throw err;
     }
+
+    const existing = await ContestParticipant.findOne({ contestId, userId });
+    if (existing) {
+        await logger.contest.warn("Duplicate registration attempt.", {
+            contestId,
+            userId,
+        });
+        const err = new Error("User already registered for this contest.");
+        err.status = 409;
+        throw err;
+    }
+
+    const participant = await ContestParticipant.create({
+        contestId,
+        userId,
+        score: 0,
+        rank: 0,
+    });
+
+    await logger.contest.info("User registered for contest.", {
+        contestId,
+        userId,
+        participantId: participant._id,
+    });
+
+    return participant;
 }
 
 /**
- * Get contest leaderboard (paginated)
+ * Get participants for a contest (Leaderboard)
  */
 export async function getContestParticipants(contestId, query = {}) {
-    if (!mongoose.Types.ObjectId.isValid(contestId)) {
-        throw new Error("Invalid contest ID.");
-    }
-
-    const page = Math.max(parseInt(query.page) || 1, 1);
-    const limit = Math.min(parseInt(query.limit) || 20, 100); // Max 100 per page
+    const page = parseInt(query.page) || 1;
+    const limit = parseInt(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const filter = { contestId };
-
-    const participants = await ContestParticipant.find(filter)
+    const participants = await ContestParticipant.find({ contestId })
         .populate("userId", "name email stats")
-        .sort({ score: -1, updatedAt: 1 }) // High score first, earliest submission wins tie
+        .sort({ score: -1, updatedAt: 1 })
         .skip(skip)
-        .limit(limit)
-        .lean();
+        .limit(limit);
 
-    const total = await ContestParticipant.countDocuments(filter);
+    const total = await ContestParticipant.countDocuments({ contestId });
 
     return {
         participants,
-        pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit),
-        },
+        pagination: { total, page, limit, pages: Math.ceil(total / limit) },
     };
 }
 
 /**
- * Get specific participant details
+ * Check if specific user is registered
  */
 export async function getParticipantDetails(contestId, userId) {
     if (!mongoose.Types.ObjectId.isValid(contestId)) {
