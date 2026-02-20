@@ -28,15 +28,8 @@ export async function login(req) {
 }
 
 export async function fetchUsers() {
-  try {
-    const users = await getAllUsers();
-    return Response.json({ success: true, data: users });
-  } catch (error) {
-    return Response.json(
-      { success: false, message: error.message },
-      { status: 500 },
-    );
-  }
+  const users = await getAllUsers();
+  return Response.json({ success: true, data: users });
 }
 
 export async function fetchUserById(req, { params }) {
