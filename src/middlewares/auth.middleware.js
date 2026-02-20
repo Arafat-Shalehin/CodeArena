@@ -4,7 +4,7 @@ export async function protect(req) {
   const authHeader = req.headers.get("authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new Error("Not authorized.");
+    const error = new Error("Not authorized.");
     error.status = 401;
     throw error;
   }
