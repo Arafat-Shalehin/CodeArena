@@ -49,7 +49,7 @@ export default function LeaderboardPage() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(user =>
-                user.username.toLowerCase().includes(query) ||
+                user.userId.username.toLowerCase().includes(query) ||
                 user.country.toLowerCase().includes(query)
             );
         }
@@ -73,7 +73,7 @@ export default function LeaderboardPage() {
             filtered.sort((a, b) => b.streak - a.streak);
         } else if (timeframeFilter === 'monthly') {
             // Mock: Monthly based on 'solved' counts (partial correlation)
-            filtered.sort((a, b) => b.solved - a.solved);
+            filtered.sort((a, b) => b.submissions - a.submissions);
         } else {
             // Default: All Time (based on points/score)
             filtered.sort((a, b) => b.score - a.score);

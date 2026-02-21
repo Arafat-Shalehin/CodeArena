@@ -41,7 +41,7 @@ export function Podium({ topThree }) {
                         </Avatar>
 
                         {/* Rank Badge */}
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white text-black font-bold font-display rounded-full w-8 h-8 flex items-center justify-center border-2 border-zinc-100 shadow-lg z-20">
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-bg-page text-text-primary font-bold font-display rounded-full w-8 h-8 flex items-center justify-center border-2 border-border shadow-lg z-20">
                             {position}
                         </div>
                     </div>
@@ -49,11 +49,11 @@ export function Podium({ topThree }) {
 
                 {/* User Info */}
                 <div className="text-center mb-4">
-                    <div className="font-display font-bold text-text-main text-lg md:text-xl truncate max-w-[120px] md:max-w-[160px]">
+                    <div className="font-display font-bold text-text-primary text-lg md:text-xl truncate max-w-[120px] md:max-w-[160px]">
                         {user.user}
                     </div>
                     <div className="text-xs font-bold text-text-light uppercase tracking-widest">{user.title}</div>
-                    <div className="mt-1 font-mono font-bold text-primary">{user.elo} ELO</div>
+                    <div className="mt-1 font-mono font-bold text-accent">{user.elo} ELO</div>
                 </div>
 
                 {/* Podium Block */}

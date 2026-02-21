@@ -10,6 +10,7 @@
     "docker:build": "bash docker/scripts/build-images.sh"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -18,19 +19,25 @@
     "@radix-ui/react-slot": "^1.2.4",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
+    "client-only": "^0.0.1",
     "clsx": "^2.1.1",
     "dockerode": "^4.0.9",
+    "firebase": "^12.9.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.564.0",
     "mongoose": "^9.2.1",
     "next": "16.1.6",
+    "next-themes": "^0.4.6",
     "prop-types": "^15.8.1",
+    "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.71.2",
+    "sonner": "^2.0.7",
     "swr": "^2.4.0",
-    "tailwind-merge": "^3.4.1",
-    "tar-stream": "^3.1.7"
+    "tailwind-merge": "^3.5.0",
+    "tar-stream": "^3.1.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -41,7 +48,9 @@
     "eslint": "^4.1.1",
     "eslint-config-next": "^0.2.4",
     "jsdom": "^28.1.0",
+    "shadcn": "^3.8.5",
     "tailwindcss": "^4",
+    "tw-animate-css": "^1.4.0",
     "vitest": "^4.0.18"
   }
 }

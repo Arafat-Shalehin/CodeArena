@@ -1,5 +1,7 @@
 import { Inter, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,7 +36,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="antialiased bg-bg-page text-text-primary font-sans">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+        <Toaster position="top-center" />
       </body>
     </html>
   );

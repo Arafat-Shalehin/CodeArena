@@ -1,4 +1,7 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
 /*
  * ============================================================
  * CodeArena Design Tokens
@@ -11,7 +14,9 @@
  *   - This way, if the brand color changes, you update it HERE,
  *     and it automatically updates everywhere on the site.
  *
- * Tailwind v4 picks these up via the @theme block in globals.css.
+ * NOTE: Variables use the --ca-* prefix ("CodeArena") to avoid
+ * circular references with Tailwind v4's @theme block, which
+ * writes its own --color-* vars to :root.
  * ============================================================
  */
 
@@ -21,46 +26,46 @@
    * ---------------------------------------------------------- */
 
   /* Backgrounds */
-  --color-bg-page: #ffffff;
-  --color-bg-subtle: #f7f8fa;
-  --color-bg-muted: #edeef0;
+  --ca-bg-page: #ffffff;
+  --ca-bg-subtle: #f7f8fa;
+  --ca-bg-muted: #edeef0;
 
   /* Text */
-  --color-text-primary: #111827;
-  --color-text-secondary: #4b5563;
-  --color-text-muted: #9ca3af;
-  --color-text-inverse: #ffffff;
+  --ca-text-primary: #111827;
+  --ca-text-secondary: #4b5563;
+  --ca-text-muted: #9ca3af;
+  --ca-text-inverse: #ffffff;
 
   /* Brand Accent (HackerRank green) */
-  --color-accent: #02ba4c;
-  --color-accent-hover: #029e40;
-  --color-accent-light: #e6f9ed;
-  --color-accent-text: #016b2c;
+  --ca-accent: #02ba4c;
+  --ca-accent-hover: #029e40;
+  --ca-accent-light: #e6f9ed;
+  --ca-accent-text: #016b2c;
 
   /* Borders */
-  --color-border: #e5e7eb;
-  --color-border-strong: #d1d5db;
+  --ca-border: #e5e7eb;
+  --ca-border-strong: #d1d5db;
 
   /* Feedback — Success */
-  --color-success: #16a34a;
-  --color-success-light: #dcfce7;
+  --ca-success: #16a34a;
+  --ca-success-light: #dcfce7;
 
   /* Feedback — Error */
-  --color-error: #dc2626;
-  --color-error-light: #fee2e2;
+  --ca-error: #dc2626;
+  --ca-error-light: #fee2e2;
 
   /* Feedback — Warning */
-  --color-warning: #d97706;
-  --color-warning-light: #fef3c7;
+  --ca-warning: #d97706;
+  --ca-warning-light: #fef3c7;
 
   /* Feedback — Info */
-  --color-info: #2563eb;
-  --color-info-light: #dbeafe;
+  --ca-info: #2563eb;
+  --ca-info-light: #dbeafe;
 
   /* Competitive ranking colors */
-  --color-rank-gold: #f59e0b;
-  --color-rank-silver: #9ca3af;
-  --color-rank-bronze: #b45309;
+  --ca-rank-gold: #f59e0b;
+  --ca-rank-silver: #9ca3af;
+  --ca-rank-bronze: #b45309;
 
   /* ----------------------------------------------------------
    * TYPOGRAPHY
@@ -124,31 +129,31 @@
  * ----------------------------------------------------------
  * When the <html> element has class="dark", these override
  * the light-mode tokens above. Components automatically
- * adapt — they just use var(--color-bg-page) etc.
+ * adapt — they just use var(--ca-bg-page) etc.
  * ---------------------------------------------------------- */
 
 .dark {
-  --color-bg-page: #0f1117;
-  --color-bg-subtle: #161b22;
-  --color-bg-muted: #21262d;
+  --ca-bg-page: #0f1117;
+  --ca-bg-subtle: #161b22;
+  --ca-bg-muted: #21262d;
 
-  --color-text-primary: #f0f6fc;
-  --color-text-secondary: #8b949e;
-  --color-text-muted: #484f58;
-  --color-text-inverse: #0f1117;
+  --ca-text-primary: #f0f6fc;
+  --ca-text-secondary: #8b949e;
+  --ca-text-muted: #484f58;
+  --ca-text-inverse: #0f1117;
 
-  --color-accent: #02ba4c;
-  --color-accent-hover: #03d658;
-  --color-accent-light: #0d2818;
-  --color-accent-text: #4ade80;
+  --ca-accent: #02ba4c;
+  --ca-accent-hover: #03d658;
+  --ca-accent-light: #0d2818;
+  --ca-accent-text: #4ade80;
 
-  --color-border: #21262d;
-  --color-border-strong: #30363d;
+  --ca-border: #21262d;
+  --ca-border-strong: #30363d;
 
-  --color-success-light: #0d2818;
-  --color-error-light: #2d1117;
-  --color-warning-light: #2d1b00;
-  --color-info-light: #0d1f47;
+  --ca-success-light: #0d2818;
+  --ca-error-light: #2d1117;
+  --ca-warning-light: #2d1b00;
+  --ca-info-light: #0d1f47;
 }
 
 /**
@@ -161,72 +166,75 @@
  *
  * RULES:
  *   - Never hardcode colors. Always use token-based classes.
- *   - If you need a new color, add it to tokens.css first.
+ *   - If you need a new color, add it to :root first.
  * ============================================================
  */
 
 /* ============================================================
- * @theme — Bridge tokens.css → Tailwind utility classes
+ * @theme — Bridge :root tokens → Tailwind utility classes
+ *
+ * LHS: --color-* (Tailwind generates bg-*, text-*, border-* classes)
+ * RHS: var(--ca-*) (reads from :root tokens, NO circular reference)
  * ============================================================ */
 @theme {
   /* ── BACKGROUNDS ────────────────────────── */
-  --color-bg-page: var(--color-bg-page);
-  --color-bg-subtle: var(--color-bg-subtle);
-  --color-bg-muted: var(--color-bg-muted);
+  --color-bg-page: var(--ca-bg-page);
+  --color-bg-subtle: var(--ca-bg-subtle);
+  --color-bg-muted: var(--ca-bg-muted);
 
   /* ── TEXT ────────────────────────────────── */
-  --color-text-primary: var(--color-text-primary);
-  --color-text-secondary: var(--color-text-secondary);
-  --color-text-muted: var(--color-text-muted);
-  --color-text-inverse: var(--color-text-inverse);
+  --color-text-primary: var(--ca-text-primary);
+  --color-text-secondary: var(--ca-text-secondary);
+  --color-text-muted: var(--ca-text-muted);
+  --color-text-inverse: var(--ca-text-inverse);
 
   /* ── BRAND ACCENT ───────────────────────── */
-  --color-accent: var(--color-accent);
-  --color-accent-hover: var(--color-accent-hover);
-  --color-accent-light: var(--color-accent-light);
-  --color-accent-text: var(--color-accent-text);
+  --color-accent: var(--ca-accent);
+  --color-accent-hover: var(--ca-accent-hover);
+  --color-accent-light: var(--ca-accent-light);
+  --color-accent-text: var(--ca-accent-text);
 
   /* ── BORDERS ────────────────────────────── */
-  --color-border: var(--color-border);
-  --color-border-strong: var(--color-border-strong);
+  --color-border: var(--ca-border);
+  --color-border-strong: var(--ca-border-strong);
 
   /* ── FEEDBACK ───────────────────────────── */
-  --color-success: var(--color-success);
-  --color-success-light: var(--color-success-light);
-  --color-error: var(--color-error);
-  --color-error-light: var(--color-error-light);
-  --color-warning: var(--color-warning);
-  --color-warning-light: var(--color-warning-light);
-  --color-info: var(--color-info);
-  --color-info-light: var(--color-info-light);
+  --color-success: var(--ca-success);
+  --color-success-light: var(--ca-success-light);
+  --color-error: var(--ca-error);
+  --color-error-light: var(--ca-error-light);
+  --color-warning: var(--ca-warning);
+  --color-warning-light: var(--ca-warning-light);
+  --color-info: var(--ca-info);
+  --color-info-light: var(--ca-info-light);
 
   /* ── RANKING ────────────────────────────── */
-  --color-rank-gold: var(--color-rank-gold);
-  --color-rank-silver: var(--color-rank-silver);
-  --color-rank-bronze: var(--color-rank-bronze);
+  --color-rank-gold: var(--ca-rank-gold);
+  --color-rank-silver: var(--ca-rank-silver);
+  --color-rank-bronze: var(--ca-rank-bronze);
 
   /* ── BACKWARDS COMPAT (legacy class names) ── */
-  --color-primary: var(--color-accent);
+  --color-primary: var(--ca-accent);
   --color-primary-foreground: #ffffff;
-  --color-background: var(--color-bg-page);
-  --color-foreground: var(--color-text-primary);
-  --color-surface: var(--color-bg-subtle);
-  --color-card: var(--color-bg-page);
-  --color-card-foreground: var(--color-text-primary);
-  --color-popover: var(--color-bg-page);
-  --color-popover-foreground: var(--color-text-primary);
-  --color-secondary: var(--color-bg-subtle);
-  --color-secondary-foreground: var(--color-text-primary);
-  --color-muted: var(--color-bg-subtle);
-  --color-muted-foreground: var(--color-text-secondary);
-  --color-destructive: var(--color-error);
+  --color-background: var(--ca-bg-page);
+  --color-foreground: var(--ca-text-primary);
+  --color-surface: var(--ca-bg-subtle);
+  --color-card: var(--ca-bg-page);
+  --color-card-foreground: var(--ca-text-primary);
+  --color-popover: var(--ca-bg-page);
+  --color-popover-foreground: var(--ca-text-primary);
+  --color-secondary: var(--ca-bg-subtle);
+  --color-secondary-foreground: var(--ca-text-primary);
+  --color-muted: var(--ca-bg-subtle);
+  --color-muted-foreground: var(--ca-text-secondary);
+  --color-destructive: var(--ca-error);
   --color-destructive-foreground: #ffffff;
-  --color-input: var(--color-border);
-  --color-ring: var(--color-accent);
-  --color-text-main: var(--color-text-primary);
-  --color-text-light: var(--color-text-muted);
-  --color-border-base: var(--color-border);
-  --color-border-highlight: var(--color-border-strong);
+  --color-input: var(--ca-border);
+  --color-ring: var(--ca-accent);
+  --color-text-main: var(--ca-text-primary);
+  --color-text-light: var(--ca-text-muted);
+  --color-border-base: var(--ca-border);
+  --color-border-highlight: var(--ca-border-strong);
 
   /* ── LEADERBOARD LEGACY ── */
   --color-gold: #ffd700;
@@ -277,7 +285,7 @@
     margin: 0;
     font-weight: 600;
     line-height: 1.25;
-    color: var(--color-text-primary);
+    color: var(--ca-text-primary);
   }
 
   p {
@@ -287,13 +295,13 @@
 
   /* Links use accent by default */
   a {
-    color: var(--color-accent-text);
+    color: var(--ca-accent-text);
     text-decoration: none;
     transition: color var(--duration-normal) var(--ease-default);
   }
 
   a:hover {
-    color: var(--color-accent);
+    color: var(--ca-accent);
   }
 
   /* Code elements use mono font */
@@ -316,7 +324,7 @@
 
   /* Focus ring — keyboard only */
   *:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--ca-accent);
     outline-offset: 2px;
   }
 
@@ -327,7 +335,7 @@
   /* Horizontal rule */
   hr {
     border: none;
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--ca-border);
     margin: 1.5rem 0;
   }
 
@@ -344,6 +352,7 @@
  * Tailwind utilities only — no cross-referencing custom classes)
  * ============================================================ */
 @layer components {
+
   /* ── Page layout ── */
   .page-container {
     max-width: var(--container-max);
@@ -361,7 +370,7 @@
   }
 
   .btn-primary:hover {
-    background-color: var(--color-accent-hover);
+    background-color: var(--ca-accent-hover);
   }
 
   .btn-primary:focus-visible {
@@ -483,6 +492,7 @@
  * UTILITY LAYER — One-off helpers
  * ============================================================ */
 @layer utilities {
+
   /* Hide scrollbar but keep scroll */
   .no-scrollbar {
     -ms-overflow-style: none;
@@ -504,11 +514,9 @@
 
   /* Gradient text (accent) */
   .text-gradient {
-    background: linear-gradient(
-      135deg,
-      var(--color-accent),
-      var(--color-accent-hover)
-    );
+    background: linear-gradient(135deg,
+        var(--ca-accent),
+        var(--ca-accent-hover));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -529,41 +537,31 @@
   /* Hero gradient */
   .hero-gradient {
     background:
-      radial-gradient(
-        circle at 15% 50%,
+      radial-gradient(circle at 15% 50%,
         rgba(2, 186, 76, 0.08) 0%,
-        transparent 25%
-      ),
-      radial-gradient(
-        circle at 85% 30%,
+        transparent 25%),
+      radial-gradient(circle at 85% 30%,
         rgba(2, 186, 76, 0.05) 0%,
-        transparent 25%
-      );
+        transparent 25%);
   }
 
   /* ── Leaderboard-specific utilities ── */
   .podium-gradient-1 {
-    background: linear-gradient(
-      180deg,
-      rgba(255, 215, 0, 0.2) 0%,
-      rgba(255, 215, 0, 0) 100%
-    );
+    background: linear-gradient(180deg,
+        rgba(255, 215, 0, 0.2) 0%,
+        rgba(255, 215, 0, 0) 100%);
   }
 
   .podium-gradient-2 {
-    background: linear-gradient(
-      180deg,
-      rgba(192, 192, 192, 0.2) 0%,
-      rgba(192, 192, 192, 0) 100%
-    );
+    background: linear-gradient(180deg,
+        rgba(192, 192, 192, 0.2) 0%,
+        rgba(192, 192, 192, 0) 100%);
   }
 
   .podium-gradient-3 {
-    background: linear-gradient(
-      180deg,
-      rgba(205, 127, 50, 0.2) 0%,
-      rgba(205, 127, 50, 0) 100%
-    );
+    background: linear-gradient(180deg,
+        rgba(205, 127, 50, 0.2) 0%,
+        rgba(205, 127, 50, 0) 100%);
   }
 
   .glass-effect {
@@ -594,6 +592,7 @@
       opacity: 0;
       transform: translateY(12px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -601,10 +600,12 @@
   }
 
   @keyframes soft-pulse {
+
     0%,
     100% {
       box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
     }
+
     50% {
       box-shadow: 0 0 0 8px rgba(245, 159, 11, 0.2);
     }
@@ -620,10 +621,12 @@
 
   /* ── Auth Vector Animations ── */
   @keyframes float {
+
     0%,
     100% {
       transform: translateY(0);
     }
+
     50% {
       transform: translateY(-10px);
     }
@@ -633,6 +636,7 @@
     from {
       transform: rotate(0deg);
     }
+
     to {
       transform: rotate(360deg);
     }

@@ -17,7 +17,7 @@ export default function CodeEditorPreview({ className }) {
     return (
         <div className={cn("relative group", className)}>
             {/* Background Glow Effect */}
-            <div className="absolute -inset-4 bg-gradient-to-tr from-primary/5 to-transparent rounded-[2rem] blur-2xl"></div>
+            <div className="absolute -inset-4 bg-gradient-to-tr from-accent/5 to-transparent rounded-[2rem] blur-2xl"></div>
 
             {/* Editor Container */}
             <div className="relative matte-surface border-zinc-200/50 rounded-2xl overflow-hidden shadow-2xl">
@@ -41,11 +41,11 @@ export default function CodeEditorPreview({ className }) {
                 </div>
 
                 {/* Editor Content */}
-                <div className="p-8 font-mono text-[13px] leading-relaxed text-zinc-700 bg-white">
+                <div className="p-8 font-mono text-[13px] leading-relaxed text-zinc-700 bg-bg-page">
                     {/* Line 1 */}
                     <div className="flex gap-4">
                         <span className="text-zinc-300 text-right select-none w-4">1</span>
-                        <span><span className="text-primary font-bold">def</span> <span className="text-indigo-500">solve_challenge</span>(data):</span>
+                        <span><span className="text-accent font-bold">def</span> <span className="text-indigo-500">solve_challenge</span>(data):</span>
                     </div>
 
                     {/* Line 2 */}
@@ -63,7 +63,7 @@ export default function CodeEditorPreview({ className }) {
                     {/* Line 4 */}
                     <div className="flex gap-4">
                         <span className="text-zinc-300 text-right select-none w-4">4</span>
-                        <span className="pl-4"><span className="text-primary font-bold">while</span> left &lt; right:</span>
+                        <span className="pl-4"><span className="text-accent font-bold">while</span> left &lt; right:</span>
                     </div>
 
                     {/* Line 5 */}
@@ -78,7 +78,7 @@ export default function CodeEditorPreview({ className }) {
                             <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold">PASS 24/24</span>
                             <span className="text-[10px] text-zinc-400">1.2ms latency</span>
                         </div>
-                        <button className="bg-primary/10 text-primary px-3 py-1 rounded text-[10px] font-bold hover:bg-primary/20 transition-colors cursor-pointer">
+                        <button className="bg-accent/10 text-accent px-3 py-1 rounded text-[10px] font-bold hover:bg-accent/20 transition-colors cursor-pointer">
                             Submit
                         </button>
                     </div>
