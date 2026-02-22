@@ -5,7 +5,7 @@ import { authorize } from "@/middlewares/role.middleware";
 import {
     fetchLeaderboard,
     deleteLeaderboard,
-} from "@/controllers/leaderBoard.controller";
+} from "@/controllers/leaderboard.controller";
 
 export const GET = asyncHandler(async (req, context) => {
     await dbConnect();

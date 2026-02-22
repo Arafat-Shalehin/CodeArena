@@ -3,7 +3,7 @@ import {
     getLeaderboard,
     getUserRank,
     resetLeaderboard,
-} from "@/services/leaderBoard.service";
+} from "@/services/leaderboard.service";
 
 /**
  * POST /api/contests/[id]/leaderboard/finalize
