@@ -18,11 +18,19 @@ const submissionSchema = new mongoose.Schema(
     },
     code: {
       type: String,
+<<<<<<< HEAD
       required: true,
     },
     language: {
       type: String,
       enum: ["javascript", "python", "cpp"],
+=======
+      required: [true, "Need to write some code before try to submit."],
+    },
+    language: {
+      type: String,
+      enum: ["javascript", "java", "python", "cpp"],
+>>>>>>> 3ca122bced0c654f248973082e8b672717df5c96
       required: true,
     },
     status: {
@@ -49,4 +57,8 @@ const submissionSchema = new mongoose.Schema(
 submissionSchema.index({ userId: 1, problemId: 1 });
 submissionSchema.index({ contestId: 1 });
 
+<<<<<<< HEAD
 export const Submission = mongoose.model("Submission", submissionSchema);
+=======
+export const Submission = mongoose.models.Submission || mongoose.model("Submission", submissionSchema);
+>>>>>>> 3ca122bced0c654f248973082e8b672717df5c96

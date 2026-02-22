@@ -1,91 +1,41 @@
 @import "tailwindcss";
-
-/**
- * 🎨 THEME CONFIGURATION
- * Defines all design tokens including colors, fonts, and spacing.
- * This replaces the legacy tailwind.config.js definitions.
+/*
+ * ============================================================
+ * CodeArena Design Tokens
+ * ============================================================
+ * THIS IS THE SINGLE SOURCE OF TRUTH for all visual values.
+ *
+ * HOW TO USE:
+ *   - Never hardcode a color like #02BA4C directly in a component.
+ *   - Always use the Tailwind class that maps to these variables.
+ *   - This way, if the brand color changes, you update it HERE,
+ *     and it automatically updates everywhere on the site.
+ *
+ * Tailwind v4 picks these up via the @theme block in globals.css.
+ * ============================================================
  */
-@theme {
-  /* Brand Colors */
-  --color-primary: #059669;
-  /* Emerald 600 - Main brand color */
-  --color-secondary: #FAFAFA;
-  /* Zinc 50 - Secondary backgrounds */
-  --color-accent: #059669;
-  /* Emerald 600 - Interactive accents */
 
-  /* Layout Colors */
-  --color-background: #FFFFFF;
-  /* Main background */
-  --color-surface: #FAFAFA;
-  /* Zinc 50 - Card/Surface background */
-  --color-border-base: #E4E4E7;
-  /* Zinc 200 - Default borders */
-  --color-border-highlight: #D4D4D8;
-  /* Zinc 300 - Highlighted borders */
-
-  /* Typography Colors */
-  --color-text-main: #1A1A1A;
-  /* Zinc 900 - Primary text */
-  --color-text-muted: #52525B;
-  /* Zinc 600 - Secondary text */
-  --color-text-light: #A1A1AA;
-  /* Zinc 400 - De-emphasized text */
-
-  /* Font Families - Mapped from Next.js Layout */
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-bricolage);
-  --font-mono: var(--font-jetbrains);
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
-/**
- * 🛠️ UTILITY LAYERS
- * Custom utility classes that abstract common styling patterns.
- * Organized by purpose: Visuals, Layout, Text.
- */
-@layer utilities {
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
 
-  /* 
-   * Glassmorphism & Surface Effects 
-   * Used for cards, panels, and floating elements.
-   * "Matte" provides a subtle frosted glass effect.
-   */
-  .matte-surface {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
-  }
-
-  /*
-   * Hero Section Gradients
-   * Creates the signature radial glow background for the hero section.
-   */
-  .hero-gradient {
-    background:
-      radial-gradient(circle at 15% 50%, rgba(5, 150, 105, 0.08) 0%, transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(5, 150, 105, 0.05) 0%, transparent 25%);
-  }
-
-  /*
-   * Smooth Text Rendering
-   * Improves font legibility on webkit and moz browsers.
-   */
-  .text-rendering-optimize {
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
   }
 }
 
-/**
- * 🧱 BASE STYLES
- * Global defaults for HTML elements.
- */
-@layer base {
-  body {
-    @apply bg-background text-text-main antialiased selection:bg-primary/10 selection:text-primary;
-  }
-
-  /* Smooth scrolling for anchor links */
-  html {
-    scroll-behavior: smooth;
-  }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }

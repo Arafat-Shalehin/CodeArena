@@ -31,4 +31,9 @@ const contestSchema = new mongoose.Schema(
 
 contestSchema.index({ startTime: 1, endTime: 1 });
 
+<<<<<<< HEAD
 export const Contest = mongoose.model("Contest", contestSchema);
+=======
+export const Contest =
+  mongoose.models.Contest || mongoose.model("Contest", contestSchema);
+>>>>>>> 3ca122bced0c654f248973082e8b672717df5c96

@@ -1,0 +1,260 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { leaderboardUsers } from '../data/leaderboard.data';
+import { Crown, Trophy, Medal, Zap, CheckCircle2 } from 'lucide-react';
+
+/* ─────────────────────────────────────────────────────────
+ * DESIGN NOTES — Compact Vercel-minimal aesthetic
+ * ─────────────────────────────────────────────────────────
+ * NO cards, NO badges, NO chrome.
+ * Just: avatar → name → stats → podium bar.
+ * Height hierarchy is PHYSICAL: #1 tallest, #2/#3 shorter.
+ * Visual weight = rank importance.
+ * ───────────────────────────────────────────────────────── */
+
+/**
+ * Animated counter (counts up on mount) - Matched to PlatformStats
+ */
+function AnimatedValue({ value, delay = 0 }) {
+    const [display, setDisplay] = useState(0);
+    const rafRef = useRef(null);
+
+    useEffect(() => {
+        const duration = 900;
+        let start = null;
+
+        const animate = (ts) => {
+            if (!start) start = ts;
+            const elapsed = ts - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(2, -10 * progress);
+
+            setDisplay(Math.round(eased * value));
+
+            if (progress < 1) rafRef.current = requestAnimationFrame(animate);
+        };
+
+        const timer = setTimeout(() => {
+            rafRef.current = requestAnimationFrame(animate);
+        }, delay);
+
+        return () => {
+            clearTimeout(timer);
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        };
+    }, [value, delay]);
+
+    return <>{display.toLocaleString()}</>;
+}
+
+/**
+ * Individual podium position.
+ */
+function PodiumPosition({ user, rank, delay }) {
+    const config = {
+        1: {
+            avatarSize: 'w-24 h-24',
+            nameSize: 'text-lg',
+            statsSize: 'text-xs',
+            barHeight: 'h-44',
+            BarIcon: Trophy,
+            barIconSize: 40,
+            color: '#F59E0B',          // var(--color-rank-gold)
+            badge: '#1 Champion',
+        },
+        2: {
+            avatarSize: 'w-20 h-20',
+            nameSize: 'text-base',
+            statsSize: 'text-xs',
+            barHeight: 'h-28',
+            BarIcon: Medal,
+            barIconSize: 32,
+            color: '#9CA3AF',          // var(--color-rank-silver)
+            badge: '#2',
+        },
+        3: {
+            avatarSize: 'w-20 h-20',
+            nameSize: 'text-base',
+            statsSize: 'text-xs',
+            barHeight: 'h-20',
+            BarIcon: Medal,
+            barIconSize: 28,
+            color: '#B45309',          // var(--color-rank-bronze)
+            badge: '#3',
+        },
+    };
+
+    const c = config[rank];
+    const BarIcon = c.BarIcon;
+
+    return (
+        <div
+            className="flex flex-col items-center"
+            style={{
+                animation: 'fadeUp 0.35s cubic-bezier(.4,0,.2,1) both',
+                animationDelay: `${delay}ms`,
+            }}
+        >
+            {/* Avatar + badge */}
+            <div className="relative mb-4">
+                {/* Crown icon for #1 only */}
+                {rank === 1 && (
+                    <div
+                        className="absolute -top-6 left-1/2 -translate-x-1/2"
+                        style={{ color: c.color }}
+                    >
+                        <Crown size={32} strokeWidth={2.5} className="drop-shadow-sm" />
+                    </div>
+                )}
+
+                {/* Avatar */}
+                <Avatar
+                    className={`${c.avatarSize} border-2 ${rank === 1 ? 'shadow-md' : ''} bg-bg-page`}
+                    style={{
+                        borderColor: c.color,
+                        padding: '2px',
+                        ...(rank === 1 && {
+                            animation: 'softPulse 2.5s ease-in-out infinite',
+                        }),
+                    }}
+                >
+                    <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.username}`} alt={user.username} />
+                    <AvatarFallback
+                        className="text-xl font-bold"
+                        style={{
+                            background: `${c.color}20`,
+                            color: c.color,
+                        }}
+                    >
+                        {user.username.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
+
+                {/* Badge label below avatar */}
+                <span
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm border border-white/10"
+                    style={{
+                        background: c.color,
+                        color: '#FFFFFF',
+                    }}
+                >
+                    {c.badge}
+                </span>
+            </div>
+
+            {/* Name */}
+            <p
+                className={`${c.nameSize} font-display font-bold text-center mb-1 tracking-tight`}
+                style={{ color: 'var(--color-text-primary)' }}
+            >
+                {user.username}
+            </p>
+
+            {/* Stats (compact, single line) - Styled like PlatformStats */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-1.5" title="Total Points">
+                    <Zap size={12} className="text-amber-500" fill="currentColor" />
+                    <span className="font-mono font-bold text-sm text-text-primary">
+                        <AnimatedValue value={user.score} delay={delay + 100} />
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">score</span>
+                </div>
+                <div className="w-px h-3 bg-border" />
+                <div className="flex items-center gap-1.5" title="Problems Solved">
+                    <CheckCircle2 size={12} className="text-emerald-500" />
+                    <span className="font-mono font-bold text-sm text-text-primary">
+                        <AnimatedValue value={user.solved} delay={delay + 150} />
+                    </span>
+                </div>
+            </div>
+
+            {/* Podium bar (physical height difference) */}
+            <div
+                className={`w-full ${c.barHeight} rounded-t-xl border-t border-x flex items-start justify-center pt-4 relative overflow-hidden group`}
+                style={{
+                    borderColor: `${c.color}40`,
+                    background: `linear-gradient(180deg, ${c.color}15 0%, ${c.color}05 100%)`,
+                }}
+            >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                <BarIcon
+                    size={c.barIconSize}
+                    className="opacity-20 transition-transform duration-500 group-hover:scale-110 group-hover:opacity-30"
+                    style={{ color: c.color }}
+                    strokeWidth={1.5}
+                />
+            </div>
+        </div>
+    );
+}
+
+/* ── Public Component ────────────────────────────────────── */
+
+/**
+ * @component TopThreePodium
+ * @description Compact podium for top 3 competitors.
+ *
+ * Design:
+ * - Minimal — no cards, no badges, no chrome
+ * - Hierarchy through HEIGHT: #1 tallest (h-44), #2 medium (h-28), #3 shortest (h-20)
+ * - Desktop: 2-1-3 order (silver, gold, bronze)
+ * - Mobile: 1 full width, then 2+3 side-by-side
+ * - Staggered entrance animation
+ *
+ * Design tokens used:
+ *   --color-rank-gold, --color-rank-silver, --color-rank-bronze,
+ *   --color-text-primary, --color-text-muted, --color-text-inverse
+ *
+ * @returns {JSX.Element}
+ */
+export function TopThreePodium() {
+    const [first, second, third] = leaderboardUsers.slice(0, 3);
+
+    return (
+        <>
+            <style jsx>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes softPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+          50%      { box-shadow: 0 0 0 8px rgba(245, 159, 11, 0.2); }
+        }
+      `}</style>
+
+            <section className="my-12 md:my-16" aria-label="Top 3 competitors">
+
+                {/* ── DESKTOP: 2-1-3 podium layout ────────────────── */}
+                <div className="hidden md:grid md:grid-cols-3 gap-6 items-end px-8 md:px-16 max-w-4xl mx-auto">
+
+                    {/* #2 Silver — left, shorter */}
+                    <PodiumPosition user={second} rank={2} delay={100} />
+
+                    {/* #1 Gold — centre, tallest */}
+                    <PodiumPosition user={first} rank={1} delay={0} />
+
+                    {/* #3 Bronze — right, shortest */}
+                    <PodiumPosition user={third} rank={3} delay={200} />
+
+                </div>
+
+                {/* ── MOBILE: 1st full, 2nd/3rd grid ──────────────── */}
+                <div className="md:hidden space-y-4">
+
+                    {/* #1 Gold — full width */}
+                    <PodiumPosition user={first} rank={1} delay={0} />
+
+                    {/* #2 + #3 — side by side */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <PodiumPosition user={second} rank={2} delay={100} />
+                        <PodiumPosition user={third} rank={3} delay={200} />
+                    </div>
+
+                </div>
+
+            </section>
+        </>
+    );
+}
