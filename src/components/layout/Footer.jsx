@@ -39,7 +39,7 @@ const COMPANY_LINKS = [
  */
 export default function Footer() {
     return (
-        <footer className="bg-white pt-20 pb-10 border-t border-border mt-auto">
+        <footer className="bg-bg-page pt-20 pb-10 border-t border-border mt-auto">
             <div className="max-w-7xl mx-auto px-4">
 
                 {/* Main Footer Grid */}

@@ -22,8 +22,8 @@ export function LeaderboardHeader() {
                 <span className="mr-2">🏆</span> Live Rankings
             </Badge> */}
 
-            <h1 className="text-4xl md:text-6xl font-display font-bold text-text-main mb-6 tracking-tight">
-                Global <span className="text-primary italic">Hall of Fame</span>
+            <h1 className="text-4xl md:text-6xl font-display font-bold text-text-primary mb-6 tracking-tight">
+                Global <span className="text-accent italic">Hall of Fame</span>
             </h1>
 
             <p className="text-text-muted text-lg md:text-xl leading-relaxed max-w-xl mx-auto">

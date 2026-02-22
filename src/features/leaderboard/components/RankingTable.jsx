@@ -1,4 +1,5 @@
 
+import Link from 'next/link';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -47,7 +48,7 @@ export function RankingTable({ data, currentUser }) {
                     <TableBody className="divide-y divide-border-light bg-transparent">
                         {data.map((row, idx) => {
                             const isTop3 = row.rank <= 3;
-                            const isCurrentUser = row.username === currentUser;
+                            const isCurrentUser = row.userId.username === currentUser;
                             const rankColor = row.rank === 1 ? 'text-yellow-500' : row.rank === 2 ? 'text-gray-400' : row.rank === 3 ? 'text-orange-500' : 'text-text-muted';
 
                             return (
@@ -64,18 +65,18 @@ export function RankingTable({ data, currentUser }) {
                                         <div className="flex items-center gap-4">
                                             <Avatar className="size-10 md:size-12 border-2 border-border shadow-sm">
                                                 <AvatarImage
-                                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.username}`}
-                                                    alt={row.username}
+                                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.userId.username}`}
+                                                    alt={row.userId.username}
                                                 />
                                                 <AvatarFallback className="bg-bg-muted text-text-primary">
-                                                    {row.username.substring(0, 2).toUpperCase()}
+                                                    {row.userId.username.substring(0, 2).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <div className="font-display font-bold text-text-primary text-base md:text-lg flex items-center gap-2">
-                                                    {row.username}
+                                                <Link href={`/profile/${row.userId._id}`} className="font-display font-bold text-text-primary text-base md:text-lg flex items-center gap-2 hover:text-accent transition-colors">
+                                                    {row.userId.username}
                                                     {isTop3 && <span className="text-xs">🔥</span>}
-                                                </div>
+                                                </Link>
                                                 <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
                                                     {row.title}
                                                 </div>
@@ -84,7 +85,7 @@ export function RankingTable({ data, currentUser }) {
                                     </TableCell>
                                     <TableCell className="py-4 md:px-10 md:py-6 text-center hidden md:table-cell relative z-10">
                                         <Badge variant="secondary" className="font-mono bg-bg-muted text-text-primary hover:bg-bg-subtle">
-                                            {row.solved}
+                                            {row.submissions}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-4 md:px-10 md:py-6 text-center hidden lg:table-cell relative z-10">

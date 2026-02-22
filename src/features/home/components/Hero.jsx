@@ -25,23 +25,22 @@ export default function Hero() {
                 <div className="relative z-10 space-y-8 text-center lg:text-left">
                     {/* Headline */}
                     <h1 className="text-6xl sm:text-7xl lg:text-8xl font-sans font-extrabold text-text-primary pt-3 leading-[0.9] tracking-[-0.04em]">
-                        Master the <br className="lg:hidden" /> <span className="text-accent italic font-serif">machine.</span>
+                        Master <br className="lg:hidden" /> <span className="text-accent italic font-serif">Algorithms.</span>
                     </h1>
 
                     {/* Subheadline */}
                     <p className="text-lg md:text-xl text-text-secondary leading-relaxed max-w-xl mx-auto lg:mx-0">
-                        The ultimate playground for competitive programmers. Solve curated problems, join high-stakes
-                        contests, and build your technical legacy.
+                        The premier competitive programming platform. Elevate your coding skills, prepare for top-tier tech interviews, and compete in live global contests. Your technical legacy starts here.
                     </p>
 
                     {/* CTA Buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 pt-2 justify-center lg:justify-start">
                         <Button variant="default" size="lg" className="shadow-md hover:shadow-lg w-full sm:w-auto h-12 px-8 text-base">
-                            Browse 2,500+ problems
+                            Start Solving Challenges
                             <span className="material-symbols-outlined text-sm ml-2">arrow_forward</span>
                         </Button>
                         <Button variant="secondary" size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-bg-page hover:bg-bg-subtle border border-border">
-                            Explore contests
+                            Compete in Contests
                         </Button>
                     </div>
 

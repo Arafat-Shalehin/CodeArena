@@ -30,6 +30,7 @@ async function dbConnect() {
         await logger.database.error("MongoDB connection failed.", {
           message: err.message,
         });
+        cached.promise = null;
         throw err;
       });
   }

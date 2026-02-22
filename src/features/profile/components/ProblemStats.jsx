@@ -1,8 +1,21 @@
-// src/components/features/profile/ProblemStats.jsx
+'use client';
 
-import { statsData } from "../data/stats.data";
+import { useAuth } from '@/context/AuthContext';
+import { getStatsData } from '../data/stats.data';
 
-export default function ProblemStats() {
+/**
+ * @component ProblemStats
+ * @description Displays a donut chart and progress bars showing the user's
+ * problem-solving statistics broken down by difficulty (Easy, Medium, Hard).
+ * Values are derived from the logged-in user's `stats.problemsSolved`.
+ * @param {Object} props
+ * @param {Object} [props.user] - Optional user data override (for public profiles).
+ * @returns {JSX.Element} The rendered problem stats section.
+ */
+export default function ProblemStats({ user: userProp }) {
+  const { user: authUser } = useAuth();
+  const displayUser = userProp || authUser;
+  const statsData = getStatsData(displayUser?.stats);
   const totalSolved = statsData.reduce((acc, curr) => acc + curr.solved, 0);
 
   return (
@@ -12,56 +25,16 @@ export default function ProblemStats() {
       </h3>
 
       <div className="flex items-center gap-8">
-        {/* Left: Donut Chart Mockup */}
+        {/* Left: Donut Chart */}
         <div className="relative h-28 w-28 shrink-0">
           <svg
             className="h-full w-full transform -rotate-90"
             viewBox="0 0 36 36"
           >
-            {/* Background Circle */}
-            <circle
-              cx="18"
-              cy="18"
-              r="16"
-              fill="transparent"
-              stroke="var(--color-bg-muted)"
-              strokeWidth="3"
-            />
-
-            {/* Easy Segment (Green) */}
-            <circle
-              cx="18"
-              cy="18"
-              r="16"
-              fill="transparent"
-              stroke="var(--color-success)"
-              strokeWidth="3"
-              strokeDasharray="35 100"
-            />
-
-            {/* Medium Segment (Yellow) */}
-            <circle
-              cx="18"
-              cy="18"
-              r="16"
-              fill="transparent"
-              stroke="var(--color-warning)"
-              strokeWidth="3"
-              strokeDasharray="45 100"
-              strokeDashoffset="-35"
-            />
-
-            {/* Hard Segment (Red) */}
-            <circle
-              cx="18"
-              cy="18"
-              r="16"
-              fill="transparent"
-              stroke="var(--color-error)"
-              strokeWidth="3"
-              strokeDasharray="20 100"
-              strokeDashoffset="-80"
-            />
+            <circle cx="18" cy="18" r="16" fill="transparent" stroke="var(--color-bg-muted)" strokeWidth="3" />
+            <circle cx="18" cy="18" r="16" fill="transparent" stroke="var(--color-success)" strokeWidth="3" strokeDasharray="35 100" />
+            <circle cx="18" cy="18" r="16" fill="transparent" stroke="var(--color-warning)" strokeWidth="3" strokeDasharray="45 100" strokeDashoffset="-35" />
+            <circle cx="18" cy="18" r="16" fill="transparent" stroke="var(--color-error)" strokeWidth="3" strokeDasharray="20 100" strokeDashoffset="-80" />
           </svg>
 
           {/* Center Text */}
@@ -98,3 +71,5 @@ export default function ProblemStats() {
     </section>
   );
 }
+
+ProblemStats.displayName = 'ProblemStats';

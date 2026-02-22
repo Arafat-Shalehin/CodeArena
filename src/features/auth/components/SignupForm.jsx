@@ -1,8 +1,19 @@
 "use client"
 
+// Next.js
 import Link from "next/link"
-import { Eye, EyeOff, Lock, Mail, CheckCircle, LockKeyhole, AlertCircle } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+
+// React
+import { useState } from "react"
+
+// Form
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { signupSchema } from "@/features/auth/schemas/auth.schemas"
+
+// UI
+import { Eye, EyeOff, Lock, Mail, CheckCircle, LockKeyhole, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -10,19 +21,59 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
-export default function SignupForm() {
-    const [showPassword, setShowPassword] = useState(false)
-    const [password, setPassword] = useState("")
-    const [strength, setStrength] = useState(0)
+// Firebase
+import { auth } from "@/lib/firebase/config"
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 
-    useEffect(() => {
+// Hooks
+import { useSocialLogin } from "@/features/auth/hooks/useSocialLogin"
+
+/**
+ * @component SignupForm
+ * @description Registration form with username, email, password (with strength meter),
+ * confirm password, terms checkbox, and social OAuth. Uses react-hook-form with Zod validation.
+ */
+export default function SignupForm() {
+    const router = useRouter()
+    const { handleSocialLogin, isLoading: socialLoading, error: socialError } = useSocialLogin()
+
+    // UI state
+    const [showPassword, setShowPassword] = useState(false)
+    const [apiError, setApiError] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
+
+    // Form
+    const {
+        register,
+        handleSubmit,
+        watch,
+        control,
+        formState: { errors },
+    } = useForm({
+        resolver: zodResolver(signupSchema),
+        defaultValues: {
+            username: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+            agreedToTerms: false,
+        },
+    })
+
+    // Watch password for strength meter
+    const password = watch("password", "")
+
+    // Password strength calculation
+    const getStrength = () => {
         let score = 0
         if (password.length >= 8) score++
         if (/[A-Z]/.test(password)) score++
         if (/[0-9]/.test(password)) score++
         if (/[^A-Za-z0-9]/.test(password)) score++
-        setStrength(score)
-    }, [password])
+        return score
+    }
+
+    const strength = getStrength()
 
     const getStrengthColor = (index) => {
         if (strength === 0) return "bg-border"
@@ -47,6 +98,29 @@ export default function SignupForm() {
         return "text-success"
     }
 
+    const onSubmit = async (data) => {
+        setApiError("")
+        setIsLoading(true)
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password)
+            await updateProfile(userCredential.user, { displayName: data.username })
+            router.push('/profile')
+        } catch (err) {
+            if (err.code === "auth/email-already-in-use") {
+                setApiError("An account with this email already exists.")
+            } else if (err.code === "auth/weak-password") {
+                setApiError("Password is too weak.")
+            } else {
+                setApiError(err.message)
+            }
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const anyLoading = isLoading || socialLoading
+
     return (
         <div className="w-full max-w-md mx-auto space-y-4">
             <div className="text-center space-y-1">
@@ -56,11 +130,15 @@ export default function SignupForm() {
                 </p>
             </div>
 
+            {/* Error Message */}
+            {(apiError || socialError) && (
+                <div className="p-3 rounded-lg bg-error-light border border-error/20 text-error text-sm font-medium">
+                    {apiError || socialError}
+                </div>
+            )}
+
             {/* Form */}
-            <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-
-
-
+            <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
                 {/* Username */}
                 <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
@@ -81,8 +159,13 @@ export default function SignupForm() {
                             id="username"
                             placeholder="username"
                             className="pl-9 h-9"
+                            disabled={anyLoading}
+                            {...register("username")}
                         />
                     </div>
+                    {errors.username && (
+                        <p className="text-xs text-error font-medium">{errors.username.message}</p>
+                    )}
                 </div>
 
                 {/* Email */}
@@ -97,11 +180,16 @@ export default function SignupForm() {
                             type="email"
                             placeholder="your.email@example.com"
                             className="pl-9 h-9"
+                            disabled={anyLoading}
+                            {...register("email")}
                         />
                     </div>
+                    {errors.email && (
+                        <p className="text-xs text-error font-medium">{errors.email.message}</p>
+                    )}
                 </div>
 
-                {/* Password field */}
+                {/* Password */}
                 <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
                         <Label htmlFor="password">Password</Label>
@@ -138,17 +226,21 @@ export default function SignupForm() {
                             type={showPassword ? "text" : "password"}
                             placeholder="Create a strong password"
                             className="pl-9 pr-9 h-9"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={anyLoading}
+                            {...register("password")}
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute inset-y-0 right-0 flex items-center pr-3 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+                            disabled={anyLoading}
                         >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                     </div>
+                    {errors.password && (
+                        <p className="text-xs text-error font-medium">{errors.password.message}</p>
+                    )}
 
                     {/* Password Strength Meter */}
                     {password && (
@@ -179,26 +271,48 @@ export default function SignupForm() {
                             type="password"
                             placeholder="Confirm your password"
                             className="pl-9 h-9"
+                            disabled={anyLoading}
+                            {...register("confirmPassword")}
                         />
                     </div>
+                    {errors.confirmPassword && (
+                        <p className="text-xs text-error font-medium">{errors.confirmPassword.message}</p>
+                    )}
                 </div>
 
                 {/* Terms Checkbox */}
-                <div className="flex items-start space-x-2 py-1">
-                    <Checkbox id="terms" className="mt-0.5" />
-                    <div className="grid gap-1 leading-none">
-                        <Label
-                            htmlFor="terms"
-                            className="text-[11px] leading-tight font-normal text-text-secondary"
-                        >
-                            I agree to the <Link href="#" className="font-semibold text-accent hover:underline underline-offset-2">Terms of Service</Link> and <Link href="#" className="font-semibold text-accent hover:underline underline-offset-2">Privacy Policy</Link>.
-                        </Label>
+                <div className="space-y-1">
+                    <div className="flex items-start space-x-2 py-1">
+                        <Controller
+                            name="agreedToTerms"
+                            control={control}
+                            render={({ field }) => (
+                                <Checkbox
+                                    id="terms"
+                                    className="mt-0.5"
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={anyLoading}
+                                />
+                            )}
+                        />
+                        <div className="grid gap-1 leading-none">
+                            <Label
+                                htmlFor="terms"
+                                className="text-[11px] leading-tight font-normal text-text-secondary cursor-pointer"
+                            >
+                                I agree to the <Link href="#" className="font-semibold text-accent hover:underline underline-offset-2">Terms of Service</Link> and <Link href="#" className="font-semibold text-accent hover:underline underline-offset-2">Privacy Policy</Link>.
+                            </Label>
+                        </div>
                     </div>
+                    {errors.agreedToTerms && (
+                        <p className="text-xs text-error font-medium">{errors.agreedToTerms.message}</p>
+                    )}
                 </div>
 
                 {/* Submit Button */}
-                <Button type="submit" className="w-full h-9 shadow-lg shadow-accent/25">
-                    Create Account
+                <Button type="submit" className="w-full h-9 shadow-lg shadow-accent/25" disabled={anyLoading}>
+                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...</> : "Create Account"}
                 </Button>
             </form>
 
@@ -214,7 +328,7 @@ export default function SignupForm() {
 
             {/* Social Logins */}
             <div className="grid grid-cols-2 gap-4">
-                <Button variant="secondary" className="w-full">
+                <Button variant="secondary" className="w-full text-text-primary hover:text-accent transition-colors" onClick={() => handleSocialLogin('google')} disabled={anyLoading} type="button">
                     <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
@@ -223,7 +337,7 @@ export default function SignupForm() {
                     </svg>
                     Google
                 </Button>
-                <Button variant="secondary" className="w-full">
+                <Button variant="secondary" className="w-full text-text-primary hover:text-accent transition-colors" onClick={() => handleSocialLogin('github')} disabled={anyLoading} type="button">
                     <svg className="mr-2 h-4 w-4 fill-current" viewBox="0 0 24 24">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.041-1.61-4.041-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path>
                     </svg>

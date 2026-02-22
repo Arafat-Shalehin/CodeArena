@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { leaderboardUsers } from '../data/leaderboard.data';
 import { Crown, Trophy, Medal, Zap, CheckCircle2 } from 'lucide-react';
@@ -52,7 +53,7 @@ function AnimatedValue({ value, delay = 0 }) {
 /**
  * Individual podium position.
  */
-function PodiumPosition({ user, rank, delay }) {
+function PodiumPosition({ entry, rank, delay }) {
     const config = {
         1: {
             avatarSize: 'w-24 h-24',
@@ -116,7 +117,7 @@ function PodiumPosition({ user, rank, delay }) {
                         padding: '2px',
                     }}
                 >
-                    <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.username}`} alt={user.username} />
+                    <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${entry.userId.username}`} alt={entry.userId.username} />
                     <AvatarFallback
                         className="text-xl font-bold"
                         style={{
@@ -124,7 +125,7 @@ function PodiumPosition({ user, rank, delay }) {
                             color: c.color,
                         }}
                     >
-                        {user.username.slice(0, 2).toUpperCase()}
+                        {entry.userId.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
 
@@ -141,19 +142,21 @@ function PodiumPosition({ user, rank, delay }) {
             </div>
 
             {/* Name */}
-            <p
-                className={`${c.nameSize} font-display font-bold text-center mb-1 tracking-tight`}
-                style={{ color: 'var(--color-text-primary)' }}
-            >
-                {user.username}
-            </p>
+            <Link href={`/profile/${entry.userId._id}`}>
+                <p
+                    className={`${c.nameSize} font-display font-bold text-center mb-1 tracking-tight hover:text-accent transition-colors cursor-pointer`}
+                    style={{ color: 'var(--color-text-primary)' }}
+                >
+                    {entry.userId.username}
+                </p>
+            </Link>
 
             {/* Stats (compact, single line) - Styled like PlatformStats */}
             <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-1.5" title="Total Points">
                     <Zap size={12} className="text-amber-500" fill="currentColor" />
                     <span className="font-mono font-bold text-sm text-text-primary">
-                        <AnimatedValue value={user.score} delay={delay + 100} />
+                        <AnimatedValue value={entry.score} delay={delay + 100} />
                     </span>
                     <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">score</span>
                 </div>
@@ -161,7 +164,7 @@ function PodiumPosition({ user, rank, delay }) {
                 <div className="flex items-center gap-1.5" title="Problems Solved">
                     <CheckCircle2 size={12} className="text-emerald-500" />
                     <span className="font-mono font-bold text-sm text-text-primary">
-                        <AnimatedValue value={user.solved} delay={delay + 150} />
+                        <AnimatedValue value={entry.submissions} delay={delay + 150} />
                     </span>
                 </div>
             </div>
@@ -216,13 +219,13 @@ export function TopThreePodium() {
             <div className="hidden md:grid md:grid-cols-3 gap-6 items-end px-8 md:px-16 max-w-4xl mx-auto">
 
                 {/* #2 Silver — left, shorter */}
-                <PodiumPosition user={second} rank={2} delay={100} />
+                <PodiumPosition entry={second} rank={2} delay={100} />
 
                 {/* #1 Gold — centre, tallest */}
-                <PodiumPosition user={first} rank={1} delay={0} />
+                <PodiumPosition entry={first} rank={1} delay={0} />
 
                 {/* #3 Bronze — right, shortest */}
-                <PodiumPosition user={third} rank={3} delay={200} />
+                <PodiumPosition entry={third} rank={3} delay={200} />
 
             </div>
 
@@ -230,12 +233,12 @@ export function TopThreePodium() {
             <div className="md:hidden space-y-4">
 
                 {/* #1 Gold — full width */}
-                <PodiumPosition user={first} rank={1} delay={0} />
+                <PodiumPosition entry={first} rank={1} delay={0} />
 
                 {/* #2 + #3 — side by side */}
                 <div className="grid grid-cols-2 gap-3">
-                    <PodiumPosition user={second} rank={2} delay={100} />
-                    <PodiumPosition user={third} rank={3} delay={200} />
+                    <PodiumPosition entry={second} rank={2} delay={100} />
+                    <PodiumPosition entry={third} rank={3} delay={200} />
                 </div>
 
             </div>

@@ -1,64 +1,94 @@
-import Achievements from "@/features/Profile/Component/achievement";
-import ContestPerformance from "@/features/Profile/Component/ContestPerformance";
-import ProblemStats from "@/features/Profile/Component/ProblemStats";
-import ProfileHero from "@/features/Profile/Component/ProfileHero";
-import RecentSubmissions from "@/features/Profile/Component/RecentSubmissions";
-import StatsGrid from "@/features/Profile/Component/StatsGrid";
-import { Dot } from "lucide-react";
+'use client';
+
+import { useRouter } from 'next/navigation';
+
+// Shared Layout
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import { Dot, Loader2 } from 'lucide-react';
+
+// Profile Components
+import ProfileHero from '@/features/profile/components/ProfileHero';
+import StatsGrid from '@/features/profile/components/StatsGrid';
+import RecentSubmissions from '@/features/profile/components/RecentSubmissions';
+import ProblemStats from '@/features/profile/components/ProblemStats';
+import ContestPerformance from '@/features/profile/components/ContestPerformance';
+import Achievements from '@/features/profile/components/Achievements';
+
+// Auth
+import { useAuth } from '@/context/AuthContext';
+
+// Data
+import { getLanguageStats } from '@/features/profile/data/languages.data';
+
+/**
+ * @component ProfilePage
+ * @description The main user profile page displaying user stats, submission
+ * activity, recent submissions, problem stats, languages, contest performance,
+ * and achievements in a responsive 60/40 grid layout.
+ *
+ * @returns {JSX.Element} The rendered profile page.
+ */
+
+/** Design-token-based color mapping for language ranking */
+const LANGUAGE_COLORS = ['text-success', 'text-warning', 'text-error', 'text-info'];
 
 export default function ProfilePage() {
-  const languages = [
-    {
-      language: "javascript",
-      improve_parcentage: 60,
-    },
-    {
-      language: "python",
-      improve_parcentage: 15,
-    },
-    {
-      language: "java",
-      improve_parcentage: 5,
-    },
-    {
-      language: "cotlin",
-      improve_parcentage: 20,
-    },
-  ];
-  const biggerPercentage = [...languages].sort(
-    (a, b) => b.improve_parcentage - a.improve_parcentage,
-  );
-  const getColor = (index) => {
-    if (index == 0) return "text-green-600";
-    if (index == 1) return "text-yellow-600";
-    if (index == 2) return "text-red-600";
-    return " ";
-  };
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  // Loading state while Firebase resolves
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-bg-page">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Redirect unauthenticated users to login
+  if (!user) {
+    router.push('/login');
+    return null;
+  }
+  const sortedLanguages = getLanguageStats(user.stats);
+
   return (
-    <div className="bg-bg-page min-h-screen">
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        {/* Hero & Status cards */}
+    <div className="min-h-screen flex flex-col bg-bg-page">
+      <Navbar />
+
+      <main className="flex-grow max-w-7xl mx-auto px-4 md:px-6 py-8 w-full">
+        {/* Hero & Stats Cards */}
         <ProfileHero />
         <StatsGrid />
 
         {/* 60/40 Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
-          {/* Left Side (60%) */}
-          <div className="lg:col-span-6 space-y-8">
-            {/* Submition activity Section */}
+          {/* Left Side (60%) — Submission Activity + Recent Submissions */}
+          <div className="lg:col-span-6 space-y-8 order-2 lg:order-1">
+            {/* Submission Activity Section */}
             <section className="bg-bg-subtle border border-border rounded-lg p-6">
               <h3 className="text-xl font-semibold text-text-primary mb-6">
                 Submission Activity
               </h3>
-              <div className="flex flex-wrap gap-1">
-                {/* Mocking heatmap cells */}
-                {[...Array(50)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-3 h-3 rounded-sm bg-accent opacity-20 hover:opacity-100 transition-opacity"
-                  />
-                ))}
-              </div>
+              {user.stats?.submissionHistory && user.stats.submissionHistory.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {user.stats.submissionHistory.map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-3 h-3 rounded-sm bg-accent opacity-20 hover:opacity-100 transition-opacity"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center border border-dashed border-border rounded-lg">
+                  <p className="text-sm text-text-muted">No recent activity</p>
+                </div>
+              )}
             </section>
 
             {/* Recent Submissions */}
@@ -72,49 +102,57 @@ export default function ProfilePage() {
                 </button>
               </div>
               <div className="divide-y divide-border">
-                {/* Single Row Item */}
-                <div className="p-4  hover:bg-bg-muted/50 transition-colors">
-                  <RecentSubmissions></RecentSubmissions>
+                <div className="hover:bg-bg-muted/50 transition-colors">
+                  <RecentSubmissions submissions={user.stats?.recentSubmissions || []} />
                 </div>
               </div>
             </section>
           </div>
 
-          {/* Right Side (40%) */}
-          <div className="lg:col-span-4 space-y-8">
-            <ProblemStats></ProblemStats>
+          {/* Right Side (40%) — Stats-heavy panels first on mobile */}
+          <div className="lg:col-span-4 space-y-8 order-1 lg:order-2">
+            <ProblemStats />
+
             {/* Languages */}
-            <section className="bg-bg-subtle border border-border rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-text-primary mb-4">
-                Languages
-              </h3>
-              <div className="h-2 w-full flex rounded-full overflow-hidden mb-4 bg-bg-muted">
-                <div className="bg-accent" style={{ width: "60%" }}></div>
-                <div className="bg-warning" style={{ width: "25%" }}></div>
-                <div className="bg-info" style={{ width: "15%" }}></div>
-              </div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2  text-xs gap-5 font-medium">
-                  {biggerPercentage.map((language, index) => (
-                    <div className="flex justify-between">
-                      <span className="text-left text-text-secondary flex items-center ">
-                        <Dot className={`${getColor(index)}`} size={30}></Dot>
-                        {language.language}
-                      </span>
-                      <span className="text-left text-text-muted">
-                        {language.improve_parcentage} %
-                      </span>
-                    </div>
+            {sortedLanguages.length > 0 && (
+              <section className="bg-bg-subtle border border-border rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-text-primary mb-4">
+                  Languages
+                </h3>
+                <div className="h-2 w-full flex rounded-full overflow-hidden mb-4 bg-bg-muted">
+                  {sortedLanguages.map((language, index) => (
+                    <div
+                      key={language.language}
+                      className={index === 0 ? "bg-accent" : index === 1 ? "bg-warning" : index === 2 ? "bg-info" : "bg-success"}
+                      style={{ width: `${language.percentage}%` }}
+                    />
                   ))}
                 </div>
-                {/* Add more as needed */}
-              </div>
-            </section>
-            <ContestPerformance></ContestPerformance>
-            <Achievements></Achievements>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 text-xs gap-5 font-medium">
+                    {sortedLanguages.map((language, index) => (
+                      <div key={language.language} className="flex justify-between">
+                        <span className="text-left text-text-secondary flex items-center">
+                          <Dot className={LANGUAGE_COLORS[index] || 'text-text-muted'} size={30} />
+                          {language.language}
+                        </span>
+                        <span className="text-left text-text-muted">
+                          {language.percentage}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <ContestPerformance performance={user.stats?.contestPerformance} />
+            <Achievements achievements={user.stats?.achievements} />
           </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

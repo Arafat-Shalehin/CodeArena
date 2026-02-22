@@ -17,6 +17,9 @@ import { Pagination } from '@/features/leaderboard/components/Pagination';
 // Data
 import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data';
 
+// Auth
+import { useAuth } from '@/context/AuthContext';
+
 /**
  * Leaderboard Page
  * 
@@ -37,6 +40,7 @@ export default function LeaderboardPage() {
     const [leagueFilter, setLeagueFilter] = useState('all');
     const [timeframeFilter, setTimeframeFilter] = useState('all_time');
     const [currentPage, setCurrentPage] = useState(1);
+    const { user } = useAuth();
 
     const ITEMS_PER_PAGE = 30;
 
@@ -49,7 +53,7 @@ export default function LeaderboardPage() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(user =>
-                user.username.toLowerCase().includes(query) ||
+                user.userId.username.toLowerCase().includes(query) ||
                 user.country.toLowerCase().includes(query)
             );
         }
@@ -73,7 +77,7 @@ export default function LeaderboardPage() {
             filtered.sort((a, b) => b.streak - a.streak);
         } else if (timeframeFilter === 'monthly') {
             // Mock: Monthly based on 'solved' counts (partial correlation)
-            filtered.sort((a, b) => b.solved - a.solved);
+            filtered.sort((a, b) => b.submissions - a.submissions);
         } else {
             // Default: All Time (based on points/score)
             filtered.sort((a, b) => b.score - a.score);
@@ -151,7 +155,7 @@ export default function LeaderboardPage() {
 
                 <RankingTable
                     data={currentTableData}
-                    currentUser={null} // TODO: Get from auth context
+                    currentUser={user}
                     startIndex={startIndex + (isFiltering ? 0 : 3) + 1} // Correct rank display
                 />
 

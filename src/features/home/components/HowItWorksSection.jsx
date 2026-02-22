@@ -16,8 +16,8 @@ export default function HowItWorksSection() {
         <section className="py-12 bg-bg-subtle overflow-hidden">
             <div className="max-w-7xl mx-auto px-4">
                 {/* Section Header */}
-                <h2 className="text-center text-4xl font-display font-extrabold text-text-main mb-12 italic">
-                    How It <span className="text-primary italic">Works.</span>
+                <h2 className="text-center text-4xl font-display font-extrabold text-text-primary mb-12 italic">
+                    How It <span className="text-accent italic">Works.</span>
                 </h2>
 
                 {/* Steps Flow */}
@@ -32,11 +32,11 @@ export default function HowItWorksSection() {
 
                         {stepsData.map((item, idx) => (
                             <div key={idx} className="relative pl-16">
-                                <div className="absolute left-0 size-12 bg-bg-page border-2 border-border rounded-full flex items-center justify-center font-display font-bold text-lg shadow-sm z-10 text-text-main">
+                                <div className="absolute left-0 size-12 bg-bg-page border-2 border-border rounded-full flex items-center justify-center font-display font-bold text-lg shadow-sm z-10 text-text-primary">
                                     {item.step}
                                 </div>
                                 <Card className="border-none shadow-none bg-transparent">
-                                    <h4 className="font-display font-extrabold text-lg text-text-main mb-1">{item.title}</h4>
+                                    <h4 className="font-display font-extrabold text-lg text-text-primary mb-1">{item.title}</h4>
                                     <p className="text-text-muted text-sm leading-relaxed">{item.desc}</p>
                                 </Card>
                             </div>
@@ -48,12 +48,12 @@ export default function HowItWorksSection() {
                         {stepsData.map((item, idx) => (
                             <div key={idx} className="relative z-10 flex flex-col items-center text-center group">
                                 {/* Step Number Circle */}
-                                <div className="size-16 rounded-2xl bg-bg-page border border-border flex items-center justify-center text-xl font-display font-black text-text-main mb-8 shadow-sm group-hover:border-primary/50 transition-colors">
+                                <div className="size-16 rounded-2xl bg-bg-page border border-border flex items-center justify-center text-xl font-display font-black text-text-primary mb-8 shadow-sm group-hover:border-accent/50 transition-colors">
                                     {item.step}
                                 </div>
 
                                 {/* Step Details */}
-                                <h4 className="text-lg font-display font-extrabold text-text-main mb-3">{item.title}</h4>
+                                <h4 className="text-lg font-display font-extrabold text-text-primary mb-3">{item.title}</h4>
                                 <p className="text-text-muted text-xs leading-relaxed max-w-[180px]">{item.desc}</p>
                             </div>
                         ))}

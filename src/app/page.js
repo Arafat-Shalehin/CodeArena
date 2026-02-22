@@ -1,12 +1,12 @@
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import Hero from "../features/home/components/Hero";
-import FeaturesSection from "../features/home/components/FeaturesSection";
-import HowItWorksSection from "../features/home/components/HowItWorksSection";
-import RecentProblemsSection from "../features/home/components/RecentProblemsSection";
-import LeaderboardPreviewSection from "../features/home/components/LeaderboardPreviewSection";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import Hero from "@/features/home/components/Hero";
+import FeaturesSection from "@/features/home/components/FeaturesSection";
+import HowItWorksSection from "@/features/home/components/HowItWorksSection";
+import RecentProblemsSection from "@/features/home/components/RecentProblemsSection";
+import LeaderboardPreviewSection from "@/features/home/components/LeaderboardPreviewSection";
 
-import ErrorBoundary from '../components/ui/error-boundary';
+import ErrorBoundary from '@/components/ui/error-boundary';
 
 /**
  * Home Page
@@ -23,7 +23,7 @@ import ErrorBoundary from '../components/ui/error-boundary';
  */
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col font-sans text-text-main bg-background">
+    <div className="min-h-screen flex flex-col font-sans text-text-primary bg-bg-page">
       <Navbar />
 
       <main className="flex-grow">

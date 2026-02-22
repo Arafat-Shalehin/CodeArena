@@ -36,7 +36,7 @@ export default function ProblemCard({ title, difficulty, solvedCount, tags, succ
     const Icon = config.icon;
 
     return (
-        <Card className="matte-surface p-0 rounded-2xl hover:border-primary/50 transition-all cursor-pointer group shadow-sm overflow-hidden hover:shadow-md">
+        <Card className="matte-surface p-0 rounded-2xl hover:border-accent/50 transition-all cursor-pointer group shadow-sm overflow-hidden hover:shadow-md">
             <CardContent className="p-8">
                 {/* Header: Difficulty Badge */}
                 <div className="flex justify-between items-start mb-4">
@@ -54,7 +54,7 @@ export default function ProblemCard({ title, difficulty, solvedCount, tags, succ
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl font-bold text-text-main mb-3 group-hover:text-primary transition-colors font-display tracking-tight">
+                <h3 className="text-xl font-bold text-text-primary mb-3 group-hover:text-accent transition-colors font-display tracking-tight">
                     {title}
                 </h3>
 
@@ -72,7 +72,7 @@ export default function ProblemCard({ title, difficulty, solvedCount, tags, succ
                     <span className="text-xs text-zinc-400 font-medium">
                         <span className="font-bold text-zinc-600">{successRate}</span> Success
                     </span>
-                    <ArrowRight className="w-4 h-4 text-zinc-300 group-hover:text-primary transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="w-4 h-4 text-zinc-300 group-hover:text-accent transition-transform group-hover:translate-x-1" />
                 </div>
             </CardContent>
         </Card>
