@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeCode } from '@/lib/docker/executor';
+import { protect } from '@/middlewares/auth.middleware';
 
 /**
  * POST /api/evaluation/execute
@@ -7,6 +8,9 @@ import { executeCode } from '@/lib/docker/executor';
  */
 export async function POST(request) {
     try {
+        // Authenticate user
+        await protect(request);
+
         const body = await request.json();
         const { code, language, input, timeLimit, memoryLimit } = body;
 

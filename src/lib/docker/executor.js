@@ -4,7 +4,21 @@ import path from 'path';
 import { getLanguageConfig } from './languages.js';
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js';
 
-const docker = new Docker();
+const dockerOptions = {};
+
+// Use DOCKER_HOST from environment if available (e.g., when using docker-proxy)
+if (process.env.DOCKER_HOST) {
+    if (process.env.DOCKER_HOST.startsWith('http')) {
+        const url = new URL(process.env.DOCKER_HOST);
+        dockerOptions.host = url.hostname;
+        dockerOptions.port = url.port || 2375;
+        dockerOptions.protocol = url.protocol.replace(':', '');
+    } else {
+        dockerOptions.socketPath = process.env.DOCKER_HOST;
+    }
+}
+
+const docker = new Docker(dockerOptions);
 
 /**
  * Execute code in a Docker container

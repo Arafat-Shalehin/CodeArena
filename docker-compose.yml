@@ -1,28 +1,21 @@
-version: '3.8'
-
 services:
-  # Code execution service
-  code-executor:
-    build:
-      context: ./docker/executors
-      dockerfile: Dockerfile.base
-    container_name: codearena-executor
-    privileged: false
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/tmp
-    networks:
-      - codearena-network
+  # Docker API Proxy (Security Hardening)
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: codearena-docker-proxy
+    privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - NODE_ENV=production
-      - MAX_EXECUTION_TIME=10000
-      - MAX_MEMORY=512m
-      - MAX_CPU_CORES=1
+      - CONTAINERS=1
+      - IMAGES=1
+      - POST=1
+      - DELETE=1
+      - EXEC=1
+    ports:
+      - "2375:2375"
+    networks:
+      - codearena-network
     restart: unless-stopped
 
 networks:
