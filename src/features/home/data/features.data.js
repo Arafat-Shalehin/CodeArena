@@ -1,8 +1,8 @@
 export const featuresData = [
-    { icon: "bolt", title: "Instant Feedback", desc: "Our high-performance judge provides millisecond-level results for your submissions." },
-    { icon: "timer", title: "Timed Contests", desc: "Regular weekly and monthly contests with real-time rankings and point systems." },
-    { icon: "code", title: "Multiple Languages", desc: "Support for C++, Java, Python, Go, Rust, and 20+ other popular languages." },
-    { icon: "shield", title: "Secure Execution", desc: "Isolated sandbox environments ensure your code runs safely and fairly." },
-    { icon: "update", title: "Real-time Updates", desc: "Watch the live leaderboard shift as submissions roll in during contests." },
-    { icon: "analytics", title: "Performance Tracking", desc: "Detailed analytics on your speed, memory usage, and growth trends over time." }
+    { icon: "bolt", title: "Lightning-Fast Code Evaluation", desc: "Our high-performance compilation engine delivers millisecond-level execution and instant feedback on your algorithmic solutions." },
+    { icon: "timer", title: "Global Coding Contests", desc: "Test your skills under pressure. Participate in weekly rated contests featuring real-time global leaderboards and dynamic Elo rating systems." },
+    { icon: "code", title: "Polyglot Environment", desc: "Write your solutions in C++, Java, Python, Rust, Go, or 20+ other industry-standard programming languages." },
+    { icon: "shield", title: "Isolated Secure Sandbox", desc: "Execute code with confidence. Our robust, containerized sandbox guarantees secure, fair, and reliable evaluations." },
+    { icon: "update", title: "Real-Time Global Rankings", desc: "Watch the community leaderboard shift live as developers worldwide submit their optimized solutions." },
+    { icon: "analytics", title: "Advanced Performance Analytics", desc: "Track your progression with granular metrics on algorithm time complexity, memory utilization, and historical growth trends." }
 ];
