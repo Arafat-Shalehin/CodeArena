@@ -17,6 +17,9 @@ import { Pagination } from '@/features/leaderboard/components/Pagination';
 // Data
 import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data';
 
+// Auth
+import { useAuth } from '@/context/AuthContext';
+
 /**
  * Leaderboard Page
  * 
@@ -37,6 +40,7 @@ export default function LeaderboardPage() {
     const [leagueFilter, setLeagueFilter] = useState('all');
     const [timeframeFilter, setTimeframeFilter] = useState('all_time');
     const [currentPage, setCurrentPage] = useState(1);
+    const { user } = useAuth();
 
     const ITEMS_PER_PAGE = 30;
 
@@ -151,7 +155,7 @@ export default function LeaderboardPage() {
 
                 <RankingTable
                     data={currentTableData}
-                    currentUser={null} // TODO: Get from auth context
+                    currentUser={user}
                     startIndex={startIndex + (isFiltering ? 0 : 3) + 1} // Correct rank display
                 />
 

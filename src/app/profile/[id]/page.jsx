@@ -99,8 +99,8 @@ export default function PublicProfilePage({ params }) {
                     {/* Right Side (40%) */}
                     <div className="lg:col-span-4 space-y-8">
                         <ProblemStats user={user} />
-                        <ContestPerformance />
-                        <Achievements />
+                        <ContestPerformance performance={user.stats?.contestPerformance} />
+                        <Achievements achievements={user.stats?.achievements} />
                     </div>
                 </div>
             </main>
