@@ -22,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = {
-  title: "CodeArena - Master Competitive Programming",
-  description: "The ultimate playground for competitive programmers. Solve curated problems, join high-stakes contests, and build your technical legacy.",
+  title: "CodeArena | Competitive Programming & Coding Challenges",
+  description: "Join CodeArena to master algorithms, prepare for technical interviews, and compete in live coding contests. Solve 2,500+ coding challenges in 20+ languages.",
 };
 
 export default function RootLayout({ children }) {
