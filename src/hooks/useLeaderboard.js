@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { leaderboardService } from '@/services/leaderboard.service';
+import { leaderboardService } from '@/services/leaderBoard.service';
 
 /**
  * Custom hook to fetch leaderboard rankings.
