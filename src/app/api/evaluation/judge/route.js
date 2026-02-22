@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluation/judge';
+import { protect } from '@/middlewares/auth.middleware';
 
 /**
  * POST /api/evaluation/judge
@@ -7,6 +8,9 @@ import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluatio
  */
 export async function POST(request) {
     try {
+        // Authenticate user
+        await protect(request);
+
         const body = await request.json();
         const {
             code,
