@@ -1,6 +1,6 @@
-'use client';
+'use client'
 
-import { Search } from 'lucide-react';
+import { Search } from 'lucide-react'
 
 /**
  * @component SearchBar
@@ -11,23 +11,23 @@ import { Search } from 'lucide-react';
  */
 export default function SearchBar() {
     return (
-        <div className="flex-1 max-w-md hidden lg:block">
-            <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors h-4 w-4" />
+        <div className="hidden max-w-md flex-1 lg:block">
+            <div className="group relative">
+                <Search className="text-text-muted group-focus-within:text-accent absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transition-colors" />
                 <input
                     type="text"
                     placeholder="Search problems..."
-                    className="w-full pl-10 pr-4 py-2 bg-bg-subtle border border-border rounded-xl text-sm focus:outline-none focus:bg-bg-page focus:border-accent/20 focus:ring-4 focus:ring-accent/5 transition-all placeholder:text-text-muted"
+                    className="bg-bg-subtle border-border focus:bg-bg-page focus:border-accent/20 focus:ring-accent/5 placeholder:text-text-muted w-full rounded-xl border py-2 pr-4 pl-10 text-sm transition-all focus:ring-4 focus:outline-none"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                    <span className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted">
+                <div className="absolute top-1/2 right-3 flex -translate-y-1/2 gap-1">
+                    <span className="bg-bg-page border-border text-text-muted rounded border px-1.5 py-0.5 text-[10px]">
                         Ctrl
                     </span>
-                    <span className="text-[10px] bg-bg-page border border-border rounded px-1.5 py-0.5 text-text-muted">
+                    <span className="bg-bg-page border-border text-text-muted rounded border px-1.5 py-0.5 text-[10px]">
                         K
                     </span>
                 </div>
             </div>
         </div>
-    );
+    )
 }

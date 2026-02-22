@@ -1,5 +1,5 @@
-import Navbar from "@/components/layout/Navbar"
-import Footer from "@/components/layout/Footer"
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
 
 const AuthLayout = ({ children }) => {
     return (
@@ -7,14 +7,11 @@ const AuthLayout = ({ children }) => {
             <Navbar />
 
             {/* Split Layout Container */}
-            <div className="flex-grow flex items-stretch md:min-h-[calc(100vh-64px)]">
-
+            <div className="flex flex-grow items-stretch md:min-h-[calc(100vh-64px)]">
                 {/* Single Centered Column */}
-                <div className="w-full flex items-start justify-center p-4 sm:p-6 lg:p-8 pt-6 sm:pt-8 lg:pt-8 bg-bg-page relative">
+                <div className="bg-bg-page relative flex w-full items-start justify-center p-4 pt-6 sm:p-6 sm:pt-8 lg:p-8 lg:pt-8">
                     {/* Header */}
-                    <div className="w-full max-w-md space-y-6">
-                        {children}
-                    </div>
+                    <div className="w-full max-w-md space-y-6">{children}</div>
                 </div>
             </div>
 

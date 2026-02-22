@@ -1,5 +1,5 @@
-import { runAllTests, runMultipleTests } from './testRunner.js';
-import { VERDICTS, getVerdict } from './verdicts.js';
+import { runAllTests, runMultipleTests } from './testRunner.js'
+import { VERDICTS, getVerdict } from './verdicts.js'
 
 /**
  * Main judge function - orchestrates code evaluation
@@ -16,8 +16,8 @@ export async function judgeSubmission({
 }) {
     try {
         // Separate public and hidden test cases
-        const publicTests = testCases.filter(tc => !tc.isHidden);
-        const hiddenTests = testCases.filter(tc => tc.isHidden);
+        const publicTests = testCases.filter((tc) => !tc.isHidden)
+        const hiddenTests = testCases.filter((tc) => tc.isHidden)
 
         // Report judging started
         if (onProgress) {
@@ -25,7 +25,7 @@ export async function judgeSubmission({
                 status: 'JUDGING',
                 message: 'Starting evaluation...',
                 progress: 0,
-            });
+            })
         }
 
         // Run all tests
@@ -37,7 +37,7 @@ export async function judgeSubmission({
             timeLimit,
             memoryLimit,
             comparisonMode,
-        });
+        })
 
         // Report completion
         if (onProgress) {
@@ -45,7 +45,7 @@ export async function judgeSubmission({
                 status: result.verdict,
                 message: 'Evaluation complete',
                 progress: 100,
-            });
+            })
         }
 
         // Prepare final result
@@ -59,28 +59,29 @@ export async function judgeSubmission({
                 total: result.publicTestsResults.stats.totalTests,
                 results: result.publicTestsResults.results.map(filterTestResult),
             },
-            hiddenTests: result.hiddenTestsResults ? {
-                passed: result.hiddenTestsResults.stats.passedTests,
-                total: result.hiddenTestsResults.stats.totalTests,
-                // Don't expose detailed results for hidden tests (only pass/fail)
-                results: result.hiddenTestsResults.results.map(r => ({
-                    testCaseNumber: r.testCaseNumber,
-                    passed: r.passed,
-                    verdict: r.verdict,
-                })),
-            } : null,
+            hiddenTests: result.hiddenTestsResults
+                ? {
+                      passed: result.hiddenTestsResults.stats.passedTests,
+                      total: result.hiddenTestsResults.stats.totalTests,
+                      // Don't expose detailed results for hidden tests (only pass/fail)
+                      results: result.hiddenTestsResults.results.map((r) => ({
+                          testCaseNumber: r.testCaseNumber,
+                          passed: r.passed,
+                          verdict: r.verdict,
+                      })),
+                  }
+                : null,
             stats: result.stats,
-        };
-
+        }
     } catch (error) {
-        console.error('Judge error:', error);
+        console.error('Judge error:', error)
         return {
             verdict: 'SYSTEM_ERROR',
             verdictDetails: VERDICTS.SYSTEM_ERROR,
             passed: false,
             score: 0,
             error: error.message,
-        };
+        }
     }
 }
 
@@ -104,7 +105,7 @@ export async function quickJudge({
             memoryLimit,
             comparisonMode,
             stopOnFirstFailure: false,
-        });
+        })
 
         return {
             verdict: result.verdict,
@@ -112,15 +113,14 @@ export async function quickJudge({
             passed: result.passed,
             results: result.results.map(filterTestResult),
             stats: result.stats,
-        };
-
+        }
     } catch (error) {
-        console.error('Quick judge error:', error);
+        console.error('Quick judge error:', error)
         return {
             verdict: 'SYSTEM_ERROR',
             verdictDetails: VERDICTS.SYSTEM_ERROR,
             error: error.message,
-        };
+        }
     }
 }
 
@@ -138,46 +138,46 @@ function filterTestResult(result) {
         actualOutput: result.actualOutput,
         testCase: result.testCase,
         comparisonDetails: result.comparisonDetails,
-    };
+    }
 }
 
 /**
  * Validate submission before judging
  */
 export function validateSubmission({ code, language, problemId }) {
-    const errors = [];
+    const errors = []
 
     if (!code || code.trim().length === 0) {
-        errors.push('Code cannot be empty');
+        errors.push('Code cannot be empty')
     }
 
     if (code.length > 65536) {
-        errors.push('Code size exceeds maximum allowed size (64KB)');
+        errors.push('Code size exceeds maximum allowed size (64KB)')
     }
 
     if (!language) {
-        errors.push('Language must be specified');
+        errors.push('Language must be specified')
     }
 
     if (!problemId) {
-        errors.push('Problem ID must be specified');
+        errors.push('Problem ID must be specified')
     }
 
     return {
         isValid: errors.length === 0,
         errors,
-    };
+    }
 }
 
 /**
  * Calculate submission score based on test results
  */
 export function calculateScore(results) {
-    const totalTests = results.stats.totalTests;
-    const passedTests = results.stats.totalPassedTests;
+    const totalTests = results.stats.totalTests
+    const passedTests = results.stats.totalPassedTests
 
-    if (totalTests === 0) return 0;
+    if (totalTests === 0) return 0
 
-    const score = Math.floor((passedTests / totalTests) * 100);
-    return score;
+    const score = Math.floor((passedTests / totalTests) * 100)
+    return score
 }

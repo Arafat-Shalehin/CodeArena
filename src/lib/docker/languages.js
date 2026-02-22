@@ -36,18 +36,18 @@ export const LANGUAGE_CONFIG = {
         defaultTimeLimit: 5000,
         defaultMemoryLimit: 512000,
     },
-};
+}
 
-export const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_CONFIG);
+export const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_CONFIG)
 
 export const getLanguageConfig = (language) => {
-    const config = LANGUAGE_CONFIG[language.toLowerCase()];
+    const config = LANGUAGE_CONFIG[language.toLowerCase()]
     if (!config) {
-        throw new Error(`Unsupported language: ${language}`);
+        throw new Error(`Unsupported language: ${language}`)
     }
-    return config;
-};
+    return config
+}
 
 export const isLanguageSupported = (language) => {
-    return SUPPORTED_LANGUAGES.includes(language.toLowerCase());
-};
+    return SUPPORTED_LANGUAGES.includes(language.toLowerCase())
+}

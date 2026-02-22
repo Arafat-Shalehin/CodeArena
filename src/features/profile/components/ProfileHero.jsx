@@ -1,17 +1,17 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
+import { useState } from 'react'
 
 // Shared Components
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 
 // Auth
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext'
 
 // Profile Edit Modal
-import EditProfileModal from './EditProfileModal';
-import { toast } from 'sonner';
+import EditProfileModal from './EditProfileModal'
+import { toast } from 'sonner'
 
 /**
  * @component ProfileHero
@@ -24,102 +24,104 @@ import { toast } from 'sonner';
  * @returns {JSX.Element} The rendered profile hero section.
  */
 export default function ProfileHero({ user: userProp }) {
-  const { user: authUser, updateProfile } = useAuth();
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const { user: authUser, updateProfile } = useAuth()
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-  const displayUser = userProp || authUser;
+    const displayUser = userProp || authUser
 
-  const {
-    username = 'unknown',
-    name: displayName = 'Unknown User',
-    bio = '',
-    avatarSeed = username,
-    stats,
-  } = displayUser || {};
+    const {
+        username = 'unknown',
+        name: displayName = 'Unknown User',
+        bio = '',
+        avatarSeed = username,
+        stats,
+    } = displayUser || {}
 
-  const isOwnProfile = authUser && (
-    (authUser.firebaseUid && authUser.firebaseUid === displayUser?.firebaseUid) ||
-    (authUser.email && authUser.email === displayUser?.email) ||
-    (authUser.username && authUser.username === displayUser?.username)
-  );
+    const isOwnProfile =
+        authUser &&
+        ((authUser.firebaseUid && authUser.firebaseUid === displayUser?.firebaseUid) ||
+            (authUser.email && authUser.email === displayUser?.email) ||
+            (authUser.username && authUser.username === displayUser?.username))
 
-  const rank = stats?.globalRank ?? '—';
-  const finalAvatarSeed = avatarSeed || username;
+    const rank = stats?.globalRank ?? '—'
+    const finalAvatarSeed = avatarSeed || username
 
-  const handleSaveProfile = (updatedData) => {
-    updateProfile(updatedData);
-    toast.success('Changes saved successfully!');
-  };
+    const handleSaveProfile = (updatedData) => {
+        updateProfile(updatedData)
+        toast.success('Changes saved successfully!')
+    }
 
-  return (
-    <>
-      <div className="relative rounded-xl overflow-hidden bg-bg-subtle border border-border mb-8">
-        {/* Banner */}
-        <div className="h-24 md:h-40 w-full bg-gradient-to-r from-accent/20 via-accent/5 to-transparent relative">
-          <div className="absolute top-4 right-6 text-text-primary/5 font-bold text-4xl select-none font-mono">
-            CODEARENA
-          </div>
-        </div>
+    return (
+        <>
+            <div className="bg-bg-subtle border-border relative mb-8 overflow-hidden rounded-xl border">
+                {/* Banner */}
+                <div className="from-accent/20 via-accent/5 relative h-24 w-full bg-gradient-to-r to-transparent md:h-40">
+                    <div className="text-text-primary/5 absolute top-4 right-6 font-mono text-4xl font-bold select-none">
+                        CODEARENA
+                    </div>
+                </div>
 
-        {/* Mobile layout: centered column; desktop: side-by-side row */}
-        <div className="px-6 md:px-8 pb-6 md:pb-8 -mt-12 relative z-10">
-          {/* Avatar — centered on mobile */}
-          <div className="flex justify-center md:justify-start">
-            <div className="p-1 rounded-full bg-bg-page border-4 border-bg-page shadow-xl">
-              <Avatar className="h-24 w-24 md:h-32 md:w-32 border-2 border-accent">
-                <AvatarImage
-                  src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${finalAvatarSeed}`}
-                  alt={`${username}'s avatar`}
+                {/* Mobile layout: centered column; desktop: side-by-side row */}
+                <div className="relative z-10 -mt-12 px-6 pb-6 md:px-8 md:pb-8">
+                    {/* Avatar — centered on mobile */}
+                    <div className="flex justify-center md:justify-start">
+                        <div className="bg-bg-page border-bg-page rounded-full border-4 p-1 shadow-xl">
+                            <Avatar className="border-accent h-24 w-24 border-2 md:h-32 md:w-32">
+                                <AvatarImage
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${finalAvatarSeed}`}
+                                    alt={`${username}'s avatar`}
+                                />
+                                <AvatarFallback className="bg-bg-muted text-text-primary text-2xl">
+                                    {username.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                        </div>
+                    </div>
+
+                    {/* User Info + Buttons */}
+                    <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        {/* Name, username, rank, bio */}
+                        <div className="space-y-1 text-center md:text-left">
+                            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                                <h1 className="text-text-primary text-2xl font-bold md:text-3xl">
+                                    {username}
+                                </h1>
+                                <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium">
+                                    🏆 #{rank}
+                                </span>
+                            </div>
+                            <p className="text-text-secondary text-base md:text-lg">
+                                {displayName}
+                            </p>
+                            {bio && (
+                                <p className="text-text-muted max-w-md text-sm leading-relaxed">
+                                    {bio}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex shrink-0 justify-center gap-3 md:justify-end">
+                            {!isOwnProfile && <Button variant="default">Follow</Button>}
+                            {isOwnProfile && (
+                                <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
+                                    Edit Profile
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {isEditModalOpen && (
+                <EditProfileModal
+                    user={displayUser}
+                    onSave={handleSaveProfile}
+                    onClose={() => setIsEditModalOpen(false)}
                 />
-                <AvatarFallback className="bg-bg-muted text-text-primary text-2xl">
-                  {username.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          </div>
-
-          {/* User Info + Buttons */}
-          <div className="mt-4 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
-            {/* Name, username, rank, bio */}
-            <div className="text-center md:text-left space-y-1">
-              <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
-                  {username}
-                </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-light text-warning border border-warning/20">
-                  🏆 #{rank}
-                </span>
-              </div>
-              <p className="text-text-secondary text-base md:text-lg">{displayName}</p>
-              {bio && (
-                <p className="text-sm text-text-muted max-w-md leading-relaxed">{bio}</p>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 justify-center md:justify-end shrink-0">
-              {!isOwnProfile && (
-                <Button variant="default">Follow</Button>
-              )}
-              {isOwnProfile && (
-                <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-                  Edit Profile
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isEditModalOpen && (
-        <EditProfileModal
-          user={displayUser}
-          onSave={handleSaveProfile}
-          onClose={() => setIsEditModalOpen(false)}
-        />
-      )}
-    </>
-  );
+            )}
+        </>
+    )
 }
 
-ProfileHero.displayName = 'ProfileHero';
+ProfileHero.displayName = 'ProfileHero'

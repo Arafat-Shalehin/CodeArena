@@ -1,8 +1,8 @@
-'use client';
+'use client'
 
-import { Card, CardContent } from '@/components/ui/card';
-import { useAuth } from '@/context/AuthContext';
-import { getStatusCards } from '../data/status.data';
+import { Card, CardContent } from '@/components/ui/card'
+import { useAuth } from '@/context/AuthContext'
+import { getStatusCards } from '../data/status.data'
 
 /**
  * @component StatsGrid
@@ -14,27 +14,24 @@ import { getStatusCards } from '../data/status.data';
  * @returns {JSX.Element} The rendered stats grid.
  */
 export default function StatsGrid({ user: userProp }) {
-  const { user: authUser } = useAuth();
-  const displayUser = userProp || authUser;
-  const cards = getStatusCards(displayUser?.stats);
+    const { user: authUser } = useAuth()
+    const displayUser = userProp || authUser
+    const cards = getStatusCards(displayUser?.stats)
 
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      {cards.map((stat) => (
-        <Card
-          key={stat.label}
-          className={`border-l-4 ${stat.border} shadow-sm`}
-        >
-          <CardContent className="p-6">
-            <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-1">
-              {stat.label}
-            </p>
-            <p className="text-2xl font-bold text-text-primary">{stat.value}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+    return (
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {cards.map((stat) => (
+                <Card key={stat.label} className={`border-l-4 ${stat.border} shadow-sm`}>
+                    <CardContent className="p-6">
+                        <p className="text-text-muted mb-1 text-xs font-medium tracking-wide uppercase">
+                            {stat.label}
+                        </p>
+                        <p className="text-text-primary text-2xl font-bold">{stat.value}</p>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    )
 }
 
-StatsGrid.displayName = 'StatsGrid';
+StatsGrid.displayName = 'StatsGrid'

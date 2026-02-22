@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, Search } from 'lucide-react';
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { User, LogOut, Search } from 'lucide-react'
 
 // Navigation Data
 const NAV_LINKS = [
@@ -11,7 +11,7 @@ const NAV_LINKS = [
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
     { name: 'Practice', href: '/practice' },
-];
+]
 
 /**
  * @component MobileMenu
@@ -26,23 +26,23 @@ const NAV_LINKS = [
  * @returns {JSX.Element|null} The rendered mobile menu, or null if closed.
  */
 export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onLogout }) {
-    if (!isOpen) return null;
+    if (!isOpen) return null
 
     const handleLogout = () => {
-        onClose();
-        onLogout();
-    };
+        onClose()
+        onLogout()
+    }
 
     return (
-        <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-bg-page z-40 overflow-y-auto border-t border-border shadow-xl py-6 px-4 duration-200 flex flex-col">
+        <div className="bg-bg-page border-border absolute top-16 left-0 z-40 flex h-[calc(100vh-4rem)] w-full flex-col overflow-y-auto border-t px-4 py-6 shadow-xl duration-200 md:hidden">
             <div className="space-y-4">
                 {/* Mobile Search */}
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted h-4 w-4" />
+                    <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                     <input
                         type="text"
                         placeholder="Search..."
-                        className="w-full pl-10 pr-4 py-3 bg-bg-subtle rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
+                        className="bg-bg-subtle focus:ring-accent/20 w-full rounded-xl py-3 pr-4 pl-10 text-sm focus:ring-2 focus:outline-none"
                     />
                 </div>
 
@@ -53,10 +53,10 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                             key={link.name}
                             href={link.href}
                             onClick={onClose}
-                            className="px-4 py-3 text-base font-bold text-text-primary hover:bg-bg-subtle rounded-xl transition-colors flex items-center justify-between group"
+                            className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
                         >
                             {link.name}
-                            <span className="material-symbols-outlined text-text-muted group-hover:text-accent transition-colors text-lg">
+                            <span className="material-symbols-outlined text-text-muted group-hover:text-accent text-lg transition-colors">
                                 chevron_right
                             </span>
                         </Link>
@@ -64,12 +64,12 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                 </nav>
 
                 {/* Mobile Auth Actions */}
-                <div className="pt-4 grid gap-3 border-t border-border">
+                <div className="border-border grid gap-3 border-t pt-4">
                     {isAuthenticated && user ? (
                         <>
                             {/* Profile Info Card */}
-                            <div className="flex items-center gap-3 px-4 py-3 bg-bg-subtle rounded-xl">
-                                <Avatar className="size-10 border-2 border-accent/30">
+                            <div className="bg-bg-subtle flex items-center gap-3 rounded-xl px-4 py-3">
+                                <Avatar className="border-accent/30 size-10 border-2">
                                     <AvatarImage
                                         src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
                                         alt={user.username}
@@ -78,9 +78,11 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                                         {user.username.substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-text-primary truncate">{user.name}</p>
-                                    <p className="text-xs text-text-muted truncate">{user.email}</p>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-text-primary truncate text-sm font-bold">
+                                        {user.name}
+                                    </p>
+                                    <p className="text-text-muted truncate text-xs">{user.email}</p>
                                 </div>
                             </div>
 
@@ -93,7 +95,7 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                             <Button
                                 variant="outline"
                                 size="lg"
-                                className="w-full text-error hover:bg-error-light hover:text-error border-error/20"
+                                className="text-error hover:bg-error-light hover:text-error border-error/20 w-full"
                                 onClick={handleLogout}
                             >
                                 <LogOut size={16} className="mr-2" />
@@ -117,5 +119,5 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                 </div>
             </div>
         </div>
-    );
+    )
 }

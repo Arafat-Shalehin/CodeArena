@@ -1,17 +1,17 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const leaderboardSchema = new mongoose.Schema(
     {
         contestId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Contest",
+            ref: 'Contest',
             required: true,
             index: true,
         },
 
         userId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: 'User',
             required: true,
             index: true,
         },
@@ -52,28 +52,24 @@ const leaderboardSchema = new mongoose.Schema(
         },
     },
     { timestamps: true }
-);
+)
 
 /**
  * Prevent duplicate leaderboard entries
  * Only one leaderboard row per user per contest
  */
-leaderboardSchema.index(
-    { contestId: 1, userId: 1 },
-    { unique: true }
-);
+leaderboardSchema.index({ contestId: 1, userId: 1 }, { unique: true })
 
 /**
  * Optimized leaderboard pagination:
  * Fast lookup by contest + rank
  */
-leaderboardSchema.index({ contestId: 1, rank: 1 });
+leaderboardSchema.index({ contestId: 1, rank: 1 })
 
 /**
  * Sorting optimization for score-based queries
  */
-leaderboardSchema.index({ contestId: 1, score: -1 });
+leaderboardSchema.index({ contestId: 1, score: -1 })
 
 export const Leaderboard =
-    mongoose.models.Leaderboard ||
-    mongoose.model("Leaderboard", leaderboardSchema);
+    mongoose.models.Leaderboard || mongoose.model('Leaderboard', leaderboardSchema)

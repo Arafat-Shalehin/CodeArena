@@ -82,23 +82,23 @@ export const VERDICTS = {
         color: 'red',
         score: 0,
     },
-};
+}
 
 export const getVerdict = (code) => {
     const verdictKey = Object.keys(VERDICTS).find(
-        key => VERDICTS[key].code === code || key === code
-    );
-    return verdictKey ? VERDICTS[verdictKey] : VERDICTS.SYSTEM_ERROR;
-};
+        (key) => VERDICTS[key].code === code || key === code
+    )
+    return verdictKey ? VERDICTS[verdictKey] : VERDICTS.SYSTEM_ERROR
+}
 
 export const isAccepted = (verdict) => {
-    return verdict === 'AC' || verdict === 'ACCEPTED';
-};
+    return verdict === 'AC' || verdict === 'ACCEPTED'
+}
 
 export const isPending = (verdict) => {
-    return verdict === 'PD' || verdict === 'PENDING' || verdict === 'JD' || verdict === 'JUDGING';
-};
+    return verdict === 'PD' || verdict === 'PENDING' || verdict === 'JD' || verdict === 'JUDGING'
+}
 
 export const isError = (verdict) => {
-    return !isAccepted(verdict) && !isPending(verdict);
-};
+    return !isAccepted(verdict) && !isPending(verdict)
+}
