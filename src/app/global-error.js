@@ -13,7 +13,7 @@ export default function GlobalError({ error, reset }) {
             <body className="min-h-screen bg-bg-page flex items-center justify-center p-4">
                 <div className="max-w-md w-full text-center space-y-6">
                     <div className="space-y-2">
-                        <h2 className="text-3xl font-display font-bold text-text-main">
+                        <h2 className="text-3xl font-display font-bold text-text-primary">
                             Something went wrong!
                         </h2>
                         <p className="text-text-muted">
@@ -21,7 +21,7 @@ export default function GlobalError({ error, reset }) {
                         </p>
                     </div>
 
-                    <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm font-mono text-left overflow-auto max-h-40 border border-red-100">
+                    <div className="p-4 bg-error-light text-error rounded-lg text-sm font-mono text-left overflow-auto max-h-40 border border-error/20">
                         {error.message || "Unknown error occurred"}
                     </div>
 

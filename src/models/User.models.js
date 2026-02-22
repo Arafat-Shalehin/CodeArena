@@ -17,9 +17,19 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Password is required."],
+      required: [
+        function () {
+          return !this.authProvider || this.authProvider === "local";
+        },
+        "Password is required.",
+      ],
       minlength: [6, "Password should be contain more than 6 character."],
       select: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "github", "firebase"],
+      default: "local",
     },
     role: {
       type: String,
@@ -35,14 +45,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) {
-    return;
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password") || !this.password) {
+    return next();
   }
   const hash = await bcrypt.hash(this.password, 10);
   this.password = hash;
 
-  return;
+  next();
 });
 
 userSchema.methods.comparePassword = async function (password) {
