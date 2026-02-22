@@ -16,8 +16,12 @@ const participantSchema = new mongoose.Schema({
     default: 0,
   },
   rank: { type: Number },
-});
+  submissions: { type: Number, default: 0 },
+  penalty: { type: Number, default: 0 },
+  lastSubmissionAt: { type: Date },
+}, { timestamps: true });
 
+participantSchema.index({ contestId: 1, userId: 1 }, { unique: true });
 participantSchema.index({ contestId: 1, score: -1 });
 
 export const ContestParticipant =

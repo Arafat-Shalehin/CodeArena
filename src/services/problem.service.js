@@ -66,7 +66,9 @@ export async function getProblemById(id, { includeTestCases = false } = {}) {
   const problem = await query;
 
   if (!problem) {
-    throw new Error("Problem not found");
+    const error = err.status = 404;
+    error.message = "Problem not found";
+    throw error;
   }
 
   return problem;
@@ -95,7 +97,9 @@ export async function updateProblem(id, data) {
   });
 
   if (!problem) {
-    throw new Error("Problem not found");
+    const error = err.status = 404;
+    error.message = "Problem not found";
+    throw error;
   }
 
   return problem;
@@ -110,7 +114,9 @@ export async function deleteProblem(id) {
   const problem = await Problem.findByIdAndDelete(id);
 
   if (!problem) {
-    throw new Error("Problem not found");
+    const error = err.status = 404;
+    error.message = "Problem not found";
+    throw error;
   }
 
   return problem;

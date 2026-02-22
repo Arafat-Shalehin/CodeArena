@@ -16,7 +16,22 @@ async function dbConnect() {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI).then((mongoose) => mongoose);
+    cached.promise = mongoose
+      .connect(MONGODB_URI)
+      .then((mongoose) => {
+        // Import logger lazily to avoid circular dependency at module load time
+        import("@/lib/logger").then(({ logger }) => {
+          logger.database.info("MongoDB connected successfully.");
+        });
+        return mongoose;
+      })
+      .catch(async (err) => {
+        const { logger } = await import("@/lib/logger");
+        await logger.database.error("MongoDB connection failed.", {
+          message: err.message,
+        });
+        throw err;
+      });
   }
 
   cached.conn = await cached.promise;

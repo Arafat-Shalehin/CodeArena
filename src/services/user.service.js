@@ -9,7 +9,14 @@ import { signToken } from "@/lib/jwt";
  */
 export async function registerUser(data) {
   try {
-    const user = await User.create(data);
+    const safeData = {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      role: "user",
+    };
+
+    const user = await User.create(safeData);
 
     return {
       id: user._id,
@@ -37,10 +44,18 @@ export async function registerUser(data) {
 export async function loginUser(email, password) {
   const user = await User.findOne({ email }).select("+password");
 
-  if (!user) throw new Error("Invalid credentials.");
+  if (!user) {
+    const err = new Error("User not found");
+    err.status = 401;
+    throw err;
+  }
 
   const isMatch = await user.comparePassword(password);
-  if (!isMatch) throw new Error("Invalid credentials.");
+  if (!isMatch) {
+    const err = new Error("Invalid credentials.");
+    err.status = 401;
+    throw err;
+  }
 
   const token = signToken({
     id: user._id,
@@ -75,7 +90,9 @@ export async function getAllUsers() {
 export async function getUserById(id) {
   const user = await User.findById(id).select("-password");
   if (!user) {
-    throw new Error("User not found.");
+    const err = new Error("User not found");
+    err.status = 404;
+    throw err;
   }
   return user;
 }
@@ -89,7 +106,9 @@ export async function getUserById(id) {
 export async function deleteUser(id) {
   const user = await User.findByIdAndDelete(id);
   if (!user) {
-    throw new Error("User not found.");
+    const err = new Error("User not found");
+    err.status = 404;
+    throw err;
   }
   return user;
 }

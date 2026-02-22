@@ -5,6 +5,7 @@ const contestSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
+      unique: true
     },
     problemIds: [
       {
@@ -25,11 +26,25 @@ const contestSchema = new mongoose.Schema(
       enum: ["upcoming", "active", "completed"],
       default: "upcoming",
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    maxParticipants: { type: Number, default: null }
   },
   { timestamps: true },
 );
 
+contestSchema.index({ status: 1, startTime: -1 });
 contestSchema.index({ startTime: 1, endTime: 1 });
+
+// Virtual field to auto-derive status based on current time
+contestSchema.virtual("derivedStatus").get(function () {
+  const now = new Date();
+  if (now < this.startTime) return "upcoming";
+  if (now >= this.startTime && now <= this.endTime) return "active";
+  return "completed";
+});
 
 export const Contest =
   mongoose.models.Contest || mongoose.model("Contest", contestSchema);
