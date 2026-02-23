@@ -1,10 +1,24 @@
-import React from 'react';
+'use client';
+
+
+import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 
 // Shared Components
-import Button from '@/shared/components/ui/Button';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 
-// Data
-import { leaderboardData } from '../../leaderboard/data/leaderboard.data';
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * @component LeaderboardPreviewSection
@@ -17,13 +31,53 @@ import { leaderboardData } from '../../leaderboard/data/leaderboard.data';
  * @returns {JSX.Element} The rendered Leaderboard preview section.
  */
 export default function LeaderboardPreviewSection() {
+
+    const { users: leaderboardUsers, isLoading, error } = useLeaderboard();
+
+    if (isLoading) {
+        return (
+            <section className="py-12 bg-bg-subtle">
+                <div className="max-w-5xl mx-auto px-4">
+                    <div className="text-center max-w-2xl mx-auto mb-20 space-y-4">
+                        <Skeleton className="h-12 w-3/4 mx-auto" />
+                        <Skeleton className="h-4 w-1/2 mx-auto" />
+                    </div>
+                    <Card className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-bg-page/80">
+                        <CardContent className="p-0">
+                            <div className="space-y-4 p-8">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex items-center gap-4">
+                                        <Skeleton className="h-12 w-12 rounded-full" />
+                                        <div className="space-y-2 flex-1">
+                                            <Skeleton className="h-4 w-[200px]" />
+                                            <Skeleton className="h-4 w-[150px]" />
+                                        </div>
+                                        <Skeleton className="h-8 w-20" />
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </section>
+        );
+    }
+
+    if (error) {
+        return <div className="py-24 text-center text-red-500">Unable to load leaderboard. Please try again later.</div>;
+    }
+
+    if (!leaderboardUsers || leaderboardUsers.length === 0) {
+        return null;
+    }
+
     return (
-        <section className="py-24 bg-secondary/20">
+        <section className="py-12 bg-bg-subtle">
             <div className="max-w-5xl mx-auto px-4">
                 {/* Section Header */}
                 <div className="text-center max-w-2xl mx-auto mb-20">
-                    <h2 className="text-4xl md:text-5xl font-display font-bold text-text-main mb-6 tracking-tight">
-                        Global <span className="text-primary italic">hall of fame.</span>
+                    <h2 className="text-4xl md:text-5xl font-display font-bold text-text-primary mb-6 tracking-tight">
+                        Global <span className="text-accent italic">hall of fame.</span>
                     </h2>
                     <p className="text-text-muted leading-relaxed">
                         Recognizing the elite minds pushing the boundaries of competitive programming. Join the ranks of the world's best.
@@ -31,57 +85,96 @@ export default function LeaderboardPreviewSection() {
                 </div>
 
                 {/* Leaderboard Table Card */}
-                <div className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-white/50">
-                    <table className="w-full text-left" aria-label="Global Leaderboard Preview">
-                        <thead>
-                            <tr className="bg-zinc-50 border-b border-zinc-100">
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest">Rank</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest">Architect</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest text-center">Solved</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-light uppercase tracking-widest text-right">ELO Rating</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-50 bg-white">
-                            {leaderboardData.map((row, idx) => (
-                                <tr key={idx} className="group hover:bg-zinc-50/50 transition-colors">
-                                    <td className="px-10 py-8">
-                                        <span className="text-3xl font-display font-extrabold text-zinc-200 group-hover:text-primary/20 transition-colors italic">{row.rank}</span>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <div className="flex items-center gap-4">
-                                            {/* Avatar */}
-                                            <div className={`size-12 rounded-2xl bg-gradient-to-br ${row.color} shadow-lg ${row.shadow} overflow-hidden`}>
-                                                <img
-                                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.seed}`}
-                                                    alt={`${row.user}'s avatar`}
-                                                    loading="lazy"
-                                                />
+                <Card className="matte-surface rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-bg-page/80 backdrop-blur-md">
+                    <CardContent className="p-0">
+                        {/* Desktop Table View */}
+                        <Table className="hidden lg:table w-full text-left" aria-label="Global Leaderboard Preview">
+                            <TableHeader className="bg-bg-subtle border-b border-border">
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Rank</TableHead>
+                                    <TableHead className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest">Architect</TableHead>
+                                    <TableHead className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-center">Solved</TableHead>
+                                    <TableHead className="px-10 py-6 text-xs font-bold text-text-light uppercase tracking-widest text-right">ELO Rating</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody className="divide-y divide-border bg-bg-page">
+                                {leaderboardUsers.slice(0, 3).map((row, idx) => (
+                                    <TableRow key={idx} className="group hover:bg-zinc-50/50 transition-colors">
+                                        <TableCell className="px-10 py-8">
+                                            <span className="text-3xl font-display font-extrabold text-border group-hover:text-accent/20 transition-colors italic">{row.rank}</span>
+                                        </TableCell>
+                                        <TableCell className="px-10 py-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="size-12 rounded-2xl bg-gradient-to-br from-accent-light to-accent shadow-lg p-[2px]">
+                                                    <Avatar className="h-full w-full rounded-[14px]">
+                                                        <AvatarImage
+                                                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.userId.username}`}
+                                                            alt={`${row.userId.username}'s avatar`}
+                                                        />
+                                                        <AvatarFallback>{row.userId.username.substring(0, 2)}</AvatarFallback>
+                                                    </Avatar>
+                                                </div>
+                                                <div>
+                                                    <Link href={`/profile/${row.userId._id}`} className="font-display font-extrabold text-text-primary text-lg italic hover:text-accent transition-colors">{row.userId.username}</Link>
+                                                    <div className="text-xs font-bold text-text-light uppercase tracking-widest mt-1">{row.title}</div>
+                                                </div>
                                             </div>
-                                            {/* User Info */}
-                                            <div>
-                                                <div className="font-display font-extrabold text-text-main text-lg italic">{row.user}</div>
-                                                <div className="text-[10px] font-bold text-text-light uppercase tracking-widest mt-1">{row.title}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-8 text-center">
-                                        <span className="font-mono font-bold text-text-main">{row.solved}</span>
-                                    </td>
-                                    <td className="px-10 py-8 text-right">
-                                        <span className="font-mono font-bold text-primary text-lg">{row.elo}</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                        </TableCell>
+                                        <TableCell className="px-10 py-8 text-center">
+                                            <span className="font-mono font-bold text-text-primary">{row.submissions}</span>
+                                        </TableCell>
+                                        <TableCell className="px-10 py-8 text-right">
+                                            <span className="font-mono font-bold text-accent text-lg">{row.score.toLocaleString()} pts</span>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
 
-                    {/* View All Button */}
-                    <div className="p-10 text-center bg-zinc-50 border-t border-zinc-100">
-                        <Button variant="outline" size="md" className="bg-white hover:bg-zinc-100">
-                            View all legends
-                        </Button>
-                    </div>
-                </div>
+                        {/* Mobile Card List View */}
+                        <div className="lg:hidden divide-y divide-border bg-bg-page">
+                            {leaderboardUsers.slice(0, 3).map((row, idx) => (
+                                <div key={idx} className="p-6 flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-2xl font-display font-extrabold text-border italic min-w-[2rem]">{row.rank}</span>
+                                        <div className="size-12 rounded-2xl bg-gradient-to-br from-accent-light to-accent shadow-lg p-[2px] shrink-0">
+                                            <Avatar className="h-full w-full rounded-[14px]">
+                                                <AvatarImage
+                                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.userId.username}`}
+                                                    alt={`${row.userId.username}'s avatar`}
+                                                />
+                                                <AvatarFallback>{row.userId.username.substring(0, 2)}</AvatarFallback>
+                                            </Avatar>
+                                        </div>
+                                        <div>
+                                            <Link href={`/profile/${row.userId._id}`} className="font-display font-extrabold text-text-primary text-base italic hover:text-accent transition-colors">{row.userId.username}</Link>
+                                            <div className="text-[10px] font-bold text-text-light uppercase tracking-widest mt-0.5">{row.title}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-mono font-bold text-accent text-base">{row.score.toLocaleString()} pts</div>
+                                        <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">ELO</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* View All Button */}
+                        <div className="p-6 text-center bg-bg-subtle border-t border-border">
+                            <Link href="/leaderboard">
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="bg-bg-page hover:bg-bg-muted text-text-muted hover:text-accent transition-all duration-300 group"
+                                >
+                                    View all legends
+                                    <ArrowUpRight className="w-4 h-4 ml-2 opacity-60 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                </Button>
+                            </Link>
+                        </div>
+
+                    </CardContent>
+                </Card>
             </div>
         </section>
     );

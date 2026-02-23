@@ -1,5 +1,7 @@
 import { Inter, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = {
-  title: "CodeArena - Master Competitive Programming",
-  description: "The ultimate playground for competitive programmers. Solve curated problems, join high-stakes contests, and build your technical legacy.",
+  title: "CodeArena | Competitive Programming & Coding Challenges",
+  description: "Join CodeArena to master algorithms, prepare for technical interviews, and compete in live coding contests. Solve 2,500+ coding challenges in 20+ languages.",
 };
 
 export default function RootLayout({ children }) {
@@ -33,8 +35,11 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
       </head>
-      <body className="antialiased bg-background text-text-main font-sans">
-        {children}
+      <body className="antialiased bg-bg-page text-text-primary font-sans">
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+        <Toaster position="top-center" />
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 export const stepsData = [
-    { step: 1, title: "Sign Up", desc: "Create your profile and select your preferred languages." },
-    { step: 2, title: "Choose Problem", desc: "Browse thousands of problems curated by top companies." },
-    { step: 3, title: "Write Code", desc: "Use our advanced in-browser editor with intellisense." },
-    { step: 4, title: "Submit & Win", desc: "Pass tests to earn points and climb the global ranks." }
+    { step: 1, title: "Create Your Developer Profile", desc: "Register your account, customize your profile, and select your preferred programming languages." },
+    { step: 2, title: "Select Algorithmic Challenges", desc: "Filter through thousands of curated coding problems ranging from introductory logic to advanced dynamic programming." },
+    { step: 3, title: "Develop & Optimize", desc: "Write your solutions in our fully integrated, advanced browser-based IDE featuring syntax highlighting and real-time linting." },
+    { step: 4, title: "Submit & Climb the Ranks", desc: "Pass comprehensive test suites to earn rating points, unlock achievements, and climb the global developer leaderboard." }
 ];
