@@ -50,11 +50,42 @@ export async function loginUser(email, password) {
         throw err
     }
 
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+        const remainingMinutes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000))
+        const err = new Error(
+            `Account is temporarily locked. Please try again in ${remainingMinutes} minutes.`
+        )
+        err.status = 403
+        throw err
+    }
+
     const isMatch = await user.comparePassword(password)
     if (!isMatch) {
-        const err = new Error('Invalid credentials.')
+        // Increment failed attempts
+        user.loginAttempts += 1
+
+        // Lock account if threshold reached
+        if (user.loginAttempts >= 5) {
+            user.lockUntil = Date.now() + 15 * 60 * 1000 // 15 minutes lock
+        }
+
+        await user.save()
+
+        const err = new Error(
+            user.loginAttempts >= 5
+                ? 'Account locked due to multiple failed attempts. Please try again in 15 minutes.'
+                : 'Invalid credentials.'
+        )
         err.status = 401
         throw err
+    }
+
+    // Reset attempts on successful login
+    if (user.loginAttempts > 0 || user.lockUntil > 0) {
+        user.loginAttempts = 0
+        user.lockUntil = 0
+        await user.save()
     }
 
     const token = signToken({
