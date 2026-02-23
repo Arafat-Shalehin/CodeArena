@@ -361,8 +361,7 @@ async function cleanupContainer(container) {
     }
 }
 
-/**K/usr/local/bin/runner.sh: line 15: /workspace/error.txt: Permission denied
-COMPILATION_ERROR
+/**
  * Check if Docker is available
  */
 export async function checkDockerAvailability() {

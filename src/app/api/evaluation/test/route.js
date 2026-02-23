@@ -1,5 +1,7 @@
+import dbConnect from "@/lib/mongodb";
 import { NextResponse } from 'next/server'
 import { runSingleTest } from '@/lib/evaluation/testRunner'
+import { protect } from '@/middlewares/auth.middleware'
 
 /**
  * POST /api/evaluation/test
@@ -7,6 +9,9 @@ import { runSingleTest } from '@/lib/evaluation/testRunner'
  */
 export async function POST(request) {
     try {
+        await dbConnect();
+        // Authenticate user
+        await protect(request);
         const body = await request.json()
         const { code, language, testCase, timeLimit, memoryLimit, comparisonMode = 'token' } = body
 

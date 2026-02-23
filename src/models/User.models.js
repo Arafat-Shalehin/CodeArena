@@ -41,6 +41,14 @@ const userSchema = new mongoose.Schema(
             accepted: { type: Number, default: 0 },
             score: { type: Number, default: 0 },
         },
+        loginAttempts: {
+            type: Number,
+            default: 0,
+        },
+        lockUntil: {
+            type: Number,
+            default: 0,
+        },
     },
     { timestamps: true }
 )
