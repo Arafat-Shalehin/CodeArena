@@ -2,7 +2,14 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
-  serverExternalPackages: ['dockerode', 'ssh2'],
+  serverExternalPackages: [
+    'mongoose',
+    'dockerode',
+    'ssh2',
+    'bcryptjs',
+    'jsonwebtoken',
+    'tar-stream',
+  ],
 };
 
 export default nextConfig;

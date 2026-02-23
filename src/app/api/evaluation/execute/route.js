@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import dbConnect from "@/lib/mongodb";
 import { NextResponse } from 'next/server';
 import { executeCode } from '@/lib/docker/executor';
