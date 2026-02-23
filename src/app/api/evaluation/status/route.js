@@ -1,3 +1,4 @@
+import dbConnect from "@/lib/mongodb";
 import { NextResponse } from 'next/server';
 import { checkDockerAvailability, getExecutorImages } from '@/lib/docker/executor';
 import { SUPPORTED_LANGUAGES, LANGUAGE_CONFIG } from '@/lib/docker/languages';
@@ -8,6 +9,7 @@ import { SUPPORTED_LANGUAGES, LANGUAGE_CONFIG } from '@/lib/docker/languages';
  */
 export async function GET() {
     try {
+        await dbConnect();
         // Check Docker availability
         const dockerStatus = await checkDockerAvailability();
 

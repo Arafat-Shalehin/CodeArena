@@ -1,3 +1,4 @@
+import dbConnect from "@/lib/mongodb";
 import { NextResponse } from 'next/server';
 import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluation/judge';
 import { protect } from '@/middlewares/auth.middleware';
@@ -8,6 +9,7 @@ import { protect } from '@/middlewares/auth.middleware';
  */
 export async function POST(request) {
     try {
+        await dbConnect();
         // Authenticate user
         await protect(request);
 
