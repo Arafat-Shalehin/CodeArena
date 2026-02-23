@@ -1,6 +1,6 @@
-import { executeCode } from '../docker/executor.js';
-import { compareOutputs } from './comparator.js';
-import { VERDICTS } from './verdicts.js';
+import { executeCode } from '../docker/executor.js'
+import { compareOutputs } from './comparator.js'
+import { VERDICTS } from './verdicts.js'
 
 /**
  * Run code against a single test case
@@ -21,7 +21,7 @@ export async function runSingleTest({
             input: testCase.input,
             timeLimit,
             memoryLimit,
-        });
+        })
 
         // If execution failed, return the error verdict
         if (!executionResult.success) {
@@ -35,7 +35,7 @@ export async function runSingleTest({
                     input: testCase.input.substring(0, 100),
                     expectedOutput: testCase.output.substring(0, 100),
                 },
-            };
+            }
         }
 
         // Compare output with expected output
@@ -43,7 +43,7 @@ export async function runSingleTest({
             executionResult.output,
             testCase.output,
             comparisonMode
-        );
+        )
 
         return {
             verdict: comparisonResult.isMatch ? 'ACCEPTED' : 'WRONG_ANSWER',
@@ -56,15 +56,14 @@ export async function runSingleTest({
                 expectedOutput: testCase.output.substring(0, 100),
             },
             comparisonDetails: comparisonResult.reason,
-        };
-
+        }
     } catch (error) {
-        console.error('Test execution error:', error);
+        console.error('Test execution error:', error)
         return {
             verdict: 'SYSTEM_ERROR',
             passed: false,
             error: error.message,
-        };
+        }
     }
 }
 
@@ -80,12 +79,12 @@ export async function runMultipleTests({
     comparisonMode = 'token',
     stopOnFirstFailure = false,
 }) {
-    const results = [];
-    let totalExecutionTime = 0;
-    let maxMemoryUsed = 0;
+    const results = []
+    let totalExecutionTime = 0
+    let maxMemoryUsed = 0
 
     for (let i = 0; i < testCases.length; i++) {
-        const testCase = testCases[i];
+        const testCase = testCases[i]
 
         const result = await runSingleTest({
             code,
@@ -94,30 +93,30 @@ export async function runMultipleTests({
             timeLimit,
             memoryLimit,
             comparisonMode,
-        });
+        })
 
-        result.testCaseNumber = i + 1;
-        result.testCaseId = testCase.id;
-        result.isHidden = testCase.isHidden || false;
+        result.testCaseNumber = i + 1
+        result.testCaseId = testCase.id
+        result.isHidden = testCase.isHidden || false
 
-        results.push(result);
+        results.push(result)
 
-        totalExecutionTime += result.executionTime || 0;
-        maxMemoryUsed = Math.max(maxMemoryUsed, result.memoryUsed || 0);
+        totalExecutionTime += result.executionTime || 0
+        maxMemoryUsed = Math.max(maxMemoryUsed, result.memoryUsed || 0)
 
         // Stop on first failure if requested (useful for quick feedback)
         if (stopOnFirstFailure && !result.passed) {
-            break;
+            break
         }
     }
 
     // Determine overall verdict
-    const failedTest = results.find(r => !r.passed);
-    const overallVerdict = failedTest ? failedTest.verdict : 'ACCEPTED';
+    const failedTest = results.find((r) => !r.passed)
+    const overallVerdict = failedTest ? failedTest.verdict : 'ACCEPTED'
 
     // Calculate pass statistics
-    const passedCount = results.filter(r => r.passed).length;
-    const totalCount = results.length;
+    const passedCount = results.filter((r) => r.passed).length
+    const totalCount = results.length
 
     return {
         verdict: overallVerdict,
@@ -129,7 +128,7 @@ export async function runMultipleTests({
             totalExecutionTime,
             maxMemoryUsed,
         },
-    };
+    }
 }
 
 /**
@@ -153,7 +152,7 @@ export async function runAllTests({
         memoryLimit,
         comparisonMode,
         stopOnFirstFailure: false,
-    });
+    })
 
     // If public tests failed, don't run hidden tests
     if (!publicResults.passed) {
@@ -161,7 +160,7 @@ export async function runAllTests({
             ...publicResults,
             hiddenTestsResults: null,
             publicTestsPassed: false,
-        };
+        }
     }
 
     // Run hidden test cases
@@ -173,7 +172,7 @@ export async function runAllTests({
         memoryLimit,
         comparisonMode,
         stopOnFirstFailure: false,
-    });
+    })
 
     // Combine results
     return {
@@ -185,8 +184,12 @@ export async function runAllTests({
         stats: {
             totalPassedTests: publicResults.stats.passedTests + hiddenResults.stats.passedTests,
             totalTests: publicResults.stats.totalTests + hiddenResults.stats.totalTests,
-            totalExecutionTime: publicResults.stats.totalExecutionTime + hiddenResults.stats.totalExecutionTime,
-            maxMemoryUsed: Math.max(publicResults.stats.maxMemoryUsed, hiddenResults.stats.maxMemoryUsed),
+            totalExecutionTime:
+                publicResults.stats.totalExecutionTime + hiddenResults.stats.totalExecutionTime,
+            maxMemoryUsed: Math.max(
+                publicResults.stats.maxMemoryUsed,
+                hiddenResults.stats.maxMemoryUsed
+            ),
         },
-    };
+    }
 }

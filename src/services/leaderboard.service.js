@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
-import { Leaderboard } from "@/models/Leaderboard.models";
-import { Contest } from "@/models/Contest.models";
-import { ContestParticipant } from "@/models/ContestParticipant.models";
+import mongoose from 'mongoose'
+import { Leaderboard } from '@/models/Leaderboard.models'
+import { Contest } from '@/models/Contest.models'
+import { ContestParticipant } from '@/models/ContestParticipant.models'
 
 /**
  * Compute & finalize leaderboard for a contest
@@ -10,49 +10,49 @@ import { ContestParticipant } from "@/models/ContestParticipant.models";
  * - Idempotent (will not duplicate entries)
  */
 export async function computeLeaderboard(contestId) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = await mongoose.startSession()
+    session.startTransaction()
 
     try {
-        const contest = await Contest.findById(contestId).session(session);
+        const contest = await Contest.findById(contestId).session(session)
 
         if (!contest) {
-            const err = new Error("Contest not found.");
-            err.status = 404;
-            throw err;
+            const err = new Error('Contest not found.')
+            err.status = 404
+            throw err
         }
-        if (contest.status !== "completed") {
-            const err = new Error("Leaderboard can only be computed after contest completion.");
-            err.status = 400;
-            throw err;
+        if (contest.status !== 'completed') {
+            const err = new Error('Leaderboard can only be computed after contest completion.')
+            err.status = 400
+            throw err
         }
 
         // Prevent recomputation if already finalized
-        const alreadyExists = await Leaderboard.exists({ contestId });
+        const alreadyExists = await Leaderboard.exists({ contestId })
         if (alreadyExists) {
-            const err = new Error("Leaderboard already finalized for this contest.");
-            err.status = 409;
-            throw err;
+            const err = new Error('Leaderboard already finalized for this contest.')
+            err.status = 409
+            throw err
         }
 
         // Fetch participants sorted by scoring logic
         const participants = await ContestParticipant.find({ contestId })
             .sort({
                 score: -1,
-                penalty: 1,           // lower penalty wins (if exists)
-                lastSubmissionAt: 1,  // earlier submission wins
+                penalty: 1, // lower penalty wins (if exists)
+                lastSubmissionAt: 1, // earlier submission wins
             })
-            .session(session);
+            .session(session)
 
         if (!participants.length) {
-            throw new Error("No participants found for this contest.");
+            throw new Error('No participants found for this contest.')
         }
 
-        let currentRank = 1;
-        let previousScore = null;
-        let previousPenalty = null;
+        let currentRank = 1
+        let previousScore = null
+        let previousPenalty = null
 
-        const bulkOps = [];
+        const bulkOps = []
 
         participants.forEach((p, index) => {
             // Tie handling (same score + penalty)
@@ -60,7 +60,7 @@ export async function computeLeaderboard(contestId) {
                 previousScore !== null &&
                 (p.score !== previousScore || p.penalty !== previousPenalty)
             ) {
-                currentRank = index + 1;
+                currentRank = index + 1
             }
 
             bulkOps.push({
@@ -76,27 +76,27 @@ export async function computeLeaderboard(contestId) {
                         finalized: true,
                     },
                 },
-            });
+            })
 
-            previousScore = p.score;
-            previousPenalty = p.penalty;
-        });
+            previousScore = p.score
+            previousPenalty = p.penalty
+        })
 
         if (bulkOps.length) {
-            await Leaderboard.bulkWrite(bulkOps, { session });
+            await Leaderboard.bulkWrite(bulkOps, { session })
         }
 
-        await session.commitTransaction();
-        session.endSession();
+        await session.commitTransaction()
+        session.endSession()
 
         return {
             success: true,
             totalParticipants: participants.length,
-        };
+        }
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-        throw error;
+        await session.abortTransaction()
+        session.endSession()
+        throw error
     }
 }
 
@@ -105,20 +105,20 @@ export async function computeLeaderboard(contestId) {
  * Optimized for read-heavy workloads
  */
 export async function getLeaderboard(contestId, query = {}) {
-    const page = Math.max(parseInt(query.page) || 1, 1);
-    const limit = Math.min(parseInt(query.limit) || 20, 100);
-    const skip = (page - 1) * limit;
+    const page = Math.max(parseInt(query.page) || 1, 1)
+    const limit = Math.min(parseInt(query.limit) || 20, 100)
+    const skip = (page - 1) * limit
 
-    const filter = { contestId };
+    const filter = { contestId }
 
     const leaderboard = await Leaderboard.find(filter)
-        .populate("userId", "name email stats")
+        .populate('userId', 'name email stats')
         .sort({ rank: 1 })
         .skip(skip)
         .limit(limit)
-        .lean();
+        .lean()
 
-    const total = await Leaderboard.countDocuments(filter);
+    const total = await Leaderboard.countDocuments(filter)
 
     return {
         leaderboard,
@@ -128,7 +128,7 @@ export async function getLeaderboard(contestId, query = {}) {
             limit,
             pages: Math.ceil(total / limit),
         },
-    };
+    }
 }
 
 /**
@@ -137,14 +137,14 @@ export async function getLeaderboard(contestId, query = {}) {
  */
 export async function getUserRank(contestId, userId) {
     const entry = await Leaderboard.findOne({ contestId, userId })
-        .select("rank score penalty submissions")
-        .lean();
+        .select('rank score penalty submissions')
+        .lean()
 
     if (!entry) {
-        throw new Error("User not found in leaderboard.");
+        throw new Error('User not found in leaderboard.')
     }
 
-    return entry;
+    return entry
 }
 
 /**
@@ -152,9 +152,9 @@ export async function getUserRank(contestId, userId) {
  * Used if contest needs re-evaluation
  */
 export async function resetLeaderboard(contestId) {
-    const result = await Leaderboard.deleteMany({ contestId });
+    const result = await Leaderboard.deleteMany({ contestId })
 
     return {
         deletedEntries: result.deletedCount,
-    };
+    }
 }

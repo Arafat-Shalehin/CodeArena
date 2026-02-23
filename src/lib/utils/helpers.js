@@ -5,9 +5,9 @@
  */
 export function formatTime(ms) {
     if (ms < 1000) {
-        return `${ms}ms`;
+        return `${ms}ms`
     }
-    return `${(ms / 1000).toFixed(2)}s`;
+    return `${(ms / 1000).toFixed(2)}s`
 }
 
 /**
@@ -17,9 +17,9 @@ export function formatTime(ms) {
  */
 export function formatMemory(kb) {
     if (kb < 1024) {
-        return `${kb}KB`;
+        return `${kb}KB`
     }
-    return `${(kb / 1024).toFixed(2)}MB`;
+    return `${(kb / 1024).toFixed(2)}MB`
 }
 
 /**
@@ -29,12 +29,12 @@ export function formatMemory(kb) {
  */
 export function formatFileSize(bytes) {
     if (bytes < 1024) {
-        return `${bytes}B`;
+        return `${bytes}B`
     }
     if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(2)}KB`;
+        return `${(bytes / 1024).toFixed(2)}KB`
     }
-    return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)}MB`
 }
 
 /**
@@ -45,9 +45,9 @@ export function formatFileSize(bytes) {
  */
 export function truncate(str, maxLength = 100) {
     if (str.length <= maxLength) {
-        return str;
+        return str
     }
-    return str.substring(0, maxLength) + '...';
+    return str.substring(0, maxLength) + '...'
 }
 
 /**
@@ -75,8 +75,8 @@ export function getVerdictColor(verdict) {
         PENDING: 'text-gray-600 bg-gray-100',
         JD: 'text-blue-600 bg-blue-100',
         JUDGING: 'text-blue-600 bg-blue-100',
-    };
-    return colors[verdict] || 'text-gray-600 bg-gray-100';
+    }
+    return colors[verdict] || 'text-gray-600 bg-gray-100'
 }
 
 /**
@@ -86,15 +86,15 @@ export function getVerdictColor(verdict) {
  * @returns {Function} - Debounced function
  */
 export function debounce(func, wait = 300) {
-    let timeout;
+    let timeout
     return function executedFunction(...args) {
         const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
+            clearTimeout(timeout)
+            func(...args)
+        }
+        clearTimeout(timeout)
+        timeout = setTimeout(later, wait)
+    }
 }
 
 /**
@@ -103,7 +103,7 @@ export function debounce(func, wait = 300) {
  * @returns {Promise} - Promise that resolves after sleep
  */
 export function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 /**
@@ -113,8 +113,8 @@ export function sleep(ms) {
  * @returns {number} - Percentage
  */
 export function percentage(value, total) {
-    if (total === 0) return 0;
-    return Math.round((value / total) * 100);
+    if (total === 0) return 0
+    return Math.round((value / total) * 100)
 }
 
 /**
@@ -123,8 +123,8 @@ export function percentage(value, total) {
  * @returns {boolean} - True if valid
  */
 export function isValidEmail(email) {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return regex.test(email)
 }
 
 /**
@@ -133,12 +133,12 @@ export function isValidEmail(email) {
  * @returns {string} - Random ID
  */
 export function generateId(length = 8) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let result = ''
     for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
     }
-    return result;
+    return result
 }
 
 /**
@@ -148,11 +148,11 @@ export function generateId(length = 8) {
  */
 export async function copyToClipboard(text) {
     try {
-        await navigator.clipboard.writeText(text);
-        return true;
+        await navigator.clipboard.writeText(text)
+        return true
     } catch (error) {
-        console.error('Failed to copy:', error);
-        return false;
+        console.error('Failed to copy:', error)
+        return false
     }
 }
 
@@ -162,14 +162,14 @@ export async function copyToClipboard(text) {
  * @returns {string} - Formatted date string
  */
 export function formatDate(date) {
-    const d = new Date(date);
+    const d = new Date(date)
     return d.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-    });
+    })
 }
 
 /**
@@ -178,19 +178,19 @@ export function formatDate(date) {
  * @returns {string} - Relative time string
  */
 export function getRelativeTime(date) {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now - d;
+    const d = new Date(date)
+    const now = new Date()
+    const diff = now - d
 
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
 
-    if (seconds < 60) return 'just now';
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (seconds < 60) return 'just now'
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`
 
-    return formatDate(date);
+    return formatDate(date)
 }

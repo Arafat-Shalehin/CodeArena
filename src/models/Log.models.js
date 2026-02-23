@@ -1,25 +1,17 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const logSchema = new mongoose.Schema(
     {
         type: {
             type: String,
             required: true,
-            enum: [
-                "SYSTEM",
-                "AUTH",
-                "CONTEST",
-                "SUBMISSION",
-                "EXECUTION",
-                "SECURITY",
-                "DATABASE",
-            ],
+            enum: ['SYSTEM', 'AUTH', 'CONTEST', 'SUBMISSION', 'EXECUTION', 'SECURITY', 'DATABASE'],
         },
 
         level: {
             type: String,
             required: true,
-            enum: ["info", "warn", "error"],
+            enum: ['info', 'warn', 'error'],
         },
 
         message: {
@@ -35,17 +27,17 @@ const logSchema = new mongoose.Schema(
 
         userId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: 'User',
         },
 
         contestId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Contest",
+            ref: 'Contest',
         },
 
         submissionId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Submission",
+            ref: 'Submission',
         },
 
         ipAddress: {
@@ -59,26 +51,25 @@ const logSchema = new mongoose.Schema(
     {
         timestamps: true,
     }
-);
+)
 
 /**
  * INDEX STRATEGY
  */
 
 // Filter by domain type
-logSchema.index({ type: 1 });
+logSchema.index({ type: 1 })
 
 // Filter by severity
-logSchema.index({ level: 1 });
+logSchema.index({ level: 1 })
 
 // Time-based queries (most common query pattern)
-logSchema.index({ createdAt: -1 });
+logSchema.index({ createdAt: -1 })
 
 // Dashboard query optimization
-logSchema.index({ type: 1, createdAt: -1 });
+logSchema.index({ type: 1, createdAt: -1 })
 
 // Optional TTL (enable if you want auto-cleanup)
 // logSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 });
 
-export const Log =
-    mongoose.models.Log || mongoose.model("Log", logSchema);
+export const Log = mongoose.models.Log || mongoose.model('Log', logSchema)

@@ -1,27 +1,27 @@
 services:
-  # Docker API Proxy (Security Hardening)
-  docker-proxy:
-    image: tecnativa/docker-socket-proxy
-    container_name: codearena-docker-proxy
-    privileged: true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - CONTAINERS=1
-      - IMAGES=1
-      - POST=1
-      - DELETE=1
-      - EXEC=1
-    ports:
-      - "2375:2375"
-    networks:
-      - codearena-network
-    restart: unless-stopped
+    # Docker API Proxy (Security Hardening)
+    docker-proxy:
+        image: tecnativa/docker-socket-proxy
+        container_name: codearena-docker-proxy
+        privileged: true
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        environment:
+            - CONTAINERS=1
+            - IMAGES=1
+            - POST=1
+            - DELETE=1
+            - EXEC=1
+        ports:
+            - '2375:2375'
+        networks:
+            - codearena-network
+        restart: unless-stopped
 
 networks:
-  codearena-network:
-    driver: bridge
+    codearena-network:
+        driver: bridge
 
 volumes:
-  executor-cache:
-    driver: local
+    executor-cache:
+        driver: local

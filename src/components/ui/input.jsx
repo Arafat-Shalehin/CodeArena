@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from 'react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 /**
  * Input Component
@@ -8,16 +8,17 @@ import { cn } from "@/lib/utils"
  */
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
     return (
-        (<input
+        <input
             type={type}
             className={cn(
-                "flex h-10 w-full rounded-md border border-border bg-bg-page px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                'border-border bg-bg-page ring-offset-background placeholder:text-text-muted focus-visible:ring-accent flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
                 className
             )}
             ref={ref}
-            {...props} />)
-    );
+            {...props}
+        />
+    )
 })
-Input.displayName = "Input"
+Input.displayName = 'Input'
 
 export { Input }

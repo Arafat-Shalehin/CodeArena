@@ -1,7 +1,7 @@
 // Application constants
-export const APP_NAME = 'CodeArena';
-export const APP_VERSION = '0.1.0';
-export const APP_DESCRIPTION = 'AI-Powered Competitive Coding & Interview Preparation Platform';
+export const APP_NAME = 'CodeArena'
+export const APP_VERSION = '0.1.0'
+export const APP_DESCRIPTION = 'AI-Powered Competitive Coding & Interview Preparation Platform'
 
 // API endpoints
 export const API_ROUTES = {
@@ -9,7 +9,7 @@ export const API_ROUTES = {
     JUDGE: '/api/evaluation/judge',
     TEST: '/api/evaluation/test',
     STATUS: '/api/evaluation/status',
-};
+}
 
 // Execution defaults
 export const EXECUTION_DEFAULTS = {
@@ -17,14 +17,14 @@ export const EXECUTION_DEFAULTS = {
     MEMORY_LIMIT: 512000, // KB
     MAX_SOURCE_SIZE: 65536, // bytes (64KB)
     MAX_OUTPUT_SIZE: 10485760, // bytes (10MB)
-};
+}
 
 // Problem difficulty levels
 export const DIFFICULTY_LEVELS = {
     EASY: { name: 'Easy', color: 'green', value: 1 },
     MEDIUM: { name: 'Medium', color: 'yellow', value: 2 },
     HARD: { name: 'Hard', color: 'red', value: 3 },
-};
+}
 
 // Comparison modes
 export const COMPARISON_MODES = {
@@ -33,21 +33,21 @@ export const COMPARISON_MODES = {
     FLOAT: 'float',
     LINE: 'line',
     CUSTOM: 'custom',
-};
+}
 
 // User roles
 export const USER_ROLES = {
     ADMIN: 'admin',
     USER: 'user',
     GUEST: 'guest',
-};
+}
 
 // Contest status
 export const CONTEST_STATUS = {
     UPCOMING: 'upcoming',
     ONGOING: 'ongoing',
     ENDED: 'ended',
-};
+}
 
 // Submission status (for UI)
 export const SUBMISSION_STATUS = {
@@ -60,7 +60,7 @@ export const SUBMISSION_STATUS = {
     RUNTIME_ERROR: { name: 'Runtime Error', color: 'red' },
     COMPILATION_ERROR: { name: 'Compilation Error', color: 'red' },
     SYSTEM_ERROR: { name: 'System Error', color: 'purple' },
-};
+}
 
 // Language display names
 export const LANGUAGE_NAMES = {
@@ -69,7 +69,7 @@ export const LANGUAGE_NAMES = {
     java: 'Java',
     javascript: 'JavaScript',
     go: 'Go',
-};
+}
 
 // Default code templates
 export const CODE_TEMPLATES = {
@@ -116,4 +116,4 @@ func main() {
     // Write your code here
     
 }`,
-};
+}

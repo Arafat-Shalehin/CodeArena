@@ -1,30 +1,30 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const problemSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: true,
+    {
+        title: {
+            type: String,
+            required: true,
+        },
+        description: {
+            type: String,
+            required: true,
+        },
+        difficulty: {
+            type: String,
+            enum: ['easy', 'medium', 'hard'],
+            default: 'medium',
+        },
+        timeLimit: { type: Number, required: true },
+        memoryLimit: { type: Number, required: true },
+        testCases: [
+            {
+                input: String,
+                output: String,
+            },
+        ],
     },
-    description: {
-      type: String,
-      required: true,
-    },
-    difficulty: {
-      type: String,
-      enum: ["easy", "medium", "hard"],
-      default: "medium",
-    },
-    timeLimit: { type: Number, required: true },
-    memoryLimit: { type: Number, required: true },
-    testCases: [
-      {
-        input: String,
-        output: String,
-      },
-    ],
-  },
-  { timestamps: true },
-);
+    { timestamps: true }
+)
 
-export const Problem = mongoose.models.Problem || mongoose.model("Problem", problemSchema);
+export const Problem = mongoose.models.Problem || mongoose.model('Problem', problemSchema)

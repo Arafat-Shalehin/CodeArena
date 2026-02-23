@@ -1,12 +1,12 @@
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import Hero from "@/features/home/components/Hero";
-import FeaturesSection from "@/features/home/components/FeaturesSection";
-import HowItWorksSection from "@/features/home/components/HowItWorksSection";
-import RecentProblemsSection from "@/features/home/components/RecentProblemsSection";
-import LeaderboardPreviewSection from "@/features/home/components/LeaderboardPreviewSection";
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
+import Hero from '@/features/home/components/Hero'
+import FeaturesSection from '@/features/home/components/FeaturesSection'
+import HowItWorksSection from '@/features/home/components/HowItWorksSection'
+import RecentProblemsSection from '@/features/home/components/RecentProblemsSection'
+import LeaderboardPreviewSection from '@/features/home/components/LeaderboardPreviewSection'
 
-import ErrorBoundary from '@/components/ui/error-boundary';
+import ErrorBoundary from '@/components/ui/error-boundary'
 
 /**
  * Home Page
@@ -22,33 +22,33 @@ import ErrorBoundary from '@/components/ui/error-boundary';
  * - LeaderboardPreview: Snapshot of top users
  */
 export default function Home() {
-  return (
-    <div className="min-h-screen flex flex-col font-sans text-text-primary bg-bg-page">
-      <Navbar />
+    return (
+        <div className="text-text-primary bg-bg-page flex min-h-screen flex-col font-sans">
+            <Navbar />
 
-      <main className="flex-grow">
-        <ErrorBoundary>
-          <Hero />
-        </ErrorBoundary>
+            <main className="flex-grow">
+                <ErrorBoundary>
+                    <Hero />
+                </ErrorBoundary>
 
-        <ErrorBoundary>
-          <FeaturesSection />
-        </ErrorBoundary>
+                <ErrorBoundary>
+                    <FeaturesSection />
+                </ErrorBoundary>
 
-        <ErrorBoundary>
-          <HowItWorksSection />
-        </ErrorBoundary>
+                <ErrorBoundary>
+                    <HowItWorksSection />
+                </ErrorBoundary>
 
-        <ErrorBoundary>
-          <RecentProblemsSection />
-        </ErrorBoundary>
+                <ErrorBoundary>
+                    <RecentProblemsSection />
+                </ErrorBoundary>
 
-        <ErrorBoundary>
-          <LeaderboardPreviewSection />
-        </ErrorBoundary>
-      </main>
+                <ErrorBoundary>
+                    <LeaderboardPreviewSection />
+                </ErrorBoundary>
+            </main>
 
-      <Footer />
-    </div>
-  );
+            <Footer />
+        </div>
+    )
 }

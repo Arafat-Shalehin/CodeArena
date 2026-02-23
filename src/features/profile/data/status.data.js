@@ -10,11 +10,18 @@
  * @returns {Array<{label: string, value: string, border: string}>}
  */
 export function getStatusCards(stats) {
-  return [
-    { label: 'Problems Solved', value: String(stats?.totalSubmissions ?? 0), border: 'border-success' },
-    { label: 'Contest Rating', value: String(stats?.score ?? 0), border: 'border-accent' },
-    { label: 'Participated', value: String(stats?.contestsParticipated ?? 0), border: 'border-info' },
-    { label: 'Global Rank', value: `#${stats?.globalRank ?? '—'}`, border: 'border-warning' },
-  ];
+    return [
+        {
+            label: 'Problems Solved',
+            value: String(stats?.totalSubmissions ?? 0),
+            border: 'border-success',
+        },
+        { label: 'Contest Rating', value: String(stats?.score ?? 0), border: 'border-accent' },
+        {
+            label: 'Participated',
+            value: String(stats?.contestsParticipated ?? 0),
+            border: 'border-info',
+        },
+        { label: 'Global Rank', value: `#${stats?.globalRank ?? '—'}`, border: 'border-warning' },
+    ]
 }
-

@@ -1,24 +1,24 @@
-import Docker from 'dockerode';
-import { Readable, PassThrough } from 'stream';
-import path from 'path';
-import { getLanguageConfig } from './languages.js';
-import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js';
+import Docker from 'dockerode'
+import { Readable, PassThrough } from 'stream'
+import path from 'path'
+import { getLanguageConfig } from './languages.js'
+import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
 
-const dockerOptions = {};
+const dockerOptions = {}
 
 // Use DOCKER_HOST from environment if available (e.g., when using docker-proxy)
 if (process.env.DOCKER_HOST) {
     if (process.env.DOCKER_HOST.startsWith('http')) {
-        const url = new URL(process.env.DOCKER_HOST);
-        dockerOptions.host = url.hostname;
-        dockerOptions.port = url.port || 2375;
-        dockerOptions.protocol = url.protocol.replace(':', '');
+        const url = new URL(process.env.DOCKER_HOST)
+        dockerOptions.host = url.hostname
+        dockerOptions.port = url.port || 2375
+        dockerOptions.protocol = url.protocol.replace(':', '')
     } else {
-        dockerOptions.socketPath = process.env.DOCKER_HOST;
+        dockerOptions.socketPath = process.env.DOCKER_HOST
     }
 }
 
-const docker = new Docker(dockerOptions);
+const docker = new Docker(dockerOptions)
 
 /**
  * Execute code in a Docker container
@@ -29,49 +29,48 @@ const docker = new Docker(dockerOptions);
  * @param {number} memoryLimit - Memory limit in KB
  * @returns {Promise<Object>} - Execution result
  */
-export async function executeCode({
-    code,
-    language,
-    input = '',
-    timeLimit,
-    memoryLimit,
-}) {
+export async function executeCode({ code, language, input = '', timeLimit, memoryLimit }) {
     try {
         // Validate code security
-        const securityCheck = validateCodeSecurity(code);
+        const securityCheck = validateCodeSecurity(code)
         if (!securityCheck.isValid) {
             return {
                 success: false,
                 verdict: 'SECURITY_ERROR',
                 error: securityCheck.errors.join(', '),
-            };
+            }
         }
 
         // Get language configuration
-        const langConfig = getLanguageConfig(language);
+        const langConfig = getLanguageConfig(language)
 
         // Use provided limits or defaults
-        const effectiveTimeLimit = timeLimit || langConfig.defaultTimeLimit;
-        const effectiveMemoryLimit = memoryLimit || langConfig.defaultMemoryLimit;
+        const effectiveTimeLimit = timeLimit || langConfig.defaultTimeLimit
+        const effectiveMemoryLimit = memoryLimit || langConfig.defaultMemoryLimit
 
         // Create container
-        const container = await createContainer(langConfig, code, input, effectiveTimeLimit, effectiveMemoryLimit);
+        const container = await createContainer(
+            langConfig,
+            code,
+            input,
+            effectiveTimeLimit,
+            effectiveMemoryLimit
+        )
 
         // Start container and get results
-        const result = await runContainer(container, effectiveTimeLimit);
+        const result = await runContainer(container, effectiveTimeLimit)
 
         // Cleanup container
-        await cleanupContainer(container);
+        await cleanupContainer(container)
 
-        return result;
-
+        return result
     } catch (error) {
-        console.error('Code execution error:', error);
+        console.error('Code execution error:', error)
         return {
             success: false,
             verdict: 'SYSTEM_ERROR',
             error: error.message,
-        };
+        }
     }
 }
 
@@ -79,27 +78,24 @@ export async function executeCode({
  * Create a Docker container with code and input
  */
 async function createContainer(langConfig, code, input, timeLimit, memoryLimit) {
-    const dockerConfig = getDockerRunConfig(langConfig.name);
+    const dockerConfig = getDockerRunConfig(langConfig.name)
 
     // Create container with tail command to keep it running (override ENTRYPOINT)
     const container = await docker.createContainer({
         Image: langConfig.image,
         Entrypoint: ['/bin/sh', '-c'],
         Cmd: ['tail -f /dev/null'], // Keep container alive indefinitely
-        Env: [
-            `TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`,
-            `MEMORY_LIMIT=${memoryLimit}`,
-        ],
+        Env: [`TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`, `MEMORY_LIMIT=${memoryLimit}`],
         ...dockerConfig,
         OpenStdin: true,
         Tty: false,
-    });
+    })
 
     // Start container first
-    await container.start();
+    await container.start()
 
     // Wait a moment to make sure container is fully started
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Write files using exec
     try {
@@ -110,71 +106,64 @@ async function createContainer(langConfig, code, input, timeLimit, memoryLimit) 
                 AttachStdout: true,
                 AttachStderr: true,
                 User: user,
-            });
-            const stream = await exec.start({ Detach: false, Tty: false });
+            })
+            const stream = await exec.start({ Detach: false, Tty: false })
 
-            let output = '';
+            let output = ''
             stream.on('data', (chunk) => {
-                output += chunk.toString('utf8');
-            });
+                output += chunk.toString('utf8')
+            })
 
             await new Promise((resolve, reject) => {
-                stream.on('end', resolve);
-                stream.on('error', reject);
-            });
+                stream.on('end', resolve)
+                stream.on('error', reject)
+            })
 
-            return output;
-        };
+            return output
+        }
 
         // Set workspace directory with full permissions for all operations
-        await runExec('rm -f /workspace/* && chmod 777 /workspace', 'root');
+        await runExec('rm -f /workspace/* && chmod 777 /workspace', 'root')
 
         // Write source code file using base64 encoding
-        const codeB64 = Buffer.from(code).toString('base64');
-        await runExec(`echo "${codeB64}" | base64 -d > /workspace/${langConfig.fileName}`);
+        const codeB64 = Buffer.from(code).toString('base64')
+        await runExec(`echo "${codeB64}" | base64 -d > /workspace/${langConfig.fileName}`)
 
         // Write input file if provided
         if (input) {
-            const inputB64 = Buffer.from(input).toString('base64');
-            await runExec(`echo "${inputB64}" | base64 -d > /workspace/input.txt`);
+            const inputB64 = Buffer.from(input).toString('base64')
+            await runExec(`echo "${inputB64}" | base64 -d > /workspace/input.txt`)
         }
 
         // Ensure workspace is fully writable by everyone (including coderunner)
-        await runExec('chmod 777 /workspace && chmod 666 /workspace/* 2>/dev/null || true', 'root');
+        await runExec('chmod 777 /workspace && chmod 666 /workspace/* 2>/dev/null || true', 'root')
 
         // Verify setup (for debugging)
-        const verifyOutput = await runExec('ls -la /workspace/ 2>&1', 'root');
-        console.log('Workspace contents:', verifyOutput);
-
-
-
-
-
-
-
+        const verifyOutput = await runExec('ls -la /workspace/ 2>&1', 'root')
+        console.log('Workspace contents:', verifyOutput)
     } catch (error) {
-        console.error('Error writing files to container:', error);
+        console.error('Error writing files to container:', error)
         try {
-            await container.stop();
+            await container.stop()
         } catch (stopError) {
             // Ignore if already stopped
         }
         try {
-            await container.remove({ force: true });
+            await container.remove({ force: true })
         } catch (removeError) {
             // Ignore removal errors
         }
-        throw new Error('Failed to write files to container: ' + error.message);
+        throw new Error('Failed to write files to container: ' + error.message)
     }
 
-    return container;
+    return container
 }
 
 /**
  * Run container and collect results
  */
 async function runContainer(container, timeLimit) {
-    const startTime = Date.now();
+    const startTime = Date.now()
 
     try {
         // Execute the runner script as coderunner user
@@ -183,58 +172,60 @@ async function runContainer(container, timeLimit) {
             AttachStdout: true,
             AttachStderr: true,
             User: 'coderunner',
-        });
+        })
 
         // Start execution with timeout
-        const execStream = await exec.start({ Detach: false, Tty: false });
+        const execStream = await exec.start({ Detach: false, Tty: false })
 
         // Collect output using PassThrough streams to handle Docker's multiplexing
-        const stdoutStream = new PassThrough();
-        const stderrStream = new PassThrough();
+        const stdoutStream = new PassThrough()
+        const stderrStream = new PassThrough()
 
         // Use container's modem to demultiplex the stream (separates stdout from stderr and removes headers)
-        container.modem.demuxStream(execStream, stdoutStream, stderrStream);
+        container.modem.demuxStream(execStream, stdoutStream, stderrStream)
 
-        let output = '';
+        let output = ''
         const streamPromise = new Promise((resolve, reject) => {
             stdoutStream.on('data', (chunk) => {
-                output += chunk.toString('utf8');
-            });
+                output += chunk.toString('utf8')
+            })
             stderrStream.on('data', (chunk) => {
-                output += chunk.toString('utf8');
-            });
+                output += chunk.toString('utf8')
+            })
 
             // Resolve when the main stream ends
-            execStream.on('end', resolve);
-            execStream.on('close', resolve);
+            execStream.on('end', resolve)
+            execStream.on('close', resolve)
 
             // Handle errors
-            execStream.on('error', reject);
-        });
+            execStream.on('error', reject)
+        })
 
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('TIME_LIMIT_EXCEEDED')), timeLimit + 1000)
-        );
+        )
 
-        await Promise.race([streamPromise, timeoutPromise]);
+        await Promise.race([streamPromise, timeoutPromise])
 
-        const executionTime = Date.now() - startTime;
+        const executionTime = Date.now() - startTime
 
         // Get exit code
-        const inspectExec = await exec.inspect();
-        const statusCode = inspectExec.ExitCode || 0;
+        const inspectExec = await exec.inspect()
+        const statusCode = inspectExec.ExitCode || 0
 
         // Parse output
-        return parseExecutionOutput(output, statusCode, executionTime);
-
+        return parseExecutionOutput(output, statusCode, executionTime)
     } catch (error) {
         if (error.message === 'TIME_LIMIT_EXCEEDED') {
             try {
-                await container.stop({ t: 0 });
+                await container.stop({ t: 0 })
             } catch (stopError) {
                 // Ignore if container is already stopped
-                if (!stopError.message.includes('already stopped') && stopError.statusCode !== 304) {
-                    console.error('Error stopping container:', stopError);
+                if (
+                    !stopError.message.includes('already stopped') &&
+                    stopError.statusCode !== 304
+                ) {
+                    console.error('Error stopping container:', stopError)
                 }
             }
             return {
@@ -242,9 +233,9 @@ async function runContainer(container, timeLimit) {
                 verdict: 'TIME_LIMIT_EXCEEDED',
                 executionTime: timeLimit,
                 error: 'Execution time exceeded limit',
-            };
+            }
         }
-        throw error;
+        throw error
     }
 }
 
@@ -252,7 +243,7 @@ async function runContainer(container, timeLimit) {
  * Parse execution output and determine verdict
  */
 function parseExecutionOutput(output, statusCode, executionTime) {
-    const lines = output.split('\n');
+    const lines = output.split('\n')
 
     // Check for known error patterns
     if (output.includes('COMPILATION_ERROR')) {
@@ -261,7 +252,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             verdict: 'COMPILATION_ERROR',
             error: extractError(output),
             executionTime: 0,
-        };
+        }
     }
 
     if (output.includes('TIME_LIMIT_EXCEEDED')) {
@@ -270,7 +261,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             verdict: 'TIME_LIMIT_EXCEEDED',
             executionTime,
             error: 'Time limit exceeded',
-        };
+        }
     }
 
     if (output.includes('MEMORY_LIMIT_EXCEEDED')) {
@@ -279,7 +270,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             verdict: 'MEMORY_LIMIT_EXCEEDED',
             memoryUsed: extractMemory(output),
             error: 'Memory limit exceeded',
-        };
+        }
     }
 
     if (output.includes('RUNTIME_ERROR') || statusCode !== 0) {
@@ -288,7 +279,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             verdict: 'RUNTIME_ERROR',
             error: extractError(output),
             executionTime,
-        };
+        }
     }
 
     // Success case
@@ -299,7 +290,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             output: extractOutput(output),
             executionTime: extractExecutionTime(output) || executionTime,
             memoryUsed: extractMemory(output),
-        };
+        }
     }
 
     // Unknown error
@@ -308,57 +299,55 @@ function parseExecutionOutput(output, statusCode, executionTime) {
         verdict: 'RUNTIME_ERROR',
         error: 'Unknown execution error',
         output: output.substring(0, 1000),
-    };
+    }
 }
 
 /**
  * Extract error message from output
  */
 function extractError(output) {
-    const lines = output.split('\n');
-    const errorLines = lines.filter(line =>
-        !line.includes('Compiling') &&
-        !line.includes('Executing') &&
-        line.trim() !== ''
-    );
-    return errorLines.slice(0, 10).join('\n');
+    const lines = output.split('\n')
+    const errorLines = lines.filter(
+        (line) => !line.includes('Compiling') && !line.includes('Executing') && line.trim() !== ''
+    )
+    return errorLines.slice(0, 10).join('\n')
 }
 
 /**
  * Extract program output
  */
 function extractOutput(output) {
-    const lines = output.split('\n');
-    let capturing = false;
-    const outputLines = [];
+    const lines = output.split('\n')
+    let capturing = false
+    const outputLines = []
 
     for (const line of lines) {
         if (line.includes('SUCCESS')) {
-            capturing = true;
-            continue;
+            capturing = true
+            continue
         }
         if (capturing && !line.includes('Execution time') && !line.includes('Memory used')) {
-            outputLines.push(line);
+            outputLines.push(line)
         }
     }
 
-    return outputLines.join('\n').trim();
+    return outputLines.join('\n').trim()
 }
 
 /**
  * Extract execution time from output
  */
 function extractExecutionTime(output) {
-    const match = output.match(/Execution time:\s*(\d+)ms/);
-    return match ? parseInt(match[1]) : null;
+    const match = output.match(/Execution time:\s*(\d+)ms/)
+    return match ? parseInt(match[1]) : null
 }
 
 /**
  * Extract memory usage from output
  */
 function extractMemory(output) {
-    const match = output.match(/Memory used:\s*(\d+)KB/);
-    return match ? parseInt(match[1]) : null;
+    const match = output.match(/Memory used:\s*(\d+)KB/)
+    return match ? parseInt(match[1]) : null
 }
 
 /**
@@ -366,9 +355,9 @@ function extractMemory(output) {
  */
 async function cleanupContainer(container) {
     try {
-        await container.remove({ force: true });
+        await container.remove({ force: true })
     } catch (error) {
-        console.error('Container cleanup error:', error);
+        console.error('Container cleanup error:', error)
     }
 }
 
@@ -378,10 +367,10 @@ async function cleanupContainer(container) {
  */
 export async function checkDockerAvailability() {
     try {
-        await docker.ping();
-        return { available: true };
+        await docker.ping()
+        return { available: true }
     } catch (error) {
-        return { available: false, error: error.message };
+        return { available: false, error: error.message }
     }
 }
 
@@ -390,16 +379,19 @@ export async function checkDockerAvailability() {
  */
 export async function getExecutorImages() {
     try {
-        const images = await docker.listImages();
+        const images = await docker.listImages()
         return images
-            .filter(img => img.RepoTags && img.RepoTags.some(tag => tag.includes('codearena-executor')))
-            .map(img => ({
+            .filter(
+                (img) =>
+                    img.RepoTags && img.RepoTags.some((tag) => tag.includes('codearena-executor'))
+            )
+            .map((img) => ({
                 tags: img.RepoTags,
                 size: img.Size,
                 created: img.Created,
-            }));
+            }))
     } catch (error) {
-        console.error('Error listing images:', error);
-        return [];
+        console.error('Error listing images:', error)
+        return []
     }
 }

@@ -1,4 +1,4 @@
-import { Problem } from "@/models/Problem.models";
+import { Problem } from '@/models/Problem.models'
 
 /**
  * Fetch paginated list of problems with optional filtering.
@@ -12,41 +12,37 @@ import { Problem } from "@/models/Problem.models";
  * @returns {Object} - { problems, total, page, pages }
  */
 export async function getAllProblems(query) {
-  const page = Math.max(parseInt(query.page, 10) || 1, 1);
-  const limit = Math.min(parseInt(query.limit, 10) || 10, 50); // cap limit
-  const skip = (page - 1) * limit;
+    const page = Math.max(parseInt(query.page, 10) || 1, 1)
+    const limit = Math.min(parseInt(query.limit, 10) || 10, 50) // cap limit
+    const skip = (page - 1) * limit
 
-  const filter = {};
+    const filter = {}
 
-  // Filter status
-  if (query.difficulty) {
-    filter.difficulty = query.difficulty;
-  }
+    // Filter status
+    if (query.difficulty) {
+        filter.difficulty = query.difficulty
+    }
 
-  // Filter status
-  if (query.search) {
-    filter.title = { $regex: query.search, $options: "i" };
-  }
+    // Filter status
+    if (query.search) {
+        filter.title = { $regex: query.search, $options: 'i' }
+    }
 
-  // Running queries in parallel for better performance
-  const [problems, total] = await Promise.all([
-    Problem.find(filter)
-      .select("-testCases")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    Problem.countDocuments(filter),
-  ]);
+    // Running queries in parallel for better performance
+    const [problems, total] = await Promise.all([
+        Problem.find(filter).select('-testCases').sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Problem.countDocuments(filter),
+    ])
 
-  return {
-    problems,
-    pagination: {
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    },
-  };
+    return {
+        problems,
+        pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit),
+        },
+    }
 }
 
 /**
@@ -57,21 +53,21 @@ export async function getAllProblems(query) {
  * @param {Boolean} options.includeTestCases - Whether to include test cases
  */
 export async function getProblemById(id, { includeTestCases = false } = {}) {
-  const query = Problem.findById(id);
+    const query = Problem.findById(id)
 
-  if (!includeTestCases) {
-    query.select("-testCases");
-  }
+    if (!includeTestCases) {
+        query.select('-testCases')
+    }
 
-  const problem = await query;
+    const problem = await query
 
-  if (!problem) {
-    const error = err.status = 404;
-    error.message = "Problem not found";
-    throw error;
-  }
+    if (!problem) {
+        const error = (err.status = 404)
+        error.message = 'Problem not found'
+        throw error
+    }
 
-  return problem;
+    return problem
 }
 
 /**
@@ -81,7 +77,7 @@ export async function getProblemById(id, { includeTestCases = false } = {}) {
  * @returns {Object} - Created problem
  */
 export async function createProblem(data) {
-  return await Problem.create(data);
+    return await Problem.create(data)
 }
 
 /**
@@ -91,18 +87,18 @@ export async function createProblem(data) {
  * @returns {Object} - Updated problem
  */
 export async function updateProblem(id, data) {
-  const problem = await Problem.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
+    const problem = await Problem.findByIdAndUpdate(id, data, {
+        new: true,
+        runValidators: true,
+    })
 
-  if (!problem) {
-    const error = err.status = 404;
-    error.message = "Problem not found";
-    throw error;
-  }
+    if (!problem) {
+        const error = (err.status = 404)
+        error.message = 'Problem not found'
+        throw error
+    }
 
-  return problem;
+    return problem
 }
 
 /**
@@ -111,13 +107,13 @@ export async function updateProblem(id, data) {
  * @returns {Object} - Deleted problem
  */
 export async function deleteProblem(id) {
-  const problem = await Problem.findByIdAndDelete(id);
+    const problem = await Problem.findByIdAndDelete(id)
 
-  if (!problem) {
-    const error = err.status = 404;
-    error.message = "Problem not found";
-    throw error;
-  }
+    if (!problem) {
+        const error = (err.status = 404)
+        error.message = 'Problem not found'
+        throw error
+    }
 
-  return problem;
+    return problem
 }

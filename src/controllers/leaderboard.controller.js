@@ -3,25 +3,25 @@ import {
     getLeaderboard,
     getUserRank,
     resetLeaderboard,
-} from "@/services/leaderboard.service";
+} from '@/services/leaderboard.service'
 
 /**
  * POST /api/contests/[id]/leaderboard/finalize
  * Admin only
  */
 export async function finalizeLeaderboard(req, { params }) {
-    const contestId = params.id;
+    const contestId = params.id
 
-    const result = await computeLeaderboard(contestId);
+    const result = await computeLeaderboard(contestId)
 
     return Response.json(
         {
             success: true,
-            message: "Leaderboard finalized successfully.",
+            message: 'Leaderboard finalized successfully.',
             data: result,
         },
         { status: 201 }
-    );
+    )
 }
 
 /**
@@ -29,21 +29,21 @@ export async function finalizeLeaderboard(req, { params }) {
  * Public
  */
 export async function fetchLeaderboard(req, { params }) {
-    const contestId = params.id;
+    const contestId = params.id
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(req.url)
     const query = {
-        page: searchParams.get("page"),
-        limit: searchParams.get("limit"),
-    };
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit'),
+    }
 
-    const result = await getLeaderboard(contestId, query);
+    const result = await getLeaderboard(contestId, query)
 
     return Response.json({
         success: true,
         data: result.leaderboard,
         pagination: result.pagination,
-    });
+    })
 }
 
 /**
@@ -51,15 +51,15 @@ export async function fetchLeaderboard(req, { params }) {
  * Authenticated user
  */
 export async function fetchMyRank(req, { params }) {
-    const contestId = params.id;
-    const userId = req.user.id;
+    const contestId = params.id
+    const userId = req.user.id
 
-    const result = await getUserRank(contestId, userId);
+    const result = await getUserRank(contestId, userId)
 
     return Response.json({
         success: true,
         data: result,
-    });
+    })
 }
 
 /**
@@ -67,13 +67,13 @@ export async function fetchMyRank(req, { params }) {
  * Admin only
  */
 export async function deleteLeaderboard(req, { params }) {
-    const contestId = params.id;
+    const contestId = params.id
 
-    const result = await resetLeaderboard(contestId);
+    const result = await resetLeaderboard(contestId)
 
     return Response.json({
         success: true,
-        message: "Leaderboard reset successfully.",
+        message: 'Leaderboard reset successfully.',
         data: result,
-    });
+    })
 }
