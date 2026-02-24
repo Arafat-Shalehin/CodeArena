@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import dbConnect from '@/lib/mongodb'
 import { asyncHandler } from '@/lib/asyncHandler'
 import { protect } from '@/middlewares/auth.middleware'

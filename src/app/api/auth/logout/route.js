@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { logout } from '@/controllers/user.controller'
 import { asyncHandler } from '@/lib/asyncHandler'
 import dbConnect from '@/lib/mongodb'

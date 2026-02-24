@@ -1,6 +1,7 @@
-export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
-import dbConnect from "@/lib/mongodb";
+import dbConnect from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
 import { executeCode } from '@/lib/docker/executor'
 import { protect } from '@/middlewares/auth.middleware'
@@ -11,7 +12,7 @@ import { protect } from '@/middlewares/auth.middleware'
  */
 export async function POST(request) {
     try {
-        await dbConnect();
+        await dbConnect()
         // Authenticate user
         await protect(request)
 

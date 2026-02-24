@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import dbConnect from '@/lib/mongodb'
 import { fetchUserById, removeUser } from '@/controllers/user.controller'
 import { asyncHandler } from '@/lib/asyncHandler'

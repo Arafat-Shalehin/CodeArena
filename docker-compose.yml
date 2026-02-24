@@ -1,19 +1,61 @@
 services:
-    # Docker API Proxy (Security Hardening)
+    # MongoDB Database
+    mongodb:
+        image: mongo:latest
+        container_name: codearena-mongodb
+        restart: always
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
+            MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+        ports:
+            - '27017:27017'
+        volumes:
+            - mongodb_data:/data/db
+        networks:
+            - codearena-network
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Main Application
+    app:
+        build: .
+        container_name: codearena-app
+        restart: always
+        depends_on:
+            mongodb:
+                condition: service_healthy
+            docker-proxy:
+                condition: service_started
+        environment:
+            - MONGODB_URI=mongodb://${DB_USER:-admin}:${DB_PASSWORD:-password}@mongodb:27017/codearena?authSource=admin
+            - DOCKER_HOST=http://docker-proxy:2375
+            - NODE_ENV=${NODE_ENV:-production}
+            - JWT_SECRET=${JWT_SECRET}
+        ports:
+            - '3000:3000'
+        networks:
+            - codearena-network
+
+    # Docker API Proxy (Security Hardened)
+    # This service allows the 'app' to talk to Docker safely
     docker-proxy:
         image: tecnativa/docker-socket-proxy
         container_name: codearena-docker-proxy
         privileged: true
+        # No ports exposed to the host! Only accessible via internal network.
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock:ro
         environment:
             - CONTAINERS=1
             - IMAGES=1
             - POST=1
-            - DELETE=1
             - EXEC=1
-        ports:
-            - '2375:2375'
+            # DELETE and BUILD are disabled for extra security
+            - DELETE=0
+            - BUILD=0
         networks:
             - codearena-network
         restart: unless-stopped
@@ -23,5 +65,7 @@ networks:
         driver: bridge
 
 volumes:
+    mongodb_data:
+        driver: local
     executor-cache:
         driver: local
