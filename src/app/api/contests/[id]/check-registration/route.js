@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import dbConnect from '@/lib/mongodb'
 import { checkRegistration } from '@/controllers/contestParticipant.controller'
 import { asyncHandler } from '@/lib/asyncHandler'

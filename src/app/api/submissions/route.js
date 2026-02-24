@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import dbConnect from '@/lib/mongodb'
 import { submitCode, fetchSubmissions } from '@/controllers/submission.controller'
 import { asyncHandler } from '@/lib/asyncHandler'
