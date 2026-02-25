@@ -12,6 +12,8 @@ import { useAuth } from '@/context/AuthContext'
 // Profile Edit Modal
 import EditProfileModal from './EditProfileModal'
 import { toast } from 'sonner'
+import { Settings } from 'lucide-react'
+import Link from 'next/link'
 
 /**
  * @component ProfileHero
@@ -101,13 +103,19 @@ export default function ProfileHero({ user: userProp }) {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex shrink-0 justify-center gap-3 md:justify-end">
+                        <div className="flex shrink-0 flex-col justify-center gap-3 md:justify-end">
                             {!isOwnProfile && <Button variant="default">Follow</Button>}
                             {isOwnProfile && (
                                 <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
                                     Edit Profile
                                 </Button>
                             )}
+                            <Link
+                                href="profile/settings"
+                                className="hover:text-text-muted text-info flex gap-2 underline"
+                            >
+                                <Settings></Settings> Profile Settings
+                            </Link>
                         </div>
                     </div>
                 </div>
