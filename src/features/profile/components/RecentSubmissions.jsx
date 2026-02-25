@@ -1,4 +1,4 @@
-import { submissions } from '../data/submissions.data';
+import { submissions } from '../data/submissions.data'
 
 /**
  * @component RecentSubmissions
@@ -8,53 +8,52 @@ import { submissions } from '../data/submissions.data';
  * @returns {JSX.Element} The rendered recent submissions list.
  */
 export default function RecentSubmissions({ submissions = [] }) {
-  if (!submissions || submissions.length === 0) {
-    return (
-      <div className="p-8 text-center border-t border-border">
-        <p className="text-sm text-text-muted">No recent submissions</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="divide-y divide-border">
-      {submissions.map((item) => (
-        <div
-          key={item.id}
-          className="p-4 flex justify-between items-center hover:bg-bg-muted/50 transition-colors"
-        >
-          <div className="flex gap-4 items-center">
-            {/* Status Icon */}
-            <span
-              className={
-                item.status === 'Accepted' ? 'text-success' : 'text-error'
-              }
-            >
-              {item.status === 'Accepted' ? '●' : '■'}
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-text-primary font-mono">
-                {item.title}
-              </p>
-              <p className="text-xs text-text-muted">
-                {item.time} • {item.lang}
-              </p>
+    if (!submissions || submissions.length === 0) {
+        return (
+            <div className="border-border border-t p-8 text-center">
+                <p className="text-text-muted text-sm">No recent submissions</p>
             </div>
-          </div>
+        )
+    }
 
-          {/* Status Badge */}
-          <span
-            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.status === 'Accepted'
-              ? 'bg-success-light text-success'
-              : 'bg-error-light text-error'
-              }`}
-          >
-            {item.status}
-          </span>
+    return (
+        <div className="divide-border divide-y">
+            {submissions.map((item) => (
+                <div
+                    key={item.id}
+                    className="hover:bg-bg-muted/50 flex items-center justify-between p-4 transition-colors"
+                >
+                    <div className="flex items-center gap-4">
+                        {/* Status Icon */}
+                        <span
+                            className={item.status === 'Accepted' ? 'text-success' : 'text-error'}
+                        >
+                            {item.status === 'Accepted' ? '●' : '■'}
+                        </span>
+                        <div>
+                            <p className="text-text-primary font-mono text-sm font-semibold">
+                                {item.title}
+                            </p>
+                            <p className="text-text-muted text-xs">
+                                {item.time} • {item.lang}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <span
+                        className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            item.status === 'Accepted'
+                                ? 'bg-success-light text-success'
+                                : 'bg-error-light text-error'
+                        }`}
+                    >
+                        {item.status}
+                    </span>
+                </div>
+            ))}
         </div>
-      ))}
-    </div>
-  );
+    )
 }
 
-RecentSubmissions.displayName = 'RecentSubmissions';
+RecentSubmissions.displayName = 'RecentSubmissions'

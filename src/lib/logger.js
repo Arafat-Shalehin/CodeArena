@@ -1,4 +1,4 @@
-import { createLog } from "@/services/log.service";
+import { createLog } from '@/services/log.service'
 
 /**
  * Internal safe logger wrapper
@@ -6,11 +6,11 @@ import { createLog } from "@/services/log.service";
  */
 async function safeLog(payload) {
     try {
-        await createLog(payload);
+        await createLog(payload)
     } catch (err) {
         // Fallback: Never crash the app due to logging failure
-        if (process.env.NODE_ENV !== "production") {
-            console.error("Logger failure:", err.message);
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('Logger failure:', err.message)
         }
     }
 }
@@ -20,26 +20,23 @@ async function safeLog(payload) {
  */
 function createTypeLogger(type) {
     return {
-        info: async (message, meta = {}) =>
-            safeLog({ type, level: "info", message, ...meta }),
+        info: async (message, meta = {}) => safeLog({ type, level: 'info', message, ...meta }),
 
-        warn: async (message, meta = {}) =>
-            safeLog({ type, level: "warn", message, ...meta }),
+        warn: async (message, meta = {}) => safeLog({ type, level: 'warn', message, ...meta }),
 
-        error: async (message, meta = {}) =>
-            safeLog({ type, level: "error", message, ...meta }),
-    };
+        error: async (message, meta = {}) => safeLog({ type, level: 'error', message, ...meta }),
+    }
 }
 
 /**
  * Centralized logger object
  */
 export const logger = {
-    system: createTypeLogger("SYSTEM"),
-    auth: createTypeLogger("AUTH"),
-    contest: createTypeLogger("CONTEST"),
-    submission: createTypeLogger("SUBMISSION"),
-    execution: createTypeLogger("EXECUTION"),
-    security: createTypeLogger("SECURITY"),
-    database: createTypeLogger("DATABASE"),
-};
+    system: createTypeLogger('SYSTEM'),
+    auth: createTypeLogger('AUTH'),
+    contest: createTypeLogger('CONTEST'),
+    submission: createTypeLogger('SUBMISSION'),
+    execution: createTypeLogger('EXECUTION'),
+    security: createTypeLogger('SECURITY'),
+    database: createTypeLogger('DATABASE'),
+}

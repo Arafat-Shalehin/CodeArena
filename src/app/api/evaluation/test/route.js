@@ -1,5 +1,8 @@
-import { NextResponse } from 'next/server';
-import { runSingleTest } from '@/lib/evaluation/testRunner';
+export const dynamic = 'force-dynamic'
+import dbConnect from '@/lib/mongodb'
+import { NextResponse } from 'next/server'
+import { runSingleTest } from '@/lib/evaluation/testRunner'
+import { protect } from '@/middlewares/auth.middleware'
 
 /**
  * POST /api/evaluation/test
@@ -7,22 +10,18 @@ import { runSingleTest } from '@/lib/evaluation/testRunner';
  */
 export async function POST(request) {
     try {
-        const body = await request.json();
-        const {
-            code,
-            language,
-            testCase,
-            timeLimit,
-            memoryLimit,
-            comparisonMode = 'token',
-        } = body;
+        await dbConnect()
+        // Authenticate user
+        await protect(request)
+        const body = await request.json()
+        const { code, language, testCase, timeLimit, memoryLimit, comparisonMode = 'token' } = body
 
         // Validate required fields
         if (!code || !language || !testCase) {
             return NextResponse.json(
                 { error: 'Code, language, and testCase are required' },
                 { status: 400 }
-            );
+            )
         }
 
         // Validate test case structure
@@ -30,7 +29,7 @@ export async function POST(request) {
             return NextResponse.json(
                 { error: 'Test case must have input and output fields' },
                 { status: 400 }
-            );
+            )
         }
 
         // Run test
@@ -41,22 +40,21 @@ export async function POST(request) {
             timeLimit,
             memoryLimit,
             comparisonMode,
-        });
+        })
 
         return NextResponse.json({
             success: true,
             result,
-        });
-
+        })
     } catch (error) {
-        console.error('Test execution error:', error);
+        console.error('Test execution error:', error)
         return NextResponse.json(
             {
                 success: false,
                 error: 'Test execution failed',
-                message: error.message
+                message: error.message,
             },
             { status: 500 }
-        );
+        )
     }
 }

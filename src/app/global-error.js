@@ -1,7 +1,6 @@
-'use client';
+'use client'
 
-
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button'
 
 /**
  * Global Error Boundary
@@ -10,10 +9,10 @@ import { Button } from '@/components/ui/button';
 export default function GlobalError({ error, reset }) {
     return (
         <html>
-            <body className="min-h-screen bg-bg-page flex items-center justify-center p-4">
-                <div className="max-w-md w-full text-center space-y-6">
+            <body className="bg-bg-page flex min-h-screen items-center justify-center p-4">
+                <div className="w-full max-w-md space-y-6 text-center">
                     <div className="space-y-2">
-                        <h2 className="text-3xl font-display font-bold text-text-primary">
+                        <h2 className="font-display text-text-primary text-3xl font-bold">
                             Something went wrong!
                         </h2>
                         <p className="text-text-muted">
@@ -21,18 +20,15 @@ export default function GlobalError({ error, reset }) {
                         </p>
                     </div>
 
-                    <div className="p-4 bg-error-light text-error rounded-lg text-sm font-mono text-left overflow-auto max-h-40 border border-error/20">
-                        {error.message || "Unknown error occurred"}
+                    <div className="bg-error-light text-error border-error/20 max-h-40 overflow-auto rounded-lg border p-4 text-left font-mono text-sm">
+                        {error.message || 'Unknown error occurred'}
                     </div>
 
-                    <Button
-                        onClick={() => reset()}
-                        className="w-full"
-                    >
+                    <Button onClick={() => reset()} className="w-full">
                         Try again
                     </Button>
                 </div>
             </body>
         </html>
-    );
+    )
 }

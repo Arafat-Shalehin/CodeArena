@@ -53,29 +53,29 @@ export const SANDBOX_CONFIG = {
         ],
         message: 'Code contains potentially unsafe operations',
     },
-};
+}
 
 export const validateCodeSecurity = (code) => {
-    const errors = [];
+    const errors = []
 
     // Check code size
     if (code.length > SANDBOX_CONFIG.execution.maxSourceSize) {
-        errors.push('Code size exceeds maximum allowed size');
+        errors.push('Code size exceeds maximum allowed size')
     }
 
     // Check for blacklisted patterns
     for (const pattern of SANDBOX_CONFIG.blacklist.patterns) {
         if (pattern.test(code)) {
-            errors.push(SANDBOX_CONFIG.blacklist.message);
-            break;
+            errors.push(SANDBOX_CONFIG.blacklist.message)
+            break
         }
     }
 
     return {
         isValid: errors.length === 0,
         errors,
-    };
-};
+    }
+}
 
 export const getDockerRunConfig = (language) => {
     return {
@@ -100,5 +100,5 @@ export const getDockerRunConfig = (language) => {
         WorkingDir: SANDBOX_CONFIG.filesystem.workDir,
         AttachStdout: true,
         AttachStderr: true,
-    };
-};
+    }
+}

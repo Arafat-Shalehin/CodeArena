@@ -1,10 +1,10 @@
-'use client';
+'use client'
 
-import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { leaderboardUsers } from '../data/leaderboard.data';
-import { Crown, Trophy, Medal, Zap, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { leaderboardUsers } from '../data/leaderboard.data'
+import { Crown, Trophy, Medal, Zap, CheckCircle2 } from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
  * DESIGN NOTES — Compact Vercel-minimal aesthetic
@@ -19,35 +19,35 @@ import { Crown, Trophy, Medal, Zap, CheckCircle2 } from 'lucide-react';
  * Animated counter (counts up on mount) - Matched to PlatformStats
  */
 function AnimatedValue({ value, delay = 0 }) {
-    const [display, setDisplay] = useState(0);
-    const rafRef = useRef(null);
+    const [display, setDisplay] = useState(0)
+    const rafRef = useRef(null)
 
     useEffect(() => {
-        const duration = 900;
-        let start = null;
+        const duration = 900
+        let start = null
 
         const animate = (ts) => {
-            if (!start) start = ts;
-            const elapsed = ts - start;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(2, -10 * progress);
+            if (!start) start = ts
+            const elapsed = ts - start
+            const progress = Math.min(elapsed / duration, 1)
+            const eased = 1 - Math.pow(2, -10 * progress)
 
-            setDisplay(Math.round(eased * value));
+            setDisplay(Math.round(eased * value))
 
-            if (progress < 1) rafRef.current = requestAnimationFrame(animate);
-        };
+            if (progress < 1) rafRef.current = requestAnimationFrame(animate)
+        }
 
         const timer = setTimeout(() => {
-            rafRef.current = requestAnimationFrame(animate);
-        }, delay);
+            rafRef.current = requestAnimationFrame(animate)
+        }, delay)
 
         return () => {
-            clearTimeout(timer);
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        };
-    }, [value, delay]);
+            clearTimeout(timer)
+            if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        }
+    }, [value, delay])
 
-    return <>{display.toLocaleString()}</>;
+    return <>{display.toLocaleString()}</>
 }
 
 /**
@@ -62,7 +62,7 @@ function PodiumPosition({ entry, rank, delay }) {
             barHeight: 'h-44',
             BarIcon: Trophy,
             barIconSize: 40,
-            color: '#F59E0B',          // var(--color-rank-gold)
+            color: '#F59E0B', // var(--color-rank-gold)
             badge: '#1 Champion',
         },
         2: {
@@ -72,7 +72,7 @@ function PodiumPosition({ entry, rank, delay }) {
             barHeight: 'h-28',
             BarIcon: Medal,
             barIconSize: 32,
-            color: '#9CA3AF',          // var(--color-rank-silver)
+            color: '#9CA3AF', // var(--color-rank-silver)
             badge: '#2',
         },
         3: {
@@ -82,17 +82,17 @@ function PodiumPosition({ entry, rank, delay }) {
             barHeight: 'h-20',
             BarIcon: Medal,
             barIconSize: 28,
-            color: '#B45309',          // var(--color-rank-bronze)
+            color: '#B45309', // var(--color-rank-bronze)
             badge: '#3',
         },
-    };
+    }
 
-    const c = config[rank];
-    const BarIcon = c.BarIcon;
+    const c = config[rank]
+    const BarIcon = c.BarIcon
 
     return (
         <div
-            className="flex flex-col items-center animate-fade-up"
+            className="animate-fade-up flex flex-col items-center"
             style={{
                 animationDelay: `${delay}ms`,
             }}
@@ -111,13 +111,16 @@ function PodiumPosition({ entry, rank, delay }) {
 
                 {/* Avatar */}
                 <Avatar
-                    className={`${c.avatarSize} border-2 ${rank === 1 ? 'shadow-md animate-soft-pulse' : ''} bg-bg-page`}
+                    className={`${c.avatarSize} border-2 ${rank === 1 ? 'animate-soft-pulse shadow-md' : ''} bg-bg-page`}
                     style={{
                         borderColor: c.color,
                         padding: '2px',
                     }}
                 >
-                    <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${entry.userId.username}`} alt={entry.userId.username} />
+                    <AvatarImage
+                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${entry.userId.username}`}
+                        alt={entry.userId.username}
+                    />
                     <AvatarFallback
                         className="text-xl font-bold"
                         style={{
@@ -131,7 +134,7 @@ function PodiumPosition({ entry, rank, delay }) {
 
                 {/* Badge label below avatar */}
                 <span
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm border border-white/10"
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap shadow-sm"
                     style={{
                         background: c.color,
                         color: '#FFFFFF',
@@ -144,7 +147,7 @@ function PodiumPosition({ entry, rank, delay }) {
             {/* Name */}
             <Link href={`/profile/${entry.userId._id}`}>
                 <p
-                    className={`${c.nameSize} font-display font-bold text-center mb-1 tracking-tight hover:text-accent transition-colors cursor-pointer`}
+                    className={`${c.nameSize} font-display hover:text-accent mb-1 cursor-pointer text-center font-bold tracking-tight transition-colors`}
                     style={{ color: 'var(--color-text-primary)' }}
                 >
                     {entry.userId.username}
@@ -152,18 +155,20 @@ function PodiumPosition({ entry, rank, delay }) {
             </Link>
 
             {/* Stats (compact, single line) - Styled like PlatformStats */}
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex items-center gap-3">
                 <div className="flex items-center gap-1.5" title="Total Points">
                     <Zap size={12} className="text-amber-500" fill="currentColor" />
-                    <span className="font-mono font-bold text-sm text-text-primary">
+                    <span className="text-text-primary font-mono text-sm font-bold">
                         <AnimatedValue value={entry.score} delay={delay + 100} />
                     </span>
-                    <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">score</span>
+                    <span className="text-text-muted text-[10px] font-bold tracking-wider uppercase">
+                        score
+                    </span>
                 </div>
-                <div className="w-px h-3 bg-border" />
+                <div className="bg-border h-3 w-px" />
                 <div className="flex items-center gap-1.5" title="Problems Solved">
                     <CheckCircle2 size={12} className="text-emerald-500" />
-                    <span className="font-mono font-bold text-sm text-text-primary">
+                    <span className="text-text-primary font-mono text-sm font-bold">
                         <AnimatedValue value={entry.submissions} delay={delay + 150} />
                     </span>
                 </div>
@@ -171,13 +176,13 @@ function PodiumPosition({ entry, rank, delay }) {
 
             {/* Podium bar (physical height difference) */}
             <div
-                className={`w-full ${c.barHeight} rounded-t-xl border-t border-x flex items-start justify-center pt-4 relative overflow-hidden group`}
+                className={`w-full ${c.barHeight} group relative flex items-start justify-center overflow-hidden rounded-t-xl border-x border-t pt-4`}
                 style={{
                     borderColor: `${c.color}40`,
                     background: `linear-gradient(180deg, ${c.color}15 0%, ${c.color}05 100%)`,
                 }}
             >
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                 <BarIcon
                     size={c.barIconSize}
@@ -187,7 +192,7 @@ function PodiumPosition({ entry, rank, delay }) {
                 />
             </div>
         </div>
-    );
+    )
 }
 
 /* ── Public Component ────────────────────────────────────── */
@@ -210,14 +215,12 @@ function PodiumPosition({ entry, rank, delay }) {
  * @returns {JSX.Element}
  */
 export function TopThreePodium() {
-    const [first, second, third] = leaderboardUsers.slice(0, 3);
+    const [first, second, third] = leaderboardUsers.slice(0, 3)
 
     return (
         <section className="my-12 md:my-16" aria-label="Top 3 competitors">
-
             {/* ── DESKTOP: 2-1-3 podium layout ────────────────── */}
-            <div className="hidden md:grid md:grid-cols-3 gap-6 items-end px-8 md:px-16 max-w-4xl mx-auto">
-
+            <div className="mx-auto hidden max-w-4xl items-end gap-6 px-8 md:grid md:grid-cols-3 md:px-16">
                 {/* #2 Silver — left, shorter */}
                 <PodiumPosition entry={second} rank={2} delay={100} />
 
@@ -226,12 +229,10 @@ export function TopThreePodium() {
 
                 {/* #3 Bronze — right, shortest */}
                 <PodiumPosition entry={third} rank={3} delay={200} />
-
             </div>
 
             {/* ── MOBILE: 1st full, 2nd/3rd grid ──────────────── */}
-            <div className="md:hidden space-y-4">
-
+            <div className="space-y-4 md:hidden">
                 {/* #1 Gold — full width */}
                 <PodiumPosition entry={first} rank={1} delay={0} />
 
@@ -240,9 +241,7 @@ export function TopThreePodium() {
                     <PodiumPosition entry={second} rank={2} delay={100} />
                     <PodiumPosition entry={third} rank={3} delay={200} />
                 </div>
-
             </div>
-
         </section>
-    );
+    )
 }

@@ -1,5 +1,5 @@
-import { User } from "@/models/User.models";
-import { signToken } from "@/lib/jwt";
+import { User } from '@/models/User.models'
+import { signToken } from '@/lib/jwt'
 
 /**
  * Registers a new user.
@@ -8,30 +8,30 @@ import { signToken } from "@/lib/jwt";
  * @throws {Error} If email already exists or validation fails.
  */
 export async function registerUser(data) {
-  try {
-    const safeData = {
-      name: data.name,
-      email: data.email,
-      password: data.password,
-      role: "user",
-    };
+    try {
+        const safeData = {
+            name: data.name,
+            email: data.email,
+            password: data.password,
+            role: 'user',
+        }
 
-    const user = await User.create(safeData);
+        const user = await User.create(safeData)
 
-    return {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
-  } catch (error) {
-    if (error.code === 11000) {
-      const err = new Error("Email already exists.");
-      err.status = 400;
-      throw err;
+        return {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+        }
+    } catch (error) {
+        if (error.code === 11000) {
+            const err = new Error('Email already exists.')
+            err.status = 400
+            throw err
+        }
+        throw error
     }
-    throw error;
-  }
 }
 
 /**
@@ -42,35 +42,66 @@ export async function registerUser(data) {
  * @throws {Error} If credentials are invalid.
  */
 export async function loginUser(email, password) {
-  const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email }).select('+password')
 
-  if (!user) {
-    const err = new Error("User not found");
-    err.status = 401;
-    throw err;
-  }
+    if (!user) {
+        const err = new Error('User not found')
+        err.status = 401
+        throw err
+    }
 
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
-    const err = new Error("Invalid credentials.");
-    err.status = 401;
-    throw err;
-  }
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+        const remainingMinutes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000))
+        const err = new Error(
+            `Account is temporarily locked. Please try again in ${remainingMinutes} minutes.`
+        )
+        err.status = 403
+        throw err
+    }
 
-  const token = signToken({
-    id: user._id,
-    role: user.role,
-  });
+    const isMatch = await user.comparePassword(password)
+    if (!isMatch) {
+        // Increment failed attempts
+        user.loginAttempts += 1
 
-  return {
-    token,
-    user: {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    },
-  };
+        // Lock account if threshold reached
+        if (user.loginAttempts >= 5) {
+            user.lockUntil = Date.now() + 15 * 60 * 1000 // 15 minutes lock
+        }
+
+        await user.save()
+
+        const err = new Error(
+            user.loginAttempts >= 5
+                ? 'Account locked due to multiple failed attempts. Please try again in 15 minutes.'
+                : 'Invalid credentials.'
+        )
+        err.status = 401
+        throw err
+    }
+
+    // Reset attempts on successful login
+    if (user.loginAttempts > 0 || user.lockUntil > 0) {
+        user.loginAttempts = 0
+        user.lockUntil = 0
+        await user.save()
+    }
+
+    const token = signToken({
+        id: user._id,
+        role: user.role,
+    })
+
+    return {
+        token,
+        user: {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+        },
+    }
 }
 
 /**
@@ -78,7 +109,7 @@ export async function loginUser(email, password) {
  * @returns {Promise<Array>} List of all users.
  */
 export async function getAllUsers() {
-  return User.find().select("-password");
+    return User.find().select('-password')
 }
 
 /**
@@ -88,13 +119,13 @@ export async function getAllUsers() {
  * @throws {Error} If user is not found.
  */
 export async function getUserById(id) {
-  const user = await User.findById(id).select("-password");
-  if (!user) {
-    const err = new Error("User not found");
-    err.status = 404;
-    throw err;
-  }
-  return user;
+    const user = await User.findById(id).select('-password')
+    if (!user) {
+        const err = new Error('User not found')
+        err.status = 404
+        throw err
+    }
+    return user
 }
 
 /**
@@ -104,11 +135,11 @@ export async function getUserById(id) {
  * @throws {Error} If user is not found.
  */
 export async function deleteUser(id) {
-  const user = await User.findByIdAndDelete(id);
-  if (!user) {
-    const err = new Error("User not found");
-    err.status = 404;
-    throw err;
-  }
-  return user;
+    const user = await User.findByIdAndDelete(id)
+    if (!user) {
+        const err = new Error('User not found')
+        err.status = 404
+        throw err
+    }
+    return user
 }

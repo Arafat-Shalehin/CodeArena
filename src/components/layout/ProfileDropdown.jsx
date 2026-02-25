@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { User, LogOut, ChevronDown } from 'lucide-react'
 
 /**
  * @component ProfileDropdown
@@ -16,33 +16,33 @@ import { User, LogOut, ChevronDown } from 'lucide-react';
  * @returns {JSX.Element} The rendered profile dropdown.
  */
 export default function ProfileDropdown({ user, onLogout }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
+    const [isOpen, setIsOpen] = useState(false)
+    const dropdownRef = useRef(null)
 
     // Close dropdown on outside click
     useEffect(() => {
         function handleClickOutside(e) {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-                setIsOpen(false);
+                setIsOpen(false)
             }
         }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const handleLogoutClick = () => {
-        setIsOpen(false);
-        onLogout();
-    };
+        setIsOpen(false)
+        onLogout()
+    }
 
     return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-bg-subtle transition-colors group"
+                className="hover:bg-bg-subtle group flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors"
                 aria-label="User menu"
             >
-                <Avatar className="size-9 border-2 border-accent/30 shadow-sm">
+                <Avatar className="border-accent/30 size-9 border-2 shadow-sm">
                     <AvatarImage
                         src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
                         alt={user.username}
@@ -51,7 +51,7 @@ export default function ProfileDropdown({ user, onLogout }) {
                         {user.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-semibold text-text-primary max-w-[120px] truncate">
+                <span className="text-text-primary max-w-[120px] truncate text-sm font-semibold">
                     {user.username}
                 </span>
                 <ChevronDown
@@ -62,15 +62,11 @@ export default function ProfileDropdown({ user, onLogout }) {
 
             {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-bg-page border border-border rounded-xl shadow-xl overflow-hidden animate-fade-up z-50">
+                <div className="bg-bg-page border-border animate-fade-up absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border shadow-xl">
                     {/* User Info Header */}
-                    <div className="px-4 py-3 border-b border-border bg-bg-subtle/50">
-                        <p className="text-sm font-bold text-text-primary truncate">
-                            {user.name}
-                        </p>
-                        <p className="text-xs text-text-muted truncate">
-                            {user.email}
-                        </p>
+                    <div className="border-border bg-bg-subtle/50 border-b px-4 py-3">
+                        <p className="text-text-primary truncate text-sm font-bold">{user.name}</p>
+                        <p className="text-text-muted truncate text-xs">{user.email}</p>
                     </div>
 
                     {/* Links */}
@@ -78,7 +74,7 @@ export default function ProfileDropdown({ user, onLogout }) {
                         <Link
                             href="/profile"
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-bg-subtle transition-colors"
+                            className="text-text-primary hover:bg-bg-subtle flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
                         >
                             <User size={16} className="text-text-muted" />
                             My Profile
@@ -86,10 +82,10 @@ export default function ProfileDropdown({ user, onLogout }) {
                     </div>
 
                     {/* Logout */}
-                    <div className="border-t border-border py-1">
+                    <div className="border-border border-t py-1">
                         <button
                             onClick={handleLogoutClick}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-light transition-colors w-full text-left"
+                            className="text-error hover:bg-error-light flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors"
                         >
                             <LogOut size={16} />
                             Sign Out
@@ -98,5 +94,5 @@ export default function ProfileDropdown({ user, onLogout }) {
                 </div>
             )}
         </div>
-    );
+    )
 }

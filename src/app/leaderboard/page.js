@@ -1,30 +1,30 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
+import { useState } from 'react'
 
 // Shared Layout
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
 
 // Leaderboard Components
-import { LeaderboardHeader } from '@/features/leaderboard/components/LeaderboardHeader';
-import { PlatformStats } from '@/features/leaderboard/components/PlatformStats';
-import { TopThreePodium } from '@/features/leaderboard/components/TopThreePodium';
-import { FilterBar } from '@/features/leaderboard/components/FilterBar';
-import { RankingTable } from '@/features/leaderboard/components/RankingTable';
-import { Pagination } from '@/features/leaderboard/components/Pagination';
+import { LeaderboardHeader } from '@/features/leaderboard/components/LeaderboardHeader'
+import { PlatformStats } from '@/features/leaderboard/components/PlatformStats'
+import { TopThreePodium } from '@/features/leaderboard/components/TopThreePodium'
+import { FilterBar } from '@/features/leaderboard/components/FilterBar'
+import { RankingTable } from '@/features/leaderboard/components/RankingTable'
+import { Pagination } from '@/features/leaderboard/components/Pagination'
 
 // Data
-import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data';
+import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data'
 
 // Auth
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext'
 
 /**
  * Leaderboard Page
- * 
+ *
  * Global competitive programming rankings showcasing top performers.
- * 
+ *
  * Sections:
  * - Header: Title and description with live rankings badge
  * - PlatformStats: Platform-wide statistics (participants, submissions, contests, solve rate)
@@ -36,37 +36,38 @@ import { useAuth } from '@/context/AuthContext';
 export default function LeaderboardPage() {
     // TODO: Implement state management for search, filters, pagination
     // State for filters and pagination
-    const [searchQuery, setSearchQuery] = useState('');
-    const [leagueFilter, setLeagueFilter] = useState('all');
-    const [timeframeFilter, setTimeframeFilter] = useState('all_time');
-    const [currentPage, setCurrentPage] = useState(1);
-    const { user } = useAuth();
+    const [searchQuery, setSearchQuery] = useState('')
+    const [leagueFilter, setLeagueFilter] = useState('all')
+    const [timeframeFilter, setTimeframeFilter] = useState('all_time')
+    const [currentPage, setCurrentPage] = useState(1)
+    const { user } = useAuth()
 
-    const ITEMS_PER_PAGE = 30;
+    const ITEMS_PER_PAGE = 30
 
     // Filter users based on search, league, and timeframe
     // Note: In a real app, this would likely be server-side filtering
     const filterUsers = () => {
-        let filtered = [...leaderboardUsers];
+        let filtered = [...leaderboardUsers]
 
         // 1. Search Filter
         if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(user =>
-                user.userId.username.toLowerCase().includes(query) ||
-                user.country.toLowerCase().includes(query)
-            );
+            const query = searchQuery.toLowerCase()
+            filtered = filtered.filter(
+                (user) =>
+                    user.userId.username.toLowerCase().includes(query) ||
+                    user.country.toLowerCase().includes(query)
+            )
         }
 
         // 2. League Filter (Mock Logic)
         if (leagueFilter !== 'all') {
             if (leagueFilter === 'friends') {
                 // Mock: Show users with odd indices as "friends"
-                filtered = filtered.filter((_, index) => index % 3 === 0);
+                filtered = filtered.filter((_, index) => index % 3 === 0)
             } else if (leagueFilter === 'company') {
                 // Mock: Show users from top tech hubs as "company"
-                const techHubs = ['USA', 'China', 'India', 'Germany', 'UK', 'Canada'];
-                filtered = filtered.filter(user => techHubs.includes(user.country));
+                const techHubs = ['USA', 'China', 'India', 'Germany', 'UK', 'Canada']
+                filtered = filtered.filter((user) => techHubs.includes(user.country))
             }
         }
 
@@ -74,19 +75,19 @@ export default function LeaderboardPage() {
         // Since data is static, we'll sort differently to simulate timeframes
         if (timeframeFilter === 'weekly') {
             // Mock: Weekly based on 'streak' (assuming high streak active this week)
-            filtered.sort((a, b) => b.streak - a.streak);
+            filtered.sort((a, b) => b.streak - a.streak)
         } else if (timeframeFilter === 'monthly') {
             // Mock: Monthly based on 'solved' counts (partial correlation)
-            filtered.sort((a, b) => b.submissions - a.submissions);
+            filtered.sort((a, b) => b.submissions - a.submissions)
         } else {
             // Default: All Time (based on points/score)
-            filtered.sort((a, b) => b.score - a.score);
+            filtered.sort((a, b) => b.score - a.score)
         }
 
-        return filtered;
-    };
+        return filtered
+    }
 
-    const allFilteredUsers = filterUsers();
+    const allFilteredUsers = filterUsers()
 
     // Remove top 3 from the table view ONLY if we are in 'all' league and 'all_time' timeframe
     // AND if we are on the first page.
@@ -97,7 +98,7 @@ export default function LeaderboardPage() {
     // But for default view, they are in the podium.
     // Logic: If isFiltering (search or filters active), show all matching users in table.
     // If default view (no filters), exclude top 3 from table (they are in podium).
-    const isFiltering = searchQuery || leagueFilter !== 'all' || timeframeFilter !== 'all_time';
+    const isFiltering = searchQuery || leagueFilter !== 'all' || timeframeFilter !== 'all_time'
 
     // For specific requirement: "show 30"
     // If not filtering, we skip top 3, so we start from index 3.
@@ -116,31 +117,31 @@ export default function LeaderboardPage() {
     // If (default view), slice(3).
     // If (filtered), keep all. (So you can see where your friend is, even if #1)
 
-    const tableDataRaw = (!isFiltering) ? allFilteredUsers.slice(3) : allFilteredUsers;
+    const tableDataRaw = !isFiltering ? allFilteredUsers.slice(3) : allFilteredUsers
 
-    const totalPages = Math.ceil(tableDataRaw.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(tableDataRaw.length / ITEMS_PER_PAGE)
 
     // Pagination Logic
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const currentTableData = tableDataRaw.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const currentTableData = tableDataRaw.slice(startIndex, startIndex + ITEMS_PER_PAGE)
 
     // Handlers
     const handleSearch = (value) => {
-        setSearchQuery(value);
-        setCurrentPage(1); // Reset to page 1 on search
-    };
+        setSearchQuery(value)
+        setCurrentPage(1) // Reset to page 1 on search
+    }
 
     const handleFilterChange = (type, value) => {
-        if (type === 'league') setLeagueFilter(value);
-        if (type === 'timeframe') setTimeframeFilter(value);
-        setCurrentPage(1); // Reset to page 1 on filter change
-    };
+        if (type === 'league') setLeagueFilter(value)
+        if (type === 'timeframe') setTimeframeFilter(value)
+        setCurrentPage(1) // Reset to page 1 on filter change
+    }
 
     return (
-        <div className="min-h-screen flex flex-col bg-bg-page text-text-primary">
+        <div className="bg-bg-page text-text-primary flex min-h-screen flex-col">
             <Navbar />
 
-            <main className="flex-grow max-w-7xl mx-auto px-4 py-12 w-full space-y-12">
+            <main className="mx-auto w-full max-w-7xl flex-grow space-y-12 px-4 py-12">
                 <LeaderboardHeader />
                 <PlatformStats />
 
@@ -170,5 +171,5 @@ export default function LeaderboardPage() {
 
             <Footer />
         </div>
-    );
+    )
 }

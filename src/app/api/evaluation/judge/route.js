@@ -1,6 +1,10 @@
-import { NextResponse } from 'next/server';
-import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluation/judge';
-import { protect } from '@/middlewares/auth.middleware';
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+import dbConnect from '@/lib/mongodb'
+import { NextResponse } from 'next/server'
+import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluation/judge'
+import { protect } from '@/middlewares/auth.middleware'
 
 /**
  * POST /api/evaluation/judge
@@ -8,10 +12,11 @@ import { protect } from '@/middlewares/auth.middleware';
  */
 export async function POST(request) {
     try {
+        await dbConnect()
         // Authenticate user
-        await protect(request);
+        await protect(request)
 
-        const body = await request.json();
+        const body = await request.json()
         const {
             code,
             language,
@@ -21,18 +26,18 @@ export async function POST(request) {
             memoryLimit,
             comparisonMode = 'token',
             quick = false,
-        } = body;
+        } = body
 
         // Validate submission
-        const validation = validateSubmission({ code, language, problemId });
+        const validation = validateSubmission({ code, language, problemId })
         if (!validation.isValid) {
             return NextResponse.json(
                 {
                     success: false,
-                    errors: validation.errors
+                    errors: validation.errors,
                 },
                 { status: 400 }
-            );
+            )
         }
 
         // Validate test cases
@@ -40,24 +45,24 @@ export async function POST(request) {
             return NextResponse.json(
                 {
                     success: false,
-                    error: 'Test cases are required'
+                    error: 'Test cases are required',
                 },
                 { status: 400 }
-            );
+            )
         }
 
         // Run evaluation
-        let result;
+        let result
         if (quick) {
             // Quick judge (public tests only)
             result = await quickJudge({
                 code,
                 language,
-                testCases: testCases.filter(tc => !tc.isHidden),
+                testCases: testCases.filter((tc) => !tc.isHidden),
                 timeLimit,
                 memoryLimit,
                 comparisonMode,
-            });
+            })
         } else {
             // Full judge (all tests)
             result = await judgeSubmission({
@@ -68,23 +73,22 @@ export async function POST(request) {
                 timeLimit,
                 memoryLimit,
                 comparisonMode,
-            });
+            })
         }
 
         return NextResponse.json({
             success: true,
             result,
-        });
-
+        })
     } catch (error) {
-        console.error('Evaluation error:', error);
+        console.error('Evaluation error:', error)
         return NextResponse.json(
             {
                 success: false,
                 error: 'Evaluation failed',
-                message: error.message
+                message: error.message,
             },
             { status: 500 }
-        );
+        )
     }
 }

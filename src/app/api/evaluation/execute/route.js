@@ -1,6 +1,9 @@
-import { NextResponse } from 'next/server';
-import { executeCode } from '@/lib/docker/executor';
-import { protect } from '@/middlewares/auth.middleware';
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+import dbConnect from '@/lib/mongodb'
+import { NextResponse } from 'next/server'
+import { executeCode } from '@/lib/docker/executor'
 
 /**
  * POST /api/evaluation/execute
@@ -8,18 +11,14 @@ import { protect } from '@/middlewares/auth.middleware';
  */
 export async function POST(request) {
     try {
-        // Authenticate user
-        await protect(request);
+        await dbConnect()
 
-        const body = await request.json();
-        const { code, language, input, timeLimit, memoryLimit } = body;
+        const body = await request.json()
+        const { code, language, input, timeLimit, memoryLimit } = body
 
         // Validate required fields
         if (!code || !language) {
-            return NextResponse.json(
-                { error: 'Code and language are required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Code and language are required' }, { status: 400 })
         }
 
         // Execute code
@@ -29,22 +28,21 @@ export async function POST(request) {
             input: input || '',
             timeLimit,
             memoryLimit,
-        });
+        })
 
         return NextResponse.json({
             success: true,
             result,
-        });
-
+        })
     } catch (error) {
-        console.error('Code execution error:', error);
+        console.error('Code execution error:', error)
         return NextResponse.json(
             {
                 success: false,
                 error: 'Failed to execute code',
-                message: error.message
+                message: error.message,
             },
             { status: 500 }
-        );
+        )
     }
 }

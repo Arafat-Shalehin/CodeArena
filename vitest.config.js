@@ -9,7 +9,7 @@ export default defineConfig({
         globals: true,
         setupFiles: [], // Add setup file if needed
         alias: {
-            '@': resolve(__dirname, './src')
+            '@': resolve(__dirname, './src'),
         },
     },
 })
