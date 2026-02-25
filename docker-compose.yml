@@ -19,6 +19,27 @@ services:
             timeout: 5s
             retries: 5
 
+    # Redis Cache
+    redis:
+        image: redis:7
+        container_name: codearena-redis
+        restart: unless-stopped
+        command: >
+            sh -c "redis-server
+            --appendonly yes
+            --requirepass ${REDIS_PASSWORD}
+            --maxmemory 256mb
+            --maxmemory-policy allkeys-lru"
+        volumes:
+            - redis_data:/data
+        networks:
+            - codearena-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
     # Main Application
     app:
         build:
@@ -42,8 +63,11 @@ services:
             - DOCKER_HOST=http://docker-proxy:2375
             - NODE_ENV=${NODE_ENV:-production}
             - JWT_SECRET=${JWT_SECRET}
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - REDIS_PASSWORD=${REDIS_PASSWORD}
         ports:
-            - '3000:3000'
+            - '3001:3000'
         networks:
             - codearena-network
 
@@ -76,4 +100,6 @@ volumes:
     mongodb_data:
         driver: local
     executor-cache:
+        driver: local
+    redis_data:
         driver: local
