@@ -64,41 +64,43 @@ const Dashboard = () => {
     return (
         <div className="bg-bg-page text-text-primary min-h-screen font-sans">
             {/* Inner Feature Navigation (Optional/Contextual) */}
-            <header className="z-sticky bg-bg-page/80 border-border sticky top-0 border-b px-4 py-3 backdrop-blur-md lg:px-10">
-                <div className="max-w-container mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-8">
-                        <div className="text-accent flex items-center gap-3">
+            <header className="z-sticky bg-bg-page/80 border-border sticky top-0 border-b px-3 py-2 backdrop-blur-md md:px-6 lg:px-10">
+                <div className="max-w-container mx-auto flex items-center justify-between gap-2 md:gap-4">
+                    <div className="flex items-center gap-2 md:gap-8">
+                        <div className="text-accent flex items-center gap-2">
                             <AreanaLogo />
                         </div>
                     </div>
 
-                    <div className="flex max-w-md flex-1 justify-center px-4">
+                    <div className="flex max-w-md flex-1 justify-center px-1 md:px-4">
                         <div className="relative w-full">
-                            <span className="material-symbols-outlined text-text-muted absolute top-1/2 left-3 -translate-y-1/2 text-[20px]">
+                            <span className="material-symbols-outlined text-text-muted absolute top-1/2 left-3 -translate-y-1/2 text-[18px] md:text-[20px]">
                                 search
                             </span>
                             <Input
-                                className="bg-bg-subtle pl-10"
-                                placeholder="Search problems, users..."
+                                className="bg-bg-subtle h-9 pl-9 text-xs md:h-10 md:pl-10 md:text-sm"
+                                placeholder="Search..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <button className="text-text-muted hover:text-text-primary p-2 transition-colors">
-                            <span className="material-symbols-outlined">notifications</span>
+                    <div className="flex items-center gap-1 md:gap-3">
+                        <button className="text-text-muted hover:text-text-primary p-1.5 transition-colors md:p-2">
+                            <span className="material-symbols-outlined text-[20px] md:text-[24px]">
+                                notifications
+                            </span>
                         </button>
-                        <div className="bg-border mx-1 h-8 w-[1px]"></div>
-                        <div className="flex items-center gap-3 pl-2">
-                            <div className="hidden text-right sm:block">
+                        <div className="bg-border mx-0.5 h-6 w-[1px] md:mx-1 md:h-8"></div>
+                        <div className="flex items-center gap-2 pl-1 md:gap-3 md:pl-2">
+                            <div className="hidden text-right lg:block">
                                 <p className="text-text-primary text-xs font-bold">Rabiul Islam</p>
                                 <p className="text-accent text-[10px] font-medium tracking-wider uppercase">
-                                    Pro Member
+                                    Pro
                                 </p>
                             </div>
-                            <Avatar className="border-accent h-9 w-9 border-2">
+                            <Avatar className="border-accent h-8 w-8 border-2 md:h-9 md:w-9">
                                 <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Rabiul" />
                                 <AvatarFallback>RI</AvatarFallback>
                             </Avatar>
@@ -109,20 +111,22 @@ const Dashboard = () => {
 
             <main className="max-w-container mx-auto space-y-8 p-4 lg:p-8">
                 {/* Header Section */}
-                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
-                        <h1 className="text-text-primary text-3xl font-bold tracking-tight md:text-4xl">
+                        <h1 className="text-text-primary text-2xl font-bold tracking-tight md:text-3xl lg:text-4xl">
                             Welcome back, Rabiul!
                         </h1>
-                        <p className="text-text-secondary mt-1">
+                        <p className="text-text-secondary mt-1 text-sm md:text-base">
                             Ready to tackle some new challenges today?
                         </p>
                     </div>
-                    <div className="bg-warning/10 border-warning/20 flex items-center gap-3 rounded-xl border px-4 py-2">
-                        <span className="material-symbols-outlined text-warning fill-1">
+                    <div className="bg-warning/10 border-warning/20 flex w-fit items-center gap-3 rounded-xl border px-3 py-1.5 md:px-4 md:py-2">
+                        <span className="material-symbols-outlined text-warning fill-1 text-[20px] md:text-[24px]">
                             local_fire_department
                         </span>
-                        <span className="text-warning font-bold tracking-tight">5 DAY STREAK</span>
+                        <span className="text-warning text-xs font-bold tracking-tight md:text-sm lg:text-base">
+                            5 DAY STREAK
+                        </span>
                     </div>
                 </div>
 

@@ -33,15 +33,19 @@ const Heatmap = ({ data }) => (
                 <span>More</span>
             </div>
         </div>
-        <div className="grid w-full grid-cols-[repeat(52,1fr)] gap-[2px]">
-            {data.map((intensity, idx) => (
-                <div key={idx} className={`aspect-square rounded-[2px] ${intensity}`}></div>
-            ))}
-        </div>
-        <div className="text-text-muted mt-4 flex justify-between text-[10px] font-medium">
-            {MONTHS.map((m) => (
-                <span key={m}>{m}</span>
-            ))}
+        <div className="no-scrollbar overflow-x-auto pb-2">
+            <div className="min-w-[650px]">
+                <div className="grid w-full grid-cols-[repeat(52,1fr)] gap-[2px]">
+                    {data.map((intensity, idx) => (
+                        <div key={idx} className={`aspect-square rounded-[2px] ${intensity}`}></div>
+                    ))}
+                </div>
+                <div className="text-text-muted mt-4 flex justify-between text-[10px] font-medium">
+                    {MONTHS.map((m) => (
+                        <span key={m}>{m}</span>
+                    ))}
+                </div>
+            </div>
         </div>
     </div>
 )
