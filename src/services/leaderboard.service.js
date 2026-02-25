@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { redisClient } from '@/lib/redis'
 import { Leaderboard } from '@/models/Leaderboard.models'
 import { Contest } from '@/models/Contest.models'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
@@ -89,6 +90,14 @@ export async function computeLeaderboard(contestId) {
         await session.commitTransaction()
         session.endSession()
 
+        // Invalidate leaderboard cache
+        try {
+            const keys = await redisClient.keys(`leaderboard:${contestId}:*`)
+            if (keys.length) await redisClient.del(keys)
+        } catch (err) {
+            console.error("Failed to clear leaderboard cache after compute:", err)
+        }
+
         return {
             success: true,
             totalParticipants: participants.length,
@@ -105,9 +114,22 @@ export async function computeLeaderboard(contestId) {
  * Optimized for read-heavy workloads
  */
 export async function getLeaderboard(contestId, query = {}) {
+    console.log("contestId:", contestId)
     const page = Math.max(parseInt(query.page) || 1, 1)
     const limit = Math.min(parseInt(query.limit) || 20, 100)
     const skip = (page - 1) * limit
+
+    const cacheKey = `leaderboard:${contestId}:page:${page}:limit:${limit}`
+
+    // Try cache first
+    try {
+        const cached = await redisClient.get(cacheKey)
+        if (cached) {
+            return JSON.parse(cached)
+        }
+    } catch (err) {
+        console.error("Redis read failed, continuing without cache")
+    }
 
     const filter = { contestId }
 
@@ -120,7 +142,7 @@ export async function getLeaderboard(contestId, query = {}) {
 
     const total = await Leaderboard.countDocuments(filter)
 
-    return {
+    const result = {
         leaderboard,
         pagination: {
             total,
@@ -129,6 +151,15 @@ export async function getLeaderboard(contestId, query = {}) {
             pages: Math.ceil(total / limit),
         },
     }
+
+    // Store in cache (60 seconds TTL)
+    try {
+        await redisClient.set(cacheKey, JSON.stringify(result), { EX: 60 })
+    } catch (err) {
+        console.error("Redis write failed")
+    }
+
+    return result
 }
 
 /**
@@ -153,6 +184,14 @@ export async function getUserRank(contestId, userId) {
  */
 export async function resetLeaderboard(contestId) {
     const result = await Leaderboard.deleteMany({ contestId })
+    try {
+        const keys = await redisClient.keys(`leaderboard:${contestId}:*`)
+        if (keys.length) {
+            await redisClient.del(keys)
+        }
+    } catch (err) {
+        console.error("Failed to clear leaderboard cache")
+    }
 
     return {
         deletedEntries: result.deletedCount,
