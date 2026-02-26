@@ -1,8 +1,8 @@
-import dbConnect from '@/lib/mongodb'
-import { Problem } from '@/models/Problem.models'
-import { executeCode } from '@/lib/docker/executor'
-import { NextResponse } from 'next/server'
 import mongoose from 'mongoose'
+import { Submission } from '@/models/Submission.models'
+import { User } from '@/models/User.models'
+import { protect } from '@/middlewares/auth.middleware'
+import { Problem } from '@/models/Problem.models'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +20,14 @@ export async function POST(request, context) {
 
     try {
         await dbConnect()
+
+        // Authenticate user
+        let user;
+        try {
+            user = await protect(request)
+        } catch (err) {
+            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+        }
 
         const body = await request.json()
         const { code, language } = body
@@ -112,6 +120,27 @@ export async function POST(request, context) {
         }
 
         await Problem.findByIdAndUpdate(id, updateData)
+
+        // 4. Create Submission record
+        const submission = await Submission.create({
+            userId: user._id,
+            problemId: id,
+            code,
+            language,
+            status: 'completed',
+            verdict: overallVerdict.toLowerCase(), // Model uses lowercase: 'accepted', 'wrong_answer', etc.
+            executionTime: maxTime,
+            memoryUsed: Math.ceil(maxMemory / 1024), // Model uses MB, maxMemory is in KB
+        })
+
+        // 5. Update User Stats
+        const userUpdate = {
+            $inc: { 'stats.totalSubmissions': 1 }
+        }
+        if (overallVerdict === 'ACCEPTED') {
+            userUpdate.$inc['stats.accepted'] = 1
+        }
+        await User.findByIdAndUpdate(user._id, userUpdate)
 
         return NextResponse.json({
             success: true,

@@ -25,6 +25,7 @@ export default function ProblemsTable({
     pagination,
     currentPage,
     onPageChange,
+    solvedIds = [],
     isLoading,
     error,
 }) {
@@ -207,9 +208,11 @@ export default function ProblemsTable({
                                         key={p._id}
                                         className="border-t border-border hover:bg-bg-subtle transition-colors duration-fast cursor-pointer group"
                                     >
-                                        {/* Status — defaults to unsolved until per-user history is integrated */}
+                                        {/* Status — dynamic based on user history */}
                                         <td className="px-6 py-4">
-                                            <StatusIcon status={p.status || 'unsolved'} />
+                                            <StatusIcon
+                                                status={solvedIds.includes(p._id) ? 'solved' : 'unsolved'}
+                                            />
                                         </td>
 
                                         {/* Sequential row number */}
