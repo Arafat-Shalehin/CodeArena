@@ -18,17 +18,23 @@ export async function getAllProblems(query) {
 
     const filter = {}
 
-    // Filter status
+    // Filter by difficulty
     if (query.difficulty) {
         filter.difficulty = query.difficulty
     }
 
-    // Filter status
+    // Search by title (case-insensitive)
     if (query.search) {
         filter.title = { $regex: query.search, $options: 'i' }
     }
 
-    // Running queries in parallel for better performance
+    // Filter by tag (e.g. ?tag=Array)
+    if (query.tag) {
+        filter.tags = { $in: [query.tag] }
+    }
+
+    // Running queries in parallel for better performance.
+    // Note: We do NOT use .lean() here so Mongoose virtuals (acceptanceRate) are computed.
     const [problems, total] = await Promise.all([
         Problem.find(filter).select('-testCases').sort({ createdAt: -1 }).skip(skip).limit(limit),
         Problem.countDocuments(filter),

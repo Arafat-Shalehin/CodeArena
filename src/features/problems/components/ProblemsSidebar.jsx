@@ -1,26 +1,39 @@
-import React from 'react';
-import { topics } from '../data/problems.data';
-import CheckboxGroup from './CheckboxGroup';
-import StatusIcon from './StatusIcon';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { X, Filter, Search, RefreshCw } from 'lucide-react';
+import React from 'react'
+import { topics } from '../data/problems.data'
+import CheckboxGroup from './CheckboxGroup'
+import StatusIcon from './StatusIcon'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { X, Filter, Search, RefreshCw } from 'lucide-react'
 
+/**
+ * ProblemsSidebar
+ *
+ * Provides filtering controls for the problems list.
+ * Communicates filter state back to the parent ProblemsPage.
+ */
 export default function ProblemsSidebar({
-    sidebarOpen, setSidebarOpen,
-    searchQuery, setSearchQuery,
-    selectedDifficulties, toggleDifficulty,
-    selectedStatuses, toggleStatus,
-    selectedTopics, toggleTopic,
-    handleClearFilters
+    sidebarOpen,
+    setSidebarOpen,
+    searchQuery,
+    setSearchQuery,
+    selectedDifficulties,
+    toggleDifficulty,
+    selectedStatuses,
+    toggleStatus,
+    selectedTopics,
+    toggleTopic,
+    handleClearFilters,
 }) {
     return (
-        <aside className={`
-      ${sidebarOpen ? "fixed inset-0 z-50 flex" : "hidden"}
+        <aside
+            className={`
+      ${sidebarOpen ? 'fixed inset-0 z-50 flex' : 'hidden'}
       lg:relative lg:flex lg:flex-col lg:inset-auto lg:z-auto
       w-72 lg:w-72 flex-shrink-0
-    `}>
+    `}
+        >
             {/* Mobile backdrop */}
             {sidebarOpen && (
                 <div
@@ -33,7 +46,10 @@ export default function ProblemsSidebar({
                 {/* Mobile close */}
                 <div className="flex items-center justify-between lg:hidden mb-2">
                     <span className="font-semibold text-text-primary">Filters</span>
-                    <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg hover:bg-bg-subtle text-text-secondary transition-colors duration-normal">
+                    <button
+                        onClick={() => setSidebarOpen(false)}
+                        className="p-1.5 rounded-lg hover:bg-bg-subtle text-text-secondary transition-colors duration-normal"
+                    >
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -49,7 +65,7 @@ export default function ProblemsSidebar({
                         <Input
                             type="text"
                             value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search problems..."
                             className="pl-9 bg-bg-page border-border"
                         />
@@ -58,16 +74,23 @@ export default function ProblemsSidebar({
 
                 {/* Difficulty */}
                 <div className="bg-bg-subtle border border-border rounded-lg p-6 shadow-sm">
-                    <h4 className="text-text-muted text-xs font-medium uppercase tracking-wide mb-4">Difficulty</h4>
+                    <h4 className="text-text-muted text-xs font-medium uppercase tracking-wide mb-4">
+                        Difficulty
+                    </h4>
                     <div className="space-y-3">
-                        {["Easy", "Medium", "Hard"].map(diff => (
+                        {['Easy', 'Medium', 'Hard'].map((diff) => (
                             <CheckboxGroup
                                 key={diff}
                                 label={diff}
-                                count={diff === "Easy" ? "842" : diff === "Medium" ? "1,250" : "450"}
-                                checkboxColorClass={`bg-${diff === "Easy" ? "success" : diff === "Medium" ? "warning" : "error"} text-white border-${diff === "Easy" ? "success" : diff === "Medium" ? "warning" : "error"}`}
-                                textColorClass={`text-${diff === "Easy" ? "success" : diff === "Medium" ? "warning" : "error"}`}
-                                ringColorClass={`focus-visible:ring-${diff === "Easy" ? "success" : diff === "Medium" ? "warning" : "error"}`}
+                                // Counts are hidden until a global stats API is implemented
+                                count={null}
+                                checkboxColorClass={`bg-${diff === 'Easy' ? 'success' : diff === 'Medium' ? 'warning' : 'error'
+                                    } text-white border-${diff === 'Easy' ? 'success' : diff === 'Medium' ? 'warning' : 'error'
+                                    }`}
+                                textColorClass={`text-${diff === 'Easy' ? 'success' : diff === 'Medium' ? 'warning' : 'error'
+                                    }`}
+                                ringColorClass={`focus-visible:ring-${diff === 'Easy' ? 'success' : diff === 'Medium' ? 'warning' : 'error'
+                                    }`}
                                 checked={selectedDifficulties.includes(diff)}
                                 onCheckedChange={() => toggleDifficulty(diff)}
                             />
@@ -75,14 +98,24 @@ export default function ProblemsSidebar({
                     </div>
                 </div>
 
-                {/* Status */}
+                {/* Status - Note: Restricted to UI state for now */}
                 <div className="bg-bg-subtle border border-border rounded-lg p-6 shadow-sm">
-                    <h4 className="text-text-muted text-xs font-medium uppercase tracking-wide mb-4">Status</h4>
+                    <h4 className="text-text-muted text-xs font-medium uppercase tracking-wide mb-4">
+                        Status
+                    </h4>
                     <div className="space-y-3">
                         {[
-                            { label: "Solved", id: "solved", icon: <StatusIcon status="solved" />, },
-                            { label: "Attempted", id: "attempted", icon: <StatusIcon status="attempted" /> },
-                            { label: "Unsolved", id: "unsolved", icon: <StatusIcon status="unsolved" /> },
+                            { label: 'Solved', id: 'solved', icon: <StatusIcon status="solved" /> },
+                            {
+                                label: 'Attempted',
+                                id: 'attempted',
+                                icon: <StatusIcon status="attempted" />,
+                            },
+                            {
+                                label: 'Unsolved',
+                                id: 'unsolved',
+                                icon: <StatusIcon status="unsolved" />,
+                            },
                         ].map(({ label, id, icon }) => (
                             <label key={id} className="flex items-center gap-3 cursor-pointer group">
                                 <Checkbox
@@ -91,21 +124,29 @@ export default function ProblemsSidebar({
                                     onCheckedChange={() => toggleStatus(id)}
                                 />
                                 {icon}
-                                <span className="text-text-secondary text-sm group-hover:text-text-primary transition-colors">{label}</span>
+                                <span className="text-text-secondary text-sm group-hover:text-text-primary transition-colors">
+                                    {label}
+                                </span>
                             </label>
                         ))}
                     </div>
+                    <p className="mt-4 text-[10px] text-text-muted italic leading-tight">
+                        Status filtering is coming soon.
+                    </p>
                 </div>
 
                 {/* Topics */}
                 <div className="bg-bg-subtle border border-border rounded-lg p-6 shadow-sm">
-                    <h4 className="text-text-muted text-xs font-medium uppercase tracking-wide mb-4">Topics</h4>
+                    <h4 className="text-text-muted text-xs font-medium uppercase tracking-wide mb-4">
+                        Topics
+                    </h4>
                     <div className="space-y-3 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                        {topics.map(({ name, count }) => (
+                        {topics.map(({ name }) => (
                             <CheckboxGroup
                                 key={name}
                                 label={name}
-                                count={count}
+                                // Counts are hidden until a global stats API is implemented
+                                count={null}
                                 checkboxColorClass="bg-accent text-white border-accent"
                                 textColorClass="text-text-secondary group-hover:text-text-primary transition-colors"
                                 checked={selectedTopics.includes(name)}
@@ -126,6 +167,7 @@ export default function ProblemsSidebar({
                 </Button>
             </div>
         </aside>
-    );
+    )
 }
+
 
