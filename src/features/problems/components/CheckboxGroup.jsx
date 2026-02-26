@@ -1,19 +1,40 @@
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 
-export default function CheckboxGroup({ label, count, checkboxColorClass, textColorClass, ringColorClass, checked, onCheckedChange }) {
+export default function CheckboxGroup({
+    label,
+    count,
+    checkboxColorClass, // e.g., "success"
+    textColorClass,
+    ringColorClass,
+    checked,
+    onCheckedChange,
+}) {
+    // We expect checkboxColorClass to be a base color name like 'success', 'warning', 'error', or 'accent'
+    // This allows us to construct the correct data-[state=checked] classes robustly.
+    const color = checkboxColorClass || 'accent'
+
     return (
-        <label className="flex items-center justify-between cursor-pointer group">
+        <label className="group flex cursor-pointer items-center justify-between">
             <div className="flex items-center gap-3">
                 <Checkbox
-                    className={`data-[state=checked]:${checkboxColorClass} ${ringColorClass}`}
+                    className={cn(
+                        ringColorClass,
+                        `data-[state=checked]:bg-${color} data-[state=checked]:border-${color} data-[state=checked]:text-white`
+                    )}
                     checked={checked}
                     onCheckedChange={onCheckedChange}
                 />
-                <span className={`${textColorClass || 'text-text-primary'} text-sm font-medium`}>{label}</span>
+                <span
+                    className={cn(
+                        'text-sm font-medium transition-colors',
+                        textColorClass || 'text-text-primary'
+                    )}
+                >
+                    {label}
+                </span>
             </div>
-            <span className="text-text-muted text-xs font-mono">{count}</span>
+            <span className="text-text-muted font-mono text-xs">{count}</span>
         </label>
-    );
+    )
 }
-
-
