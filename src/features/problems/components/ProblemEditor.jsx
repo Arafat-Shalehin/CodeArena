@@ -43,11 +43,13 @@ public class Solution {
     javascript: `const readline = require('readline');
 const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
+    terminal: false
 });
 
 rl.on('line', (line) => {
     // Write your JavaScript solution here
+    console.log(line);
 });`,
 }
 
@@ -172,7 +174,7 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                             <option value="python">Python 3</option>
                             <option value="cpp">C++ 17</option>
                             <option value="java">Java 11</option>
-                            <option value="javascript">Node.js</option>
+                            <option value="javascript">JavaScript (Node.js)</option>
                         </select>
                     </div>
                     <span className="text-[10px] text-gray-500 font-mono tracking-tighter">ID: {problemId.substring(0, 8)}...</span>

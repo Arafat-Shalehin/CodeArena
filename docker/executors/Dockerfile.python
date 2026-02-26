@@ -17,7 +17,7 @@ RUN chown -R coderunner:coderunner /workspace
 
 # Copy execution script
 COPY scripts/python-runner.sh /usr/local/bin/runner.sh
-RUN chmod +x /usr/local/bin/runner.sh
+RUN sed -i 's/\r$//' /usr/local/bin/runner.sh && chmod +x /usr/local/bin/runner.sh
 
 # Install commonly used Python libraries
 RUN pip install --no-cache-dir \
