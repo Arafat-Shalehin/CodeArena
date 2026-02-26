@@ -54,7 +54,7 @@ export function RankingTable({ data, currentUser }) {
                             </TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-border-light divide-y bg-transparent">
+                    <TableBody className="divide-border divide-y bg-transparent">
                         {data.map((row, idx) => {
                             const isTop3 = row.rank <= 3
                             const isCurrentUser = row.userId.username === currentUser
@@ -70,7 +70,7 @@ export function RankingTable({ data, currentUser }) {
                             return (
                                 <TableRow
                                     key={idx}
-                                    className={`border-border-light relative ${isCurrentUser ? 'bg-accent/5 hover:bg-accent/10' : 'hover:bg-bg-subtle/50'}`}
+                                    className={`border-border relative ${isCurrentUser ? 'bg-accent/5 hover:bg-accent/10' : 'hover:bg-bg-subtle/50'}`}
                                 >
                                     <TableCell className="relative z-10 py-4 md:px-10 md:py-6">
                                         <span
