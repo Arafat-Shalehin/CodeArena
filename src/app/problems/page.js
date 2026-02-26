@@ -31,6 +31,7 @@ export default function ProblemsPage() {
     // --- API response state ---
     const [problems, setProblems] = useState([])
     const [pagination, setPagination] = useState(null)
+    const [solvedIds, setSolvedIds] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
 
@@ -91,12 +92,28 @@ export default function ProblemsPage() {
     )
 
     /**
+     * Fetch the list of problem IDs solved by the user.
+     */
+    const fetchSolvedStatus = useCallback(async () => {
+        try {
+            const res = await fetch('/api/user/problems-status')
+            const json = await res.json()
+            if (json.success) {
+                setSolvedIds(json.data.solvedIds || [])
+            }
+        } catch (err) {
+            console.error('[ProblemsPage] Failed to fetch solved status:', err)
+        }
+    }, [])
+
+    /**
      * Re-fetch whenever filters change.
      * Always resets to page 1 on filter change to avoid showing an out-of-range page.
      */
     useEffect(() => {
         setCurrentPage(1)
         fetchProblems(1)
+        fetchSolvedStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedDifficulties, selectedTopics])
 
@@ -195,6 +212,7 @@ export default function ProblemsPage() {
                             pagination={pagination}
                             currentPage={currentPage}
                             onPageChange={handlePageChange}
+                            solvedIds={solvedIds}
                             isLoading={isLoading}
                             error={error}
                         />
