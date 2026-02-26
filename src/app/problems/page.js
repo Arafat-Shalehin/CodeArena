@@ -1,22 +1,129 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import ProblemsSidebar from '@/features/problems/components/ProblemsSidebar'
 import ProblemsToolbar from '@/features/problems/components/ProblemsToolbar'
 import ProblemsTable from '@/features/problems/components/ProblemsTable'
-import { problems as initialProblems } from '@/features/problems/data/problems.data'
+
+const ITEMS_PER_PAGE = 20
+// Debounce delay (ms) for search input before triggering an API call
+const SEARCH_DEBOUNCE_MS = 400
 
 export default function ProblemsPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState('Difficulty')
 
+    // --- Filter state (drives server-side query params) ---
+    const [searchQuery, setSearchQuery] = useState('')
     const [selectedDifficulties, setSelectedDifficulties] = useState([])
-    const [selectedStatuses, setSelectedStatuses] = useState([])
     const [selectedTopics, setSelectedTopics] = useState([])
 
+    // NOTE: selectedStatuses (solved / attempted) is passed to the sidebar for UI
+    // consistency, but it cannot be server-filtered until per-user submission
+    // history is tracked. Filtering by status is silently ignored by the API.
+    const [selectedStatuses, setSelectedStatuses] = useState([])
+
+    // --- Pagination state ---
+    const [currentPage, setCurrentPage] = useState(1)
+
+    // --- API response state ---
+    const [problems, setProblems] = useState([])
+    const [pagination, setPagination] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState(null)
+
+    // Ref to hold the active debounce timer for search
+    const searchDebounceRef = useRef(null)
+
+    /**
+     * Core data-fetching function.
+     * Builds query params from current filter/pagination state and calls GET /api/problems.
+     * Wrapped in useCallback so it can be referenced as a stable dependency in useEffect.
+     */
+    const fetchProblems = useCallback(
+        async (page = 1) => {
+            setIsLoading(true)
+            setError(null)
+
+            try {
+                const params = new URLSearchParams()
+                params.set('page', page)
+                params.set('limit', ITEMS_PER_PAGE)
+
+                // The API supports a single difficulty value — when multiple are selected
+                // we send the first one for now (multi-difficulty requires $or on the backend).
+                // TODO: extend the backend to accept comma-separated difficulties if needed.
+                if (selectedDifficulties.length === 1) {
+                    params.set('difficulty', selectedDifficulties[0].toLowerCase())
+                }
+
+                if (searchQuery.trim()) {
+                    params.set('search', searchQuery.trim())
+                }
+
+                if (selectedTopics.length === 1) {
+                    params.set('tag', selectedTopics[0])
+                }
+
+                const res = await fetch(`/api/problems?${params.toString()}`)
+
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}))
+                    throw new Error(body.message || `Request failed with status ${res.status}`)
+                }
+
+                const json = await res.json()
+
+                // API returns: { success, data: [...problems], pagination: { total, page, limit, pages } }
+                setProblems(json.data || [])
+                setPagination(json.pagination || null)
+            } catch (err) {
+                console.error('[ProblemsPage] Failed to fetch problems:', err)
+                setError(err.message || 'Something went wrong. Please try again.')
+                setProblems([])
+            } finally {
+                setIsLoading(false)
+            }
+        },
+        [selectedDifficulties, selectedTopics, searchQuery]
+    )
+
+    /**
+     * Re-fetch whenever filters change.
+     * Always resets to page 1 on filter change to avoid showing an out-of-range page.
+     */
+    useEffect(() => {
+        setCurrentPage(1)
+        fetchProblems(1)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDifficulties, selectedTopics])
+
+    /**
+     * Debounced re-fetch when search query changes.
+     * Avoids hammering the API on every keystroke.
+     */
+    useEffect(() => {
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+        searchDebounceRef.current = setTimeout(() => {
+            setCurrentPage(1)
+            fetchProblems(1)
+        }, SEARCH_DEBOUNCE_MS)
+        return () => clearTimeout(searchDebounceRef.current)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery])
+
+    /** Re-fetch when the user changes pages. */
+    const handlePageChange = useCallback(
+        (page) => {
+            setCurrentPage(page)
+            fetchProblems(page)
+        },
+        [fetchProblems]
+    )
+
+    // --- Filter toggle helpers ---
     const toggleDifficulty = (d) =>
         setSelectedDifficulties((prev) =>
             prev.includes(d) ? prev.filter((item) => item !== d) : [...prev, d]
@@ -37,18 +144,8 @@ export default function ProblemsPage() {
         setSelectedStatuses([])
         setSelectedTopics([])
         setSearchQuery('')
+        // Clearing filters will trigger the useEffect hooks above to re-fetch
     }
-
-    const filtered = initialProblems.filter((p) => {
-        const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesDiff =
-            selectedDifficulties.length === 0 || selectedDifficulties.includes(p.difficulty)
-        const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(p.status)
-        const matchesTopic =
-            selectedTopics.length === 0 || p.tags.some((tag) => selectedTopics.includes(tag))
-
-        return matchesSearch && matchesDiff && matchesStatus && matchesTopic
-    })
 
     return (
         <div className="bg-bg-page text-text-primary flex min-h-screen flex-col font-sans">
@@ -93,7 +190,14 @@ export default function ProblemsPage() {
                             setSortBy={setSortBy}
                             setSidebarOpen={setSidebarOpen}
                         />
-                        <ProblemsTable problems={filtered} />
+                        <ProblemsTable
+                            problems={problems}
+                            pagination={pagination}
+                            currentPage={currentPage}
+                            onPageChange={handlePageChange}
+                            isLoading={isLoading}
+                            error={error}
+                        />
                     </section>
                 </div>
             </main>
