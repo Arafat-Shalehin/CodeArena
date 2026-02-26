@@ -109,9 +109,14 @@ export default function ProblemDetailPage() {
                                 {normalizedDiff}
                             </Badge>
                             <div className="h-3 w-px bg-border mx-1" />
-                            <div className="flex items-center gap-1 text-[10px] text-text-muted font-mono">
+                            <div className="flex items-center gap-1 text-[10px] text-text-muted font-mono" title="Time Limit">
                                 <Clock className="h-3 w-3" />
                                 {problem.timeLimit}ms
+                            </div>
+                            <div className="h-3 w-px bg-border mx-1" />
+                            <div className="flex items-center gap-1 text-[10px] text-text-muted font-mono" title="Memory Limit">
+                                <Database className="h-3 w-3" />
+                                {problem.memoryLimit >= 1024 ? `${(problem.memoryLimit / 1024).toFixed(0)}MB` : `${problem.memoryLimit}KB`}
                             </div>
                         </div>
                     </div>
