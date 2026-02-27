@@ -36,8 +36,11 @@ const submissionSchema = new mongoose.Schema(
                 'accepted',
                 'wrong_answer',
                 'time_limit_exceeded',
+                'memory_limit_exceeded',
                 'runtime_error',
                 'compilation_error',
+                'system_error',
+                'security_error',
             ],
         },
         executionTime: { type: Number }, // ms

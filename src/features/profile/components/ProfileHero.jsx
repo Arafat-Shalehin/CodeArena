@@ -30,12 +30,11 @@ export default function ProfileHero({ user: userProp }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
     const displayUser = userProp || authUser
+    const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
 
     const {
-        username = 'unknown',
-        name: displayName = 'Unknown User',
         bio = '',
-        avatarSeed = username,
+        avatarSeed = name,
         stats,
     } = displayUser || {}
 
@@ -43,10 +42,10 @@ export default function ProfileHero({ user: userProp }) {
         authUser &&
         ((authUser.firebaseUid && authUser.firebaseUid === displayUser?.firebaseUid) ||
             (authUser.email && authUser.email === displayUser?.email) ||
-            (authUser.username && authUser.username === displayUser?.username))
+            (authUser._id && authUser._id === displayUser?._id))
 
     const rank = stats?.globalRank ?? '—'
-    const finalAvatarSeed = avatarSeed || username
+    const finalAvatarSeed = avatarSeed || name
 
     const handleSaveProfile = (updatedData) => {
         updateProfile(updatedData)
@@ -71,10 +70,10 @@ export default function ProfileHero({ user: userProp }) {
                             <Avatar className="border-accent h-24 w-24 border-2 md:h-32 md:w-32">
                                 <AvatarImage
                                     src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${finalAvatarSeed}`}
-                                    alt={`${username}'s avatar`}
+                                    alt={`${name}'s avatar`}
                                 />
                                 <AvatarFallback className="bg-bg-muted text-text-primary text-2xl">
-                                    {username.substring(0, 2).toUpperCase()}
+                                    {(name || 'U').substring(0, 2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
                         </div>
@@ -86,17 +85,14 @@ export default function ProfileHero({ user: userProp }) {
                         <div className="space-y-1 text-center md:text-left">
                             <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
                                 <h1 className="text-text-primary text-2xl font-bold md:text-3xl">
-                                    {username}
+                                    {name}
                                 </h1>
                                 <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium">
                                     🏆 #{rank}
                                 </span>
                             </div>
-                            <p className="text-text-secondary text-base md:text-lg">
-                                {displayName}
-                            </p>
                             {bio && (
-                                <p className="text-text-muted max-w-md text-sm leading-relaxed">
+                                <p className="text-text-muted max-w-md text-sm leading-relaxed pt-2">
                                     {bio}
                                 </p>
                             )}

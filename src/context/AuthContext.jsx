@@ -13,7 +13,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth'
  * @property {boolean}      isLoading         - Indicates if auth state is resolving.
  */
 
-const AuthContext = createContext(/** @type {AuthContextValue} */ (undefined))
+const AuthContext = createContext(/** @type {AuthContextValue} */(undefined))
 
 const STORAGE_KEY = 'codearena_auth_user_preferences'
 
@@ -28,38 +28,48 @@ export function AuthProvider({ children }) {
         try {
             const stored = localStorage.getItem(STORAGE_KEY)
             if (stored) setLocalPreferences(JSON.parse(stored))
-        } catch {}
+        } catch { }
     }, [])
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 try {
-                    const username =
-                        firebaseUser.displayName?.toLowerCase().replace(/\s+/g, '_') ||
-                        firebaseUser.email.split('@')[0]
-                    setUser({
-                        firebaseUid: firebaseUser.uid,
-                        email: firebaseUser.email,
-                        name: firebaseUser.displayName || username,
-                        role: 'user',
-                        username,
-                        bio: '',
-                        avatarSeed: firebaseUser.photoURL || username,
-                        stats: {
-                            rating: 0,
-                            problemsSolved: { easy: 0, medium: 0, hard: 0, total: 0 },
-                            accuracy: 0,
-                            globalRank: null,
-                            languageStats: {},
-                            contributions: [],
-                            achievements: [],
-                        },
-                        ...localPreferences,
+                    // 1. Sync Firebase User with our Backend (and set httpOnly cookie)
+                    const syncRes = await fetch('/api/auth/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            uid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            displayName: firebaseUser.displayName,
+                            photoURL: firebaseUser.photoURL,
+                            authProvider: 'firebase'
+                        })
                     })
+
+                    const syncData = await syncRes.json()
+
+                    if (syncData.success) {
+                        // 2. Set the combined user object (MongoDB data + UI preferences)
+                        const dbUser = syncData.data?.user || syncData.user // flexible for API response shape
+                        setUser({
+                            ...dbUser,
+                            firebaseUid: firebaseUser.uid,
+                            ...localPreferences,
+                        })
+                    } else {
+                        console.error('Backend sync failed:', syncData.error)
+                        // Fallback to minimal user object if sync fails but Firebase is okay
+                        setUser({
+                            firebaseUid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                            ...localPreferences,
+                        })
+                    }
                 } catch (error) {
-                    console.error('Error during auth init:', error)
-                    setUser(null)
+                    console.error('Error during auth init/sync:', error)
                 }
             } else {
                 setUser(null)

@@ -25,50 +25,26 @@ export default function PersonalInfoForm({ formData, onChange }) {
     return (
         <Card className="p-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Full Name Input */}
-                <div className="space-y-2">
+                {/* Unique Handle (backend name) */}
+                <div className="space-y-2 md:col-span-2">
                     <Label
-                        htmlFor="fullName"
+                        htmlFor="name"
                         className="text-text-muted text-xs font-bold tracking-wider uppercase"
                     >
-                        Full Name
+                        Username / Handle
                     </Label>
                     <div className="relative">
-                        <User
+                        <AtSign
                             className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
                             size={16}
                         />
                         <Input
-                            id="fullName"
-                            name="fullName"
-                            value={formData.fullName}
-                            onChange={onChange}
-                            className="pl-10"
-                            placeholder="Alex Rivera"
-                        />
-                    </div>
-                </div>
-
-                {/* Username Input with Availability Indicator */}
-                <div className="space-y-2">
-                    <Label
-                        htmlFor="username"
-                        className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                    >
-                        Username
-                    </Label>
-                    <div className="relative">
-                        <Mail
-                            className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
-                            size={16}
-                        />
-                        <Input
-                            id="username"
-                            name="username"
-                            value={formData.username}
+                            id="name"
+                            name="name"
+                            value={formData.name}
                             onChange={onChange}
                             className="pr-24 pl-10"
-                            placeholder="arivera_codes"
+                            placeholder="your_unique_handle"
                         />
                         <div className="bg-success-light text-success absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-bold">
                             <CheckCircle size={10} />

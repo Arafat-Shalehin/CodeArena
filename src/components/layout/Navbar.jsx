@@ -108,11 +108,11 @@ export default function Navbar() {
                         <Link href="/profile" className="mr-1">
                             <Avatar className="border-accent/30 size-8 border-2">
                                 <AvatarImage
-                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
-                                    alt={user.username}
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                                    alt={user.name || 'User'}
                                 />
                                 <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
-                                    {user.username.substring(0, 2).toUpperCase()}
+                                    {(user.name || user.email || 'U').substring(0, 2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
                         </Link>

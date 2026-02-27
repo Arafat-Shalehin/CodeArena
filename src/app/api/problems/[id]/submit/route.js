@@ -1,8 +1,11 @@
 import mongoose from 'mongoose'
+import dbConnect from '@/lib/mongodb'
+import { NextResponse } from 'next/server'
 import { Submission } from '@/models/Submission.models'
 import { User } from '@/models/User.models'
 import { protect } from '@/middlewares/auth.middleware'
 import { Problem } from '@/models/Problem.models'
+import { executeCode } from '@/lib/docker/executor'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,7 +71,7 @@ export async function POST(request, context) {
                 language,
                 input: testCase.input,
                 timeLimit: problem.timeLimit,
-                memoryLimit: problem.memoryLimit,
+                memoryLimit: problem.memoryLimit * 1024, // problem.memoryLimit is in MB, executor expects KB
             })
 
             const testResult = {
