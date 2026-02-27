@@ -57,8 +57,8 @@ function Sparkline({ data, positive, stable }) {
     const color = stable
         ? 'var(--color-tx-muted)'
         : positive
-          ? 'var(--color-accent)'
-          : 'var(--color-error)'
+            ? 'var(--color-accent)'
+            : 'var(--color-error)'
 
     return (
         <svg
@@ -143,20 +143,20 @@ function StatCard({ stat, icon, sparkline, index }) {
     const accentVar = isStable
         ? 'var(--color-border)'
         : isPositive
-          ? 'var(--color-accent)'
-          : 'var(--color-error)'
+            ? 'var(--color-accent)'
+            : 'var(--color-error)'
 
     const trendColour = isStable
         ? 'var(--color-tx-muted)'
         : isPositive
-          ? 'var(--color-accent)'
-          : 'var(--color-error)'
+            ? 'var(--color-accent)'
+            : 'var(--color-error)'
 
     const trendBg = isStable
         ? 'var(--color-bg-muted)'
         : isPositive
-          ? 'var(--color-accent-light)'
-          : 'var(--color-error-light)'
+            ? 'var(--color-accent-light)'
+            : 'var(--color-error-light)'
 
     return (
         <Card
@@ -250,28 +250,47 @@ function StatCard({ stat, icon, sparkline, index }) {
 
 /* ── Public Component ────────────────────────────────────── */
 
-/**
- * @component PlatformStats
- * @description Displays platform-wide statistics with sparklines,
- * animated counters, trend pills, and colour-coded health indicators.
- *
- * Layout:
- * - Mobile:  2-column grid
- * - Desktop: 4-column grid
- *
- * Design tokens used (never hardcoded):
- *   --color-bg-subtle, --color-bg-muted, --color-border,
- *   --color-tx-primary, --color-tx-secondary, --color-tx-muted,
- *   --color-accent, --color-accent-light,
- *   --color-error, --color-error-light
- *
- * @returns {JSX.Element}
- */
 export function PlatformStats() {
+    const [stats, setStats] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/stats/platform')
+                const json = await res.json()
+                if (json.success) {
+                    const mappedStats = [
+                        { label: 'Total Participants', value: json.data.totalParticipants.toLocaleString(), trend: '+0.0%', trendUp: true },
+                        { label: 'Submissions Today', value: json.data.submissionsToday.toLocaleString(), trend: '+0.0%', trendUp: true },
+                        { label: 'Active Contests', value: json.data.activeContests.toString(), trend: 'Live', trendUp: null },
+                        { label: 'Avg. Solve Rate', value: json.data.avgSolveRate, trend: '-', trendUp: null }
+                    ]
+                    setStats(mappedStats)
+                }
+            } catch (err) {
+                console.error('[PlatformStats] Failed to fetch stats:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchStats()
+    }, [])
+
+    if (loading || !stats) {
+        return (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-32 animate-pulse rounded-xl bg-bg-subtle border border-border" />
+                ))}
+            </div>
+        )
+    }
+
     return (
         <section aria-label="Platform statistics">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {leaderboardStats.map((stat, idx) => (
+                {stats.map((stat, idx) => (
                     <StatCard
                         key={stat.label}
                         stat={stat}

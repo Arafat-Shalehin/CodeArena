@@ -137,8 +137,24 @@ export async function POST(request, context) {
         const userUpdate = {
             $inc: { 'stats.totalSubmissions': 1 }
         }
+
         if (overallVerdict === 'ACCEPTED') {
             userUpdate.$inc['stats.accepted'] = 1
+
+            // Point Reward: Only for the FIRST time solving this problem
+            // We check if any previous accepted submissions exist (excluding the one we just created)
+            const previousAccepted = await Submission.findOne({
+                userId: user._id,
+                problemId: id,
+                verdict: 'accepted',
+                _id: { $ne: submission._id }
+            })
+
+            if (!previousAccepted) {
+                const pointsMap = { easy: 10, medium: 20, hard: 50 }
+                const points = pointsMap[problem.difficulty?.toLowerCase()] || 20
+                userUpdate.$inc['stats.score'] = points
+            }
         }
         await User.findByIdAndUpdate(user._id, userUpdate)
 

@@ -1,11 +1,13 @@
 import React from 'react';
 
-export default function ProblemsToolbar({ sortBy, setSortBy, setSidebarOpen }) {
+export default function ProblemsToolbar({ sortBy, setSortBy, setSidebarOpen, totalProblems }) {
     return (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-text-primary">All Problems</h1>
-                <p className="text-text-secondary text-sm mt-1">Showing 2,542 coding challenges available</p>
+                <p className="text-text-secondary text-sm mt-1">
+                    Showing {totalProblems !== undefined ? totalProblems.toLocaleString() : '-'} coding challenges available
+                </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
                 {/* Mobile filter button */}
