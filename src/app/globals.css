@@ -641,4 +641,120 @@
     .animate-spin-slow {
         animation: spin-slow 20s linear infinite;
     }
+
+    /* ── Markdown / Prose Styling ── */
+    .prose-markdown {
+        color: var(--ca-text-secondary);
+        font-family: var(--font-sans);
+        line-height: 1.75;
+    }
+
+    .prose-markdown h1,
+    .prose-markdown h2,
+    .prose-markdown h3 {
+        color: var(--ca-text-primary);
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .prose-markdown h1 {
+        font-size: 1.875rem;
+    }
+    .prose-markdown h2 {
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--ca-border);
+        padding-bottom: 0.5rem;
+    }
+    .prose-markdown h3 {
+        font-size: 1.25rem;
+    }
+
+    .prose-markdown p {
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown ul,
+    .prose-markdown ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+    }
+
+    .prose-markdown ul {
+        list-style-type: disc;
+    }
+
+    .prose-markdown ol {
+        list-style-type: decimal;
+    }
+
+    .prose-markdown li {
+        margin-bottom: 0.5rem;
+    }
+
+    .prose-markdown code {
+        background-color: var(--ca-bg-muted);
+        color: var(--ca-accent-text);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+    }
+
+    .prose-markdown pre {
+        background-color: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown pre code {
+        background-color: transparent;
+        color: var(--ca-text-primary);
+        padding: 0;
+        font-size: 0.9em;
+    }
+
+    .prose-markdown blockquote {
+        border-left: 4px solid var(--ca-accent);
+        padding-left: 1rem;
+        font-style: italic;
+        color: var(--ca-text-muted);
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown th,
+    .prose-markdown td {
+        border: 1px solid var(--ca-border);
+        padding: 0.75rem;
+        text-align: left;
+    }
+
+    .prose-markdown th {
+        background-color: var(--ca-bg-subtle);
+        font-weight: 600;
+        color: var(--ca-text-primary);
+    }
+
+    /* KaTeX overrides to match theme */
+    .katex {
+        font-size: 1.1em;
+    }
+
+    .katex-display {
+        margin: 1.5rem 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
 }
+
+/* Import KaTeX CSS */
+@import 'katex/dist/katex.min.css';

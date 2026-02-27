@@ -8,21 +8,25 @@ export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
     return (
         <Card className="p-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Full Name Input */}
-                <div className="space-y-2">
+                {/* Unique Handle (backend name) */}
+                <div className="space-y-2 md:col-span-2">
                     <Label
                         htmlFor="name"
                         className="text-text-muted text-xs font-bold tracking-wider uppercase"
                     >
+                        Username / Handle
                         Display Name
                     </Label>
                     <div className="relative">
-                        <User
+                        <AtSign
                             className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
                             size={16}
                         />
                         <Input
                             id="name"
+                            name="name"
+                            value={formData.name}
+                            onChange={onChange}
                             {...register('name')}
                             className="pl-10"
                             placeholder="Alex Rivera"
@@ -50,7 +54,7 @@ export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
                             id="username"
                             {...register('username')}
                             className="pr-24 pl-10"
-                            placeholder="arivera_codes"
+                            placeholder="your_unique_handle"
                         />
                         {/* Dummy Indicator temporarily */}
                         {!errors.username && (

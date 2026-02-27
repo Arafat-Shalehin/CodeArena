@@ -20,6 +20,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
+// Markdown
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+
 export default function ProblemDetailPage() {
     const { id } = useParams()
     const router = useRouter()
@@ -153,9 +159,13 @@ export default function ProblemDetailPage() {
                                 <h2>Problem Description</h2>
                             </div>
 
-                            {/* Static content for now as we don't have Markdown renderer */}
-                            <div className="text-text-secondary leading-relaxed whitespace-pre-wrap font-sans text-base">
-                                {problem.description}
+                            <div className="prose-markdown">
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm, remarkMath]}
+                                    rehypePlugins={[rehypeKatex]}
+                                >
+                                    {problem.description}
+                                </ReactMarkdown>
                             </div>
                         </div>
 

@@ -71,11 +71,11 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                             <div className="bg-bg-subtle flex items-center gap-3 rounded-xl px-4 py-3">
                                 <Avatar className="border-accent/30 size-10 border-2">
                                     <AvatarImage
-                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
-                                        alt={user.username}
+                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                                        alt={user.name || 'User'}
                                     />
                                     <AvatarFallback className="bg-accent/10 text-accent text-xs font-bold">
-                                        {user.username.substring(0, 2).toUpperCase()}
+                                        {(user.name || user.email || 'U').substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">
