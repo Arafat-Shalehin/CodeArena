@@ -1,60 +1,155 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
+
+// Firebase
+import { auth } from '@/lib/firebase/config'
+import { updateProfile as firebaseUpdateProfile } from 'firebase/auth'
+
+// Auth Context
+import { useAuth } from '@/context/AuthContext'
+
+// Components
 import SettingsSidebar from '@/features/profile/components/SettingsSidebar'
 import PersonalInfoForm from '@/features/profile/components/PersonalInfoForm'
 import SocialProfilesForm from '@/features/profile/components/SocialProfilesForm'
-import { INITIAL_USER_DATA } from '@/features/profile/data/settings.data'
 import { Button } from '@/components/ui/button'
 import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
 
-/**
- * SettingsPage Component
- * * The primary view for users to manage their account settings on CodeArena.
- * Features a dynamic sidebar to switch between different settings sections
- * (Profile, Security, Notifications, etc.) and a centralized state for
- * form data management.
- * * @returns {React.JSX.Element} The rendered Settings page.
- */
+// Schema
+const editProfileSchema = z.object({
+    name: z
+        .string()
+        .min(2, 'Display name must be at least 2 characters')
+        .max(50, 'Display name must be at most 50 characters'),
+    username: z
+        .string()
+        .min(3, 'Username must be at least 3 characters')
+        .max(20, 'Username must be at most 20 characters')
+        .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores'),
+    bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
+    location: z.string().max(100, 'Location is too long').optional().or(z.literal('')),
+    website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+    socials: z
+        .object({
+            github: z.string().optional().or(z.literal('')),
+            linkedin: z.string().optional().or(z.literal('')),
+            twitter: z.string().optional().or(z.literal('')),
+        })
+        .optional(),
+})
+
+const PREDEFINED_AVATARS = [
+    'adventurer',
+    'mage',
+    'knight',
+    'rogue',
+    'cleric',
+    'paladin',
+    'bard',
+    'druid',
+    'ranger',
+    'monk',
+    'sorcerer',
+    'warlock',
+    'barbarian',
+    'fighter',
+    'wizard',
+]
+
 export default function SettingsPage() {
-    /** * @type {[string, React.Dispatch<React.SetStateAction<string>>]}
-     * Tracks the currently visible settings tab.
-     */
+    const { user, updateProfile: updateLocalContext, isLoading: authLoading } = useAuth()
     const [activeSection, setActiveSection] = useState('profile')
 
-    /** * @type {[Object, React.Dispatch<React.SetStateAction<Object>>]}
-     * Holds the master state for all user profile fields.
-     */
-    const [formData, setFormData] = useState(INITIAL_USER_DATA)
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        reset,
+        formState: { errors, isSubmitting },
+    } = useForm({
+        resolver: zodResolver(editProfileSchema),
+        defaultValues: {
+            name: '',
+            username: '',
+            bio: '',
+            location: '',
+            website: '',
+            socials: { github: '', linkedin: '', twitter: '' },
+        },
+    })
 
-    /**
-     * Handles input changes for standard text fields and updates the centralized formData state.
-     * * @param {React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>} e - The change event from the input field.
-     * @returns {void}
-     */
-    const handleChange = (e) => {
-        const { name, value } = e.target
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }))
+    // Hydrate form once user data is available
+    useEffect(() => {
+        if (user) {
+            reset({
+                name: user.name || '',
+                username: user.username || '',
+                bio: user.bio || '',
+                location: user.location || '',
+                website: user.website || '',
+                socials: {
+                    github: user.socials?.github || '',
+                    linkedin: user.socials?.linkedin || '',
+                    twitter: user.socials?.twitter || '',
+                },
+            })
+            if (!watch('avatarSeed')) {
+                setValue('avatarSeed', user.avatarSeed || user.username || PREDEFINED_AVATARS[0])
+            }
+        }
+    }, [user, reset, setValue])
+
+    const avatarSeed = watch('avatarSeed')
+
+    const onSubmit = async (data) => {
+        if (auth.currentUser) {
+            try {
+                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
+            } catch (e) {
+                console.error('Firebase profile sync failed:', e)
+                toast.error('Failed to sync name with Firebase auth.')
+            }
+        }
+
+        // Update local auth context (which also handles localStorage caching mapping)
+        updateLocalContext({
+            name: data.name,
+            username: data.username,
+            bio: data.bio || '',
+            location: data.location || '',
+            website: data.website || '',
+            socials: data.socials,
+            avatarSeed,
+        })
+
+        toast.success('Changes saved successfully!')
     }
 
-    /**
-     * Submits the current formData to the backend or API service.
-     * Currently performs a console log and success alert as a placeholder.
-     * * @async
-     * @returns {void}
-     */
-    const handleSave = () => {
-        // Placeholder for save logic
-        console.log('Saving changes:', formData)
-        alert('Changes saved successfully!')
+    if (authLoading) {
+        return (
+            <div className="bg-bg-page flex min-h-screen flex-col">
+                <Navbar />
+                <main className="flex flex-grow items-center justify-center">
+                    <Loader2 className="text-accent h-8 w-8 animate-spin" />
+                </main>
+                <Footer />
+            </div>
+        )
     }
 
     return (
-        <div className="bg-bg-page min-h-screen">
-            <main className="mx-auto max-w-7xl px-4 py-12 md:px-6">
+        <div className="bg-bg-page flex min-h-screen flex-col">
+            <Navbar />
+            <main className="mx-auto w-full max-w-7xl flex-grow px-4 pt-2 pb-12 md:px-6">
                 <div className="mb-10">
                     <h1 className="text-text-primary text-3xl font-bold tracking-tight">
                         Profile Information
@@ -73,38 +168,48 @@ export default function SettingsPage() {
                     />
 
                     {/* Content Section */}
-                    <div className="space-y-8 lg:col-span-9">
+                    <div className="lg:col-span-9">
                         {activeSection === 'profile' && (
-                            <>
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                                 <ProfilePictureCard
-                                    avatarUrl={formData.avatar}
-                                    onUpload={() => {}}
-                                    onRemove={() =>
-                                        setFormData((prev) => ({ ...prev, avatar: '' }))
-                                    }
+                                    avatarSeed={avatarSeed}
+                                    onSelectSeed={(seed) => setValue('avatarSeed', seed)}
+                                    predefinedAvatars={PREDEFINED_AVATARS}
                                 />
-                                <PersonalInfoForm formData={formData} onChange={handleChange} />
-                                <SocialProfilesForm
-                                    socials={formData.socials}
-                                    onChange={handleChange}
+                                <PersonalInfoForm
+                                    register={register}
+                                    errors={errors}
+                                    bioValue={watch('bio')}
                                 />
+                                <SocialProfilesForm register={register} errors={errors} />
 
                                 <div className="border-border flex items-center justify-end gap-4 border-t pt-4">
                                     <Button
+                                        type="button"
                                         variant="ghost"
                                         className="text-text-secondary font-semibold"
+                                        onClick={() => user && reset()}
+                                        disabled={isSubmitting}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
+                                        type="submit"
                                         variant="default"
                                         className="shadow-accent-glow px-8"
-                                        onClick={handleSave}
+                                        disabled={isSubmitting}
                                     >
-                                        Save Changes
+                                        {isSubmitting ? (
+                                            <span className="flex items-center gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Saving...
+                                            </span>
+                                        ) : (
+                                            'Save Changes'
+                                        )}
                                     </Button>
                                 </div>
-                            </>
+                            </form>
                         )}
 
                         {/* Coming Soon Placeholder */}
@@ -118,6 +223,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </main>
+            <Footer />
         </div>
     )
 }
