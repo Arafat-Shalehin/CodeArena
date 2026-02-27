@@ -4,34 +4,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { User, Mail, MapPin, Globe, CheckCircle } from 'lucide-react'
 
-/**
- * PersonalInfoForm Component
- * * A specialized form section for updating a user's primary profile details.
- * It provides inputs for name, username (with availability status), bio,
- * location, and personal website.
- * * @component
- * @param {Object} props - The component props.
- * @param {Object} props.formData - The current state object containing user information.
- * @param {string} props.formData.fullName - The user's display name.
- * @param {string} props.formData.username - The user's unique handle.
- * @param {string} [props.formData.bio] - A brief description of the user.
- * @param {string} [props.formData.location] - The user's physical location.
- * @param {string} [props.formData.website] - The user's external portfolio or personal URL.
- * @param {Function} props.onChange - Callback function triggered on every input change.
- * Receives the standard React change event.
- * * @returns {React.JSX.Element} The rendered personal information form card.
- */
-export default function PersonalInfoForm({ formData, onChange }) {
+export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
     return (
         <Card className="p-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {/* Full Name Input */}
                 <div className="space-y-2">
                     <Label
-                        htmlFor="fullName"
+                        htmlFor="name"
                         className="text-text-muted text-xs font-bold tracking-wider uppercase"
                     >
-                        Full Name
+                        Display Name
                     </Label>
                     <div className="relative">
                         <User
@@ -39,14 +22,15 @@ export default function PersonalInfoForm({ formData, onChange }) {
                             size={16}
                         />
                         <Input
-                            id="fullName"
-                            name="fullName"
-                            value={formData.fullName}
-                            onChange={onChange}
+                            id="name"
+                            {...register('name')}
                             className="pl-10"
                             placeholder="Alex Rivera"
                         />
                     </div>
+                    {errors.name && (
+                        <p className="text-error text-xs font-medium">{errors.name.message}</p>
+                    )}
                 </div>
 
                 {/* Username Input with Availability Indicator */}
@@ -64,17 +48,21 @@ export default function PersonalInfoForm({ formData, onChange }) {
                         />
                         <Input
                             id="username"
-                            name="username"
-                            value={formData.username}
-                            onChange={onChange}
+                            {...register('username')}
                             className="pr-24 pl-10"
                             placeholder="arivera_codes"
                         />
-                        <div className="bg-success-light text-success absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-bold">
-                            <CheckCircle size={10} />
-                            Available
-                        </div>
+                        {/* Dummy Indicator temporarily */}
+                        {!errors.username && (
+                            <div className="bg-success-light text-success absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-bold">
+                                <CheckCircle size={10} />
+                                Available
+                            </div>
+                        )}
                     </div>
+                    {errors.username && (
+                        <p className="text-error text-xs font-medium">{errors.username.message}</p>
+                    )}
                 </div>
 
                 {/* Bio TextArea with Character Counter */}
@@ -86,19 +74,22 @@ export default function PersonalInfoForm({ formData, onChange }) {
                         >
                             Bio
                         </Label>
-                        <span className="text-text-muted text-[10px]">
-                            {formData.bio?.length || 0}/500
+                        <span
+                            className={`text-xs font-medium ${bioValue.length > 140 ? 'text-warning' : 'text-text-muted'}`}
+                        >
+                            {bioValue.length || 0}/160
                         </span>
                     </div>
                     <textarea
                         id="bio"
-                        name="bio"
-                        value={formData.bio}
-                        onChange={onChange}
+                        {...register('bio')}
                         rows={4}
                         className="bg-bg-page border-border text-text-primary focus:ring-accent placeholder:text-text-muted w-full resize-none rounded-md border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
                         placeholder="Tell us about your coding journey..."
                     />
+                    {errors.bio && (
+                        <p className="text-error text-xs font-medium">{errors.bio.message}</p>
+                    )}
                 </div>
 
                 {/* Location Input */}
@@ -116,13 +107,14 @@ export default function PersonalInfoForm({ formData, onChange }) {
                         />
                         <Input
                             id="location"
-                            name="location"
-                            value={formData.location}
-                            onChange={onChange}
+                            {...register('location')}
                             className="pl-10"
                             placeholder="San Francisco, CA"
                         />
                     </div>
+                    {errors.location && (
+                        <p className="text-error text-xs font-medium">{errors.location.message}</p>
+                    )}
                 </div>
 
                 {/* Website URL Input */}
@@ -140,14 +132,15 @@ export default function PersonalInfoForm({ formData, onChange }) {
                         />
                         <Input
                             id="website"
-                            name="website"
                             type="url"
-                            value={formData.website}
-                            onChange={onChange}
+                            {...register('website')}
                             className="pl-10"
                             placeholder="https://arivera.dev"
                         />
                     </div>
+                    {errors.website && (
+                        <p className="text-error text-xs font-medium">{errors.website.message}</p>
+                    )}
                 </div>
             </div>
         </Card>

@@ -1,63 +1,62 @@
 import React from 'react'
 import { Card } from '@/components/ui/card'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Camera } from 'lucide-react'
+import { Label } from '@/components/ui/label'
 
 /**
  * ProfilePictureCard Component
- * * Provides a user interface for viewing and updating the user's profile image.
- * Includes a preview avatar, a camera overlay for mobile-friendly interactions,
- * and explicit action buttons for uploading or removing the current image.
- * * @component
+ * Provides a user interface for selecting the user's avatar seed from predefined dicebear pixel art options.
+ *
+ * @component
  * @param {Object} props - The component props.
- * @param {string} [props.avatarUrl] - The URL of the user's current profile image.
- * If null or empty, the fallback initials will be shown.
- * @param {Function} props.onUpload - Callback function triggered when the "Change Avatar"
- * button or camera icon is clicked.
- * @param {Function} props.onRemove - Callback function triggered when the "Remove"
- * button is clicked to clear the current avatar.
- * * @returns {React.JSX.Element} The rendered profile picture management card.
+ * @param {string} props.avatarSeed - The currently selected avatar seed string.
+ * @param {Function} props.onSelectSeed - Callback function triggered when an avatar seed is clicked.
+ * @param {Array<string>} props.predefinedAvatars - Array of strings containing the avatar seed options.
+ * @returns {React.JSX.Element} The rendered profile picture selection card.
  */
-
-export default function ProfilePictureCard({ avatarUrl, onUpload, onRemove }) {
+export default function ProfilePictureCard({ avatarSeed, onSelectSeed, predefinedAvatars = [] }) {
     return (
         <Card className="p-6">
             <h3 className="text-text-primary mb-6 text-lg font-semibold">Profile Picture</h3>
-            <div className="flex flex-col items-center gap-8 md:flex-row">
-                {/* Avatar Preview & Quick-Action Icon */}
-                <div className="group relative">
-                    <Avatar className="border-bg-subtle h-28 w-28 border-4 shadow-md">
-                        <AvatarImage src={avatarUrl} alt="Profile" />
-                        <AvatarFallback>AR</AvatarFallback>
-                    </Avatar>
-                    <button
-                        onClick={onUpload}
-                        className="bg-accent focus:ring-accent absolute right-1 bottom-1 rounded-full p-2 text-white shadow-lg transition-transform hover:scale-110 focus:ring-2 focus:outline-none"
-                        title="Change Avatar"
-                    >
-                        <Camera size={16} />
-                    </button>
-                </div>
-
-                {/* Information and Action Buttons */}
-                <div className="flex-1 text-center md:text-left">
-                    <div className="mb-4 flex flex-wrap justify-center gap-3 md:justify-start">
-                        <Button variant="default" size="sm" onClick={onUpload}>
-                            Change Avatar
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-error hover:bg-error-light hover:text-error border-border"
-                            onClick={onRemove}
-                        >
-                            Remove
-                        </Button>
-                    </div>
-                    <p className="text-text-muted text-xs leading-relaxed">
-                        JPG, GIF or PNG. Recommended size: 400×400. Max size of 800K.
-                    </p>
+            <div className="space-y-4">
+                <Label className="text-text-primary block text-sm font-medium">
+                    Choose an Avatar
+                </Label>
+                <div className="grid grid-cols-5 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+                    {predefinedAvatars.map((seed) => {
+                        const isSelected = avatarSeed === seed
+                        return (
+                            <button
+                                key={seed}
+                                type="button"
+                                onClick={() => onSelectSeed(seed)}
+                                className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                                    isSelected
+                                        ? 'border-accent ring-accent/20 bg-accent/5 ring-2'
+                                        : 'border-border hover:border-text-muted/50 hover:bg-bg-subtle bg-bg-page'
+                                }`}
+                            >
+                                <img
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${seed}`}
+                                    alt={seed}
+                                    className="h-full w-full object-cover p-1 select-none"
+                                    draggable={false}
+                                />
+                                {isSelected && (
+                                    <div className="bg-accent text-bg-page absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full">
+                                        <svg
+                                            className="h-2.5 w-2.5"
+                                            viewBox="0 0 12 12"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.5"
+                                        >
+                                            <path d="M2 6l3 3 5-5" />
+                                        </svg>
+                                    </div>
+                                )}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
         </Card>

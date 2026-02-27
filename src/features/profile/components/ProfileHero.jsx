@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button'
 // Auth
 import { useAuth } from '@/context/AuthContext'
 
-// Profile Edit Modal
-import EditProfileModal from './EditProfileModal'
 import { toast } from 'sonner'
 import { Settings } from 'lucide-react'
 import Link from 'next/link'
@@ -27,7 +25,6 @@ import Link from 'next/link'
  */
 export default function ProfileHero({ user: userProp }) {
     const { user: authUser, updateProfile } = useAuth()
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
     const displayUser = userProp || authUser
 
@@ -47,11 +44,6 @@ export default function ProfileHero({ user: userProp }) {
 
     const rank = stats?.globalRank ?? '—'
     const finalAvatarSeed = avatarSeed || username
-
-    const handleSaveProfile = (updatedData) => {
-        updateProfile(updatedData)
-        toast.success('Changes saved successfully!')
-    }
 
     return (
         <>
@@ -103,31 +95,19 @@ export default function ProfileHero({ user: userProp }) {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex shrink-0 flex-col justify-center gap-3 md:justify-end">
+                        <div className="flex shrink-0 flex-row flex-wrap items-center justify-center gap-3 md:justify-end">
                             {!isOwnProfile && <Button variant="default">Follow</Button>}
                             {isOwnProfile && (
-                                <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-                                    Edit Profile
-                                </Button>
+                                <Link href="/profile/settings">
+                                    <Button variant="outline">
+                                        <Settings className="mr-2 h-4 w-4" /> Edit Profile
+                                    </Button>
+                                </Link>
                             )}
-                            <Link
-                                href="profile/settings"
-                                className="hover:text-text-muted text-info flex gap-2 underline"
-                            >
-                                <Settings></Settings> Profile Settings
-                            </Link>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {isEditModalOpen && (
-                <EditProfileModal
-                    user={displayUser}
-                    onSave={handleSaveProfile}
-                    onClose={() => setIsEditModalOpen(false)}
-                />
-            )}
         </>
     )
 }
