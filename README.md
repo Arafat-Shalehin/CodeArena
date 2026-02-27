@@ -1,118 +1,151 @@
+﻿# CodeArena
 
-# ⚔️ CodeArena
+CodeArena is a full-stack online judge and competitive programming platform built with Next.js. It includes authentication, problem management, submissions, contest APIs, leaderboards, and Docker-based code execution.
 
-> **The Ultimate Competitive Programming Platform**  
-> Battle, learn, and climb the global ranks in an environment built for high-performance engineering.
+## Current Status
 
-CodeArena is a modern, real-time competitive programming platform designed to help developers master algorithms and data structures through curated challenges and live contests.
+Implemented:
+- User authentication (register, login, logout, Firebase sync + JWT cookie flow)
+- Problems list with search/filter/pagination and solved-status lookup
+- Problem submission and verdict evaluation
+- Docker sandbox execution pipeline for multiple languages
+- Contest, participant, and leaderboard API surfaces
+- Admin log APIs
 
----
+In progress / partial:
+- Some frontend sections still use static/mock data
+- Practice page is currently a placeholder ("Coming Soon")
+- Real-time websocket updates are not wired in this repository yet
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
-- **UI Architecture**: React 19, Server Components, Lucide Icons
-- **Font**: Inter, Bricolage Grotesque, JetBrains Mono
-- **State Management**: React Hooks (`useState`, `useEffect`)
+- Next.js 16 (App Router)
+- React 19
+- Tailwind CSS v4
+- MongoDB (Mongoose)
+- Redis
+- Docker + `dockerode` for sandboxed execution
+- Firebase Auth (client) + JWT (server auth)
 
----
+## Supported Languages (Judge)
 
-## 🚀 Getting Started
+- C++
+- Python
+- Java
+- JavaScript
 
-### Prerequisites
+## Verdicts
 
-- Node.js 18+  
-- npm or yarn
+- `ACCEPTED`
+- `WRONG_ANSWER`
+- `TIME_LIMIT_EXCEEDED`
+- `MEMORY_LIMIT_EXCEEDED`
+- `RUNTIME_ERROR`
+- `COMPILATION_ERROR`
+- `PENDING`
+- `JUDGING`
+- `SYSTEM_ERROR`
+- `SECURITY_ERROR`
 
-### Installation
+## Main Routes
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Start-Up-Team-Project/CodeArena-TeamProject.git
-   cd CodeArena-TeamProject
-   ```
+- `/` - Landing page
+- `/login`, `/signup` - Authentication pages
+- `/problems` - Problem browser
+- `/problems/[id]` - Problem detail and solve workspace
+- `/leaderboard` - Leaderboard UI
+- `/profile`, `/profile/[id]`, `/profile/settings` - Profile pages
+- `/userdashboard` - User dashboard
+- `/practice` - Placeholder page
+- `/test-docker` - Docker execution test interface
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+## API Overview
 
-3. **Run the development server**
-   ```bash
-   npm run dev
-   ```
+- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/sync`
+- Health: `/api/health`
+- Problems: `/api/problems`, `/api/problems/[id]`, `/api/problems/[id]/submit`
+- Submissions: `/api/submissions`, `/api/submissions/[id]`
+- Evaluation: `/api/evaluation/execute`, `/api/evaluation/judge`, `/api/evaluation/test`, `/api/evaluation/status`
+- User: `/api/user/problems-status`, `/api/users`, `/api/users/[id]`
+- Contests: `/api/contests`, `/api/contests/[id]`, participant + registration + leaderboard subroutes
+- Admin: `/api/admin/logs`, `/api/admin/logs/[id]`
 
-   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
----
+```txt
+src/
+  app/            # Next.js pages + API routes
+  components/     # Shared UI/layout components
+  features/       # Feature-based frontend modules
+  controllers/    # API controllers
+  services/       # Business/data service layer
+  models/         # Mongoose models
+  middlewares/    # Auth/role middleware
+  lib/            # Docker execution, judge logic, db/auth utilities
+```
 
-## 🎯 Target Users
+## Local Development
 
-- 👩‍💻 CS students & bootcamp learners
-- 🧠 Aspiring competitive programmers
-- 🛠️ Junior devs preparing for interviews
-- 🏆 Coders seeking timed challenges & real feedback
+Prerequisites:
+- Node.js (20+ recommended)
+- npm
+- Docker Desktop (required for code execution features)
+- MongoDB and Redis (local services or Docker)
 
-## 🔒 Security Model
+1. Install dependencies:
+```bash
+npm install
+```
 
-All user code is executed in isolated Docker containers with strict CPU, memory, and time limits to ensure fairness, prevent abuse, and maintain platform integrity.
+2. Create `.env.local` with required variables:
+```env
+MONGODB_URI=
+JWT_SECRET=
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 
-## 🌐 Real-Time System Architecture
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+```
 
-WebSockets power all real-time features:
-- Live submission verdicts
-- Real-time contest countdowns
-- Auto-refreshing leaderboards
+3. Build executor images:
+```bash
+npm run docker:build
+```
 
-## ✨ Planned Pages
+4. Start dev server:
+```bash
+npm run dev
+```
 
-| Page                     | Description |
-|--------------------------|-------------|
-| `/`                      | Landing Page (with CTA) |
-| `/login`, `/signup`      | Authentication |
-| `/dashboard`            | User overview, stats, quick links |
-| `/problems`             | Problem list, filters, search |
-| `/problems/[id]`        | Problem detail + editor |
-| `/contests`             | Upcoming, Live, Past contests |
-| `/contests/[id]`        | Contest dashboard (problems, submissions, leaderboard) |
-| `/profile/[username]`   | User submissions, performance |
-| `/admin/problems`       | Admin problem manager |
-| `/admin/contests`       | Admin contest manager |
+App URL: `http://localhost:3000`
 
-## 🧪 Verdict Types
+## Docker Compose (Optional)
 
-- ✅ Accepted
-- ❌ Wrong Answer
-- 🕒 Time Limit Exceeded
-- 🛑 Runtime Error
-- ⚠️ Compilation Error
+The repository includes `docker-compose.yml` with:
+- `mongodb`
+- `redis`
+- `app`
+- `docker-proxy` (restricted Docker socket proxy for safer container control)
 
-## 🧩 Design Philosophy
+When started via compose, the app is exposed on port `3001`.
 
-> Clean. Fast. Developer-centric.
+## Scripts
 
-- Minimal, distraction-free UI inspired by **Vercel** & **HackerRank**
-- Tailored for keyboard-heavy interaction and fast iteration
-- Clean sans-serif fonts, high-contrast code-friendly themes
-- Real-time, zero-fluff experience — no unnecessary visuals or animations
+- `npm run dev` - Start development server
+- `npm run build` - Build production app
+- `npm run start` - Run production server
+- `npm run lint` - Run ESLint
+- `npm run docker:build` - Build judge executor images
 
-## 🧠 Learn More
+## Team
 
-CodeArena isn't just a code executor — it's a learning platform for high-performance problem solving. Build habits. Get feedback. Improve every submission.
-
----
-
-## 📌 Credits
-
-- Team Lead: *Rabiul Islam*  
-- Team: 6 Members  
-- Duration: 6–7 Weeks
-
-
-
----
-
-## 📬 Contact / Feedback
-
-We’d love to hear your feedback. Whether you're a beta user, reviewer, or contributor — feel free to open an issue or get in touch!
+- Team Lead: Rabiul Islam
+- Backend: Arafat Salehin, AH Muzahid
+- Frontend: Shahnawas Adeel, Abdullah Noman, Ummey Salma Tamanna
