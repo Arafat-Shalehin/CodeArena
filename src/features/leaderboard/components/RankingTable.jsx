@@ -62,10 +62,10 @@ export function RankingTable({ data, currentUser }) {
                                 row.rank === 1
                                     ? 'text-yellow-500'
                                     : row.rank === 2
-                                      ? 'text-gray-400'
-                                      : row.rank === 3
-                                        ? 'text-orange-500'
-                                        : 'text-text-muted'
+                                        ? 'text-gray-400'
+                                        : row.rank === 3
+                                            ? 'text-orange-500'
+                                            : 'text-text-muted'
 
                             return (
                                 <TableRow
@@ -121,7 +121,7 @@ export function RankingTable({ data, currentUser }) {
                                     </TableCell>
                                     <TableCell className="relative z-10 py-4 text-right md:px-10 md:py-6">
                                         <span className="text-accent font-mono text-lg font-bold">
-                                            {row.score.toLocaleString()}
+                                            {(row.score || 0).toLocaleString()}
                                         </span>
                                     </TableCell>
                                 </TableRow>

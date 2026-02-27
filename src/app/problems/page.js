@@ -206,6 +206,7 @@ export default function ProblemsPage() {
                             sortBy={sortBy}
                             setSortBy={setSortBy}
                             setSidebarOpen={setSidebarOpen}
+                            totalProblems={pagination?.total}
                         />
                         <ProblemsTable
                             problems={problems}

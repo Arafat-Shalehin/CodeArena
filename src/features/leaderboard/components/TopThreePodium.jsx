@@ -214,8 +214,8 @@ function PodiumPosition({ entry, rank, delay }) {
  *
  * @returns {JSX.Element}
  */
-export function TopThreePodium() {
-    const [first, second, third] = leaderboardUsers.slice(0, 3)
+export function TopThreePodium({ users = [] }) {
+    const [first, second, third] = users
 
     return (
         <section className="my-12 md:my-16" aria-label="Top 3 competitors">
