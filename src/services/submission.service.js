@@ -3,6 +3,8 @@ import { Submission } from '@/models/Submission.models'
 import { User } from '@/models/User.models'
 import { Problem } from '@/models/Problem.models'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
+import { Contest } from '@/models/Contest.models'
+import { getSubmissionQueue } from '@/lib/queue'
 
 /**
  * Create a new submission
@@ -46,7 +48,7 @@ export async function createSubmission(data) {
 
         // 4️⃣ Contest validation (if provided)
         if (contestId) {
-            const contest = await ContestParticipant.findById(contestId).session(session)
+            const contest = await Contest.findById(contestId).session(session)
             if (!contest) {
                 throw new Error('Contest not found.')
             }
@@ -92,7 +94,18 @@ export async function createSubmission(data) {
 
         await session.commitTransaction()
         session.endSession()
-        // Here i will push the submissionId to a Message Queue using BullMQ
+
+        // 7️⃣ Push to Message Queue (BullMQ)
+        try {
+            const queue = getSubmissionQueue()
+            await queue.add('process-submission', {
+                submissionId: submission[0]._id,
+            })
+        } catch (queueError) {
+            console.error('Failed to add submission to queue:', queueError)
+            // Note: We don't throw here because the DB record is already saved.
+            // In production, we might want a background cron to retry queued items.
+        }
 
         return submission[0]
     } catch (error) {
