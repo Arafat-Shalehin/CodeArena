@@ -3,6 +3,9 @@ const nextConfig = {
     /* config options here */
     output: 'standalone',
     reactCompiler: true,
+    experimental: {
+        instrumentationHook: true,
+    },
     serverExternalPackages: [
         'mongoose',
         'dockerode',

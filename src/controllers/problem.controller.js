@@ -17,6 +17,7 @@ export async function fetchProblems(req) {
         limit: searchParams.get('limit'),
         difficulty: searchParams.get('difficulty'),
         search: searchParams.get('search'),
+        tag: searchParams.get('tag'), // Added tag support
     }
 
     const result = await getAllProblems(query)

@@ -103,11 +103,20 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
             const data = await res.json()
 
             if (data.success) {
-                const { output: execOut, error: execErr, executionTime, memoryUsed, verdict: resVerdict } = data.result
+                const {
+                    output: execOut,
+                    error: execErr,
+                    executionTime,
+                    memoryUsed,
+                    verdict: resVerdict,
+                } = data.result
                 let finalOut = execOut || ''
                 if (execErr) finalOut += `\nError:\n${execErr}`
 
-                setOutput(finalOut || (resVerdict === 'SUCCESS' ? 'Execution finished with no output.' : ''))
+                setOutput(
+                    finalOut ||
+                        (resVerdict === 'SUCCESS' ? 'Execution finished with no output.' : '')
+                )
                 setVerdict(resVerdict)
                 setStats({ time: executionTime, memory: memoryUsed })
             } else {
@@ -120,6 +129,61 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
         }
     }
 
+    /** Poll for submission results */
+    const pollSubmission = async (submissionId) => {
+        const MAX_RETRIES = 60 // 60 seconds max
+        let retries = 0
+
+        const poll = async () => {
+            try {
+                const res = await fetch(`/api/submissions/${submissionId}`)
+                const json = await res.json()
+
+                if (json.success) {
+                    const sub = json.data
+                    if (sub.status === 'completed' || sub.status === 'error') {
+                        const subVerdict = sub.verdict?.toUpperCase() || 'ERROR'
+                        setVerdict(subVerdict)
+
+                        // Note: The structure of json.data from API might differ slightly from
+                        // what the previous direct execution returned.
+                        setStats({
+                            time: sub.executionTime,
+                            memory: sub.memoryUsed,
+                            // We don't have passedCount/totalCount in the model yet,
+                            // but we can add them to the submission model later if needed.
+                        })
+
+                        let message = `Verdict: ${subVerdict}\n`
+                        if (sub.executionTime !== undefined)
+                            message += `Time: ${sub.executionTime}ms\n`
+                        if (sub.memoryUsed !== undefined) message += `Memory: ${sub.memoryUsed}KB`
+                        if (sub.error) message += `\nError: ${sub.error}`
+
+                        setOutput(message)
+                        setIsSubmitting(false)
+                        return
+                    }
+
+                    // Still processing
+                    setOutput(`Status: ${sub.status.toUpperCase()}...\n`)
+                }
+            } catch (err) {
+                console.error('Polling error:', err)
+            }
+
+            retries++
+            if (retries < MAX_RETRIES) {
+                setTimeout(poll, 1000)
+            } else {
+                setOutput('Submission timed out while waiting for results.')
+                setIsSubmitting(false)
+            }
+        }
+
+        poll()
+    }
+
     /** Submit code against hidden test cases */
     const handleSubmit = async () => {
         if (isRunning || isSubmitting) return
@@ -130,6 +194,8 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
         setOutput('Submitting to judge...\n')
 
         try {
+            // Note: The specific submission route might be /api/problems/[id]/submit
+            // per current frontend code, which calls submitCode in submission.controller.js
             const res = await fetch(`/api/problems/${problemId}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -139,37 +205,30 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
             const json = await res.json()
 
             if (json.success) {
-                const { verdict: subVerdict, passedCount, totalCount, maxTime, maxMemory } = json.data
-                setVerdict(subVerdict)
-                setStats({ time: maxTime, memory: maxMemory, passedCount, totalCount })
-
-                let message = `Verdict: ${subVerdict}\n`
-                message += `Tests Passed: ${passedCount}/${totalCount}\n`
-                message += `Max Time: ${maxTime}ms\n`
-                message += `Max Memory: ${maxMemory}KB`
-
-                setOutput(message)
+                const submissionId = json.data._id || json.data.id
+                setOutput('Queued for evaluation...\n')
+                pollSubmission(submissionId)
             } else {
                 setVerdict('ERROR')
-                setOutput(`Submission Error: ${json.error || 'Failed to submit'}`)
+                setOutput(`Submission Error: ${json.message || json.error || 'Failed to submit'}`)
+                setIsSubmitting(false)
             }
         } catch (err) {
             setOutput(`Network Error: ${err.message}`)
-        } finally {
             setIsSubmitting(false)
         }
     }
 
     return (
-        <div className="flex h-full flex-col border border-border rounded-xl bg-[#1e1e1e] overflow-hidden shadow-2xl">
+        <div className="border-border flex h-full flex-col overflow-hidden rounded-xl border bg-[#1e1e1e] shadow-2xl">
             {/* Header / Toolbar */}
             <div className="flex h-12 items-center justify-between border-b border-[#2b2b2b] bg-[#252526] px-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex bg-[#1e1e1e] rounded-md px-2 py-1 border border-[#3c3c3c]">
+                    <div className="flex rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1">
                         <select
                             value={language}
                             onChange={(e) => handleLanguageChange(e.target.value)}
-                            className="bg-transparent text-xs text-gray-300 outline-none cursor-pointer font-mono"
+                            className="cursor-pointer bg-transparent font-mono text-xs text-gray-300 outline-none"
                         >
                             <option value="python">Python 3</option>
                             <option value="cpp">C++ 17</option>
@@ -177,7 +236,9 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                             <option value="javascript">JavaScript (Node.js)</option>
                         </select>
                     </div>
-                    <span className="text-[10px] text-gray-500 font-mono tracking-tighter">ID: {problemId.substring(0, 8)}...</span>
+                    <span className="font-mono text-[10px] tracking-tighter text-gray-500">
+                        ID: {problemId.substring(0, 8)}...
+                    </span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -186,25 +247,33 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                         variant="ghost"
                         onClick={handleRun}
                         disabled={isRunning || isSubmitting}
-                        className="h-8 gap-1.5 text-xs text-green-400 hover:text-green-300 hover:bg-green-500/10 border border-green-500/20"
+                        className="h-8 gap-1.5 border border-green-500/20 text-xs text-green-400 hover:bg-green-500/10 hover:text-green-300"
                     >
-                        {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                        {isRunning ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <Play size={14} />
+                        )}
                         Run
                     </Button>
                     <Button
                         size="sm"
                         onClick={handleSubmit}
                         disabled={isRunning || isSubmitting}
-                        className="h-8 gap-1.5 text-xs bg-accent hover:bg-accent-hover text-white shadow-lg shadow-accent/20"
+                        className="bg-accent hover:bg-accent-hover shadow-accent/20 h-8 gap-1.5 text-xs text-white shadow-lg"
                     >
-                        {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                        {isSubmitting ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <Send size={14} />
+                        )}
                         Submit
                     </Button>
                 </div>
             </div>
 
             {/* Monaco Editor */}
-            <div className="relative flex-1 min-h-[300px]">
+            <div className="relative min-h-[300px] flex-1">
                 <Editor
                     height="100%"
                     language={language === 'cpp' ? 'cpp' : language}
@@ -232,27 +301,38 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                 <div className="flex items-center gap-6 border-b border-[#2b2b2b] px-4 py-2 text-xs font-semibold tracking-wide">
                     <button
                         onClick={() => setActiveTab('OUTPUT')}
-                        className={`${activeTab === 'OUTPUT' ? 'border-b-2 border-accent pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                        className={`${activeTab === 'OUTPUT' ? 'border-accent border-b-2 pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                     >
-                        CONSOLE {verdict && <span className={`ml-2 text-[10px] uppercase font-bold px-1.5 rounded-sm ${verdict === 'ACCEPTED' || verdict === 'SUCCESS' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>{verdict}</span>}
+                        CONSOLE{' '}
+                        {verdict && (
+                            <span
+                                className={`ml-2 rounded-sm px-1.5 text-[10px] font-bold uppercase ${verdict === 'ACCEPTED' || verdict === 'SUCCESS' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}
+                            >
+                                {verdict}
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('INPUT')}
-                        className={`${activeTab === 'INPUT' ? 'border-b-2 border-accent pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                        className={`${activeTab === 'INPUT' ? 'border-accent border-b-2 pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                     >
                         TEST INPUT
                     </button>
 
                     <div className="ml-auto flex items-center gap-3 text-gray-500">
                         {stats && (
-                            <div className="flex gap-3 mr-4 text-[10px] font-mono opacity-60">
+                            <div className="mr-4 flex gap-3 font-mono text-[10px] opacity-60">
                                 <span>{stats.time}ms</span>
                                 <span>{stats.memory}KB</span>
                             </div>
                         )}
                         <button
-                            onClick={() => { setOutput(''); setVerdict(null); setStats(null); }}
-                            className="p-1 hover:text-white transition-colors"
+                            onClick={() => {
+                                setOutput('')
+                                setVerdict(null)
+                                setStats(null)
+                            }}
+                            className="p-1 transition-colors hover:text-white"
                         >
                             <Trash2 size={14} />
                         </button>
@@ -266,16 +346,17 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                             <textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                className="flex-1 resize-none bg-transparent text-gray-300 outline-none border-none p-0 custom-scrollbar"
+                                className="custom-scrollbar flex-1 resize-none border-none bg-transparent p-0 text-gray-300 outline-none"
                                 placeholder="Enter custom input for 'Run'..."
                                 spellCheck="false"
                             />
                         </div>
                     ) : (
-                        <pre className="whitespace-pre-wrap text-gray-300 custom-scrollbar h-full">
+                        <pre className="custom-scrollbar h-full whitespace-pre-wrap text-gray-300">
                             {output || (
                                 <span className="text-gray-600 italic">
-                                    Click &apos;Run&apos; to test your code or &apos;Submit&apos; to verify against all cases.
+                                    Click &apos;Run&apos; to test your code or &apos;Submit&apos; to
+                                    verify against all cases.
                                 </span>
                             )}
                         </pre>

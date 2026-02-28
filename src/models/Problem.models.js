@@ -15,8 +15,8 @@ const problemSchema = new mongoose.Schema(
             enum: ['easy', 'medium', 'hard'],
             default: 'medium',
         },
-        timeLimit: { type: Number, required: true },
-        memoryLimit: { type: Number, required: true },
+        timeLimit: { type: Number, required: true }, // ms
+        memoryLimit: { type: Number, required: true }, // KB
         testCases: [
             {
                 input: String,

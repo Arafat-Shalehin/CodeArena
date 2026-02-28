@@ -44,7 +44,8 @@ const submissionSchema = new mongoose.Schema(
             ],
         },
         executionTime: { type: Number }, // ms
-        memoryUsed: { type: Number }, // MB
+        memoryUsed: { type: Number }, // KB
+        error: { type: String }, // Compilation or Runtime error details
     },
     { timestamps: true }
 )
