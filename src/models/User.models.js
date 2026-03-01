@@ -40,6 +40,18 @@ const userSchema = new mongoose.Schema(
             totalSubmissions: { type: Number, default: 0 },
             accepted: { type: Number, default: 0 },
             score: { type: Number, default: 0 },
+            solvedProblems: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Problem',
+                },
+            ],
+            attemptedProblems: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Problem',
+                },
+            ],
         },
         loginAttempts: {
             type: Number,
