@@ -74,6 +74,15 @@ export async function createSubmission(data) {
             }
         }
 
+        // Check for code size limit
+        const codeSizeKB = Buffer.byteLength(code, 'utf8') / 1024
+        if (codeSizeKB > problem.codeSizeLimit) {
+            return {
+                status: 400,
+                message: `Code size (${codeSizeKB.toFixed(1)} KB) exceeds the limit (${problem.codeSizeLimit} KB)`,
+            }
+        }
+
         // 5️⃣ Create submission
         const submission = await Submission.create(
             [

@@ -27,9 +27,10 @@ const docker = new Docker(dockerOptions)
  * @param {string} input - Input test case
  * @param {number} timeLimit - Time limit in milliseconds
  * @param {number} memoryLimit - Memory limit in KB
+ * @param {number} outputLimit - Output limit in KB
  * @returns {Promise<Object>} - Execution result
  */
-export async function executeCode({ code, language, input = '', timeLimit, memoryLimit }) {
+export async function executeCode({ code, language, input = '', timeLimit, memoryLimit, outputLimit }) {
     try {
         // Validate code security
         const securityCheck = validateCodeSecurity(code)
@@ -54,7 +55,8 @@ export async function executeCode({ code, language, input = '', timeLimit, memor
             code,
             input,
             effectiveTimeLimit,
-            effectiveMemoryLimit
+            effectiveMemoryLimit,
+            outputLimit || (SANDBOX_CONFIG.execution.maxOutputSize / 1024)
         )
 
         // Start container and get results
@@ -77,15 +79,20 @@ export async function executeCode({ code, language, input = '', timeLimit, memor
 /**
  * Create a Docker container with code and input
  */
-async function createContainer(langConfig, code, input, timeLimit, memoryLimit) {
+async function createContainer(langConfig, code, input, timeLimit, memoryLimit, outputLimit) {
     const dockerConfig = getDockerRunConfig(langConfig.name)
+    const outputLimitBytes = outputLimit * 1024
 
     // Create container with tail command to keep it running (override ENTRYPOINT)
     const container = await docker.createContainer({
         Image: langConfig.image,
         Entrypoint: ['/bin/sh', '-c'],
         Cmd: ['tail -f /dev/null'], // Keep container alive indefinitely
-        Env: [`TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`, `MEMORY_LIMIT=${memoryLimit}`],
+        Env: [
+            `TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`,
+            `MEMORY_LIMIT=${memoryLimit}`,
+            `OUTPUT_LIMIT=${outputLimitBytes}`
+        ],
         ...dockerConfig,
         OpenStdin: true,
         Tty: false,
@@ -188,6 +195,10 @@ async function runContainer(container, timeLimit) {
         const streamPromise = new Promise((resolve, reject) => {
             stdoutStream.on('data', (chunk) => {
                 output += chunk.toString('utf8')
+                // Early check for output limit
+                if (output.length > (SANDBOX_CONFIG.execution.maxOutputSize * 1.1)) {
+                    // We let it finish or head will truncate it inside container
+                }
             })
             stderrStream.on('data', (chunk) => {
                 output += chunk.toString('utf8')

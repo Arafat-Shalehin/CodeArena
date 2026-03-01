@@ -1,7 +1,9 @@
 import { Worker } from 'bullmq'
 import { connection } from '@/lib/queue'
+import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
+import { TestCase } from '@/models/TestCase.models'
 import { executeCode } from '@/lib/docker/executor'
 import { logger } from '@/lib/logger'
 
@@ -30,9 +32,13 @@ export function initSubmissionWorker() {
                     throw new Error(`Problem ${submission.problemId} not found`)
                 }
 
-                // 3. Execute code for each test case
+                // 3. Fetch all test cases for the problem
+                const testCases = await TestCase.find({ problemId: submission.problemId }).sort({
+                    order: 1,
+                })
+                const totalCount = testCases.length
+
                 let passedCount = 0
-                const totalCount = problem.testCases?.length || 0
                 let maxTime = 0
                 let maxMemory = 0
                 let finalVerdict = 'accepted'
@@ -43,7 +49,7 @@ export function initSubmissionWorker() {
                     firstError = 'No test cases found for this problem.'
                 } else {
                     for (let i = 0; i < totalCount; i++) {
-                        const testCase = problem.testCases[i]
+                        const testCase = testCases[i]
 
                         const result = await executeCode({
                             code: submission.code,
@@ -57,15 +63,46 @@ export function initSubmissionWorker() {
                         maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
 
                         if (result.verdict === 'SUCCESS') {
-                            // Compare output (trimmed)
-                            const actualOutput = result.output?.trim()
-                            const expectedOutput = testCase.output?.trim()
+                            if (problem.judgeType === 'special') {
+                                // ⚖️ Special Judge Logic
+                                // For now, we'll use a simple eval-based judge for demonstration.
+                                // In production, this should be executed in a separate sandbox.
+                                try {
+                                    const judgeFn = new Function(
+                                        'input',
+                                        'output',
+                                        'expected',
+                                        problem.specialJudgeCode
+                                    )
+                                    const isCorrect = judgeFn(
+                                        testCase.input,
+                                        result.output,
+                                        testCase.expectedOutput
+                                    )
 
-                            if (actualOutput === expectedOutput) {
-                                passedCount++
+                                    if (isCorrect) {
+                                        passedCount++
+                                    } else {
+                                        finalVerdict = 'wrong_answer'
+                                        break
+                                    }
+                                } catch (judgeError) {
+                                    console.error('Special Judge Error:', judgeError)
+                                    finalVerdict = 'system_error'
+                                    firstError = 'Special judge execution failed.'
+                                    break
+                                }
                             } else {
-                                finalVerdict = 'wrong_answer'
-                                break // Stop at first failure
+                                // 🏁 Exact Match Logic
+                                const actualOutput = result.output?.trim()
+                                const expectedOutput = testCase.expectedOutput?.trim()
+
+                                if (actualOutput === expectedOutput) {
+                                    passedCount++
+                                } else {
+                                    finalVerdict = 'wrong_answer'
+                                    break
+                                }
                             }
                         } else {
                             finalVerdict = result.verdict.toLowerCase()
@@ -96,6 +133,18 @@ export function initSubmissionWorker() {
                         $inc: { totalSubmissions: 1 },
                     })
                 }
+
+                // 6. Update User unique stats
+                const userUpdate = {
+                    $addToSet: { 'stats.attemptedProblems': submission.problemId },
+                }
+                if (finalVerdict === 'accepted') {
+                    userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
+                    userUpdate.$inc = { 'stats.accepted': 1 }
+                }
+                userUpdate.$inc = { ...userUpdate.$inc, 'stats.totalSubmissions': 1 }
+
+                await User.findByIdAndUpdate(submission.userId, userUpdate)
 
                 return { verdict: finalVerdict, passedCount, totalCount }
             } catch (error) {
