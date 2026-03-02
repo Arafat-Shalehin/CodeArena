@@ -12,14 +12,18 @@ import {
 
 import { Settings, History, RotateCcw, Maximize } from 'lucide-react'
 
+import { useProblemSolve } from '@/context/ProblemSolveContext'
+
 export default function WorkspaceToolbar() {
+    const { language, setLanguage } = useProblemSolve()
+
     return (
         <div className="border-border bg-bg-subtle flex h-10 shrink-0 items-center justify-between border-b px-3">
             {/* Left Actions (Language, Settings) */}
             <div className="flex items-center gap-2">
                 {/* Custom Styled Select Trigger using Design Tokens */}
                 <div className="w-[140px]">
-                    <Select defaultValue="python">
+                    <Select value={language} onValueChange={setLanguage}>
                         <SelectTrigger className="bg-bg-page hover:bg-bg-muted h-7 border-none px-2 text-xs shadow-none transition-colors focus:ring-0">
                             <SelectValue placeholder="Language" />
                         </SelectTrigger>
@@ -32,6 +36,9 @@ export default function WorkspaceToolbar() {
                             </SelectItem>
                             <SelectItem value="javascript">
                                 <span className="text-warning mr-1 font-bold">Js</span> JavaScript
+                            </SelectItem>
+                            <SelectItem value="java">
+                                <span className="text-error mr-1 font-bold">Jv</span> Java
                             </SelectItem>
                         </SelectContent>
                     </Select>

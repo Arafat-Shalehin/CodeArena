@@ -18,17 +18,26 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Find all unique problem IDs the user has interacted with
+        const allAttempts = await Submission.find({ userId: user._id }).distinct('problemId')
+
         // Find all accepted submissions for this user
         const solvedProblems = await Submission.find({
             userId: user._id,
-            verdict: 'accepted'
+            verdict: 'accepted',
         }).distinct('problemId')
+
+        // Attempted but NOT solved
+        const attemptedIds = allAttempts.filter(
+            (id) => !solvedProblems.some((s) => s.toString() === id.toString())
+        )
 
         return NextResponse.json({
             success: true,
             data: {
-                solvedIds: solvedProblems
-            }
+                solvedIds: solvedProblems,
+                attemptedIds: attemptedIds,
+            },
         })
     } catch (error) {
         console.error('[UserStatusAPI] Error:', error)

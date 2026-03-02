@@ -8,6 +8,15 @@ export const dynamic = 'force-dynamic'
 
 export const GET = asyncHandler(async (req) => {
     await dbConnect()
+
+    // Optional protection: if status filter is used, we need the user
+    try {
+        const user = await protect(req)
+        if (user) req.user = user
+    } catch (e) {
+        // Ignore if not logged in (status filter won't work but other filters will)
+    }
+
     return fetchProblems(req)
 })
 

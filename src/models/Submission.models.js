@@ -46,6 +46,17 @@ const submissionSchema = new mongoose.Schema(
         executionTime: { type: Number }, // ms
         memoryUsed: { type: Number }, // KB
         error: { type: String }, // Compilation or Runtime error details
+        testCaseResults: [
+            {
+                testCaseId: { type: mongoose.Schema.Types.ObjectId, ref: 'TestCase' },
+                verdict: String,
+                time: Number,
+                memory: Number,
+                error: String,
+                actualOutput: String, // Only for sample test cases
+                isSample: { type: Boolean, default: false },
+            },
+        ],
     },
     { timestamps: true }
 )

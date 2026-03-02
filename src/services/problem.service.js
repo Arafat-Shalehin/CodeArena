@@ -1,4 +1,6 @@
 import { Problem } from '@/models/Problem.models'
+import { TestCase } from '@/models/TestCase.models'
+import mongoose from 'mongoose'
 
 /**
  * Fetch paginated list of problems with optional filtering.
@@ -33,10 +35,46 @@ export async function getAllProblems(query) {
         filter.tags = { $in: [query.tag] }
     }
 
+    // Filter by status (Solved, Attempted, Unsolved)
+    // Requires userId to be passed in the query object
+    if (query.status && query.userId) {
+        const { Submission } = await import('@/models/Submission.models')
+
+        if (query.status === 'solved') {
+            const solvedIds = await Submission.find({
+                userId: query.userId,
+                verdict: 'accepted',
+            }).distinct('problemId')
+            filter._id = { $in: solvedIds }
+        } else if (query.status === 'attempted') {
+            const allAttempted = await Submission.find({
+                userId: query.userId,
+            }).distinct('problemId')
+            const solvedIds = await Submission.find({
+                userId: query.userId,
+                verdict: 'accepted',
+            }).distinct('problemId')
+
+            // Attempted but NOT solved
+            const attemptedOnly = allAttempted.filter(
+                (id) => !solvedIds.some((s) => s.toString() === id.toString())
+            )
+            filter._id = { $in: attemptedOnly }
+        } else if (query.status === 'unsolved') {
+            const allAttempted = await Submission.find({
+                userId: query.userId,
+            }).distinct('problemId')
+            filter._id = { $not: { $in: allAttempted } }
+        }
+    }
+
     // Running queries in parallel for better performance.
-    // Note: We do NOT use .lean() here so Mongoose virtuals (acceptanceRate) are computed.
     const [problems, total] = await Promise.all([
-        Problem.find(filter).select('-testCases').sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Problem.find(filter)
+            .select('-sampleTestCases') // Keep list view light
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
         Problem.countDocuments(filter),
     ])
 
@@ -59,18 +97,21 @@ export async function getAllProblems(query) {
  * @param {Boolean} options.includeTestCases - Whether to include test cases
  */
 export async function getProblemById(id, { includeTestCases = false } = {}) {
-    const query = Problem.findById(id)
-
-    if (!includeTestCases) {
-        query.select('-testCases')
-    }
-
-    const problem = await query
+    const problem = await Problem.findById(id)
 
     if (!problem) {
-        const error = (err.status = 404)
-        error.message = 'Problem not found'
+        const error = new Error('Problem not found')
+        error.status = 404
         throw error
+    }
+
+    if (includeTestCases) {
+        const testCases = await TestCase.find({ problemId: id }).sort({ order: 1 })
+        // Return a plain object with the test cases included
+        return {
+            ...problem.toObject(),
+            testCases,
+        }
     }
 
     return problem
@@ -83,7 +124,41 @@ export async function getProblemById(id, { includeTestCases = false } = {}) {
  * @returns {Object} - Created problem
  */
 export async function createProblem(data) {
-    return await Problem.create(data)
+    const { testCases, ...problemData } = data
+
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    try {
+        const problem = await Problem.create([problemData], { session })
+        const problemId = problem[0]._id
+
+        if (testCases && testCases.length > 0) {
+            const testCaseDocs = testCases.map((tc, index) => ({
+                problemId,
+                input: tc.input,
+                expectedOutput: tc.expectedOutput || tc.output,
+                isSample: tc.isSample || false,
+                explanation: tc.explanation || '',
+                order: tc.order || index,
+            }))
+
+            await TestCase.insertMany(testCaseDocs, { session })
+            await Problem.findByIdAndUpdate(
+                problemId,
+                { testCaseCount: testCaseDocs.length },
+                { session }
+            )
+        }
+
+        await session.commitTransaction()
+        return problem[0]
+    } catch (error) {
+        await session.abortTransaction()
+        throw error
+    } finally {
+        session.endSession()
+    }
 }
 
 /**
@@ -93,18 +168,55 @@ export async function createProblem(data) {
  * @returns {Object} - Updated problem
  */
 export async function updateProblem(id, data) {
-    const problem = await Problem.findByIdAndUpdate(id, data, {
-        new: true,
-        runValidators: true,
-    })
+    const { testCases, ...problemData } = data
 
-    if (!problem) {
-        const error = (err.status = 404)
-        error.message = 'Problem not found'
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    try {
+        const problem = await Problem.findByIdAndUpdate(id, problemData, {
+            new: true,
+            runValidators: true,
+            session,
+        })
+
+        if (!problem) {
+            const error = new Error('Problem not found')
+            error.status = 404
+            throw error
+        }
+
+        if (testCases) {
+            // Re-sync strategy: delete all and re-insert
+            await TestCase.deleteMany({ problemId: id }, { session })
+
+            if (testCases.length > 0) {
+                const testCaseDocs = testCases.map((tc, index) => ({
+                    problemId: id,
+                    input: tc.input,
+                    expectedOutput: tc.expectedOutput || tc.output,
+                    isSample: tc.isSample || false,
+                    explanation: tc.explanation || '',
+                    order: tc.order || index,
+                }))
+
+                await TestCase.insertMany(testCaseDocs, { session })
+                problem.testCaseCount = testCaseDocs.length
+                await problem.save({ session })
+            } else {
+                problem.testCaseCount = 0
+                await problem.save({ session })
+            }
+        }
+
+        await session.commitTransaction()
+        return problem
+    } catch (error) {
+        await session.abortTransaction()
         throw error
+    } finally {
+        session.endSession()
     }
-
-    return problem
 }
 
 /**
@@ -113,13 +225,27 @@ export async function updateProblem(id, data) {
  * @returns {Object} - Deleted problem
  */
 export async function deleteProblem(id) {
-    const problem = await Problem.findByIdAndDelete(id)
+    const session = await mongoose.startSession()
+    session.startTransaction()
 
-    if (!problem) {
-        const error = (err.status = 404)
-        error.message = 'Problem not found'
+    try {
+        const problem = await Problem.findByIdAndDelete(id, { session })
+
+        if (!problem) {
+            const error = new Error('Problem not found')
+            error.status = 404
+            throw error
+        }
+
+        // Delete associated test cases
+        await TestCase.deleteMany({ problemId: id }, { session })
+
+        await session.commitTransaction()
+        return problem
+    } catch (error) {
+        await session.abortTransaction()
         throw error
+    } finally {
+        session.endSession()
     }
-
-    return problem
 }

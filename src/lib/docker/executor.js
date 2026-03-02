@@ -6,19 +6,39 @@ import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sand
 
 const dockerOptions = {}
 
-// Use DOCKER_HOST from environment if available (e.g., when using docker-proxy)
-if (process.env.DOCKER_HOST) {
-    if (process.env.DOCKER_HOST.startsWith('http')) {
-        const url = new URL(process.env.DOCKER_HOST)
+// Use DOCKER_TARGET from environment (preferred over DOCKER_HOST to avoid library-internal validation errors)
+const dockerTarget = process.env.DOCKER_TARGET || process.env.DOCKER_HOST
+
+if (dockerTarget) {
+    if (dockerTarget.startsWith('http') || dockerTarget.startsWith('tcp')) {
+        const sanitizedTarget = dockerTarget.replace('tcp://', 'http://')
+        const url = new URL(sanitizedTarget)
         dockerOptions.host = url.hostname
         dockerOptions.port = url.port || 2375
         dockerOptions.protocol = url.protocol.replace(':', '')
     } else {
-        dockerOptions.socketPath = process.env.DOCKER_HOST
+        dockerOptions.socketPath = dockerTarget
     }
 }
 
-const docker = new Docker(dockerOptions)
+// 🛡️ CRITICAL FIX FOR WINDOWS: 
+// The dockerode library/dependencies sometimes auto-validate process.env.DOCKER_HOST 
+// even if options are passed. If it's a Windows pipe, it might throw "should be tcp://...".
+// We temporarily hide it during initialization.
+const originalDockerHost = process.env.DOCKER_HOST
+if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDockerHost.startsWith('http')) {
+    delete process.env.DOCKER_HOST
+}
+
+let docker
+try {
+    docker = new Docker(dockerOptions)
+} finally {
+    // Restore it after initialization
+    if (originalDockerHost) {
+        process.env.DOCKER_HOST = originalDockerHost
+    }
+}
 
 /**
  * Execute code in a Docker container
@@ -102,7 +122,7 @@ async function createContainer(langConfig, code, input, timeLimit, memoryLimit, 
     await container.start()
 
     // Wait a moment to make sure container is fully started
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Write files using exec
     try {
