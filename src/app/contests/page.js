@@ -1,4 +1,6 @@
 import { ContestsPage } from '@/features/contests'
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
 
 export const metadata = {
     title: 'Contests | CodeArena',
@@ -6,5 +8,13 @@ export const metadata = {
 }
 
 export default function Page() {
-    return <ContestsPage />
+    return (
+        <div className="bg-bg-page flex min-h-screen flex-col">
+            <Navbar />
+            <main className="flex-1">
+                <ContestsPage />
+            </main>
+            <Footer />
+        </div>
+    )
 }
