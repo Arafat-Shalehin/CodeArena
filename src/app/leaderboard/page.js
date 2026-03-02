@@ -72,11 +72,11 @@ export default function LeaderboardPage() {
                         _id: u._id,
                         username: u.name || 'Anonymous',
                         email: u.email,
-                        stats: u.stats
+                        stats: u.stats,
                     },
-                    title: (u.stats?.score > 1000) ? 'Supreme Architect' : 'Code Warrior',
+                    title: u.stats?.score > 1000 ? 'Supreme Architect' : 'Code Warrior',
                     country: 'Global',
-                    streak: 0
+                    streak: 0,
                 }))
                 setUsers(transformed)
                 setPagination(json.pagination)
@@ -143,7 +143,7 @@ export default function LeaderboardPage() {
                 {/* Loading State */}
                 {isLoading && (
                     <div className="flex h-96 items-center justify-center">
-                        <div className="size-16 animate-spin rounded-full border-b-2 border-accent"></div>
+                        <div className="border-accent size-16 animate-spin rounded-full border-b-2"></div>
                     </div>
                 )}
 
@@ -166,10 +166,7 @@ export default function LeaderboardPage() {
                 />
 
                 {!isLoading && !error && (
-                    <RankingTable
-                        data={currentTableData}
-                        currentUser={user?.name}
-                    />
+                    <RankingTable data={currentTableData} currentUser={user?.name} />
                 )}
 
                 {currentTableData.length > 0 && (
