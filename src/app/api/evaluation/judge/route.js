@@ -5,6 +5,8 @@ import dbConnect from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
 import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluation/judge'
 import { protect } from '@/middlewares/auth.middleware'
+import { Submission } from '@/models/Submission.models'
+import { analyzeSubmissionCode } from '@/lib/ai/geminiClient'
 
 /**
  * POST /api/evaluation/judge
@@ -74,6 +76,44 @@ export async function POST(request) {
                 memoryLimit,
                 comparisonMode,
             })
+        }
+
+        // --- BACKGROUND AI ANALYSIS ---
+        // Fire Gemini analysis if eligible, but do not await (dont hold up the HTTP response to the user)
+        if (
+            !quick &&
+            result &&
+            (result.verdict === 'ACCEPTED' || result.verdict === 'TIME_LIMIT_EXCEEDED')
+        ) {
+            // Self-invoking async function to run in the background
+            ;(async () => {
+                try {
+                    const aiFeedback = await analyzeSubmissionCode({
+                        code,
+                        language,
+                        problemTitle: `Problem ID: \${problemId}`,
+                        verdict: result.verdict,
+                        executionTime: result.stats?.executionTime || 0,
+                        memoryUsed: result.stats?.memoryUsed || 0,
+                    })
+
+                    if (aiFeedback) {
+                        // Assuming the submission was already created elsewhere, or we create it here
+                        // If tracking actual submission records, look them up. For now, find latest by User/Problem
+                        // Alternatively, you would pass the actual submissionId created before running judge
+                        // Since judgeSubmission just returning results, find the submission to update if one exists,
+                        // or trust that the submission creation logic handles it.
+                        // Ideally, we'd update the exact submission row here:
+                        await Submission.findOneAndUpdate(
+                            { userId: request.user._id, problemId }, // Gets the latest roughly
+                            { $set: { aiFeedback: aiFeedback } },
+                            { sort: { createdAt: -1 } }
+                        )
+                    }
+                } catch (aiErr) {
+                    console.error('Background AI Analysis Failed:', aiErr)
+                }
+            })()
         }
 
         return NextResponse.json({
