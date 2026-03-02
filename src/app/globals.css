@@ -604,6 +604,26 @@
         animation: soft-pulse 2.5s ease-in-out infinite;
     }
 
+    /* ── Advanced Background Patterns ── */
+    .bg-dot-matrix {
+        background-color: var(--ca-bg-page);
+        background-image: radial-gradient(var(--ca-border) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .dark .bg-dot-matrix {
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+
+    /* ── Modern Glow Effects ── */
+    .glow-accent {
+        box-shadow: 0 0 20px rgba(2, 186, 76, 0.15);
+    }
+
+    .glow-accent-strong {
+        box-shadow: 0 0 40px rgba(2, 186, 76, 0.25);
+    }
+
     /* ── Auth Vector Animations ── */
     @keyframes float {
         0%,
