@@ -1,5 +1,6 @@
+'use client'
 import React from 'react'
-import { DATE_FILTERS, DIFFICULTY_FILTERS } from '../constants/contests.constants'
+import { DATE_FILTERS, DIFFICULTY_FILTERS, DURATION_FILTERS } from '../constants/contests.constants'
 
 const FilterSection = ({ title, children }) => (
     <div>
@@ -29,6 +30,23 @@ const Filters = () => {
                                 />
                                 <span className="text-text-secondary group-hover:text-text-primary text-sm transition-colors">
                                     {range}
+                                </span>
+                            </label>
+                        ))}
+                    </FilterSection>
+                    <FilterSection title="Duration">
+                        {DURATION_FILTERS.map((duration) => (
+                            <label
+                                key={duration}
+                                className="group flex cursor-pointer items-center gap-3"
+                            >
+                                <input
+                                    type="radio"
+                                    name="duration"
+                                    className="border-border bg-bg-page text-accent focus:ring-accent h-4 w-4"
+                                />
+                                <span className="text-text-secondary group-hover:text-text-primary text-sm transition-colors">
+                                    {duration}
                                 </span>
                             </label>
                         ))}
