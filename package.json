@@ -26,7 +26,6 @@
         "date-fns": "^4.1.0",
         "dockerode": "^4.0.9",
         "firebase": "^12.9.0",
-        "husky": "^9.0.0",
         "jsonwebtoken": "^9.0.3",
         "katex": "^0.16.33",
         "lint-staged": "^15.0.0",

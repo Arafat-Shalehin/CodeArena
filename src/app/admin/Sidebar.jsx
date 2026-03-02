@@ -1,3 +1,4 @@
+// components/admin/Sidebar.jsx
 import Link from 'next/link'
 import { LayoutDashboard, BookOpen, Trophy, Users, ShieldAlert } from 'lucide-react'
 
