@@ -4,10 +4,11 @@ import React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 // Icons
-import { FileText, MessageSquare, Lock } from 'lucide-react'
+import { FileText, MessageSquare, Lock, History } from 'lucide-react'
 
 // Internal Components
 import DescriptionContent from './DescriptionContent'
+import SubmissionsTab from './SubmissionsTab'
 
 /**
  * DescriptionPanel Component
@@ -33,6 +34,15 @@ export default function DescriptionPanel({ problem }) {
                         >
                             <FileText size={18} />
                             Description
+                        </TabsTrigger>
+
+                        {/* Submissions Tab */}
+                        <TabsTrigger
+                            value="submissions"
+                            className="text-text-muted hover:text-text-primary data-[state=active]:border-accent data-[state=active]:text-text-primary flex items-center gap-2 rounded-none border-b-2 border-transparent px-6 py-3 text-sm font-medium data-[state=active]:shadow-none"
+                        >
+                            <History size={18} />
+                            Submissions
                         </TabsTrigger>
 
                         {/* Discussion Tab */}
@@ -62,6 +72,13 @@ export default function DescriptionPanel({ problem }) {
                         className="m-0 h-full border-none p-0 outline-none"
                     >
                         <DescriptionContent problem={problem} />
+                    </TabsContent>
+
+                    <TabsContent
+                        value="submissions"
+                        className="m-0 h-full overflow-y-auto outline-none"
+                    >
+                        <SubmissionsTab />
                     </TabsContent>
 
                     <TabsContent value="discussion" className="m-0 h-full p-6 outline-none">

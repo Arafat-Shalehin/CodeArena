@@ -26,6 +26,7 @@ export default function ProblemsTable({
     currentPage,
     onPageChange,
     solvedIds = [],
+    attemptedIds = [],
     isLoading,
     error,
 }) {
@@ -57,10 +58,10 @@ export default function ProblemsTable({
     /** Empty state — shown when API returns 0 results */
     const EmptyState = () => (
         <tr>
-            <td colSpan={7} className="px-6 py-16 text-center text-text-muted">
+            <td colSpan={7} className="text-text-muted px-6 py-16 text-center">
                 <div className="flex flex-col items-center gap-3">
                     <svg
-                        className="w-10 h-10 text-text-muted opacity-50"
+                        className="text-text-muted h-10 w-10 opacity-50"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.5"
@@ -69,7 +70,7 @@ export default function ProblemsTable({
                         <circle cx="11" cy="11" r="8" />
                         <path d="m21 21-4.35-4.35" />
                     </svg>
-                    <p className="font-medium text-text-primary">No problems found</p>
+                    <p className="text-text-primary font-medium">No problems found</p>
                     <p className="text-sm">Try adjusting your search or filters</p>
                 </div>
             </td>
@@ -79,41 +80,41 @@ export default function ProblemsTable({
     /** Skeleton rows — shown while loading to preserve layout */
     const SkeletonRows = () =>
         Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-            <tr key={i} className="border-t border-border animate-pulse">
+            <tr key={i} className="border-border animate-pulse border-t">
                 {/* Status */}
                 <td className="px-6 py-4">
-                    <div className="h-5 w-5 rounded-full bg-bg-muted" />
+                    <div className="bg-bg-muted h-5 w-5 rounded-full" />
                 </td>
                 {/* ID */}
-                <td className="px-6 py-4 hidden sm:table-cell">
-                    <div className="h-3 w-12 rounded bg-bg-muted" />
+                <td className="hidden px-6 py-4 sm:table-cell">
+                    <div className="bg-bg-muted h-3 w-12 rounded" />
                 </td>
                 {/* Title */}
                 <td className="px-6 py-4">
-                    <div className="h-4 w-48 rounded bg-bg-muted mb-2" />
+                    <div className="bg-bg-muted mb-2 h-4 w-48 rounded" />
                     <div className="flex gap-1.5 lg:hidden">
-                        <div className="h-3 w-12 rounded bg-bg-muted" />
-                        <div className="h-3 w-16 rounded bg-bg-muted" />
+                        <div className="bg-bg-muted h-3 w-12 rounded" />
+                        <div className="bg-bg-muted h-3 w-16 rounded" />
                     </div>
                 </td>
                 {/* Difficulty */}
                 <td className="px-6 py-4 text-center">
-                    <div className="h-5 w-16 rounded-full bg-bg-muted mx-auto" />
+                    <div className="bg-bg-muted mx-auto h-5 w-16 rounded-full" />
                 </td>
                 {/* Acceptance */}
-                <td className="px-6 py-4 hidden md:table-cell">
-                    <div className="h-1.5 w-full rounded-full bg-bg-muted mb-1" />
-                    <div className="h-3 w-10 rounded bg-bg-muted" />
+                <td className="hidden px-6 py-4 md:table-cell">
+                    <div className="bg-bg-muted mb-1 h-1.5 w-full rounded-full" />
+                    <div className="bg-bg-muted h-3 w-10 rounded" />
                 </td>
                 {/* Submissions */}
-                <td className="px-6 py-4 hidden lg:table-cell">
-                    <div className="h-3 w-14 rounded bg-bg-muted" />
+                <td className="hidden px-6 py-4 lg:table-cell">
+                    <div className="bg-bg-muted h-3 w-14 rounded" />
                 </td>
                 {/* Tags */}
-                <td className="px-6 py-4 hidden lg:table-cell">
+                <td className="hidden px-6 py-4 lg:table-cell">
                     <div className="flex gap-1.5">
-                        <div className="h-4 w-16 rounded bg-bg-muted" />
-                        <div className="h-4 w-10 rounded bg-bg-muted" />
+                        <div className="bg-bg-muted h-4 w-16 rounded" />
+                        <div className="bg-bg-muted h-4 w-10 rounded" />
                     </div>
                 </td>
             </tr>
@@ -125,7 +126,7 @@ export default function ProblemsTable({
             <td colSpan={7} className="px-6 py-16 text-center">
                 <div className="flex flex-col items-center gap-3">
                     <svg
-                        className="w-10 h-10 text-error opacity-60"
+                        className="text-error h-10 w-10 opacity-60"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.5"
@@ -133,8 +134,8 @@ export default function ProblemsTable({
                     >
                         <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                     </svg>
-                    <p className="font-medium text-text-primary">Failed to load problems</p>
-                    <p className="text-sm text-text-muted">{error}</p>
+                    <p className="text-text-primary font-medium">Failed to load problems</p>
+                    <p className="text-text-muted text-sm">{error}</p>
                 </div>
             </td>
         </tr>
@@ -143,30 +144,30 @@ export default function ProblemsTable({
     const pageNumbers = buildPageNumbers()
 
     return (
-        <div className="w-full border border-border rounded-lg overflow-hidden bg-bg-page shadow-sm">
+        <div className="border-border bg-bg-page w-full overflow-hidden rounded-lg border shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full border-collapse text-left">
                     <thead>
-                        <tr className="bg-bg-subtle border-b border-border">
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide w-14">
+                        <tr className="bg-bg-subtle border-border border-b">
+                            <th className="text-text-muted w-14 px-6 py-3 text-xs font-medium tracking-wide uppercase">
                                 Status
                             </th>
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide w-16 hidden sm:table-cell">
+                            <th className="text-text-muted hidden w-16 px-6 py-3 text-xs font-medium tracking-wide uppercase sm:table-cell">
                                 #
                             </th>
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide">
+                            <th className="text-text-muted px-6 py-3 text-xs font-medium tracking-wide uppercase">
                                 Title
                             </th>
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide w-28 text-center">
+                            <th className="text-text-muted w-28 px-6 py-3 text-center text-xs font-medium tracking-wide uppercase">
                                 Difficulty
                             </th>
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide w-36 hidden md:table-cell">
+                            <th className="text-text-muted hidden w-36 px-6 py-3 text-xs font-medium tracking-wide uppercase md:table-cell">
                                 Acceptance
                             </th>
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide w-28 hidden lg:table-cell">
+                            <th className="text-text-muted hidden w-28 px-6 py-3 text-xs font-medium tracking-wide uppercase lg:table-cell">
                                 Submissions
                             </th>
-                            <th className="px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden lg:table-cell">
+                            <th className="text-text-muted hidden px-6 py-3 text-xs font-medium tracking-wide uppercase lg:table-cell">
                                 Tags
                             </th>
                         </tr>
@@ -188,13 +189,13 @@ export default function ProblemsTable({
                                 // Normalize difficulty to get the right style config
                                 // Backend returns "easy" / "medium" / "hard" (lowercase)
                                 const normalizedDiff = normalizeDifficulty(p.difficulty)
-                                const diff = difficultyConfig[normalizedDiff] || difficultyConfig.Medium
+                                const diff =
+                                    difficultyConfig[normalizedDiff] || difficultyConfig.Medium
 
                                 // Calculate display index for the # column
-                                const rowNumber =
-                                    pagination
-                                        ? (pagination.page - 1) * pagination.limit + index + 1
-                                        : index + 1
+                                const rowNumber = pagination
+                                    ? (pagination.page - 1) * pagination.limit + index + 1
+                                    : index + 1
 
                                 // Format submission count for display (e.g. 12345 → "12.3k")
                                 const formatCount = (n) => {
@@ -206,17 +207,23 @@ export default function ProblemsTable({
                                 return (
                                     <tr
                                         key={p._id}
-                                        className="border-t border-border hover:bg-bg-subtle transition-colors duration-fast cursor-pointer group"
+                                        className="border-border hover:bg-bg-subtle duration-fast group cursor-pointer border-t transition-colors"
                                     >
                                         {/* Status — dynamic based on user history */}
                                         <td className="px-6 py-4">
                                             <StatusIcon
-                                                status={solvedIds.includes(p._id) ? 'solved' : 'unsolved'}
+                                                status={
+                                                    solvedIds.includes(p._id)
+                                                        ? 'solved'
+                                                        : attemptedIds.includes(p._id)
+                                                          ? 'attempted'
+                                                          : 'unsolved'
+                                                }
                                             />
                                         </td>
 
                                         {/* Sequential row number */}
-                                        <td className="px-6 py-4 font-mono text-text-muted text-xs hidden sm:table-cell">
+                                        <td className="text-text-muted hidden px-6 py-4 font-mono text-xs sm:table-cell">
                                             #{rowNumber}
                                         </td>
 
@@ -224,17 +231,17 @@ export default function ProblemsTable({
                                         <td className="px-6 py-4">
                                             <a
                                                 href={`/problems/${p._id}`}
-                                                className="font-medium text-text-primary group-hover:text-accent transition-colors text-sm"
+                                                className="text-text-primary group-hover:text-accent text-sm font-medium transition-colors"
                                             >
                                                 {p.title}
                                             </a>
                                             {/* Show tags inline on small screens where tag column is hidden */}
                                             {p.tags && p.tags.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 mt-1.5 lg:hidden">
+                                                <div className="mt-1.5 flex flex-wrap gap-1.5 lg:hidden">
                                                     {p.tags.map((tag) => (
                                                         <span
                                                             key={tag}
-                                                            className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-bg-muted text-text-secondary uppercase tracking-wide"
+                                                            className="bg-bg-muted text-text-secondary inline-flex items-center rounded-sm px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
                                                         >
                                                             {tag}
                                                         </span>
@@ -246,15 +253,15 @@ export default function ProblemsTable({
                                         {/* Difficulty badge */}
                                         <td className="px-6 py-4 text-center">
                                             <span
-                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${diff.badge}`}
+                                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${diff.badge}`}
                                             >
                                                 {normalizedDiff}
                                             </span>
                                         </td>
 
                                         {/* Acceptance rate bar + percentage */}
-                                        <td className="px-6 py-4 hidden md:table-cell">
-                                            <div className="w-full bg-bg-muted rounded-full h-1.5 mb-1 relative overflow-hidden">
+                                        <td className="hidden px-6 py-4 md:table-cell">
+                                            <div className="bg-bg-muted relative mb-1 h-1.5 w-full overflow-hidden rounded-full">
                                                 <div
                                                     className={`absolute top-0 left-0 h-full ${diff.progress}`}
                                                     style={{
@@ -262,24 +269,24 @@ export default function ProblemsTable({
                                                     }}
                                                 />
                                             </div>
-                                            <span className="text-xs text-text-muted font-mono">
+                                            <span className="text-text-muted font-mono text-xs">
                                                 {p.acceptanceRate ?? 0}%
                                             </span>
                                         </td>
 
                                         {/* Total submissions */}
-                                        <td className="px-6 py-4 font-mono text-text-muted text-xs hidden lg:table-cell">
+                                        <td className="text-text-muted hidden px-6 py-4 font-mono text-xs lg:table-cell">
                                             {formatCount(p.totalSubmissions)}
                                         </td>
 
                                         {/* Tag chips (large screens) */}
-                                        <td className="px-6 py-4 hidden lg:table-cell">
+                                        <td className="hidden px-6 py-4 lg:table-cell">
                                             {p.tags && p.tags.length > 0 ? (
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {p.tags.map((tag) => (
                                                         <span
                                                             key={tag}
-                                                            className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-bg-muted text-text-secondary uppercase tracking-wide"
+                                                            className="bg-bg-muted text-text-secondary inline-flex items-center rounded-sm px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
                                                         >
                                                             {tag}
                                                         </span>
@@ -297,18 +304,18 @@ export default function ProblemsTable({
             </div>
 
             {/* Pagination footer */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-bg-subtle border-t border-border">
+            <div className="bg-bg-subtle border-border flex flex-col items-center justify-between gap-4 border-t px-6 py-4 sm:flex-row">
                 {/* Result count */}
                 <p className="text-text-secondary text-sm">
                     {pagination ? (
                         <>
                             Showing{' '}
-                            <span className="font-medium text-text-primary">
+                            <span className="text-text-primary font-medium">
                                 {(pagination.page - 1) * pagination.limit + 1}–
                                 {Math.min(pagination.page * pagination.limit, pagination.total)}
                             </span>{' '}
                             of{' '}
-                            <span className="font-medium text-text-primary">
+                            <span className="text-text-primary font-medium">
                                 {pagination.total.toLocaleString()}
                             </span>{' '}
                             problems
@@ -327,7 +334,7 @@ export default function ProblemsTable({
                             onClick={() => onPageChange(currentPage - 1)}
                         >
                             <svg
-                                className="w-4 h-4"
+                                className="h-4 w-4"
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="2"
@@ -339,7 +346,10 @@ export default function ProblemsTable({
 
                         {pageNumbers.map((n, i) =>
                             n === '...' ? (
-                                <span key={`ellipsis-${i}`} className="px-2 text-text-muted text-sm">
+                                <span
+                                    key={`ellipsis-${i}`}
+                                    className="text-text-muted px-2 text-sm"
+                                >
                                     …
                                 </span>
                             ) : (
@@ -356,13 +366,11 @@ export default function ProblemsTable({
 
                         {/* Next */}
                         <PaginationBtn
-                            disabled={
-                                !pagination || currentPage >= pagination.pages || isLoading
-                            }
+                            disabled={!pagination || currentPage >= pagination.pages || isLoading}
                             onClick={() => onPageChange(currentPage + 1)}
                         >
                             <svg
-                                className="w-4 h-4"
+                                className="h-4 w-4"
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="2"

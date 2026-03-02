@@ -12,16 +12,14 @@ export const metadata = {
     description: 'Solve competitive programming problems on CodeArena.',
 }
 
-export default function ProblemSolvePage() {
+export default async function ProblemSolvePage({ params }) {
+    const { id } = await params
+
     return (
         <div className="bg-bg-page flex h-screen flex-col overflow-hidden">
             <Navbar />
-            {/* 
-              The layout container expands to fill remaining height.
-              Inside it, the split-pane Resizable panel consumes everything.
-            */}
             <main className="flex flex-1 overflow-hidden">
-                <ProblemSolverLayout />
+                <ProblemSolverLayout problemId={id} />
             </main>
         </div>
     )

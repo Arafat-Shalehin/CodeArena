@@ -38,6 +38,7 @@ export function initSubmissionWorker() {
                 })
                 const totalCount = testCases.length
 
+                const testCaseResults = []
                 let passedCount = 0
                 let maxTime = 0
                 let maxMemory = 0
@@ -61,6 +62,23 @@ export function initSubmissionWorker() {
 
                         maxTime = Math.max(maxTime, result.executionTime || 0)
                         maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
+
+                        // 4. Update individual test case result
+                        const caseResult = {
+                            testCaseId: testCase._id,
+                            verdict: result.verdict.toLowerCase(),
+                            time: result.executionTime || 0,
+                            memory: result.memoryUsed || 0,
+                            error: result.error || '',
+                            isSample: testCase.isSample || false,
+                        }
+
+                        // Only store actual output for sample test cases (for UI feedback)
+                        if (testCase.isSample) {
+                            caseResult.actualOutput = result.output
+                        }
+
+                        testCaseResults.push(caseResult)
 
                         if (result.verdict === 'SUCCESS') {
                             if (problem.judgeType === 'special') {
@@ -113,45 +131,50 @@ export function initSubmissionWorker() {
                 }
 
                 // 4. Update submission with results
-                const updates = {
+                await Submission.findByIdAndUpdate(submissionId, {
                     status: 'completed',
                     verdict: finalVerdict,
                     executionTime: maxTime,
                     memoryUsed: maxMemory,
                     error: firstError, // You might want to add this to the Submission model
-                }
+                    testCaseResults: testCaseResults,
+                })
 
-                await Submission.findByIdAndUpdate(submissionId, updates)
+                // 5. Update Problem stats if result is a valid attempt (not a judge error)
+                if (finalVerdict !== 'system_error' && finalVerdict !== 'error') {
+                    const isAccepted = finalVerdict === 'accepted'
 
-                // 5. Update Problem stats if accepted
-                if (finalVerdict === 'accepted') {
                     await Problem.findByIdAndUpdate(submission.problemId, {
-                        $inc: { acceptedSubmissions: 1, totalSubmissions: 1 },
+                        $inc: {
+                            acceptedSubmissions: isAccepted ? 1 : 0,
+                            totalSubmissions: 1,
+                        },
                     })
-                } else {
-                    await Problem.findByIdAndUpdate(submission.problemId, {
-                        $inc: { totalSubmissions: 1 },
-                    })
-                }
 
-                // 6. Update User unique stats
-                const userUpdate = {
-                    $addToSet: { 'stats.attemptedProblems': submission.problemId },
-                }
-                if (finalVerdict === 'accepted') {
-                    userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
-                    userUpdate.$inc = { 'stats.accepted': 1 }
-                }
-                userUpdate.$inc = { ...userUpdate.$inc, 'stats.totalSubmissions': 1 }
+                    // 6. Update User unique stats
+                    const userUpdate = {
+                        $addToSet: { 'stats.attemptedProblems': submission.problemId },
+                        $inc: { 'stats.totalSubmissions': 1 },
+                    }
 
-                await User.findByIdAndUpdate(submission.userId, userUpdate)
+                    if (isAccepted) {
+                        userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
+                        userUpdate.$inc['stats.accepted'] = 1
+                    }
+
+                    await User.findByIdAndUpdate(submission.userId, userUpdate)
+                }
 
                 return { verdict: finalVerdict, passedCount, totalCount }
             } catch (error) {
-                console.error(`Error processing submission ${submissionId}:`, error)
+                console.error(`CRITICAL: Error processing submission ${submissionId}:`, error)
+                // Capture the exact error message to help debugging
+                const errorMessage = error.message || 'Unknown system error'
+
                 await Submission.findByIdAndUpdate(submissionId, {
                     status: 'error',
                     verdict: 'system_error',
+                    error: `Judge Error: ${errorMessage}`,
                 })
                 throw error
             }

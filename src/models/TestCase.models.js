@@ -28,7 +28,6 @@ const testCaseSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
-// Index for efficient retrieval of all test cases for a problem
-testCaseSchema.index({ problemId: 1 })
+// Indexing is handled via index: true in the field definition above
 
 export const TestCase = mongoose.models.TestCase || mongoose.model('TestCase', testCaseSchema)

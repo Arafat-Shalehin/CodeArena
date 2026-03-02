@@ -12,10 +12,13 @@ import Editor from '@monaco-editor/react'
  * @param {Object} props
  * @param {string} props.initialCode - Initial boilerplate code based on language
  */
+import { useProblemSolve } from '@/context/ProblemSolveContext'
+
 export default function CodeEditor({ initialCode = '' }) {
+    const { code, updateCode, language } = useProblemSolve()
+
     // Custom editor mounting to set specific CodeArena aesthetics
     const handleEditorDidMount = (editor, monaco) => {
-        // We define a custom theme that matches bg-[#1e1e1e] and inter/mono fonts
         monaco.editor.defineTheme('codearena-dark', {
             base: 'vs-dark',
             inherit: true,
@@ -34,9 +37,10 @@ export default function CodeEditor({ initialCode = '' }) {
         <div className="relative h-full w-full flex-1 bg-[#1e1e1e]">
             <Editor
                 height="100%"
-                defaultLanguage="python"
-                defaultValue={initialCode}
-                theme="vs-dark" // Fallback before codearena-dark kicks in
+                language={language === 'cpp' ? 'cpp' : language}
+                value={code}
+                onChange={(value) => updateCode(value)}
+                theme="vs-dark"
                 options={{
                     minimap: { enabled: false },
                     fontSize: 14,
