@@ -12,6 +12,7 @@ OUTPUT_FILE="/workspace/output.txt"
 ERROR_FILE="/workspace/error.txt"
 TIME_LIMIT=${TIME_LIMIT:-5}
 MEMORY_LIMIT=${MEMORY_LIMIT:-512000}
+OUTPUT_LIMIT=${OUTPUT_LIMIT:-10485760} # Default 10MB
 
 # Compile C++ code
 echo "Compiling C++ code..."
@@ -30,9 +31,9 @@ START_TIME=$(date +%s%N)
 EXIT_CODE=0
 
 if [ -f "$INPUT_FILE" ]; then
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" "$BINARY_FILE" < "$INPUT_FILE" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" "$BINARY_FILE" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
 else
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" "$BINARY_FILE" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" "$BINARY_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
 fi
 
 END_TIME=$(date +%s%N)

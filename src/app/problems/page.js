@@ -32,6 +32,7 @@ export default function ProblemsPage() {
     const [problems, setProblems] = useState([])
     const [pagination, setPagination] = useState(null)
     const [solvedIds, setSolvedIds] = useState([])
+    const [attemptedIds, setAttemptedIds] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
 
@@ -68,6 +69,17 @@ export default function ProblemsPage() {
                     params.set('tag', selectedTopics[0])
                 }
 
+                if (selectedStatuses.length === 1) {
+                    params.set('status', selectedStatuses[0])
+                }
+
+                // Status filtering (solved/attempted/unsolved)
+                // This is a special case that requires passing IDs to the backend or handling it there.
+                // For now, we pass the selected status to the API if only one is selected.
+                if (selectedStatuses.length === 1) {
+                    params.set('status', selectedStatuses[0])
+                }
+
                 const res = await fetch(`/api/problems?${params.toString()}`)
 
                 if (!res.ok) {
@@ -100,6 +112,7 @@ export default function ProblemsPage() {
             const json = await res.json()
             if (json.success) {
                 setSolvedIds(json.data.solvedIds || [])
+                setAttemptedIds(json.data.attemptedIds || [])
             }
         } catch (err) {
             console.error('[ProblemsPage] Failed to fetch solved status:', err)
@@ -115,7 +128,7 @@ export default function ProblemsPage() {
         fetchProblems(1)
         fetchSolvedStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedDifficulties, selectedTopics])
+    }, [selectedDifficulties, selectedTopics, selectedStatuses])
 
     /**
      * Debounced re-fetch when search query changes.
@@ -214,6 +227,7 @@ export default function ProblemsPage() {
                             currentPage={currentPage}
                             onPageChange={handlePageChange}
                             solvedIds={solvedIds}
+                            attemptedIds={attemptedIds}
                             isLoading={isLoading}
                             error={error}
                         />

@@ -6,19 +6,39 @@ import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sand
 
 const dockerOptions = {}
 
-// Use DOCKER_HOST from environment if available (e.g., when using docker-proxy)
-if (process.env.DOCKER_HOST) {
-    if (process.env.DOCKER_HOST.startsWith('http')) {
-        const url = new URL(process.env.DOCKER_HOST)
+// Use DOCKER_TARGET from environment (preferred over DOCKER_HOST to avoid library-internal validation errors)
+const dockerTarget = process.env.DOCKER_TARGET || process.env.DOCKER_HOST
+
+if (dockerTarget) {
+    if (dockerTarget.startsWith('http') || dockerTarget.startsWith('tcp')) {
+        const sanitizedTarget = dockerTarget.replace('tcp://', 'http://')
+        const url = new URL(sanitizedTarget)
         dockerOptions.host = url.hostname
         dockerOptions.port = url.port || 2375
         dockerOptions.protocol = url.protocol.replace(':', '')
     } else {
-        dockerOptions.socketPath = process.env.DOCKER_HOST
+        dockerOptions.socketPath = dockerTarget
     }
 }
 
-const docker = new Docker(dockerOptions)
+// 🛡️ CRITICAL FIX FOR WINDOWS: 
+// The dockerode library/dependencies sometimes auto-validate process.env.DOCKER_HOST 
+// even if options are passed. If it's a Windows pipe, it might throw "should be tcp://...".
+// We temporarily hide it during initialization.
+const originalDockerHost = process.env.DOCKER_HOST
+if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDockerHost.startsWith('http')) {
+    delete process.env.DOCKER_HOST
+}
+
+let docker
+try {
+    docker = new Docker(dockerOptions)
+} finally {
+    // Restore it after initialization
+    if (originalDockerHost) {
+        process.env.DOCKER_HOST = originalDockerHost
+    }
+}
 
 /**
  * Execute code in a Docker container
@@ -27,9 +47,10 @@ const docker = new Docker(dockerOptions)
  * @param {string} input - Input test case
  * @param {number} timeLimit - Time limit in milliseconds
  * @param {number} memoryLimit - Memory limit in KB
+ * @param {number} outputLimit - Output limit in KB
  * @returns {Promise<Object>} - Execution result
  */
-export async function executeCode({ code, language, input = '', timeLimit, memoryLimit }) {
+export async function executeCode({ code, language, input = '', timeLimit, memoryLimit, outputLimit }) {
     try {
         // Validate code security
         const securityCheck = validateCodeSecurity(code)
@@ -54,7 +75,8 @@ export async function executeCode({ code, language, input = '', timeLimit, memor
             code,
             input,
             effectiveTimeLimit,
-            effectiveMemoryLimit
+            effectiveMemoryLimit,
+            outputLimit || (SANDBOX_CONFIG.execution.maxOutputSize / 1024)
         )
 
         // Start container and get results
@@ -77,15 +99,20 @@ export async function executeCode({ code, language, input = '', timeLimit, memor
 /**
  * Create a Docker container with code and input
  */
-async function createContainer(langConfig, code, input, timeLimit, memoryLimit) {
+async function createContainer(langConfig, code, input, timeLimit, memoryLimit, outputLimit) {
     const dockerConfig = getDockerRunConfig(langConfig.name)
+    const outputLimitBytes = outputLimit * 1024
 
     // Create container with tail command to keep it running (override ENTRYPOINT)
     const container = await docker.createContainer({
         Image: langConfig.image,
         Entrypoint: ['/bin/sh', '-c'],
         Cmd: ['tail -f /dev/null'], // Keep container alive indefinitely
-        Env: [`TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`, `MEMORY_LIMIT=${memoryLimit}`],
+        Env: [
+            `TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`,
+            `MEMORY_LIMIT=${memoryLimit}`,
+            `OUTPUT_LIMIT=${outputLimitBytes}`
+        ],
         ...dockerConfig,
         OpenStdin: true,
         Tty: false,
@@ -95,7 +122,7 @@ async function createContainer(langConfig, code, input, timeLimit, memoryLimit) 
     await container.start()
 
     // Wait a moment to make sure container is fully started
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Write files using exec
     try {
@@ -188,6 +215,10 @@ async function runContainer(container, timeLimit) {
         const streamPromise = new Promise((resolve, reject) => {
             stdoutStream.on('data', (chunk) => {
                 output += chunk.toString('utf8')
+                // Early check for output limit
+                if (output.length > (SANDBOX_CONFIG.execution.maxOutputSize * 1.1)) {
+                    // We let it finish or head will truncate it inside container
+                }
             })
             stderrStream.on('data', (chunk) => {
                 output += chunk.toString('utf8')

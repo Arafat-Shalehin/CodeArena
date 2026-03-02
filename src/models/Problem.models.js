@@ -17,12 +17,32 @@ const problemSchema = new mongoose.Schema(
         },
         timeLimit: { type: Number, required: true }, // ms
         memoryLimit: { type: Number, required: true }, // KB
-        testCases: [
+
+        // Advanced Limits
+        codeSizeLimit: { type: Number, default: 50 }, // KB
+        outputSizeLimit: { type: Number, default: 1024 }, // KB
+
+        // Test Case Management
+        sampleTestCases: [
             {
                 input: String,
                 output: String,
+                explanation: String,
             },
         ],
+        testCaseCount: { type: Number, default: 0 },
+
+        // Judging Type
+        judgeType: {
+            type: String,
+            enum: ['exact', 'special'],
+            default: 'exact',
+        },
+        specialJudgeCode: {
+            type: String,
+            default: '',
+        },
+
         // Searchable topic tags (e.g. ["Array", "Hash Table"])
         tags: {
             type: [String],
