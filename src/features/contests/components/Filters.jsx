@@ -1,5 +1,6 @@
+'use client'
 import React from 'react'
-import { DATE_FILTERS, DIFFICULTY_FILTERS } from '../constants/contests.constants'
+import { DATE_FILTERS, DIFFICULTY_FILTERS, DURATION_FILTERS } from '../constants/contests.constants'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Filter, X, RefreshCw } from 'lucide-react'
@@ -40,6 +41,8 @@ const Filters = ({
     toggleDate = () => {},
     selectedDifficulties = [],
     toggleDifficulty = () => {},
+    selectedDurations = [],
+    toggleDuration = () => {},
     handleClearFilters = () => {},
 }) => {
     return (
@@ -86,6 +89,25 @@ const Filters = ({
                                     textColorClass="text-text-secondary group-hover:text-text-primary"
                                     checked={selectedDates.includes(range)}
                                     onCheckedChange={() => toggleDate(range)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Duration */}
+                    <div>
+                        <h4 className="text-text-muted mb-4 text-xs font-semibold tracking-widest uppercase">
+                            Duration
+                        </h4>
+                        <div className="space-y-3">
+                            {DURATION_FILTERS.map((duration) => (
+                                <CheckboxGroup
+                                    key={duration}
+                                    label={duration}
+                                    checkboxColorClass="accent"
+                                    textColorClass="text-text-secondary group-hover:text-text-primary"
+                                    checked={selectedDurations.includes(duration)}
+                                    onCheckedChange={() => toggleDuration(duration)}
                                 />
                             ))}
                         </div>

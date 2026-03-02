@@ -5,9 +5,10 @@ import Filters from './Filters'
 import ContestCard from './ContestCard'
 import LiveBanner from './LiveBanner'
 import { CONTEST_TABS } from '../constants/contests.constants'
-import { UPCOMING_CONTESTS, LIVE_CONTEST } from '../data/contests.data'
+import { UPCOMING_CONTESTS, LIVE_CONTEST, PAST_CONTESTS } from '../data/contests.data'
 import { Button } from '@/components/ui/button'
 import { Filter } from 'lucide-react'
+import PastContestCard from './PastContestCard'
 
 export default function ContestsPage() {
     const [filter, setFilter] = useState('Upcoming')
@@ -16,6 +17,7 @@ export default function ContestsPage() {
     // Filter State implementations
     const [selectedDates, setSelectedDates] = useState([])
     const [selectedDifficulties, setSelectedDifficulties] = useState([])
+    const [selectedDurations, setSelectedDurations] = useState([])
 
     const toggleFilter = (setFilterState, value) => {
         setFilterState((prev) =>
@@ -26,6 +28,7 @@ export default function ContestsPage() {
     const handleClearFilters = () => {
         setSelectedDates([])
         setSelectedDifficulties([])
+        setSelectedDurations([])
     }
 
     return (
@@ -50,13 +53,15 @@ export default function ContestsPage() {
                         setSidebarOpen={setSidebarOpen}
                         selectedDates={selectedDates}
                         toggleDate={(val) => toggleFilter(setSelectedDates, val)}
+                        selectedDurations={selectedDurations}
+                        toggleDuration={(val) => toggleFilter(setSelectedDurations, val)}
                         selectedDifficulties={selectedDifficulties}
                         toggleDifficulty={(val) => toggleFilter(setSelectedDifficulties, val)}
                         handleClearFilters={handleClearFilters}
                     />
 
                     {/* Main Content */}
-                    <div className="min-w-0 flex-1 space-y-8">
+                    <div className="min-w-0 flex-1 space-y-12">
                         {/* Toolbar (Mobile Filter Toggle & Tabs) */}
                         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                             {/* Mobile Filters Trigger */}
@@ -96,8 +101,8 @@ export default function ContestsPage() {
                             <LiveBanner contest={LIVE_CONTEST} />
                         ) : null}
 
-                        {/* Grid */}
-                        <div>
+                        {/* Upcoming Section */}
+                        <section>
                             <div className="mb-6 flex items-center justify-between">
                                 <h3 className="text-text-primary flex items-center gap-2 text-xl font-bold">
                                     {filter} Challenges
@@ -111,7 +116,25 @@ export default function ContestsPage() {
                                     <ContestCard key={contest.id} {...contest} />
                                 ))}
                             </div>
-                        </div>
+                        </section>
+
+                        {/* --- Recently Completed Section --- */}
+                        <section>
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-text-primary text-xl font-bold">
+                                    Recently Completed
+                                </h3>
+                                <button className="text-accent text-sm font-semibold hover:underline">
+                                    View All History
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                                {/* Error Fix: Data pass kora holo map er madhyome */}
+                                {PAST_CONTESTS.map((contest) => (
+                                    <PastContestCard key={contest.id} contest={contest} />
+                                ))}
+                            </div>
+                        </section>
                     </div>
                 </div>
             </main>

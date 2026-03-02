@@ -34,3 +34,20 @@ export const LIVE_CONTEST = {
     timeRemaining: '01:45:22',
     participants: '1,482',
 }
+
+export const PAST_CONTESTS = [
+    {
+        id: 1,
+        title: 'Weekly Challenge #44',
+        endedTime: '2 days ago',
+        participants: 842,
+        winner: 'binary_ninja',
+    },
+    {
+        id: 2,
+        title: 'Sprint #11',
+        endedTime: 'last week',
+        participants: 1205,
+        winner: 'code_wizard_99',
+    },
+]
