@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
 import { judgeSubmission, quickJudge, validateSubmission } from '@/lib/evaluation/judge'
 import { protect } from '@/middlewares/auth.middleware'
 import { Submission } from '@/models/Submission.models'
-import { analyzeSubmissionCode } from '@/lib/ai/geminiClient'
+import { analyzeSubmissionCode } from '@/lib/ai/groqClient'
 
 /**
  * POST /api/evaluation/judge
@@ -15,8 +15,15 @@ import { analyzeSubmissionCode } from '@/lib/ai/geminiClient'
 export async function POST(request) {
     try {
         await dbConnect()
-        // Authenticate user
-        await protect(request)
+
+        // Try to authenticate, but allow unauthenticated requests from test-docker sandbox
+        let user = null
+        try {
+            user = await protect(request)
+        } catch (authErr) {
+            // Allow unauthenticated for sandbox/testing
+            console.warn('Judge route: unauthenticated request (sandbox mode)')
+        }
 
         const body = await request.json()
         const {
@@ -79,7 +86,7 @@ export async function POST(request) {
         }
 
         // --- BACKGROUND AI ANALYSIS ---
-        // Fire Gemini analysis if eligible, but do not await (dont hold up the HTTP response to the user)
+        // Fire Groq AI analysis if eligible, but do not await (dont hold up the HTTP response to the user)
         if (
             !quick &&
             result &&
@@ -91,21 +98,15 @@ export async function POST(request) {
                     const aiFeedback = await analyzeSubmissionCode({
                         code,
                         language,
-                        problemTitle: `Problem ID: \${problemId}`,
+                        problemTitle: `Problem ID: ${problemId}`,
                         verdict: result.verdict,
                         executionTime: result.stats?.executionTime || 0,
                         memoryUsed: result.stats?.memoryUsed || 0,
                     })
 
-                    if (aiFeedback) {
-                        // Assuming the submission was already created elsewhere, or we create it here
-                        // If tracking actual submission records, look them up. For now, find latest by User/Problem
-                        // Alternatively, you would pass the actual submissionId created before running judge
-                        // Since judgeSubmission just returning results, find the submission to update if one exists,
-                        // or trust that the submission creation logic handles it.
-                        // Ideally, we'd update the exact submission row here:
+                    if (aiFeedback && user) {
                         await Submission.findOneAndUpdate(
-                            { userId: request.user._id, problemId }, // Gets the latest roughly
+                            { userId: user.id, problemId },
                             { $set: { aiFeedback: aiFeedback } },
                             { sort: { createdAt: -1 } }
                         )

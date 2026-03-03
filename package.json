@@ -2,6 +2,7 @@
     "name": "codearena",
     "version": "0.1.0",
     "private": true,
+    "type": "module",
     "scripts": {
         "dev": "next dev",
         "build": "next build",
@@ -28,6 +29,7 @@
         "dockerode": "^4.0.9",
         "firebase": "^12.9.0",
         "framer-motion": "^12.34.4",
+        "groq-sdk": "^0.37.0",
         "jsonwebtoken": "^9.0.3",
         "katex": "^0.16.33",
         "lucide-react": "^0.564.0",
