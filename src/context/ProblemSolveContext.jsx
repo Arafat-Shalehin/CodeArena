@@ -11,6 +11,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode }) {
     const [isRunning, setIsRunning] = useState(false)
     const [submissionResult, setSubmissionResult] = useState(null)
     const [testCaseResults, setTestCaseResults] = useState([])
+    const [isConsoleOpen, setIsConsoleOpen] = useState(false)
 
     // Persist code to localStorage
     useEffect(() => {
@@ -38,6 +39,8 @@ export function ProblemSolveProvider({ children, problemId, initialCode }) {
         setSubmissionResult,
         testCaseResults,
         setTestCaseResults,
+        isConsoleOpen,
+        setIsConsoleOpen,
         problemId,
     }
 

@@ -4,6 +4,7 @@
  */
 
 import React from 'react'
+import { Calendar } from 'lucide-react'
 import { MONTHS } from '../data/dashboard.data'
 
 /**
@@ -18,7 +19,7 @@ const Heatmap = ({ data }) => (
     <div className="bg-bg-subtle border-border rounded-xl border p-6 shadow-sm">
         <div className="mb-6 flex items-center justify-between">
             <h3 className="text-text-primary flex items-center gap-2 text-lg font-bold">
-                <span className="material-symbols-outlined text-accent">calendar_month</span>
+                <Calendar className="text-accent size-5" />
                 Submission Activity
             </h3>
             <div className="text-text-muted flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase">

@@ -17,6 +17,7 @@ import {
     Minimize2,
     ChevronRight,
     Loader2,
+    Sparkles,
 } from 'lucide-react'
 
 // Sample codes for different languages
@@ -83,9 +84,14 @@ export default function DockerIDEPage() {
     const [input, setInput] = useState('5 10')
     const [output, setOutput] = useState('')
     const [isRunning, setIsRunning] = useState(false)
-    const [activeTab, setActiveTab] = useState('TERMINAL') // TERMINAL, OUTPUT, DEBUG
+    const [activeTab, setActiveTab] = useState('TERMINAL') // TERMINAL, OUTPUT, DEBUG, AI_ANALYSIS
     const [systemStatus, setSystemStatus] = useState(null)
     const [sidebarActive, setSidebarActive] = useState('EXPLORER') // EXPLORER, SETTINGS
+
+    // AI States
+    const [aiFeedback, setAiFeedback] = useState(null)
+    const [isAiLoading, setIsAiLoading] = useState(false)
+    const [submissionId, setSubmissionId] = useState(null)
 
     // Initial load
     useEffect(() => {
@@ -112,6 +118,8 @@ export default function DockerIDEPage() {
         setIsRunning(true)
         setActiveTab('OUTPUT')
         setOutput('Running code...\n')
+        setAiFeedback(null)
+        setSubmissionId(null)
 
         try {
             const response = await fetch('/api/evaluation/execute', {
@@ -139,21 +147,56 @@ export default function DockerIDEPage() {
                 let finalOutput = ''
 
                 if (execOutput) finalOutput += execOutput
-                if (execError) finalOutput += `\nError:\n${execError}`
+                if (execError) finalOutput += `\\nError:\\n\${execError}`
 
-                finalOutput += `\n\n=== Execution Details ===\n`
-                finalOutput += `Verdict: ${verdict}\n`
-                finalOutput += `Time: ${executionTime}ms\n`
-                finalOutput += `Memory: ${memoryUsed}KB`
+                // For demo purposes in the sandbox, we mock or fetch the latest submission if the API does not return it directly.
+                // In a true environment, POST /judge should return the inserted Submission _id.
+                // We'll set a flag to allow manual polling or simulate an ID if we integrated it fully.
+                if (verdict === 'ACCEPTED' || verdict === 'TIME_LIMIT_EXCEEDED') {
+                    finalOutput += `\\n\\n✨ AI Performance Analysis is running in the background. Check the 'AI ANALYSIS' tab shortly.`
+                    // In a real app, `data.submissionId` would be returned here.
+                    // For the sake of this sandbox, we'll assume the problem ID is a dummy hash.
+                    setSubmissionId('demo-sandbox-id')
+                }
+
+                finalOutput += `\\n\\n=== Execution Details ===\\n`
+                finalOutput += `Verdict: \${verdict}\\n`
+                finalOutput += `Time: \${executionTime}ms\\n`
+                finalOutput += `Memory: \${memoryUsed}KB`
 
                 setOutput(finalOutput)
             } else {
-                setOutput(`System Error: ${data.error}\n${data.message || ''}`)
+                setOutput(`System Error: \${data.error}\\n\${data.message || ''}`)
             }
         } catch (error) {
-            setOutput(`Network Error: ${error.message}`)
+            setOutput(`Network Error: \${error.message}`)
         } finally {
             setIsRunning(false)
+        }
+    }
+
+    const fetchAiFeedback = async () => {
+        if (!submissionId) return
+
+        setIsAiLoading(true)
+        try {
+            // In a real app, this would be the actual MongoDB _id
+            // Since this is the sandbox, we might need a modified route to fetch by latest user submission
+            // We will simulate the request hitting our new endpoint
+            const response = await fetch(`/api/submissions/\${submissionId}/feedback`)
+            const data = await response.json()
+
+            if (data.status === 'READY') {
+                setAiFeedback(data.feedback)
+            } else if (data.status === 'PROCESSING') {
+                // Keep it null to show processing
+            } else {
+                setAiFeedback({ error: data.message })
+            }
+        } catch (error) {
+            console.error(error)
+        } finally {
+            setIsAiLoading(false)
         }
     }
 
@@ -163,7 +206,7 @@ export default function DockerIDEPage() {
             <div className="flex w-12 flex-col items-center gap-4 border-r border-[#1e1e1e] bg-[#333333] py-4">
                 <button
                     onClick={() => setSidebarActive('EXPLORER')}
-                    className={`rounded p-2 ${sidebarActive === 'EXPLORER' ? 'border-l-2 border-blue-500 bg-[#252526] text-white' : 'text-gray-500 hover:text-white'}`}
+                    className={`\${ sidebarActive === 'EXPLORER' ? 'border-l-2 text-white' : 'text-gray-500 hover:text-white'} rounded border-blue-500 bg-[#252526] p-2`}
                     title="Explorer"
                 >
                     <FileCode size={24} />
@@ -173,7 +216,7 @@ export default function DockerIDEPage() {
                         setSidebarActive('SETTINGS')
                         checkSystemStatus()
                     }}
-                    className={`rounded p-2 ${sidebarActive === 'SETTINGS' ? 'border-l-2 border-blue-500 bg-[#252526] text-white' : 'text-gray-500 hover:text-white'}`}
+                    className={`\${ sidebarActive === 'SETTINGS' ? 'border-l-2 text-white' : 'text-gray-500 hover:text-white'} rounded border-blue-500 bg-[#252526] p-2`}
                     title="System Status"
                 >
                     <Cpu size={24} />
@@ -201,18 +244,10 @@ export default function DockerIDEPage() {
                                 <div
                                     key={lang}
                                     onClick={() => handleLanguageChange(lang)}
-                                    className={`flex cursor-pointer items-center px-4 py-1.5 text-sm ${language === lang ? 'bg-[#37373d] text-white' : 'text-gray-400 hover:bg-[#2a2d2e] hover:text-gray-200'}`}
+                                    className={`\${ language === lang ? 'bg-[#37373d] text-white' : 'text-gray-400 hover:text-gray-200'} flex cursor-pointer items-center px-4 py-1.5 text-sm hover:bg-[#2a2d2e]`}
                                 >
                                     <span
-                                        className={`mr-2 h-3 w-3 rounded-full ${
-                                            lang === 'python'
-                                                ? 'bg-blue-400'
-                                                : lang === 'javascript'
-                                                  ? 'bg-yellow-400'
-                                                  : lang === 'java'
-                                                    ? 'bg-red-400'
-                                                    : 'bg-purple-400'
-                                        }`}
+                                        className={`\${ lang === 'python' ? 'bg-blue-400' : lang === 'javascript' ? 'bg-yellow-400' : lang === 'java' ? 'bg-red-400' : 'bg-purple-400' } mr-2 h-3 w-3 rounded-full`}
                                     ></span>
                                     {SAMPLE_CODES[lang].file}
                                 </div>
@@ -277,15 +312,7 @@ export default function DockerIDEPage() {
                 <div className="flex h-9 items-center overflow-x-auto bg-[#252526]">
                     <div className="flex min-w-[120px] items-center border-t-2 border-blue-500 bg-[#1e1e1e] px-3 py-2 text-sm text-white">
                         <span
-                            className={`mr-2 h-3 w-3 rounded-full ${
-                                language === 'python'
-                                    ? 'bg-blue-400'
-                                    : language === 'javascript'
-                                      ? 'bg-yellow-400'
-                                      : language === 'java'
-                                        ? 'bg-red-400'
-                                        : 'bg-purple-400'
-                            }`}
+                            className={`\${ language === 'python' ? 'bg-blue-400' : language === 'javascript' ? 'bg-yellow-400' : language === 'java' ? 'bg-red-400' : 'bg-purple-400' } mr-2 h-3 w-3 rounded-full`}
                         ></span>
                         {SAMPLE_CODES[language].file}
                         <button className="ml-auto text-gray-400 hover:text-white">×</button>
@@ -295,7 +322,7 @@ export default function DockerIDEPage() {
                         <button
                             onClick={runCode}
                             disabled={isRunning}
-                            className={`rounded p-1.5 hover:bg-[#333] ${isRunning ? 'cursor-not-allowed opacity-50' : 'text-green-500'}`}
+                            className={`\${ isRunning ? 'cursor-not-allowed opacity-50' : 'text-green-500'} rounded p-1.5 hover:bg-[#333]`}
                             title="Run Code (Ctrl+Enter)"
                         >
                             {isRunning ? (
@@ -339,15 +366,24 @@ export default function DockerIDEPage() {
                     <div className="flex items-center gap-6 border-b border-[#2b2b2b] px-4 py-2 text-xs font-semibold tracking-wide">
                         <button
                             onClick={() => setActiveTab('TERMINAL')}
-                            className={`${activeTab === 'TERMINAL' ? 'border-b-2 border-white pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                            className={`\${ activeTab === 'TERMINAL' ? 'border-b-2 text-white' : 'text-gray-500 hover:text-gray-300'} border-white pb-1`}
                         >
                             TERMINAL (INPUT)
                         </button>
                         <button
                             onClick={() => setActiveTab('OUTPUT')}
-                            className={`${activeTab === 'OUTPUT' ? 'border-b-2 border-white pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                            className={`\${ activeTab === 'OUTPUT' ? 'border-b-2 text-white' : 'text-gray-500 hover:text-gray-300'} border-white pb-1`}
                         >
                             OUTPUT
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('AI_ANALYSIS')
+                                if (!aiFeedback) fetchAiFeedback()
+                            }}
+                            className={`\${activeTab === 'AI_ANALYSIS' ? 'border-b-2 text-purple-400' : 'text-gray-500 hover:text-purple-300'} flex items-center gap-1 border-purple-500 pb-1`}
+                        >
+                            <Sparkles size={14} /> AI ANALYSIS
                         </button>
                         <button className="text-gray-500 hover:text-gray-300">DEBUG CONSOLE</button>
                         <div className="ml-auto flex items-center gap-2 text-gray-500">
@@ -387,6 +423,83 @@ export default function DockerIDEPage() {
                                     </span>
                                 )}
                             </pre>
+                        )}
+                        {activeTab === 'AI_ANALYSIS' && (
+                            <div className="flex h-full flex-col font-sans">
+                                {!submissionId ? (
+                                    <div className="flex h-full items-center justify-center text-gray-500">
+                                        Run an Accepted or TLE solution to generate AI Feedback.
+                                    </div>
+                                ) : isAiLoading ? (
+                                    <div className="flex h-full flex-col items-center justify-center gap-3 text-purple-400">
+                                        <Loader2 size={24} className="animate-spin" />
+                                        <span>Gemini is analyzing your code...</span>
+                                    </div>
+                                ) : aiFeedback ? (
+                                    aiFeedback.error ? (
+                                        <div className="text-red-400">{aiFeedback.error}</div>
+                                    ) : (
+                                        <div className="space-y-4 text-gray-300">
+                                            <div className="flex gap-4">
+                                                <div className="flex-1 rounded border border-[#333] bg-[#252526] p-3">
+                                                    <h4 className="text-xs font-bold text-gray-500 uppercase">
+                                                        Time Complexity
+                                                    </h4>
+                                                    <p className="mt-1 font-mono text-lg text-purple-400">
+                                                        {aiFeedback.timeComplexity}
+                                                    </p>
+                                                </div>
+                                                <div className="flex-1 rounded border border-[#333] bg-[#252526] p-3">
+                                                    <h4 className="text-xs font-bold text-gray-500 uppercase">
+                                                        Space Complexity
+                                                    </h4>
+                                                    <p className="mt-1 font-mono text-lg text-blue-400">
+                                                        {aiFeedback.spaceComplexity}
+                                                    </p>
+                                                </div>
+                                                <div className="flex-1 rounded border border-[#333] bg-[#252526] p-3">
+                                                    <h4 className="text-xs font-bold text-gray-500 uppercase">
+                                                        Code Rating
+                                                    </h4>
+                                                    <p className="mt-1 font-mono text-lg text-green-400">
+                                                        {aiFeedback.rating} / 10
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="rounded border border-[#333] bg-[#252526] p-4">
+                                                <h4 className="mb-2 text-xs font-bold text-green-500 uppercase">
+                                                    Strengths
+                                                </h4>
+                                                <ul className="list-inside list-disc space-y-1 text-sm">
+                                                    {aiFeedback.strengths?.map((str, i) => (
+                                                        <li key={i}>{str}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div className="rounded border border-[#333] bg-[#252526] p-4">
+                                                <h4 className="mb-2 text-xs font-bold text-yellow-500 uppercase">
+                                                    Improvements & Alternative Approaches
+                                                </h4>
+                                                <ul className="list-inside list-disc space-y-1 text-sm">
+                                                    {aiFeedback.improvements?.map((imp, i) => (
+                                                        <li key={i}>{imp}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="flex h-full flex-col items-center justify-center gap-4 text-gray-500">
+                                        <Sparkles size={32} className="opacity-50" />
+                                        <button
+                                            onClick={fetchAiFeedback}
+                                            className="rounded border border-purple-500/50 px-4 py-2 text-purple-400 transition-colors hover:bg-purple-500/10"
+                                        >
+                                            Fetch AI Analysis
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

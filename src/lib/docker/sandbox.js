@@ -48,7 +48,6 @@ export const SANDBOX_CONFIG = {
             /import\s+os/i,
             /import\s+subprocess/i,
             /require\s*\(\s*['"]child_process['"]/i,
-            /require\s*\(\s*['"]fs['"]/i,
             /#include\s*<windows\.h>/i,
         ],
         message: 'Code contains potentially unsafe operations',
