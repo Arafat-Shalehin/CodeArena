@@ -162,19 +162,33 @@ export function initSubmissionWorker() {
                         userUpdate.$inc['stats.accepted'] = 1
                     }
 
-                    await User.findByIdAndUpdate(submission.userId, userUpdate)
+                    // 7. Update User Performance Stats by Tag
+                    if (problem.tags && problem.tags.length > 0) {
+                        problem.tags.forEach((tag) => {
+                            const mapKey = 'performanceStats.' + tag
+                            userUpdate.$inc = userUpdate.$inc || {}
+                            userUpdate.$inc[mapKey + '.attempted'] = 1
+                            if (isAccepted) {
+                                userUpdate.$inc[mapKey + '.solved'] = 1
+                            } else {
+                                userUpdate.$inc[mapKey + '.failed'] = 1
+                            }
+                        })
+                    }
+
+                    await User.findByIdAndUpdate(submission.userId, userUpdate, { upsert: true })
                 }
 
                 return { verdict: finalVerdict, passedCount, totalCount }
             } catch (error) {
-                console.error(`CRITICAL: Error processing submission ${submissionId}:`, error)
+                console.error(`CRITICAL: Error processing submission ${submissionId}: `, error)
                 // Capture the exact error message to help debugging
                 const errorMessage = error.message || 'Unknown system error'
 
                 await Submission.findByIdAndUpdate(submissionId, {
                     status: 'error',
                     verdict: 'system_error',
-                    error: `Judge Error: ${errorMessage}`,
+                    error: `Judge Error: ${errorMessage} `,
                 })
                 throw error
             }
@@ -190,7 +204,7 @@ export function initSubmissionWorker() {
     })
 
     worker.on('failed', (job, err) => {
-        console.error(`Submission ${job.data.submissionId} failed:`, err)
+        console.error(`Submission ${job.data.submissionId} failed: `, err)
     })
 
     return worker

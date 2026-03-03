@@ -53,6 +53,18 @@ const userSchema = new mongoose.Schema(
                 },
             ],
         },
+        performanceStats: {
+            type: Map,
+            of: new mongoose.Schema(
+                {
+                    attempted: { type: Number, default: 0 },
+                    solved: { type: Number, default: 0 },
+                    failed: { type: Number, default: 0 },
+                },
+                { _id: false }
+            ),
+            default: {},
+        },
         loginAttempts: {
             type: Number,
             default: 0,

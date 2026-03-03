@@ -10,6 +10,7 @@ import StatCard from './StatCard'
 import Heatmap from './Heatmap'
 import BreakdownChart from './BreakdownChart'
 import SubmissionTable from './SubmissionTable'
+import RecommendedProblems from './RecommendedProblems'
 import { RECENT_SUBMISSIONS, getHeatmapData, UPCOMING_CONTESTS } from '../data/dashboard.data'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -198,6 +199,11 @@ const Dashboard = () => {
                                 ))}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Problem Recommendations */}
+                    <div className="lg:col-span-4">
+                        <RecommendedProblems />
                     </div>
 
                     {/* Heatmap Section */}
