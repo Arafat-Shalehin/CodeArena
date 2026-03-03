@@ -51,8 +51,8 @@ elif [ $EXIT_CODE -ne 0 ]; then
 fi
 
 # Check memory usage
-MEMORY_USED=$(tail -1 "$ERROR_FILE")
-if [ "$MEMORY_USED" -gt "$MEMORY_LIMIT" ]; then
+MEMORY_USED=$(tail -1 "$ERROR_FILE" | tr -dc '0-9')
+if [[ -n "$MEMORY_USED" ]] && [ "$MEMORY_USED" -gt "$MEMORY_LIMIT" ]; then
     echo "MEMORY_LIMIT_EXCEEDED"
     echo "Memory used: ${MEMORY_USED}KB"
     exit 1
@@ -60,5 +60,5 @@ fi
 
 echo "SUCCESS"
 echo "Execution time: ${EXECUTION_TIME}ms"
-echo "Memory used: ${MEMORY_USED}KB"
+echo "Memory used: ${MEMORY_USED:-0}KB"
 cat "$OUTPUT_FILE"

@@ -36,6 +36,11 @@ export function initSubmissionWorker() {
                 const testCases = await TestCase.find({ problemId: submission.problemId }).sort({
                     order: 1,
                 })
+
+                console.log(
+                    `[WORKER] ${testCases.length} test case(s) loaded for problem ${submission.problemId}`
+                )
+
                 const totalCount = testCases.length
 
                 const testCaseResults = []
@@ -112,8 +117,14 @@ export function initSubmissionWorker() {
                                 }
                             } else {
                                 // 🏁 Exact Match Logic
-                                const actualOutput = result.output?.trim()
-                                const expectedOutput = testCase.expectedOutput?.trim()
+                                // Normalize CRLF → LF (Windows Docker may produce \r\n)
+                                const normalize = (s) => (s ?? '').replace(/\r\n/g, '\n').trim()
+                                const actualOutput = normalize(result.output)
+                                const expectedOutput = normalize(testCase.expectedOutput)
+
+                                console.log(
+                                    `[JUDGE] Case ${i + 1} | actual: ${JSON.stringify(actualOutput)} | expected: ${JSON.stringify(expectedOutput)} | match: ${actualOutput === expectedOutput}`
+                                )
 
                                 if (actualOutput === expectedOutput) {
                                     passedCount++
