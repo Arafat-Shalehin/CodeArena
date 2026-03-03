@@ -1,39 +1,49 @@
 // app/admin/layout.js
+'use client'
+
 import Sidebar from '@/components/admin/Sidebar'
+import { motion } from 'framer-motion'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 
 export default function AdminLayout({ children }) {
     return (
-        <div className="flex h-screen overflow-hidden bg-gray-50">
-            {/* Sidebar Component */}
+        <div className="bg-muted/40 flex h-screen overflow-hidden">
+            {/* Sidebar */}
             <Sidebar />
 
             <div className="flex flex-1 flex-col">
-                {/* Modern Top Header */}
-                <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8 shadow-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 animate-pulse rounded-full bg-green-500"></div>
-                        <h1 className="text-lg font-semibold text-gray-700 italic">
+                {/* Header */}
+                <motion.header
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-background sticky top-0 z-40 flex h-16 items-center justify-between px-8 shadow-sm"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></div>
+                        <h1 className="text-lg font-semibold tracking-tight">
                             CodeArena Control Center
                         </h1>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-5">
                         <div className="text-right">
-                            <p className="text-sm leading-none font-bold text-gray-800">
-                                Admin Team Leader
-                            </p>
-                            <p className="text-xs font-medium text-green-600">
-                                Root Access [cite: 175]
-                            </p>
+                            <p className="text-sm font-semibold">Admin Team Leader</p>
+                            <Badge className="mt-1 bg-emerald-500 hover:bg-emerald-600">
+                                Root Access
+                            </Badge>
                         </div>
-                        <div className="h-10 w-10 overflow-hidden rounded-full border-2 border-green-500 bg-slate-200">
-                            <img src="/api/placeholder/40/40" alt="admin" />
-                        </div>
-                    </div>
-                </header>
 
-                {/* Scrollable Main Content */}
-                <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-8">
+                        <Avatar className="h-10 w-10 shadow-sm">
+                            <AvatarImage src="/avatar.png" />
+                            <AvatarFallback>AT</AvatarFallback>
+                        </Avatar>
+                    </div>
+                </motion.header>
+
+                {/* Main */}
+                <main className="flex-1 overflow-y-auto p-8">
                     <div className="mx-auto max-w-7xl">{children}</div>
                 </main>
             </div>

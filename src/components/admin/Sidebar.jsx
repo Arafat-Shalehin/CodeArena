@@ -1,36 +1,59 @@
 // components/admin/Sidebar.jsx
+
+'use client'
+
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { LayoutDashboard, BookOpen, Trophy, Users, ShieldAlert } from 'lucide-react'
 
-const Sidebar = () => {
-    const menuItems = [
-        { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/admin/dashboard' },
-        { name: 'Problems', icon: <BookOpen size={20} />, path: '/admin/problems' },
-        { name: 'Contests', icon: <Trophy size={20} />, path: '/admin/contests' },
-        { name: 'Users', icon: <Users size={20} />, path: '/admin/users' },
-        { name: 'Security Logs', icon: <ShieldAlert size={20} />, path: '/admin/logs' },
-    ]
+const menuItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
+    { name: 'Problems', icon: BookOpen, path: '/admin/problems' },
+    { name: 'Contests', icon: Trophy, path: '/admin/contests' },
+    { name: 'Users', icon: Users, path: '/admin/users' },
+    { name: 'Security Logs', icon: ShieldAlert, path: '/admin/logs' },
+]
+
+export default function Sidebar() {
+    const pathname = usePathname()
 
     return (
-        <div className="flex h-full w-64 flex-col bg-slate-900 text-white shadow-xl">
-            <div className="border-b border-slate-700 p-6 text-2xl font-bold text-green-400">
-                CodeArena <span className="block text-xs text-white">ADMIN PANEL</span>
+        <aside className="bg-background flex h-full w-64 flex-col shadow-md">
+            {/* Logo */}
+            <div className="p-6 shadow-sm">
+                <h2 className="text-xl font-bold tracking-tight">CodeArena</h2>
+                <p className="text-muted-foreground mt-1 text-xs">ADMIN PANEL</p>
             </div>
+
+            {/* Navigation */}
             <nav className="flex-1 space-y-2 p-4">
-                {menuItems.map((item) => (
-                    <Link key={item.name} href={item.path}>
-                        <div className="flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors hover:bg-slate-800">
-                            {item.icon}
-                            <span className="font-medium">{item.name}</span>
-                        </div>
-                    </Link>
-                ))}
+                {menuItems.map((item) => {
+                    const isActive = pathname === item.path
+                    const Icon = item.icon
+
+                    return (
+                        <Link key={item.name} href={item.path}>
+                            <motion.div
+                                whileHover={{ x: 4 }}
+                                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+                                    isActive
+                                        ? 'bg-emerald-500 text-white shadow-sm'
+                                        : 'text-muted-foreground hover:bg-muted hover:shadow-sm'
+                                }`}
+                            >
+                                <Icon className="h-5 w-5" />
+                                {item.name}
+                            </motion.div>
+                        </Link>
+                    )
+                })}
             </nav>
-            <div className="border-t border-slate-700 p-4 text-xs text-slate-400">
-                v1.0.4 | Industry Standard Build
+
+            {/* Footer */}
+            <div className="text-muted-foreground p-4 text-xs shadow-inner">
+                v1.0.4 • Industry Standard Build
             </div>
-        </div>
+        </aside>
     )
 }
-
-export default Sidebar
