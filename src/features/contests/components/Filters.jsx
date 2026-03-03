@@ -6,26 +6,44 @@ import { Button } from '@/components/ui/button'
 import { Filter, X, RefreshCw } from 'lucide-react'
 
 // Reusing the CheckboxGroup pattern from the Problems feature
-const CheckboxGroup = ({
-    label,
-    checkboxColorClass,
-    textColorClass,
-    ringColorClass,
-    checked,
-    onCheckedChange,
-}) => {
-    const color = checkboxColorClass || 'accent'
+const CheckboxGroup = ({ label, checked, onCheckedChange, colorType = 'default' }) => {
+    const colorStyles = {
+        default: {
+            checkbox: 'data-[state=checked]:bg-accent data-[state=checked]:border-accent',
+            text: 'text-text-secondary group-hover:text-text-primary',
+            ring: 'focus-visible:ring-accent',
+        },
+        success: {
+            checkbox: 'data-[state=checked]:bg-success data-[state=checked]:border-success',
+            text: 'text-success/80 group-hover:text-success',
+            ring: 'focus-visible:ring-success',
+        },
+        warning: {
+            checkbox: 'data-[state=checked]:bg-warning data-[state=checked]:border-warning',
+            text: 'text-warning/80 group-hover:text-warning',
+            ring: 'focus-visible:ring-warning',
+        },
+        error: {
+            checkbox: 'data-[state=checked]:bg-error data-[state=checked]:border-error',
+            text: 'text-error/80 group-hover:text-error',
+            ring: 'focus-visible:ring-error',
+        },
+    }
+
+    const style = colorStyles[colorType] || colorStyles.default
 
     return (
-        <label className="group flex cursor-pointer items-center justify-between">
+        <label className="group hover:bg-bg-muted/50 -ml-1.5 flex cursor-pointer items-center justify-between rounded-md p-1.5 transition-colors">
             <div className="flex items-center gap-3">
                 <Checkbox
-                    className={`${ringColorClass || ''} data-[state=checked]:bg-${color} data-[state=checked]:border-${color} data-[state=checked]:text-white`}
+                    className={`border-text-muted/40 transition-all data-[state=checked]:text-white ${style.ring} ${style.checkbox}`}
                     checked={checked}
                     onCheckedChange={onCheckedChange}
                 />
                 <span
-                    className={`text-sm font-medium transition-colors ${textColorClass || 'text-text-primary'}`}
+                    className={`text-sm font-medium transition-colors ${style.text} ${
+                        checked && colorType === 'default' ? '!text-text-primary font-semibold' : ''
+                    }`}
                 >
                     {label}
                 </span>
@@ -77,16 +95,14 @@ const Filters = ({
                 <div className="space-y-8">
                     {/* Date Range */}
                     <div>
-                        <h4 className="text-text-muted mb-4 text-xs font-semibold tracking-widest uppercase">
+                        <h4 className="text-text-muted mb-3 text-xs font-semibold tracking-widest uppercase">
                             Date Range
                         </h4>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                             {DATE_FILTERS.map((range) => (
                                 <CheckboxGroup
                                     key={range}
                                     label={range}
-                                    checkboxColorClass="accent"
-                                    textColorClass="text-text-secondary group-hover:text-text-primary"
                                     checked={selectedDates.includes(range)}
                                     onCheckedChange={() => toggleDate(range)}
                                 />
@@ -96,16 +112,14 @@ const Filters = ({
 
                     {/* Duration */}
                     <div>
-                        <h4 className="text-text-muted mb-4 text-xs font-semibold tracking-widest uppercase">
+                        <h4 className="text-text-muted mb-3 text-xs font-semibold tracking-widest uppercase">
                             Duration
                         </h4>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                             {DURATION_FILTERS.map((duration) => (
                                 <CheckboxGroup
                                     key={duration}
                                     label={duration}
-                                    checkboxColorClass="accent"
-                                    textColorClass="text-text-secondary group-hover:text-text-primary"
                                     checked={selectedDurations.includes(duration)}
                                     onCheckedChange={() => toggleDuration(duration)}
                                 />
@@ -115,29 +129,25 @@ const Filters = ({
 
                     {/* Difficulty */}
                     <div>
-                        <h4 className="text-text-muted mb-4 text-xs font-semibold tracking-widest uppercase">
+                        <h4 className="text-text-muted mb-3 text-xs font-semibold tracking-widest uppercase">
                             Difficulty
                         </h4>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                             {DIFFICULTY_FILTERS.map((diff) => {
-                                // Map contest difficulty constants to colors
-                                const isAllLevels = diff.label === 'All Levels'
-                                const diffColorClass =
+                                const colorType =
                                     diff.label === 'Beginner'
                                         ? 'success'
                                         : diff.label === 'Intermediate'
                                           ? 'warning'
                                           : diff.label === 'Advanced'
                                             ? 'error'
-                                            : 'accent'
+                                            : 'default'
 
                                 return (
                                     <CheckboxGroup
                                         key={diff.label}
                                         label={diff.label}
-                                        checkboxColorClass={isAllLevels ? 'accent' : diffColorClass}
-                                        textColorClass={`text-${isAllLevels ? 'text-secondary' : diffColorClass}`}
-                                        ringColorClass={`focus-visible:ring-${isAllLevels ? 'accent' : diffColorClass}`}
+                                        colorType={colorType}
                                         checked={selectedDifficulties.includes(diff.label)}
                                         onCheckedChange={() => toggleDifficulty(diff.label)}
                                     />

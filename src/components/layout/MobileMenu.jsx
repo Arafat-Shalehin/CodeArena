@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { User, LogOut, Search } from 'lucide-react'
+import { User, LogOut, Search, ChevronRight } from 'lucide-react'
 
 // Navigation Data
 const NAV_LINKS = [
@@ -56,9 +56,7 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                             className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
                         >
                             {link.name}
-                            <span className="material-symbols-outlined text-text-muted group-hover:text-accent text-lg transition-colors">
-                                chevron_right
-                            </span>
+                            <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
                         </Link>
                     ))}
                 </nav>
@@ -75,7 +73,9 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                                         alt={user.name || 'User'}
                                     />
                                     <AvatarFallback className="bg-accent/10 text-accent text-xs font-bold">
-                                        {(user.name || user.email || 'U').substring(0, 2).toUpperCase()}
+                                        {(user.name || user.email || 'U')
+                                            .substring(0, 2)
+                                            .toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">

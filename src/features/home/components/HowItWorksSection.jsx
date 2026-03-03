@@ -1,18 +1,12 @@
 'use client'
 
 import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
-import { Card } from '@/components/ui/card'
-
-// Data
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
 import { stepsData } from '../data/steps.data'
 
-/**
- * @component HowItWorksSection
- * @description An interactive stepper showing the platform journey with scroll-driven path animation.
- */
 export default function HowItWorksSection() {
     const containerRef = useRef(null)
+    const reducedMotion = useReducedMotion()
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ['start center', 'end center'],
@@ -41,51 +35,48 @@ export default function HowItWorksSection() {
                     </p>
                 </motion.div>
 
-                {/* Stepper Container */}
-                <div className="relative">
-                    {/* Connecting Line (Desktop) */}
-                    <div className="absolute top-24 left-0 hidden w-full px-24 lg:block">
-                        <svg className="h-2 w-full" fill="none" viewBox="0 0 1000 8">
-                            <path
-                                d="M0 4L1000 4"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                className="text-zinc-200"
-                                strokeDasharray="8 8"
-                            />
-                            <motion.path
-                                d="M0 4L1000 4"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                className="text-accent"
-                                style={{ pathLength: scrollYProgress }}
-                                strokeLinecap="round"
-                            />
-                        </svg>
-                    </div>
+                {/* Connector Line (Desktop only) */}
+                <div className="absolute top-20 left-0 z-[-1] hidden w-full px-24 lg:block">
+                    <svg className="h-2 w-full" fill="none" viewBox="0 0 1000 8">
+                        <path
+                            d="M0 4L1000 4"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-border"
+                            strokeDasharray="8 8"
+                        />
+                        <motion.path
+                            d="M0 4L1000 4"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            className="text-accent"
+                            style={{ pathLength: reducedMotion ? 1 : scrollYProgress }}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                </div>
 
-                    {/* Steps Grid */}
-                    <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-                        {stepsData.map((step, idx) => (
-                            <StepCard
-                                key={idx}
-                                step={step}
-                                index={idx}
-                                progress={scrollYProgress}
-                            />
-                        ))}
-                    </div>
+                {/* Steps Grid */}
+                <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+                    {stepsData.map((step, idx) => (
+                        <StepCard
+                            key={idx}
+                            step={step}
+                            index={idx}
+                            progress={scrollYProgress}
+                            isLast={idx === stepsData.length - 1}
+                        />
+                    ))}
                 </div>
             </div>
         </section>
     )
 }
 
-function StepCard({ step, index, progress }) {
-    // Calculate when this card should "activate" based on scroll progress
+function StepCard({ step, index, progress, isLast }) {
     const activationPoint = index * 0.25
+    const reducedMotion = useReducedMotion()
 
-    // Create color transforms using useTransform (must be inside component)
     const bgTransform = useTransform(
         progress,
         [activationPoint, activationPoint + 0.1],
@@ -96,42 +87,56 @@ function StepCard({ step, index, progress }) {
         [activationPoint, activationPoint + 0.1],
         ['#a1a1aa', '#ffffff']
     )
-    const opacityTransform = useTransform(
-        progress,
-        [activationPoint, activationPoint + 0.1],
-        [0, 1]
-    )
+    const iconOpacity = useTransform(progress, [activationPoint, activationPoint + 0.1], [0, 1])
 
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: index * 0.1, duration: 0.5 }}
-            className="group relative"
+            className="group relative transition-transform duration-300 hover:-translate-y-1"
         >
-            {/* Step Number Badge */}
-            <div className="relative mb-8 flex justify-center lg:justify-start">
+            {/* Mobile vertical connector */}
+            {!isLast && (
+                <div className="absolute top-20 left-1/2 flex -translate-x-1/2 flex-col items-center sm:hidden">
+                    <div className="bg-border mt-2 h-full min-h-[48px] w-px" />
+                    <svg
+                        width="10"
+                        height="6"
+                        className="text-border"
+                        viewBox="0 0 10 6"
+                        fill="none"
+                    >
+                        <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                </div>
+            )}
+
+            {/* Badge + Icon */}
+            <div className="relative mb-8 flex min-h-[96px] flex-col items-center lg:items-start">
                 <motion.div
                     style={{
-                        backgroundColor: bgTransform,
-                        color: colorTransform,
+                        backgroundColor: reducedMotion ? '#00C853' : bgTransform,
+                        color: reducedMotion ? '#ffffff' : colorTransform,
                     }}
                     className="border-border group-hover:shadow-accent-glow flex size-16 items-center justify-center rounded-2xl border font-mono text-2xl font-black shadow-sm transition-shadow duration-500"
                 >
                     {step.step < 10 ? `0${step.step}` : step.step}
                 </motion.div>
 
-                {/* Icon Float-up */}
                 <motion.div
-                    style={{ opacity: opacityTransform }}
+                    style={{ opacity: iconOpacity }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
                     className="bg-accent absolute -top-4 -right-4 flex size-10 items-center justify-center rounded-xl text-white shadow-lg lg:right-auto lg:left-12"
                 >
-                    <span className="material-symbols-outlined text-xl">{step.icon}</span>
+                    <div className="[&_svg]:size-5">{step.icon}</div>
                 </motion.div>
             </div>
 
-            {/* Content */}
+            {/* Text Content */}
             <div className="text-center lg:text-left">
                 <h3 className="text-text-primary mb-3 text-xl font-extrabold tracking-tight">
                     {step.title}

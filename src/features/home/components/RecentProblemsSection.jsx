@@ -66,7 +66,7 @@ export default function RecentProblemsSection() {
                     Array.from({ length: 3 }).map((_, i) => (
                         <div
                             key={i}
-                            className="h-[320px] w-full animate-pulse rounded-3xl border border-zinc-100 bg-zinc-50/50"
+                            className="bg-bg-subtle border-border h-[320px] w-full animate-pulse rounded-3xl border"
                         />
                     ))
                 ) : problems.length > 0 ? (

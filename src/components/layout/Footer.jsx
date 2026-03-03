@@ -24,10 +24,16 @@ const PLATFORM_LINKS = [
     { name: 'API', href: '/api-docs' },
 ]
 const COMPANY_LINKS = [
-    { name: 'About', href: '/about' },
-    { name: 'Careers', href: '/careers' },
-    { name: 'Blog', href: '/blog' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'About', href: '#' },
+    { name: 'Careers', href: '#' },
+    { name: 'Blog', href: '#' },
+    { name: 'Contact', href: '#' },
+]
+const RESOURCES_LINKS = [
+    { name: 'Documentation', href: '#' },
+    { name: 'Help Center', href: '#' },
+    { name: 'Community', href: '#' },
+    { name: 'Guidelines', href: '#' },
 ]
 
 /**
@@ -77,8 +83,8 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    {/* Navigation Columns (Grouped for Mobile Row) */}
-                    <div className="grid grid-cols-2 gap-8 md:grid-cols-2 lg:contents lg:gap-0">
+                    {/* Navigation Columns */}
+                    <div className="col-span-1 grid grid-cols-2 gap-8 md:col-span-1 lg:col-span-3 lg:grid-cols-3">
                         <div>
                             <h4 className="text-text-primary mb-6 font-bold">Platform</h4>
                             <ul className="text-text-muted space-y-3 text-sm">
@@ -94,7 +100,6 @@ export default function Footer() {
                                 ))}
                             </ul>
                         </div>
-
                         <div>
                             <h4 className="text-text-primary mb-6 font-bold">Company</h4>
                             <ul className="text-text-muted space-y-3 text-sm">
@@ -110,27 +115,21 @@ export default function Footer() {
                                 ))}
                             </ul>
                         </div>
-                    </div>
-
-                    {/* Newsletter Column - Minimal Redesign */}
-                    <div className="flex flex-col gap-4">
-                        <h4 className="text-text-primary font-bold">Stay in the loop</h4>
-                        <div className="group relative">
-                            <input
-                                type="email"
-                                placeholder="Enter your email"
-                                className="bg-bg-subtle border-border text-text-primary placeholder:text-text-muted focus:ring-accent focus:border-accent w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-1 focus:outline-none"
-                            />
-                            <button
-                                className="text-text-muted hover:text-accent hover:bg-accent/10 absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors"
-                                aria-label="Subscribe"
-                            >
-                                <ArrowRight className="size-4" />
-                            </button>
+                        <div>
+                            <h4 className="text-text-primary mb-6 font-bold">Resources</h4>
+                            <ul className="text-text-muted space-y-3 text-sm">
+                                {RESOURCES_LINKS.map((item) => (
+                                    <li key={item.name}>
+                                        <Link
+                                            href={item.href}
+                                            className="hover:text-accent transition-colors"
+                                        >
+                                            {item.name}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                        <p className="text-text-muted text-xs">
-                            Join our newsletter for the latest updates and challenges.
-                        </p>
                     </div>
                 </div>
 

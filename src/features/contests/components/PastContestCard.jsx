@@ -1,4 +1,5 @@
 import React from 'react'
+import { Trophy, ChevronRight } from 'lucide-react'
 
 const PastContestCard = ({ contest }) => {
     return (
@@ -13,7 +14,7 @@ const PastContestCard = ({ contest }) => {
                     </p>
                 </div>
                 <div className="bg-bg-page border-border text-text-muted group-hover:text-accent group-hover:border-accent/30 group-hover:bg-accent/10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border transition-colors">
-                    <span className="material-symbols-outlined text-xl">emoji_events</span>
+                    <Trophy className="size-6" />
                 </div>
             </div>
 
@@ -28,9 +29,7 @@ const PastContestCard = ({ contest }) => {
                 </div>
                 <button className="text-text-secondary hover:text-accent flex items-center gap-1 text-xs font-bold tracking-wider uppercase transition-colors">
                     Results
-                    <span className="material-symbols-outlined text-center text-sm">
-                        chevron_right
-                    </span>
+                    <ChevronRight className="size-4 text-center" />
                 </button>
             </div>
         </div>

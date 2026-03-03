@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Terminal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -20,7 +21,7 @@ export default function CodeEditorPreview({ className }) {
             tokens: [
                 { text: 'def', color: 'text-accent font-bold' },
                 { text: ' ', color: '' },
-                { text: 'solve_challenge', color: 'text-indigo-500' },
+                { text: 'solve_challenge', color: 'text-info' },
                 { text: '(data):', color: '' },
             ],
         },
@@ -138,14 +139,12 @@ export default function CodeEditorPreview({ className }) {
                         solution.py — CodeArena
                     </div>
                     <div className="flex gap-3">
-                        <span className="material-symbols-outlined text-sm text-zinc-300">
-                            terminal
-                        </span>
+                        <Terminal className="size-4 text-zinc-400" />
                     </div>
                 </div>
 
                 {/* Editor Content */}
-                <div className="bg-bg-page/50 p-8 font-mono text-[13px] leading-relaxed text-zinc-700">
+                <div className="bg-bg-page/50 text-text-secondary p-8 font-mono text-[13px] leading-relaxed">
                     <div className="space-y-1">
                         {codeLines.map((_, idx) => (
                             <div key={idx} className="flex gap-4">
@@ -179,7 +178,7 @@ export default function CodeEditorPreview({ className }) {
                             </span>
                             <span className="text-[10px] text-zinc-400">1.2ms latency</span>
                         </div>
-                        <button className="bg-accent shadow-accent-glow cursor-pointer rounded px-4 py-1.5 text-[10px] font-bold text-white transition-all hover:scale-105 active:scale-95">
+                        <button className="bg-accent shadow-accent-glow min-h-11 cursor-pointer rounded px-4 py-2 text-[10px] font-bold text-white transition-all hover:scale-105 active:scale-95">
                             Submit Draft
                         </button>
                     </motion.div>
@@ -187,10 +186,6 @@ export default function CodeEditorPreview({ className }) {
             </motion.div>
         </div>
     )
-}
-
-CodeEditorPreview.propTypes = {
-    className: PropTypes.string,
 }
 
 CodeEditorPreview.propTypes = {

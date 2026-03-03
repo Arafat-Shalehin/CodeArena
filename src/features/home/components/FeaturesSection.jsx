@@ -47,7 +47,7 @@ export default function FeaturesSection() {
                 initial="hidden"
                 whileInView="show"
                 viewport={{ once: true, margin: '-100px' }}
-                className="grid grid-cols-2 gap-6 lg:grid-cols-3"
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
             >
                 {featuresData.map((feature, idx) => (
                     <motion.div
@@ -66,12 +66,10 @@ export default function FeaturesSection() {
                             <div className="bg-accent/0 group-hover:bg-accent/5 pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity group-hover:opacity-100" />
 
                             <div className="bg-accent/5 group-hover:bg-accent/10 mb-6 flex size-12 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">
-                                <span className="material-symbols-outlined text-accent text-2xl">
-                                    {feature.icon}
-                                </span>
+                                <div className="text-accent [&_svg]:size-6">{feature.icon}</div>
                             </div>
 
-                            <h3 className="font-display text-text-primary mb-3 text-lg font-bold md:text-xl md:font-extrabold">
+                            <h3 className="font-display text-text-primary mb-3 text-lg font-extrabold tracking-tight md:text-xl">
                                 {feature.title}
                             </h3>
                             <p className="text-text-muted text-sm leading-relaxed">

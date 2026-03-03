@@ -16,7 +16,22 @@ import { cn } from '@/lib/utils'
 export default function LeaderboardPreviewSection() {
     const { users: leaderboardUsers, isLoading, error } = useLeaderboard()
 
-    if (isLoading || error || !leaderboardUsers || leaderboardUsers.length === 0) return null
+    if (error) return null
+    if (isLoading || !leaderboardUsers || leaderboardUsers.length === 0) {
+        // Show skeleton instead of nothing while loading
+        return (
+            <section className="mx-auto max-w-7xl px-4 py-32">
+                <div className="grid gap-16 lg:grid-cols-2">
+                    <div className="space-y-8">
+                        <div className="bg-bg-muted h-12 w-3/4 animate-pulse rounded-xl" />
+                        <div className="bg-bg-muted h-6 w-full animate-pulse rounded-xl" />
+                        <div className="bg-bg-muted h-6 w-2/3 animate-pulse rounded-xl" />
+                    </div>
+                    <div className="bg-bg-subtle border-border h-80 animate-pulse rounded-3xl border" />
+                </div>
+            </section>
+        )
+    }
 
     return (
         <section className="mx-auto max-w-7xl px-4 py-32">
@@ -41,7 +56,7 @@ export default function LeaderboardPreviewSection() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 border-t border-zinc-100 pt-8">
+                    <div className="border-border grid grid-cols-2 gap-8 border-t pt-8">
                         <div>
                             <div className="text-text-primary text-3xl font-black tabular-nums">
                                 1.2k+
@@ -72,14 +87,14 @@ export default function LeaderboardPreviewSection() {
                     <div className="absolute -inset-4 bg-gradient-to-tr from-emerald-500/10 to-transparent blur-3xl" />
 
                     <Card className="matte-surface relative overflow-hidden rounded-[2rem] border-zinc-200/50 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] backdrop-blur-xl">
-                        <div className="border-b border-zinc-100 bg-zinc-50/50 px-8 py-6">
+                        <div className="border-border bg-bg-subtle/50 border-b px-8 py-6">
                             <h3 className="text-text-primary flex items-center gap-2 text-xs font-bold tracking-tight uppercase">
                                 <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                                 Global Leaderboard — Live
                             </h3>
                         </div>
 
-                        <div className="divide-y divide-zinc-50/50 p-3">
+                        <div className="divide-border divide-y p-3">
                             {leaderboardUsers.slice(0, 3).map((user, idx) => (
                                 <LeaderboardRow
                                     key={user.userId._id}
@@ -90,7 +105,7 @@ export default function LeaderboardPreviewSection() {
                             ))}
                         </div>
 
-                        <div className="bg-zinc-50/50 p-6 text-center">
+                        <div className="bg-bg-subtle/50 p-6 text-center">
                             <Link href="/leaderboard">
                                 <Button
                                     variant="ghost"
@@ -130,7 +145,7 @@ function LeaderboardRow({ user, rank, index }) {
                             'flex size-10 items-center justify-center rounded-xl font-mono text-sm font-black',
                             isFirst
                                 ? 'bg-accent shadow-accent-glow rotate-[-4deg] text-white'
-                                : 'bg-zinc-100 text-zinc-400'
+                                : 'bg-bg-muted text-text-muted'
                         )}
                     >
                         {rank}

@@ -66,15 +66,25 @@ export default function Navbar() {
                     </Link>
 
                     <nav className="hidden items-center gap-1 md:flex">
-                        {NAV_LINKS.map((link) => (
-                            <Link
-                                key={link.name}
-                                href={link.href}
-                                className="text-text-muted hover:text-text-primary hover:bg-bg-subtle rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                            >
-                                {link.name}
-                            </Link>
-                        ))}
+                        {NAV_LINKS.map((link) => {
+                            const isActive =
+                                router.pathname === link.href ||
+                                (router.asPath && router.asPath.startsWith(link.href)) // fallback logic
+                            return (
+                                <Link
+                                    key={link.name}
+                                    href={link.href}
+                                    aria-current={isActive ? 'page' : undefined}
+                                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                        isActive
+                                            ? 'text-text-primary bg-bg-subtle'
+                                            : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
+                                    }`}
+                                >
+                                    {link.name}
+                                </Link>
+                            )
+                        })}
                     </nav>
                 </div>
 

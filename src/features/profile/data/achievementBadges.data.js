@@ -1,7 +1,9 @@
+import { Zap, Timer, Award, Star, Shield, BarChart2, Terminal, Bug } from 'lucide-react'
+
 export const achievementBadges = [
     {
         id: 1,
-        icon: 'bolt',
+        icon: <Zap />,
         color: 'text-accent',
         bg: 'bg-accent/10',
         border: 'border-accent/20',
@@ -10,7 +12,7 @@ export const achievementBadges = [
     },
     {
         id: 2,
-        icon: 'timer',
+        icon: <Timer />,
         color: 'text-warning',
         bg: 'bg-warning/10',
         border: 'border-warning/20',
@@ -19,7 +21,7 @@ export const achievementBadges = [
     },
     {
         id: 3,
-        icon: 'workspace_premium',
+        icon: <Award />,
         color: 'text-success',
         bg: 'bg-success/10',
         border: 'border-success/20',
@@ -28,15 +30,15 @@ export const achievementBadges = [
     },
     {
         id: 4,
-        icon: 'stars',
+        icon: <Star />,
         color: 'text-purple-500',
         bg: 'bg-purple-500/10',
         border: 'border-purple-500/20',
         label: 'Top Rated',
         earned: true,
     },
-    { id: 5, icon: 'military_tech', earned: false },
-    { id: 6, icon: 'social_leaderboard', earned: false },
-    { id: 7, icon: 'terminal', earned: false },
-    { id: 8, icon: 'bug_report', earned: false },
+    { id: 5, icon: <Shield />, earned: false },
+    { id: 6, icon: <BarChart2 />, earned: false },
+    { id: 7, icon: <Terminal />, earned: false },
+    { id: 8, icon: <Bug />, earned: false },
 ]

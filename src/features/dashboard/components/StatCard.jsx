@@ -17,11 +17,11 @@ import React from 'react'
  * @param {string} props.color - Tailwind text color class for the icon and subtext
  * @returns {JSX.Element} The rendered StatCard component.
  */
-const StatCard = ({ title, value, sub, icon, color }) => (
+const StatCard = ({ title, value, sub, icon: Icon, color }) => (
     <div className="bg-bg-subtle border-border flex flex-col justify-between rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md">
         <div className="flex items-start justify-between">
             <p className="text-text-secondary text-sm font-medium">{title}</p>
-            <span className={`material-symbols-outlined ${color}`}>{icon}</span>
+            <Icon className={color} size={24} />
         </div>
         <div className="mt-4">
             <h3 className="text-text-primary text-3xl font-bold">{value}</h3>
