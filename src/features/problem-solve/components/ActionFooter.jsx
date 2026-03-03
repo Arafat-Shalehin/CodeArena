@@ -16,6 +16,8 @@ export default function ActionFooter() {
         setIsSubmitting,
         setSubmissionResult,
         setTestCaseResults,
+        isConsoleOpen,
+        setIsConsoleOpen,
     } = useProblemSolve()
 
     const handleSubmit = async () => {
@@ -87,9 +89,15 @@ export default function ActionFooter() {
 
     return (
         <div className="border-border bg-bg-subtle flex h-14 shrink-0 items-center justify-between border-t px-6">
-            {/* Console Toggler Mockup */}
-            <button className="text-text-muted hover:text-text-primary flex items-center gap-2 text-sm font-medium transition-colors">
-                <ChevronUp size={20} />
+            {/* Console Toggler */}
+            <button
+                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                className="text-text-muted hover:text-text-primary flex items-center gap-2 text-sm font-medium transition-colors"
+            >
+                <ChevronUp
+                    className={`transition-transform duration-200 ${isConsoleOpen ? 'rotate-180' : ''}`}
+                    size={20}
+                />
                 Console
             </button>
 
