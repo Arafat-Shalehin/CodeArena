@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
 import { Settings } from 'lucide-react'
 import Link from 'next/link'
+import EditProfileModal from './EditProfileModal'
 
 /**
  * @component ProfileHero
@@ -29,11 +30,7 @@ export default function ProfileHero({ user: userProp }) {
     const displayUser = userProp || authUser
     const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
 
-    const {
-        bio = '',
-        avatarSeed = name,
-        stats,
-    } = displayUser || {}
+    const { bio = '', avatarSeed = name, stats } = displayUser || {}
 
     const isOwnProfile =
         authUser &&
@@ -44,6 +41,7 @@ export default function ProfileHero({ user: userProp }) {
     const rank = stats?.globalRank ?? '—'
     const finalAvatarSeed = avatarSeed || name
 
+    const [modalOpen, setModalOpen] = useState(false)
     return (
         <>
             <div className="bg-bg-subtle border-border relative mb-8 overflow-hidden rounded-xl border">
@@ -84,7 +82,7 @@ export default function ProfileHero({ user: userProp }) {
                                 </span>
                             </div>
                             {bio && (
-                                <p className="text-text-muted max-w-md text-sm leading-relaxed pt-2">
+                                <p className="text-text-muted max-w-md pt-2 text-sm leading-relaxed">
                                     {bio}
                                 </p>
                             )}
@@ -94,13 +92,16 @@ export default function ProfileHero({ user: userProp }) {
                         <div className="flex shrink-0 flex-row flex-wrap items-center justify-center gap-3 md:justify-end">
                             {!isOwnProfile && <Button variant="default">Follow</Button>}
                             {isOwnProfile && (
-                                <Link href="/profile/settings">
-                                    <Button variant="outline">
-                                        <Settings className="mr-2 h-4 w-4" /> Edit Profile
-                                    </Button>
-                                </Link>
+                                <Button onClick={() => setModalOpen(true)} variant="outline">
+                                    <Settings className="mr-2 h-4 w-4" /> Edit Profile
+                                </Button>
                             )}
                         </div>
+                        {modalOpen && (
+                            <EditProfileModal
+                                onClose={() => setModalOpen(false)}
+                            ></EditProfileModal>
+                        )}
                     </div>
                 </div>
             </div>

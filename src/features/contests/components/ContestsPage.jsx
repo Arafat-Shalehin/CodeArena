@@ -5,7 +5,9 @@ import Filters from './Filters'
 import ContestCard from './ContestCard'
 import LiveBanner from './LiveBanner'
 import { CONTEST_TABS } from '../constants/contests.constants'
-import { UPCOMING_CONTESTS, LIVE_CONTEST } from '../data/contests.data'
+// 1. PAST_CONTESTS import add korun
+import { UPCOMING_CONTESTS, LIVE_CONTEST, PAST_CONTESTS } from '../data/contests.data'
+import PastContestCard from './PastContestCard'
 
 export default function ContestsPage() {
     const [filter, setFilter] = useState('Upcoming')
@@ -13,7 +15,7 @@ export default function ContestsPage() {
     return (
         <div className="bg-bg-page text-text-primary min-h-screen font-sans">
             <main className="max-w-container mx-auto px-6 py-8">
-                {/* Hero Section */}
+                {/* Hero Section (Same as before) */}
                 <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
                     <div>
                         <h1 className="text-text-primary mb-2 text-4xl font-bold tracking-tight">
@@ -44,16 +46,13 @@ export default function ContestsPage() {
                 </div>
 
                 <div className="flex flex-col gap-8 lg:flex-row">
-                    {/* Sidebar Filters */}
                     <Filters />
 
-                    {/* Main Content */}
-                    <div className="flex-1 space-y-8">
-                        {/* Live Banner */}
+                    <div className="flex-1 space-y-12">
                         <LiveBanner contest={LIVE_CONTEST} />
 
-                        {/* Grid */}
-                        <div>
+                        {/* Upcoming Section */}
+                        <section>
                             <div className="mb-6 flex items-center justify-between">
                                 <h3 className="text-text-primary flex items-center gap-2 text-xl font-bold">
                                     Upcoming Challenges
@@ -67,7 +66,25 @@ export default function ContestsPage() {
                                     <ContestCard key={contest.id} {...contest} />
                                 ))}
                             </div>
-                        </div>
+                        </section>
+
+                        {/* --- Recently Completed Section --- */}
+                        <section>
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-text-primary text-xl font-bold">
+                                    Recently Completed
+                                </h3>
+                                <button className="text-accent text-sm font-semibold hover:underline">
+                                    View All History
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                {/* Error Fix: Data pass kora holo map er madhyome */}
+                                {PAST_CONTESTS.map((contest) => (
+                                    <PastContestCard key={contest.id} contest={contest} />
+                                ))}
+                            </div>
+                        </section>
                     </div>
                 </div>
             </main>
