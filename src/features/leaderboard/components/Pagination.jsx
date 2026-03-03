@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 /**
  * @component Pagination
@@ -44,7 +45,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
                 disabled={currentPage === 1}
                 className="border-border text-text-muted hover:text-text-primary hover:border-border-strong rounded-xl"
             >
-                <span className="material-symbols-outlined text-lg">chevron_left</span>
+                <ChevronLeft className="size-5" />
             </Button>
 
             {start > 1 && (
@@ -52,7 +53,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
                     <Button
                         variant="ghost"
                         onClick={() => onPageChange(1)}
-                        className="h-10 w-10 rounded-xl p-0 font-mono font-bold text-text-muted hover:text-text-primary hover:bg-bg-muted"
+                        className="text-text-muted hover:text-text-primary hover:bg-bg-muted h-10 w-10 rounded-xl p-0 font-mono font-bold"
                     >
                         1
                     </Button>
@@ -65,10 +66,11 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
                     key={page}
                     variant={currentPage === page ? 'default' : 'ghost'}
                     onClick={() => onPageChange(page)}
-                    className={`h-10 w-10 rounded-xl p-0 font-mono font-bold ${currentPage === page
+                    className={`h-10 w-10 rounded-xl p-0 font-mono font-bold ${
+                        currentPage === page
                             ? 'bg-accent shadow-accent/20 hover:bg-accent/90 text-white shadow-lg'
                             : 'text-text-muted hover:text-text-primary hover:bg-bg-muted'
-                        }`}
+                    }`}
                 >
                     {page}
                 </Button>
@@ -80,7 +82,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
                     <Button
                         variant="ghost"
                         onClick={() => onPageChange(totalPages)}
-                        className="h-10 w-10 rounded-xl p-0 font-mono font-bold text-text-muted hover:text-text-primary hover:bg-bg-muted"
+                        className="text-text-muted hover:text-text-primary hover:bg-bg-muted h-10 w-10 rounded-xl p-0 font-mono font-bold"
                     >
                         {totalPages}
                     </Button>
@@ -94,7 +96,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
                 disabled={currentPage === totalPages}
                 className="border-border text-text-muted hover:text-text-primary hover:border-border-strong rounded-xl"
             >
-                <span className="material-symbols-outlined text-lg">chevron_right</span>
+                <ChevronRight className="size-5" />
             </Button>
         </div>
     )
