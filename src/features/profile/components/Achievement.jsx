@@ -39,7 +39,7 @@ export default function Achievements() {
                                 : 'bg-bg-muted/50 border-border/50 text-text-muted grayscale'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-2xl">{badge.icon}</span>
+                        <div className="[&_svg]:size-6">{badge.icon}</div>
 
                         {/* Simple Tooltip on Hover */}
                         {badge.earned && (
@@ -71,7 +71,7 @@ export default function Achievements() {
                         <div
                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded ${badge.bg} ${badge.color}`}
                         >
-                            <span className="material-symbols-outlined text-xl">{badge.icon}</span>
+                            <div className="[&_svg]:size-5">{badge.icon}</div>
                         </div>
                         <div>
                             <p className="text-text-primary text-xs font-bold">{badge.title}</p>

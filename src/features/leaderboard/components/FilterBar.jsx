@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Search } from 'lucide-react'
 
 /**
  * @component FilterBar
@@ -22,9 +23,7 @@ export function FilterBar({ searchQuery, onSearchChange, onFilterChange }) {
         <div className="bg-bg-page border-border mb-8 flex flex-col items-center justify-between gap-4 rounded-2xl p-4 shadow-sm md:flex-row">
             {/* Search */}
             <div className="relative w-full md:w-96">
-                <span className="material-symbols-outlined text-text-muted absolute top-1/2 left-3 -translate-y-1/2">
-                    search
-                </span>
+                <Search className="text-text-muted absolute top-1/2 left-3 size-5 -translate-y-1/2" />
                 <Input
                     type="text"
                     placeholder="Search for a legend..."

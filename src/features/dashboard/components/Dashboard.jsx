@@ -14,6 +14,7 @@ import { RECENT_SUBMISSIONS, getHeatmapData, UPCOMING_CONTESTS } from '../data/d
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
+import { Search, Bell, Flame, Target, Sparkles, Calendar, CheckCircle, Trophy } from 'lucide-react'
 
 /**
  * @component ContestItem
@@ -74,9 +75,7 @@ const Dashboard = () => {
 
                     <div className="flex max-w-md flex-1 justify-center px-1 md:px-4">
                         <div className="relative w-full">
-                            <span className="material-symbols-outlined text-text-muted absolute top-1/2 left-3 -translate-y-1/2 text-[18px] md:text-[20px]">
-                                search
-                            </span>
+                            <Search className="text-text-muted absolute top-1/2 left-3 size-4 -translate-y-1/2 md:size-5" />
                             <Input
                                 className="bg-bg-subtle h-9 pl-9 text-xs md:h-10 md:pl-10 md:text-sm"
                                 placeholder="Search..."
@@ -88,9 +87,7 @@ const Dashboard = () => {
 
                     <div className="flex items-center gap-1 md:gap-3">
                         <button className="text-text-muted hover:text-text-primary p-1.5 transition-colors md:p-2">
-                            <span className="material-symbols-outlined text-[20px] md:text-[24px]">
-                                notifications
-                            </span>
+                            <Bell className="size-5 md:size-6" />
                         </button>
                         <div className="bg-border mx-0.5 h-6 w-[1px] md:mx-1 md:h-8"></div>
                         <div className="flex items-center gap-2 pl-1 md:gap-3 md:pl-2">
@@ -121,9 +118,7 @@ const Dashboard = () => {
                         </p>
                     </div>
                     <div className="bg-warning/10 border-warning/20 flex w-fit items-center gap-3 rounded-xl border px-3 py-1.5 md:px-4 md:py-2">
-                        <span className="material-symbols-outlined text-warning fill-1 text-[20px] md:text-[24px]">
-                            local_fire_department
-                        </span>
+                        <Flame className="text-warning fill-warning size-5 md:size-6" />
                         <span className="text-warning text-xs font-bold tracking-tight md:text-sm lg:text-base">
                             5 DAY STREAK
                         </span>
@@ -137,14 +132,14 @@ const Dashboard = () => {
                         title="Problems Solved"
                         value="127"
                         sub="+5 this week"
-                        icon="task_alt"
+                        icon={CheckCircle}
                         color="text-success"
                     />
                     <StatCard
                         title="Contest Rank"
                         value="#342"
                         sub="↑12 this week"
-                        icon="leaderboard"
+                        icon={Trophy}
                         color="text-accent"
                     />
 
@@ -152,9 +147,7 @@ const Dashboard = () => {
                     <div className="bg-bg-subtle border-border flex flex-col justify-between rounded-xl border p-5 shadow-sm">
                         <div className="flex items-start justify-between">
                             <p className="text-text-secondary text-sm font-medium">Accuracy</p>
-                            <span className="material-symbols-outlined text-warning">
-                                track_changes
-                            </span>
+                            <Target className="text-warning size-5" />
                         </div>
                         <div className="mt-4 flex items-center gap-4">
                             <h3 className="text-text-primary text-3xl font-bold">73%</h3>
@@ -189,9 +182,7 @@ const Dashboard = () => {
                             <p className="text-text-secondary text-sm font-medium">
                                 Current Streak
                             </p>
-                            <span className="material-symbols-outlined text-error">
-                                auto_awesome
-                            </span>
+                            <Sparkles className="text-error size-5" />
                         </div>
                         <div className="mt-4">
                             <h3 className="text-text-primary text-3xl font-bold">5 Days</h3>
@@ -285,9 +276,7 @@ const Dashboard = () => {
                     <aside className="lg:col-span-1">
                         <div className="bg-bg-subtle border-border space-y-4 rounded-xl border p-5 shadow-sm">
                             <h3 className="text-text-primary mb-4 flex items-center gap-2 text-sm font-bold">
-                                <span className="material-symbols-outlined text-accent text-[18px]">
-                                    event
-                                </span>
+                                <Calendar className="text-accent size-[18px]" />
                                 Upcoming Contests
                             </h3>
                             <div className="space-y-3">

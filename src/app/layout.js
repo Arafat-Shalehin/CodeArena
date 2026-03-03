@@ -33,12 +33,6 @@ export default function RootLayout({ children }) {
             lang="en"
             className={`${inter.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}
         >
-            <head>
-                <link
-                    rel="stylesheet"
-                    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-                />
-            </head>
             <body className="bg-bg-page text-text-primary font-sans antialiased">
                 <AuthProvider>{children}</AuthProvider>
                 <Toaster position="top-center" />

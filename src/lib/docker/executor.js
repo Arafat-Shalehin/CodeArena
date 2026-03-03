@@ -126,6 +126,9 @@ async function createContainer(langConfig, code, input, timeLimit, memoryLimit, 
 
     // Write files using exec
     try {
+
+        console.log(`[EXECUTOR] Sending input (${Buffer.byteLength(input, 'utf8')} bytes) to container`)
+
         // Helper function to run exec and wait for completion
         const runExec = async (cmd, user = 'root') => {
             const exec = await container.exec({
@@ -352,13 +355,27 @@ function extractOutput(output) {
     let capturing = false
     const outputLines = []
 
+    // Patterns to exclude from the final program output
+    const internalPatterns = [
+        'SUCCESS',
+        'Execution time:',
+        'Memory used:',
+        'Compiling',
+        'Executing',
+        'runner.sh:',
+        '[:'
+    ]
+
     for (const line of lines) {
         if (line.includes('SUCCESS')) {
             capturing = true
             continue
         }
-        if (capturing && !line.includes('Execution time') && !line.includes('Memory used')) {
-            outputLines.push(line)
+        if (capturing) {
+            const isInternal = internalPatterns.some((p) => line.includes(p))
+            if (!isInternal) {
+                outputLines.push(line)
+            }
         }
     }
 

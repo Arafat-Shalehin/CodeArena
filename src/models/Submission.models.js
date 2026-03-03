@@ -46,6 +46,13 @@ const submissionSchema = new mongoose.Schema(
         executionTime: { type: Number }, // ms
         memoryUsed: { type: Number }, // KB
         error: { type: String }, // Compilation or Runtime error details
+        aiFeedback: {
+            timeComplexity: { type: String },
+            spaceComplexity: { type: String },
+            strengths: [{ type: String }],
+            improvements: [{ type: String }],
+            rating: { type: Number },
+        },
         testCaseResults: [
             {
                 testCaseId: { type: mongoose.Schema.Types.ObjectId, ref: 'TestCase' },

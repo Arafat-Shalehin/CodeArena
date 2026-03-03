@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { leaderboardStats } from '../data/leaderboard.data'
+import { Users, Upload, Trophy, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
  * DESIGN NOTES
@@ -16,10 +17,10 @@ import { leaderboardStats } from '../data/leaderboard.data'
  * Keep in sync with leaderboardStats array order.
  */
 const STAT_ICONS = [
-    'group', // Total Participants
-    'upload_2', // Submissions Today
-    'trophy', // Active Contests
-    'check_circle', // Avg. Solve Rate
+    <Users key="users" size={16} />,
+    <Upload key="upload" size={16} />,
+    <Trophy key="trophy" size={16} />,
+    <CheckCircle key="check" size={16} />,
 ]
 
 /**
@@ -57,8 +58,8 @@ function Sparkline({ data, positive, stable }) {
     const color = stable
         ? 'var(--color-tx-muted)'
         : positive
-            ? 'var(--color-accent)'
-            : 'var(--color-error)'
+          ? 'var(--color-accent)'
+          : 'var(--color-error)'
 
     return (
         <svg
@@ -143,20 +144,20 @@ function StatCard({ stat, icon, sparkline, index }) {
     const accentVar = isStable
         ? 'var(--color-border)'
         : isPositive
-            ? 'var(--color-accent)'
-            : 'var(--color-error)'
+          ? 'var(--color-accent)'
+          : 'var(--color-error)'
 
     const trendColour = isStable
         ? 'var(--color-tx-muted)'
         : isPositive
-            ? 'var(--color-accent)'
-            : 'var(--color-error)'
+          ? 'var(--color-accent)'
+          : 'var(--color-error)'
 
     const trendBg = isStable
         ? 'var(--color-bg-muted)'
         : isPositive
-            ? 'var(--color-accent-light)'
-            : 'var(--color-error-light)'
+          ? 'var(--color-accent-light)'
+          : 'var(--color-error-light)'
 
     return (
         <Card
@@ -191,19 +192,10 @@ function StatCard({ stat, icon, sparkline, index }) {
                 {/* Top row: icon + label */}
                 <div className="mb-3 flex items-center gap-2">
                     <div
-                        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md"
+                        className="text-text-secondary flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md"
                         style={{ background: 'var(--color-bg-muted)' }}
                     >
-                        <span
-                            className="material-symbols-outlined"
-                            style={{
-                                fontSize: '16px',
-                                color: 'var(--color-tx-secondary)',
-                                fontVariationSettings: "'FILL' 0",
-                            }}
-                        >
-                            {icon}
-                        </span>
+                        {icon}
                     </div>
                     <p
                         className="text-xs leading-none font-semibold tracking-wider uppercase"
@@ -230,11 +222,8 @@ function StatCard({ stat, icon, sparkline, index }) {
                         style={{ background: trendBg, color: trendColour }}
                     >
                         {!isStable && (
-                            <span
-                                className="material-symbols-outlined"
-                                style={{ fontSize: '13px' }}
-                            >
-                                {isPositive ? 'trending_up' : 'trending_down'}
+                            <span className="flex items-center">
+                                {isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
                             </span>
                         )}
                         <span>{stat.trend}</span>
@@ -261,10 +250,30 @@ export function PlatformStats() {
                 const json = await res.json()
                 if (json.success) {
                     const mappedStats = [
-                        { label: 'Total Participants', value: json.data.totalParticipants.toLocaleString(), trend: '+0.0%', trendUp: true },
-                        { label: 'Submissions Today', value: json.data.submissionsToday.toLocaleString(), trend: '+0.0%', trendUp: true },
-                        { label: 'Active Contests', value: json.data.activeContests.toString(), trend: 'Live', trendUp: null },
-                        { label: 'Avg. Solve Rate', value: json.data.avgSolveRate, trend: '-', trendUp: null }
+                        {
+                            label: 'Total Participants',
+                            value: json.data.totalParticipants.toLocaleString(),
+                            trend: '+0.0%',
+                            trendUp: true,
+                        },
+                        {
+                            label: 'Submissions Today',
+                            value: json.data.submissionsToday.toLocaleString(),
+                            trend: '+0.0%',
+                            trendUp: true,
+                        },
+                        {
+                            label: 'Active Contests',
+                            value: json.data.activeContests.toString(),
+                            trend: 'Live',
+                            trendUp: null,
+                        },
+                        {
+                            label: 'Avg. Solve Rate',
+                            value: json.data.avgSolveRate,
+                            trend: '-',
+                            trendUp: null,
+                        },
                     ]
                     setStats(mappedStats)
                 }
@@ -280,8 +289,11 @@ export function PlatformStats() {
     if (loading || !stats) {
         return (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-32 animate-pulse rounded-xl bg-bg-subtle border border-border" />
+                {[1, 2, 3, 4].map((i) => (
+                    <div
+                        key={i}
+                        className="bg-bg-subtle border-border h-32 animate-pulse rounded-xl border"
+                    />
                 ))}
             </div>
         )

@@ -1,7 +1,8 @@
 import { Queue } from 'bullmq'
 
 const connection = {
-    host: process.env.REDIS_HOST || 'redis',
+    host:
+        process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
     port: parseInt(process.env.REDIS_PORT || '6379'),
     password: process.env.REDIS_PASSWORD,
 }
