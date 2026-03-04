@@ -10,10 +10,12 @@ import StatCard from './StatCard'
 import Heatmap from './Heatmap'
 import BreakdownChart from './BreakdownChart'
 import SubmissionTable from './SubmissionTable'
+import RecommendedProblems from './RecommendedProblems'
 import { RECENT_SUBMISSIONS, getHeatmapData, UPCOMING_CONTESTS } from '../data/dashboard.data'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
+import { useAuth } from '@/context/AuthContext'
 import { Search, Bell, Flame, Target, Sparkles, Calendar, CheckCircle, Trophy } from 'lucide-react'
 
 /**
@@ -53,8 +55,12 @@ const ContestItem = ({ name, time, registered }) => (
  * @returns {JSX.Element} The rendered Dashboard feature.
  */
 const Dashboard = () => {
+    const { user } = useAuth()
     const [searchQuery, setSearchQuery] = useState('')
     const heatmapData = getHeatmapData()
+
+    const userName = user?.name || user?.email?.split('@')[0] || 'Coder'
+    const avatarSeed = user?.avatarSeed || userName
 
     const difficultyBreakdown = [
         { label: 'Easy', count: 45, color: 'bg-success' },
@@ -92,14 +98,18 @@ const Dashboard = () => {
                         <div className="bg-border mx-0.5 h-6 w-[1px] md:mx-1 md:h-8"></div>
                         <div className="flex items-center gap-2 pl-1 md:gap-3 md:pl-2">
                             <div className="hidden text-right lg:block">
-                                <p className="text-text-primary text-xs font-bold">Rabiul Islam</p>
+                                <p className="text-text-primary text-xs font-bold">{userName}</p>
                                 <p className="text-accent text-[10px] font-medium tracking-wider uppercase">
                                     Pro
                                 </p>
                             </div>
                             <Avatar className="border-accent h-8 w-8 border-2 md:h-9 md:w-9">
-                                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Rabiul" />
-                                <AvatarFallback>RI</AvatarFallback>
+                                <AvatarImage
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${avatarSeed}`}
+                                />
+                                <AvatarFallback>
+                                    {(userName || 'U').substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
                             </Avatar>
                         </div>
                     </div>
@@ -111,7 +121,7 @@ const Dashboard = () => {
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
                         <h1 className="text-text-primary text-2xl font-bold tracking-tight md:text-3xl lg:text-4xl">
-                            Welcome back, Rabiul!
+                            Welcome back, {userName}!
                         </h1>
                         <p className="text-text-secondary mt-1 text-sm md:text-base">
                             Ready to tackle some new challenges today?
@@ -198,6 +208,11 @@ const Dashboard = () => {
                                 ))}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Problem Recommendations */}
+                    <div className="lg:col-span-4">
+                        <RecommendedProblems />
                     </div>
 
                     {/* Heatmap Section */}

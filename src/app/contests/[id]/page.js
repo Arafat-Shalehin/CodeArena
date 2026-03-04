@@ -13,7 +13,7 @@ export async function generateMetadata({ params }) {
 export default async function Page({ params }) {
     const { id } = await params
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
             <main className="flex-1">
                 <ContestDetailPage contestId={id} />

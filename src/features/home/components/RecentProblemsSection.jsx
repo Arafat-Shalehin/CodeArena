@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ import { normalizeDifficulty } from '@/features/problems/data/problems.data'
  * @description Displays a grid of curated coding problems with entrance animations.
  */
 export default function RecentProblemsSection() {
+    const shouldReduceMotion = useSafeReducedMotion()
     const [problems, setProblems] = useState([])
     const [isLoading, setIsLoading] = useState(true)
 
@@ -44,12 +46,13 @@ export default function RecentProblemsSection() {
         <section className="mx-auto max-w-7xl px-4 py-32">
             {/* Section Header */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="border-border mb-16 flex flex-col justify-between border-b pb-12 sm:flex-row sm:items-end"
+                transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
+                className="border-border mb-16 border-b pb-12 text-center"
             >
-                <div className="max-w-xl">
+                <div className="mx-auto max-w-2xl">
                     <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
                         Curated <span className="text-accent italic">challenges.</span>
                     </h2>
@@ -73,10 +76,10 @@ export default function RecentProblemsSection() {
                     problems.map((problem, idx) => (
                         <motion.div
                             key={problem._id}
-                            initial={{ opacity: 0, y: 30 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            transition={{ delay: idx * 0.1 }}
+                            transition={{ delay: shouldReduceMotion ? 0 : idx * 0.1 }}
                         >
                             <ProblemCard
                                 title={problem.title}
@@ -96,10 +99,10 @@ export default function RecentProblemsSection() {
 
             {/* View All Problems Button */}
             <motion.div
-                initial={{ opacity: 0 }}
+                initial={shouldReduceMotion ? false : { opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: shouldReduceMotion ? 0 : 0.4 }}
                 className="mt-20 text-center"
             >
                 <Link href="/problems">

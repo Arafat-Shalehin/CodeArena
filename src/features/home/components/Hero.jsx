@@ -1,21 +1,26 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CodeEditorPreview from './CodeEditorPreview'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 /**
  * @component FloatingElement
  * @description Renders a floating tech-themed icon/text for the background.
  */
 const FloatingElement = ({ children, initialX, initialY, duration, delay = 0 }) => {
-    const shouldReduceMotion =
-        typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const [isMounted, setIsMounted] = useState(false)
+    const shouldReduceMotion = useReducedMotion()
 
-    if (shouldReduceMotion) return null
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    if (!isMounted || shouldReduceMotion) return null
 
     return (
         <motion.div
@@ -38,8 +43,10 @@ const FloatingElement = ({ children, initialX, initialY, duration, delay = 0 }) 
 }
 
 export default function Hero() {
+    const shouldReduceMotion = useSafeReducedMotion()
+
     return (
-        <section className="hero-gradient relative overflow-hidden py-16 md:py-24">
+        <section className="hero-gradient relative overflow-hidden py-4 md:py-12">
             {/* Background Animations: Tech Debris */}
             <div className="absolute inset-0 z-0 opacity-40">
                 <FloatingElement initialX={60} initialY={120} duration={8}>
@@ -62,13 +69,16 @@ export default function Hero() {
             <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 sm:gap-12 lg:grid-cols-2 lg:gap-16">
                 {/* Left Column: Content */}
                 <motion.div
-                    initial="hidden"
+                    initial={shouldReduceMotion ? 'visible' : 'hidden'}
                     animate="visible"
                     variants={{
                         hidden: { opacity: 0 },
                         visible: {
                             opacity: 1,
-                            transition: { staggerChildren: 0.12, delayChildren: 0.2 },
+                            transition: {
+                                staggerChildren: shouldReduceMotion ? 0 : 0.12,
+                                delayChildren: shouldReduceMotion ? 0 : 0.2,
+                            },
                         },
                     }}
                     className="relative z-10 space-y-8 text-center lg:text-left"
@@ -159,9 +169,13 @@ export default function Hero() {
 
                 {/* Right Column: Visual */}
                 <motion.div
-                    initial={{ opacity: 0, x: 50, rotate: 2 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, x: 50, rotate: 2 }}
                     animate={{ opacity: 1, x: 0, rotate: 0 }}
-                    transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                    transition={{
+                        duration: shouldReduceMotion ? 0 : 1,
+                        ease: 'easeOut',
+                        delay: shouldReduceMotion ? 0 : 0.2,
+                    }}
                     className="relative z-10"
                 >
                     <CodeEditorPreview className="mx-auto lg:mx-0" />

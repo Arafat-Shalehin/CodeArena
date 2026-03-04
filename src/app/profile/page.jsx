@@ -40,7 +40,7 @@ export default function ProfilePage() {
     // Loading state while Firebase resolves
     if (isLoading) {
         return (
-            <div className="bg-bg-page flex min-h-screen flex-col">
+            <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
                 <Navbar />
                 <main className="flex flex-grow items-center justify-center">
                     <Loader2 className="text-accent h-8 w-8 animate-spin" />
@@ -58,7 +58,7 @@ export default function ProfilePage() {
     const sortedLanguages = getLanguageStats(user.stats)
 
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
 
             <main className="mx-auto w-full max-w-7xl flex-grow px-4 py-8 md:px-6">

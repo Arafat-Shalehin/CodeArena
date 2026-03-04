@@ -11,7 +11,7 @@ export default async function ProblemDetailPage({ params }) {
     const { id } = await params
 
     return (
-        <div className="bg-bg-page flex h-screen flex-col overflow-hidden">
+        <div className="bg-bg-page site-gradient flex h-screen flex-col overflow-hidden">
             <Navbar />
             <main className="flex flex-1 overflow-hidden">
                 <ProblemSolverLayout problemId={id} />

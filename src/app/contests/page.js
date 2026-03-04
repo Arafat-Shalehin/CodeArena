@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function Page() {
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
             <main className="flex-1">
                 <ContestsPage />

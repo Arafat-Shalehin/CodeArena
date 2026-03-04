@@ -33,27 +33,27 @@ export default function PublicProfilePage({ params }) {
     const entry = leaderboardUsers.find((u) => u.userId._id === id)
     const user = entry
         ? {
-            name: entry.userId.name,
-            avatarSeed: entry.userId.name,
-            stats: {
-                ...entry.userId.stats,
-                globalRank: entry.rank,
-                // Mock problem distribution since the API doesn't return it yet
-                problemsSolved: {
-                    easy: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.4),
-                    medium: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.4),
-                    hard: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.2),
-                },
-            },
-        }
+              name: entry.userId.name,
+              avatarSeed: entry.userId.name,
+              stats: {
+                  ...entry.userId.stats,
+                  globalRank: entry.rank,
+                  // Mock problem distribution since the API doesn't return it yet
+                  problemsSolved: {
+                      easy: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.4),
+                      medium: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.4),
+                      hard: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.2),
+                  },
+              },
+          }
         : {
-            name: 'User Not Found',
-            avatarSeed: 'unknown',
-            stats: null,
-        }
+              name: 'User Not Found',
+              avatarSeed: 'unknown',
+              stats: null,
+          }
 
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
 
             <main className="mx-auto w-full max-w-7xl flex-grow px-4 py-8 md:px-6">

@@ -2,7 +2,7 @@ import React from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, Mail, MapPin, Globe, CheckCircle } from 'lucide-react'
+import { User, Mail, MapPin, Globe, CheckCircle, AtSign } from 'lucide-react'
 
 export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
     return (
@@ -14,8 +14,7 @@ export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
                         htmlFor="name"
                         className="text-text-muted text-xs font-bold tracking-wider uppercase"
                     >
-                        Username / Handle
-                        Display Name
+                        Username / Handle Display Name
                     </Label>
                     <div className="relative">
                         <AtSign
@@ -24,9 +23,6 @@ export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
                         />
                         <Input
                             id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={onChange}
                             {...register('name')}
                             className="pl-10"
                             placeholder="Alex Rivera"
