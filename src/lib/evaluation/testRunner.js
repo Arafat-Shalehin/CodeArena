@@ -23,6 +23,9 @@ export async function runSingleTest({
             memoryLimit,
         })
 
+        // Resolve the expected output field (callers may use either name)
+        const expected = testCase.expectedOutput || testCase.output || ''
+
         // If execution failed, return the error verdict
         if (!executionResult.success) {
             return {
@@ -32,16 +35,16 @@ export async function runSingleTest({
                 memoryUsed: executionResult.memoryUsed || 0,
                 error: executionResult.error,
                 testCase: {
-                    input: testCase.input.substring(0, 100),
-                    expectedOutput: testCase.output.substring(0, 100),
+                    input: (testCase.input || '').substring(0, 100),
+                    expectedOutput: expected.substring(0, 100),
                 },
             }
         }
 
         // Compare output with expected output
         const comparisonResult = compareOutputs(
-            executionResult.output,
-            testCase.output,
+            executionResult.output || '',
+            expected,
             comparisonMode
         )
 
@@ -50,10 +53,10 @@ export async function runSingleTest({
             passed: comparisonResult.isMatch,
             executionTime: executionResult.executionTime,
             memoryUsed: executionResult.memoryUsed,
-            actualOutput: executionResult.output.substring(0, 1000),
+            actualOutput: (executionResult.output || '').substring(0, 1000),
             testCase: {
-                input: testCase.input.substring(0, 100),
-                expectedOutput: testCase.output.substring(0, 100),
+                input: (testCase.input || '').substring(0, 100),
+                expectedOutput: expected.substring(0, 100),
             },
             comparisonDetails: comparisonResult.reason,
         }
@@ -154,12 +157,19 @@ export async function runAllTests({
         stopOnFirstFailure: false,
     })
 
-    // If public tests failed, don't run hidden tests
-    if (!publicResults.passed) {
+    // If public tests failed, or no hidden tests, return early
+    if (!publicResults.passed || !hiddenTests || hiddenTests.length === 0) {
         return {
-            ...publicResults,
+            verdict: publicResults.verdict,
+            passed: publicResults.passed,
+            publicTestsResults: publicResults,
             hiddenTestsResults: null,
-            publicTestsPassed: false,
+            publicTestsPassed: publicResults.passed,
+            stats: {
+                ...publicResults.stats,
+                totalPassedTests: publicResults.stats.passedTests,
+                executionTime: publicResults.stats.totalExecutionTime,
+            },
         }
     }
 
@@ -185,6 +195,8 @@ export async function runAllTests({
             totalPassedTests: publicResults.stats.passedTests + hiddenResults.stats.passedTests,
             totalTests: publicResults.stats.totalTests + hiddenResults.stats.totalTests,
             totalExecutionTime:
+                publicResults.stats.totalExecutionTime + hiddenResults.stats.totalExecutionTime,
+            executionTime:
                 publicResults.stats.totalExecutionTime + hiddenResults.stats.totalExecutionTime,
             maxMemoryUsed: Math.max(
                 publicResults.stats.maxMemoryUsed,
