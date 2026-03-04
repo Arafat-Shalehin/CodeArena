@@ -14,6 +14,7 @@ import RecentSubmissions from '@/features/profile/components/RecentSubmissions'
 import ProblemStats from '@/features/profile/components/ProblemStats'
 import ContestPerformance from '@/features/profile/components/ContestPerformance'
 import Achievements from '@/features/profile/components/Achievements'
+import RecommendedProblems from '@/features/profile/components/RecommendedProblems'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -70,6 +71,9 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-10">
                     {/* Left Side (60%) — Submission Activity + Recent Submissions */}
                     <div className="order-2 space-y-8 lg:order-1 lg:col-span-6">
+                        {/* Interactive Recommendations */}
+                        <RecommendedProblems />
+
                         {/* Submission Activity Section */}
                         <section className="bg-bg-subtle border-border rounded-lg border p-6">
                             <h3 className="text-text-primary mb-6 text-xl font-semibold">

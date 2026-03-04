@@ -21,9 +21,24 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
         }
 
-        const user = await User.findById(userAuth._id).select(
+        const user = await User.findById(userAuth.id).select(
             'performanceStats stats.solvedProblems'
         )
+
+        if (!user) {
+            // If the user isn't in MongoDB yet, they have no stats.
+            // Return empty arrays so the frontend can display the 'Coming Soon' widget.
+            return NextResponse.json({
+                success: true,
+                data: {
+                    weakTags: [],
+                    recommendations: [],
+                    discoveryProblems: [],
+                    discoveryTags: [],
+                    userLevel: 'easy',
+                },
+            })
+        }
 
         const solvedProblemIds = user.stats?.solvedProblems || []
 
@@ -145,7 +160,7 @@ export async function GET(request) {
     } catch (error) {
         console.error('[RecommendationsAPI] Error:', error)
         return NextResponse.json(
-            { success: false, error: 'Failed to fetch recommendations' },
+            { success: false, error: 'Failed to fetch recommendations', details: error.message },
             { status: 500 }
         )
     }

@@ -55,9 +55,20 @@ export default function RecommendedProblems() {
     }
 
     if (error) {
+        // Fallback to the friendly empty state if the database or API errors out,
+        // which often happens for brand new users or connection issues.
         return (
-            <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
-                <p className="text-error text-sm">{error}</p>
+            <div className="bg-bg-subtle border-border flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center shadow-sm">
+                <div className="bg-bg-muted/50 mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+                    <Compass className="text-text-muted h-8 w-8" />
+                </div>
+                <h3 className="text-text-primary mb-2 text-xl font-bold tracking-tight">
+                    Recommendations Coming Soon
+                </h3>
+                <p className="text-text-secondary max-w-md text-sm">
+                    Start solving coding challenges! Once you submit some solutions, our system will
+                    analyze your performance and provide personalized recommendations here.
+                </p>
             </div>
         )
     }
@@ -66,7 +77,20 @@ export default function RecommendedProblems() {
     const hasDiscovery = discoveryProblems && discoveryProblems.length > 0
 
     if (!hasRecommendations && !hasDiscovery) {
-        return null
+        return (
+            <div className="bg-bg-subtle border-border flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center shadow-sm">
+                <div className="bg-bg-muted/50 mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+                    <Compass className="text-text-muted h-8 w-8" />
+                </div>
+                <h3 className="text-text-primary mb-2 text-xl font-bold tracking-tight">
+                    Recommendations Coming Soon
+                </h3>
+                <p className="text-text-secondary max-w-md text-sm">
+                    Start solving coding challenges! Once you submit some solutions, our system will
+                    analyze your performance and provide personalized recommendations here.
+                </p>
+            </div>
+        )
     }
 
     return (
