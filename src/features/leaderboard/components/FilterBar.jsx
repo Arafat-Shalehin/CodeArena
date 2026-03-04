@@ -1,6 +1,4 @@
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Search } from 'lucide-react'
+import { SearchInput } from '@/shared/components/ui/SearchInput'
 
 /**
  * @component FilterBar
@@ -22,16 +20,12 @@ export function FilterBar({ searchQuery, onSearchChange, onFilterChange }) {
     return (
         <div className="bg-bg-page border-border mb-8 flex flex-col items-center justify-between gap-4 rounded-2xl p-4 shadow-sm md:flex-row">
             {/* Search */}
-            <div className="relative w-full md:w-96">
-                <Search className="text-text-muted absolute top-1/2 left-3 size-5 -translate-y-1/2" />
-                <Input
-                    type="text"
-                    placeholder="Search for a legend..."
-                    value={searchQuery}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                    className="bg-bg-page border-border focus:border-accent/50 focus:ring-accent/20 rounded-xl pl-10 transition-all"
-                />
-            </div>
+            <SearchInput
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search for a legend..."
+                className="w-full md:w-96"
+            />
 
             {/* Filters */}
             <div className="no-scrollbar flex w-full gap-2 overflow-x-auto pb-2 md:w-auto md:pb-0">

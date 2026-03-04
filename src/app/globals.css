@@ -29,6 +29,8 @@
     --ca-bg-page: #ffffff;
     --ca-bg-subtle: #f7f8fa;
     --ca-bg-muted: #edeef0;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.08);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.05);
 
     /* Text */
     --ca-text-primary: #111827;
@@ -132,6 +134,8 @@
     --ca-bg-page: #0f1117;
     --ca-bg-subtle: #161b22;
     --ca-bg-muted: #21262d;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.16);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.1);
 
     --ca-text-primary: #f0f6fc;
     --ca-text-secondary: #8b949e;
@@ -531,6 +535,14 @@
         background:
             radial-gradient(circle at 15% 50%, rgba(2, 186, 76, 0.08) 0%, transparent 25%),
             radial-gradient(circle at 85% 30%, rgba(2, 186, 76, 0.05) 0%, transparent 25%);
+    }
+
+    /* Shared page gradient for synchronized backgrounds across routes */
+    .site-gradient {
+        background-image:
+            radial-gradient(circle at 15% 50%, var(--ca-site-grad-1) 0%, transparent 25%),
+            radial-gradient(circle at 85% 30%, var(--ca-site-grad-2) 0%, transparent 25%);
+        background-repeat: no-repeat;
     }
 
     /* ── Leaderboard-specific utilities ── */

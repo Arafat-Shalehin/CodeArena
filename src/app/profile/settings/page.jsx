@@ -120,6 +120,35 @@ export default function SettingsPage() {
             }
         }
 
+        // Also update the MongoDB database
+        if (user && (user.id || user._id)) {
+            try {
+                const userId = user.id || user._id
+                const res = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: data.name,
+                        bio: data.bio || '',
+                        location: data.location || '',
+                        website: data.website || '',
+                        socials: data.socials,
+                        avatarSeed,
+                    }),
+                })
+
+                if (!res.ok) {
+                    const errMap = await res.json()
+                    throw new Error(errMap.message || 'Failed to update profile')
+                }
+            } catch (error) {
+                console.error('Database profile sync failed:', error)
+                toast.error('Failed to sync profile to database.')
+            }
+        }
+
         // Update local auth context (which also handles localStorage caching mapping)
         updateLocalContext({
             name: data.name,
@@ -136,7 +165,7 @@ export default function SettingsPage() {
 
     if (authLoading) {
         return (
-            <div className="bg-bg-page flex min-h-screen flex-col">
+            <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
                 <Navbar />
                 <main className="flex flex-grow items-center justify-center">
                     <Loader2 className="text-accent h-8 w-8 animate-spin" />
@@ -147,7 +176,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
             <main className="mx-auto w-full max-w-7xl flex-grow px-4 pt-2 pb-12 md:px-6">
                 <div className="mb-10">

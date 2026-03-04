@@ -178,7 +178,7 @@ export default function ProblemsPage() {
     }
 
     return (
-        <div className="bg-bg-page text-text-primary flex min-h-screen flex-col font-sans">
+        <div className="bg-bg-page site-gradient text-text-primary flex min-h-screen flex-col font-sans">
             <Navbar />
 
             <main className="max-w-container mx-auto w-full flex-grow px-4 py-8 md:px-6">

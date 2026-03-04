@@ -143,3 +143,36 @@ export async function deleteUser(id) {
     }
     return user
 }
+
+/**
+ * Updates a user's profile.
+ * @param {string} id - User ID.
+ * @param {Object} updateData - Data to update (e.g., bio, location, website, socials).
+ * @returns {Promise<Object>} The updated user object.
+ * @throws {Error} If user is not found.
+ */
+export async function updateUser(id, updateData) {
+    // Only allow updating specific profile fields to prevent privilege escalation
+    const allowedFields = ['name', 'bio', 'location', 'website', 'socials', 'avatarSeed']
+    const safeData = {}
+
+    for (const field of allowedFields) {
+        if (updateData[field] !== undefined) {
+            safeData[field] = updateData[field]
+        }
+    }
+
+    const user = await User.findByIdAndUpdate(
+        id,
+        { $set: safeData },
+        { new: true, runValidators: true }
+    ).select('-password')
+
+    if (!user) {
+        const err = new Error('User not found')
+        err.status = 404
+        throw err
+    }
+
+    return user
+}

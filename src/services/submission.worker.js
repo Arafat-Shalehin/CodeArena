@@ -175,19 +175,49 @@ export function initSubmissionWorker() {
 
                     // 7. Update User Performance Stats by Tag
                     if (problem.tags && problem.tags.length > 0) {
+                        // Build $set for date fields (can't mix $set and $inc on same path)
+                        userUpdate.$set = userUpdate.$set || {}
+
                         problem.tags.forEach((tag) => {
                             const mapKey = 'performanceStats.' + tag
                             userUpdate.$inc = userUpdate.$inc || {}
                             userUpdate.$inc[mapKey + '.attempted'] = 1
+
+                            // Track last attempt timestamp for recency scoring
+                            userUpdate.$set[mapKey + '.lastAttemptDate'] = new Date()
+
                             if (isAccepted) {
                                 userUpdate.$inc[mapKey + '.solved'] = 1
+                                // Increment solve streak on success
+                                userUpdate.$inc[mapKey + '.recentSolveStreak'] = 1
                             } else {
                                 userUpdate.$inc[mapKey + '.failed'] = 1
+                                // Reset solve streak on failure
+                                userUpdate.$set[mapKey + '.recentSolveStreak'] = 0
                             }
                         })
                     }
 
                     await User.findByIdAndUpdate(submission.userId, userUpdate, { upsert: true })
+
+                    // 8. Track unique problems per tag (separate update to avoid $inc/$set conflicts)
+                    if (problem.tags && problem.tags.length > 0) {
+                        // Check if this problem was already attempted for these tags
+                        const existingUser = await User.findById(submission.userId).select(
+                            'stats.attemptedProblems'
+                        )
+                        const isFirstAttempt = !existingUser?.stats?.attemptedProblems?.some(
+                            (id) => id.toString() === submission.problemId.toString()
+                        )
+
+                        if (isFirstAttempt) {
+                            const uniqueUpdate = { $inc: {} }
+                            problem.tags.forEach((tag) => {
+                                uniqueUpdate.$inc['performanceStats.' + tag + '.uniqueProblems'] = 1
+                            })
+                            await User.findByIdAndUpdate(submission.userId, uniqueUpdate)
+                        }
+                    }
                 }
 
                 return { verdict: finalVerdict, passedCount, totalCount }

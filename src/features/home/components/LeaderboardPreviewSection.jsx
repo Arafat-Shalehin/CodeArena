@@ -4,16 +4,18 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowUpRight, Crown } from 'lucide-react'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 /**
  * @component LeaderboardPreviewSection
  * @description Displays a premium preview of top performers with entrance animations.
  */
 export default function LeaderboardPreviewSection() {
+    const shouldReduceMotion = useSafeReducedMotion()
     const { users: leaderboardUsers, isLoading, error } = useLeaderboard()
 
     if (error) return null
@@ -38,9 +40,10 @@ export default function LeaderboardPreviewSection() {
             <div className="grid gap-16 lg:grid-cols-2">
                 {/* Left: Content */}
                 <motion.div
-                    initial={{ opacity: 0, x: -30 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, x: -30 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
                     className="flex flex-col justify-center space-y-8"
                 >
                     <div className="space-y-4">
@@ -78,9 +81,10 @@ export default function LeaderboardPreviewSection() {
 
                 {/* Right: Leaderboard Card */}
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
                     className="relative"
                 >
                     {/* Background Glow */}
@@ -90,7 +94,7 @@ export default function LeaderboardPreviewSection() {
                         <div className="border-border bg-bg-subtle/50 border-b px-8 py-6">
                             <h3 className="text-text-primary flex items-center gap-2 text-xs font-bold tracking-tight uppercase">
                                 <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                                Global Leaderboard — Live
+                                Global Leaderboard - Live
                             </h3>
                         </div>
 
@@ -124,14 +128,15 @@ export default function LeaderboardPreviewSection() {
 }
 
 function LeaderboardRow({ user, rank, index }) {
+    const shouldReduceMotion = useSafeReducedMotion()
     const isFirst = rank === 1
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: shouldReduceMotion ? 0 : index * 0.1 }}
             className={cn(
                 'group relative flex items-center justify-between rounded-2xl p-5 transition-all duration-300',
                 isFirst ? 'bg-emerald-50/60 shadow-sm' : 'hover:bg-zinc-50/50'
@@ -186,7 +191,7 @@ function LeaderboardRow({ user, rank, index }) {
             </div>
 
             {/* Shimmer Effect for 1st Place */}
-            {isFirst && (
+            {isFirst && !shouldReduceMotion && (
                 <div className="border-accent/20 pointer-events-none absolute inset-0 overflow-hidden rounded-2xl border-2">
                     <motion.div
                         animate={{

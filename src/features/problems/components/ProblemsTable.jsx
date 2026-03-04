@@ -1,6 +1,6 @@
 import React from 'react'
 import StatusIcon from './StatusIcon'
-import PaginationBtn from './PaginationBtn'
+import { Pagination } from '@/shared/components/ui/Pagination'
 import { difficultyConfig, normalizeDifficulty } from '../data/problems.data'
 
 // Number of skeleton rows to show while loading
@@ -30,29 +30,6 @@ export default function ProblemsTable({
     isLoading,
     error,
 }) {
-    // Build the visible page number buttons (e.g. [1, 2, 3, '...', 8])
-    const buildPageNumbers = () => {
-        if (!pagination || pagination.pages <= 1) return []
-        const total = pagination.pages
-        const current = currentPage
-        const pages = []
-
-        if (total <= 5) {
-            // Show all pages when there are 5 or fewer
-            for (let i = 1; i <= total; i++) pages.push(i)
-        } else {
-            // Always show first and last; add ellipsis in between
-            pages.push(1)
-            if (current > 3) pages.push('...')
-            const start = Math.max(2, current - 1)
-            const end = Math.min(total - 1, current + 1)
-            for (let i = start; i <= end; i++) pages.push(i)
-            if (current < total - 2) pages.push('...')
-            pages.push(total)
-        }
-        return pages
-    }
-
     // --- Render helpers ---
 
     /** Empty state — shown when API returns 0 results */
@@ -140,8 +117,6 @@ export default function ProblemsTable({
             </td>
         </tr>
     )
-
-    const pageNumbers = buildPageNumbers()
 
     return (
         <div className="border-border bg-bg-page w-full overflow-hidden rounded-lg border shadow-sm">
@@ -326,60 +301,13 @@ export default function ProblemsTable({
                 </p>
 
                 {/* Page number buttons */}
-                {pageNumbers.length > 0 && (
-                    <nav className="flex items-center gap-1">
-                        {/* Prev */}
-                        <PaginationBtn
-                            disabled={currentPage <= 1 || isLoading}
-                            onClick={() => onPageChange(currentPage - 1)}
-                        >
-                            <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                            >
-                                <path d="m15 18-6-6 6-6" />
-                            </svg>
-                        </PaginationBtn>
-
-                        {pageNumbers.map((n, i) =>
-                            n === '...' ? (
-                                <span
-                                    key={`ellipsis-${i}`}
-                                    className="text-text-muted px-2 text-sm"
-                                >
-                                    …
-                                </span>
-                            ) : (
-                                <PaginationBtn
-                                    key={n}
-                                    active={n === currentPage}
-                                    disabled={isLoading}
-                                    onClick={() => onPageChange(n)}
-                                >
-                                    {n}
-                                </PaginationBtn>
-                            )
-                        )}
-
-                        {/* Next */}
-                        <PaginationBtn
-                            disabled={!pagination || currentPage >= pagination.pages || isLoading}
-                            onClick={() => onPageChange(currentPage + 1)}
-                        >
-                            <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                            >
-                                <path d="m9 18 6-6-6-6" />
-                            </svg>
-                        </PaginationBtn>
-                    </nav>
+                {pagination && pagination.pages > 1 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={pagination.pages}
+                        onPageChange={onPageChange}
+                        isLoading={isLoading}
+                    />
                 )}
             </div>
         </div>
