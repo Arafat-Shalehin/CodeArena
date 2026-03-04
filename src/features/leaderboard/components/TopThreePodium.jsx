@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { leaderboardUsers } from '../data/leaderboard.data'
 import { Crown, Trophy, Medal, Zap, CheckCircle2 } from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
@@ -62,7 +61,7 @@ function PodiumPosition({ entry, rank, delay }) {
             barHeight: 'h-44',
             BarIcon: Trophy,
             barIconSize: 40,
-            color: '#F59E0B', // var(--color-rank-gold)
+            color: 'var(--color-rank-gold)',
             badge: '#1 Champion',
         },
         2: {
@@ -72,7 +71,7 @@ function PodiumPosition({ entry, rank, delay }) {
             barHeight: 'h-28',
             BarIcon: Medal,
             barIconSize: 32,
-            color: '#9CA3AF', // var(--color-rank-silver)
+            color: 'var(--color-rank-silver)',
             badge: '#2',
         },
         3: {
@@ -82,7 +81,7 @@ function PodiumPosition({ entry, rank, delay }) {
             barHeight: 'h-20',
             BarIcon: Medal,
             barIconSize: 28,
-            color: '#B45309', // var(--color-rank-bronze)
+            color: 'var(--color-rank-bronze)',
             badge: '#3',
         },
     }

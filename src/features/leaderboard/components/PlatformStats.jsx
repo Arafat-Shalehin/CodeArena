@@ -56,7 +56,7 @@ function Sparkline({ data, positive, stable }) {
     const area = `M ${first} L ${points.split(' ').join(' L ')} L ${last} L ${pad + w},${pad + h} L ${pad},${pad + h} Z`
 
     const color = stable
-        ? 'var(--color-tx-muted)'
+        ? 'var(--color-text-muted)'
         : positive
           ? 'var(--color-accent)'
           : 'var(--color-error)'
@@ -148,7 +148,7 @@ function StatCard({ stat, icon, sparkline, index }) {
           : 'var(--color-error)'
 
     const trendColour = isStable
-        ? 'var(--color-tx-muted)'
+        ? 'var(--color-text-muted)'
         : isPositive
           ? 'var(--color-accent)'
           : 'var(--color-error)'
@@ -199,7 +199,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                     </div>
                     <p
                         className="text-xs leading-none font-semibold tracking-wider uppercase"
-                        style={{ color: 'var(--color-tx-muted)' }}
+                        style={{ color: 'var(--color-text-muted)' }}
                     >
                         {stat.label}
                     </p>
@@ -208,7 +208,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                 {/* Value */}
                 <div
                     className="mb-3 font-mono text-2xl leading-none font-bold tracking-tight"
-                    style={{ color: 'var(--color-tx-primary)' }}
+                    style={{ color: 'var(--color-text-primary)' }}
                     aria-label={`${stat.label}: ${stat.value}`}
                 >
                     <AnimatedValue raw={stat.value} delay={index * 60 + 100} />
@@ -217,7 +217,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                 {/* Bottom row: trend pill + sparkline */}
                 <div className="flex items-end justify-between gap-2">
                     {/* Trend pill */}
-                    <div
+                    {/* <div
                         className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold"
                         style={{ background: trendBg, color: trendColour }}
                     >
@@ -227,10 +227,10 @@ function StatCard({ stat, icon, sparkline, index }) {
                             </span>
                         )}
                         <span>{stat.trend}</span>
-                    </div>
+                    </div> */}
 
                     {/* Sparkline */}
-                    <Sparkline data={sparkline} positive={isPositive} stable={isStable} />
+                    {/* <Sparkline data={sparkline} positive={isPositive} stable={isStable} /> */}
                 </div>
             </div>
         </Card>

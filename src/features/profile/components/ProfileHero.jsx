@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
 import { Settings, MapPin, Link as LinkIcon, Github, Linkedin, Twitter } from 'lucide-react'
 import Link from 'next/link'
+import EditProfileModal from './EditProfileModal'
 
 /**
  * @component ProfileHero
@@ -40,6 +41,8 @@ export default function ProfileHero({ user: userProp }) {
     const rank = stats?.globalRank ?? '—'
     const finalAvatarSeed = avatarSeed || name
 
+    const [modalOpen, setModalOpen] = useState(false)
+
     // Build a safe URL to prevent XSS via javascript: protocol
     const safeWebsiteUrl = (() => {
         if (!website) return null
@@ -50,7 +53,6 @@ export default function ProfileHero({ user: userProp }) {
             return null
         }
     })()
-
     return (
         <div className="bg-bg-subtle/60 relative mb-8 overflow-hidden rounded-2xl border border-white/20 p-6 backdrop-blur-xl md:p-8 dark:border-white/10">
             {/* Decorative glowing blobs for enhanced glass effect */}
@@ -116,6 +118,9 @@ export default function ProfileHero({ user: userProp }) {
                                 )}
                             </div>
                         )}
+
+                        {/* Edit Profile Modal logic */}
+                        {modalOpen && <EditProfileModal onClose={() => setModalOpen(false)} />}
                     </div>
                 </div>
 
