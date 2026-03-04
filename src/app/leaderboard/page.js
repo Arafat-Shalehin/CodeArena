@@ -12,7 +12,7 @@ import { PlatformStats } from '@/features/leaderboard/components/PlatformStats'
 import { TopThreePodium } from '@/features/leaderboard/components/TopThreePodium'
 import { FilterBar } from '@/features/leaderboard/components/FilterBar'
 import { RankingTable } from '@/features/leaderboard/components/RankingTable'
-import { Pagination } from '@/features/leaderboard/components/Pagination'
+import { Pagination } from '@/shared/components/ui/Pagination'
 
 // UI Components
 import { Skeleton } from '@/components/ui/skeleton'
@@ -172,7 +172,7 @@ export default function LeaderboardPage() {
     }
 
     return (
-        <div className="bg-bg-page text-text-primary flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient text-text-primary flex min-h-screen flex-col">
             <Navbar />
 
             <main className="mx-auto w-full max-w-7xl flex-grow space-y-12 px-4 py-12">

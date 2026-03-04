@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Card } from '@/components/ui/card'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 // Data
 import { featuresData } from '../data/features.data'
@@ -11,14 +12,40 @@ import { featuresData } from '../data/features.data'
  * @description Displays key platform value propositions with premium animations.
  */
 export default function FeaturesSection() {
+    const shouldReduceMotion = useSafeReducedMotion()
+    const centerIndex = (featuresData.length - 1) / 2
+
+    const cardVariants = {
+        hidden: (idx) => {
+            const distanceFromCenter = idx - centerIndex
+            return {
+                opacity: 0,
+                x: shouldReduceMotion ? 0 : -distanceFromCenter * 72,
+                y: shouldReduceMotion ? 0 : Math.abs(distanceFromCenter) * 14,
+                scale: shouldReduceMotion ? 1 : 0.86,
+            }
+        },
+        show: (idx) => ({
+            opacity: 1,
+            x: 0,
+            y: 0,
+            scale: 1,
+            transition: {
+                duration: shouldReduceMotion ? 0 : 0.55,
+                delay: shouldReduceMotion ? 0 : Math.abs(idx - centerIndex) * 0.08,
+                ease: [0.16, 1, 0.3, 1],
+            },
+        }),
+    }
+
     return (
         <section className="mx-auto max-w-7xl px-4 py-24">
             {/* Section Header */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.6 }}
                 className="mb-16 text-center"
             >
                 <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
@@ -40,11 +67,11 @@ export default function FeaturesSection() {
                     show: {
                         opacity: 1,
                         transition: {
-                            staggerChildren: 0.1,
+                            staggerChildren: shouldReduceMotion ? 0 : 0.1,
                         },
                     },
                 }}
-                initial="hidden"
+                initial={shouldReduceMotion ? false : 'hidden'}
                 whileInView="show"
                 viewport={{ once: true, margin: '-100px' }}
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
@@ -52,13 +79,10 @@ export default function FeaturesSection() {
                 {featuresData.map((feature, idx) => (
                     <motion.div
                         key={idx}
-                        variants={{
-                            hidden: { opacity: 0, y: 30 },
-                            show: {
-                                opacity: 1,
-                                y: 0,
-                                transition: { duration: 0.5, ease: 'easeOut' },
-                            },
+                        custom={idx}
+                        variants={cardVariants}
+                        style={{
+                            zIndex: Math.round(featuresData.length - Math.abs(idx - centerIndex)),
                         }}
                     >
                         <Card className="bg-bg-page border-border group hover:border-accent/30 relative flex flex-col items-start p-6 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-xl md:p-8">

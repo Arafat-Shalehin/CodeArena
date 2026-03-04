@@ -4,6 +4,7 @@ import {
     getAllUsers,
     getUserById,
     deleteUser,
+    updateUser,
 } from '@/services/user.service'
 import { createResponseWithCookie, createResponseClearCookie } from '@/lib/cookie'
 import { signToken } from '@/lib/jwt'
@@ -71,4 +72,24 @@ export async function removeUser(req, { params }) {
     const resolvedParams = await params
     await deleteUser(resolvedParams.id)
     return Response.json({ success: true, message: 'User deleted.' })
+}
+
+/**
+ * PUT /api/users/[id]
+ */
+export async function updateUserDetails(req, { params }) {
+    const resolvedParams = await params
+    const body = await req.json()
+
+    // Ensure the req.user exists and matches the ID (or is admin)
+    // Assuming req.user is populated by protect middleware
+    if (req.user && req.user._id.toString() !== resolvedParams.id && req.user.role !== 'admin') {
+        return Response.json(
+            { success: false, message: 'Not authorized to update this profile' },
+            { status: 403 }
+        )
+    }
+
+    const updatedUser = await updateUser(resolvedParams.id, body)
+    return Response.json({ success: true, data: updatedUser })
 }

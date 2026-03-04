@@ -1,12 +1,13 @@
 'use client'
 
 import { useRef } from 'react'
-import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { stepsData } from '../data/steps.data'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 export default function HowItWorksSection() {
     const containerRef = useRef(null)
-    const reducedMotion = useReducedMotion()
+    const reducedMotion = useSafeReducedMotion()
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ['start center', 'end center'],
@@ -64,6 +65,7 @@ export default function HowItWorksSection() {
                             step={step}
                             index={idx}
                             progress={scrollYProgress}
+                            reducedMotion={reducedMotion}
                             isLast={idx === stepsData.length - 1}
                         />
                     ))}
@@ -73,9 +75,8 @@ export default function HowItWorksSection() {
     )
 }
 
-function StepCard({ step, index, progress, isLast }) {
+function StepCard({ step, index, progress, reducedMotion, isLast }) {
     const activationPoint = index * 0.25
-    const reducedMotion = useReducedMotion()
 
     const bgTransform = useTransform(
         progress,
@@ -114,7 +115,7 @@ function StepCard({ step, index, progress, isLast }) {
             )}
 
             {/* Badge + Icon */}
-            <div className="relative mb-8 flex min-h-[96px] flex-col items-center lg:items-start">
+            <div className="relative mx-auto mb-8 flex min-h-[96px] w-fit flex-col items-center">
                 <motion.div
                     style={{
                         backgroundColor: reducedMotion ? '#00C853' : bgTransform,
@@ -130,7 +131,7 @@ function StepCard({ step, index, progress, isLast }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-accent absolute -top-4 -right-4 flex size-10 items-center justify-center rounded-xl text-white shadow-lg lg:right-auto lg:left-12"
+                    className="bg-accent absolute -top-4 -right-4 flex size-10 items-center justify-center rounded-xl text-white shadow-lg"
                 >
                     <div className="[&_svg]:size-5">{step.icon}</div>
                 </motion.div>

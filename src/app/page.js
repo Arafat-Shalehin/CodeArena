@@ -23,7 +23,7 @@ import ErrorBoundary from '@/components/ui/error-boundary'
  */
 export default function Home() {
     return (
-        <div className="text-text-primary bg-bg-page bg-dot-matrix flex min-h-screen flex-col font-sans">
+        <div className="text-text-primary bg-bg-page site-gradient flex min-h-screen flex-col font-sans">
             <Navbar />
 
             <main className="flex-grow">

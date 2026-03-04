@@ -36,6 +36,27 @@ const userSchema = new mongoose.Schema(
             enum: ['user', 'admin', 'contestant'],
             default: 'user',
         },
+        avatarSeed: {
+            type: String,
+            default: '',
+        },
+        bio: {
+            type: String,
+            default: '',
+        },
+        location: {
+            type: String,
+            default: '',
+        },
+        website: {
+            type: String,
+            default: '',
+        },
+        socials: {
+            github: { type: String, default: '' },
+            linkedin: { type: String, default: '' },
+            twitter: { type: String, default: '' },
+        },
         stats: {
             totalSubmissions: { type: Number, default: 0 },
             accepted: { type: Number, default: 0 },
@@ -52,6 +73,21 @@ const userSchema = new mongoose.Schema(
                     ref: 'Problem',
                 },
             ],
+        },
+        performanceStats: {
+            type: Map,
+            of: new mongoose.Schema(
+                {
+                    attempted: { type: Number, default: 0 },
+                    solved: { type: Number, default: 0 },
+                    failed: { type: Number, default: 0 },
+                    uniqueProblems: { type: Number, default: 0 },
+                    lastAttemptDate: { type: Date, default: null },
+                    recentSolveStreak: { type: Number, default: 0 },
+                },
+                { _id: false }
+            ),
+            default: {},
         },
         loginAttempts: {
             type: Number,

@@ -3,7 +3,7 @@ import Footer from '@/components/layout/Footer'
 
 export default function PracticePage() {
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
             <main className="mx-auto w-full max-w-7xl flex-grow px-4 py-16 md:px-6">
                 <div className="space-y-4 text-center">
