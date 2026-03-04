@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
@@ -14,9 +14,11 @@ import { FilterBar } from '@/features/leaderboard/components/FilterBar'
 import { RankingTable } from '@/features/leaderboard/components/RankingTable'
 import { Pagination } from '@/features/leaderboard/components/Pagination'
 
+// UI Components
+import { Skeleton } from '@/components/ui/skeleton'
+
 // Auth
 import { useAuth } from '@/context/AuthContext'
-import { useEffect, useCallback, useMemo } from 'react'
 
 /**
  * Leaderboard Page
@@ -32,64 +34,104 @@ import { useEffect, useCallback, useMemo } from 'react'
  * - Pagination: Navigation controls
  */
 export default function LeaderboardPage() {
-    // TODO: Implement state management for search, filters, pagination
     // State for filters and pagination
     const [currentPage, setCurrentPage] = useState(1)
     const [searchQuery, setSearchQuery] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
+    const [league, setLeague] = useState('all')
+    const [timeframe, setTimeframe] = useState('all_time')
     const { user } = useAuth()
 
-    const ITEMS_PER_PAGE = 30
+    const ITEMS_PER_PAGE = 100
 
     // Real API State
     const [users, setUsers] = useState([])
     const [pagination, setPagination] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [socket, setSocket] = useState(null)
 
     /**
      * Fetch real leaderboard data from the API
+     * Uses AbortController to prevent race conditions.
      */
-    const fetchLeaderboard = useCallback(async (page = 1, search = '') => {
-        setIsLoading(true)
-        setError(null)
-        try {
-            const params = new URLSearchParams()
-            params.set('page', page)
-            params.set('limit', ITEMS_PER_PAGE)
-            if (search) params.set('search', search)
+    const fetchLeaderboard = useCallback(
+        async (page = 1, search = '', league = 'all', timeframe = 'all_time', signal) => {
+            setIsLoading(true)
+            setError(null)
+            try {
+                const params = new URLSearchParams()
+                params.set('page', page)
+                params.set('limit', ITEMS_PER_PAGE)
+                params.set('league', league)
+                params.set('timeframe', timeframe)
+                if (search) params.set('search', search)
 
-            const res = await fetch(`/api/leaderboard?${params.toString()}`)
-            const json = await res.json()
-            if (json.success) {
-                // Transform API User objects to match the expected leaderboard format
-                const transformed = json.data.map((u, index) => ({
-                    _id: u._id,
-                    rank: (page - 1) * ITEMS_PER_PAGE + index + 1,
-                    score: u.stats?.score || 0,
-                    submissions: u.stats?.accepted || 0,
-                    userId: {
+                const res = await fetch(`/api/leaderboard?${params.toString()}`, { signal })
+                const json = await res.json()
+
+                if (json.success) {
+                    // Transform API User objects to match the expected leaderboard format
+                    const transformed = json.data.map((u, index) => ({
                         _id: u._id,
-                        username: u.name || 'Anonymous',
-                        email: u.email,
-                        stats: u.stats,
-                    },
-                    title: u.stats?.score > 1000 ? 'Supreme Architect' : 'Code Warrior',
-                    country: 'Global',
-                    streak: 0,
-                }))
-                setUsers(transformed)
-                setPagination(json.pagination)
-            } else {
-                throw new Error(json.error || 'Failed to fetch rankings')
+                        rank: (page - 1) * ITEMS_PER_PAGE + index + 1,
+                        score: u.stats?.score || 0,
+                        submissions: u.stats?.accepted || 0,
+                        userId: {
+                            _id: u._id,
+                            username: u.username || u.name || 'Anonymous',
+                            email: u.email,
+                            stats: u.stats,
+                        },
+                        title:
+                            u.stats?.score > 5000
+                                ? 'Supreme Architect'
+                                : u.stats?.score > 1000
+                                  ? 'Elite Engineer'
+                                  : 'Code Warrior',
+                        country: 'Global',
+                        streak: 0,
+                    }))
+                    setUsers(transformed)
+                    setPagination(json.pagination)
+
+                    // Dynamically connect to the Socket.IO server provided by the API
+                    if (json.livePort && !socket) {
+                        const socketUrl = `${window.location.protocol}//${window.location.hostname}:${json.livePort}`
+                        const { io } = await import('socket.io-client')
+                        const newSocket = io(socketUrl)
+                        setSocket(newSocket)
+                        console.log(`[Socket.IO] Connecting to ${socketUrl}`)
+                    }
+                } else {
+                    throw new Error(json.error || 'Failed to fetch rankings')
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') return
+                console.error('[LeaderboardPage] Error:', err)
+                setError(err.message)
+            } finally {
+                setIsLoading(false)
             }
-        } catch (err) {
-            console.error('[LeaderboardPage] Error:', err)
-            setError(err.message)
-        } finally {
-            setIsLoading(false)
+        },
+        [socket]
+    )
+
+    // Listen for socket updates
+    useEffect(() => {
+        if (!socket) return
+
+        const handleUpdate = (update) => {
+            console.log('[Socket.IO] Rank update received:', update)
+            // Trigger a silent refetch (no loading state for better UX)
+            fetchLeaderboard(currentPage, debouncedSearch, league, timeframe)
         }
-    }, [])
+
+        socket.on('rank_update', handleUpdate)
+        return () => {
+            socket.off('rank_update', handleUpdate)
+        }
+    }, [socket, currentPage, debouncedSearch, league, timeframe, fetchLeaderboard])
 
     // Debounce search input
     useEffect(() => {
@@ -99,36 +141,33 @@ export default function LeaderboardPage() {
         return () => clearTimeout(timer)
     }, [searchQuery])
 
-    // Load data when page or debounced search changes
+    // Load data when page, search, or filters change
     useEffect(() => {
-        // Reset to page 1 if search changes
-        if (currentPage !== 1 && debouncedSearch !== '') {
-            setCurrentPage(1)
-        } else {
-            fetchLeaderboard(currentPage, debouncedSearch)
-        }
-    }, [currentPage, debouncedSearch, fetchLeaderboard])
+        const controller = new AbortController()
 
-    const isFiltering = !!debouncedSearch
+        fetchLeaderboard(currentPage, debouncedSearch, league, timeframe, controller.signal)
 
-    // Optimized data computation
+        return () => controller.abort()
+    }, [currentPage, debouncedSearch, league, timeframe, fetchLeaderboard])
+
+    const isFiltering = !!debouncedSearch || league !== 'all' || timeframe !== 'all_time'
+
+    // Optimized data computation for Podium vs Table
     const currentTableData = useMemo(() => {
-        if (!isFiltering && currentPage === 1) {
-            return users.slice(3) // Exclude top 3 from table on first page
-        }
         return users
-    }, [users, isFiltering, currentPage])
+    }, [users])
 
     const totalPages = pagination?.pages || 1
 
     // Handlers
     const handleSearch = (value) => {
         setSearchQuery(value)
+        setCurrentPage(1) // Reset to first page on new search
     }
 
     const handleFilterChange = (type, value) => {
-        // League and timeframe are currently placeholders as DB schema is simple
-        // but we reset to page 1 to ensure UI consistency
+        if (type === 'league') setLeague(value)
+        if (type === 'timeframe') setTimeframe(value)
         setCurrentPage(1)
     }
 
@@ -139,20 +178,6 @@ export default function LeaderboardPage() {
             <main className="mx-auto w-full max-w-7xl flex-grow space-y-12 px-4 py-12">
                 <LeaderboardHeader />
                 <PlatformStats />
-
-                {/* Loading State */}
-                {isLoading && (
-                    <div className="flex h-96 items-center justify-center">
-                        <div className="border-accent size-16 animate-spin rounded-full border-b-2"></div>
-                    </div>
-                )}
-
-                {/* Error State */}
-                {error && (
-                    <div className="bg-error/10 border-error/20 text-error rounded-lg border p-4 text-center">
-                        {error}
-                    </div>
-                )}
 
                 {/* Only show Podium in default view on page 1 */}
                 {!isLoading && !error && !isFiltering && currentPage === 1 && users.length >= 3 && (
@@ -165,16 +190,49 @@ export default function LeaderboardPage() {
                     onFilterChange={handleFilterChange}
                 />
 
-                {!isLoading && !error && (
-                    <RankingTable data={currentTableData} currentUser={user?.name} />
+                {/* Error State */}
+                {error && (
+                    <div className="bg-error/10 border-error/20 text-error rounded-xl border p-8 text-center">
+                        <p className="text-lg font-bold">Oops! Something went wrong.</p>
+                        <p className="text-sm opacity-80">{error}</p>
+                    </div>
                 )}
 
-                {currentTableData.length > 0 && (
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={Math.max(1, totalPages)}
-                        onPageChange={setCurrentPage}
-                    />
+                {/* Loading State Skeleton */}
+                {isLoading ? (
+                    <div className="space-y-4">
+                        {[...Array(10)].map((_, i) => (
+                            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                        ))}
+                    </div>
+                ) : (
+                    !error && (
+                        <>
+                            <RankingTable
+                                data={currentTableData}
+                                currentUser={user?.username || user?.name}
+                            />
+
+                            {currentTableData.length > 0 && (
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={Math.max(1, totalPages)}
+                                    onPageChange={setCurrentPage}
+                                />
+                            )}
+
+                            {currentTableData.length === 0 && (
+                                <div className="text-text-muted py-20 text-center">
+                                    <p className="text-xl font-medium">
+                                        No results found for your search.
+                                    </p>
+                                    <p className="text-sm">
+                                        Try adjusting your filters or search query.
+                                    </p>
+                                </div>
+                            )}
+                        </>
+                    )
                 )}
             </main>
 
