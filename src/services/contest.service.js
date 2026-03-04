@@ -51,7 +51,7 @@ export async function getAllContests(query) {
     const limit = parseInt(query.limit) || 10
     const skip = (page - 1) * limit
 
-    const filter = {}
+    const filter = { isDeleted: false }
     if (query.status) filter.status = query.status
 
     // FUTURE_ENHANCEMENT: Auto-update status before returning
