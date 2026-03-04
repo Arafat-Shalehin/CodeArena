@@ -21,6 +21,8 @@ export default function ContestsPage() {
     const [selectedDurations, setSelectedDurations] = useState([])
 
     const { contests, isLoading, error } = useContests(TAB_STATUS[activeTab])
+    // Separately fetch active contests so the LiveBanner shows on Upcoming tab too
+    const { contests: activeContests } = useContests('active')
 
     const toggleFilter = (set, value) =>
         set((prev) => (prev.includes(value) ? prev.filter((i) => i !== value) : [...prev, value]))
@@ -32,9 +34,7 @@ export default function ContestsPage() {
     }
 
     const liveContest =
-        activeTab === 'Live' || activeTab === 'Upcoming'
-            ? (contests.find((c) => c.status === 'active') ?? null)
-            : null
+        activeTab === 'Live' || activeTab === 'Upcoming' ? (activeContests[0] ?? null) : null
 
     return (
         <div className="bg-bg-page text-text-primary min-h-screen font-sans">

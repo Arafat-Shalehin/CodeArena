@@ -1,8 +1,33 @@
-import React from 'react'
-import { Zap, Timer, Users } from 'lucide-react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { Zap, Timer, Users, Code2 } from 'lucide-react'
+import Link from 'next/link'
+
+function formatTimeRemaining(endTime) {
+    const diff = new Date(endTime) - new Date()
+    if (diff <= 0) return '00:00:00'
+    const h = Math.floor(diff / 3600000)
+    const m = Math.floor((diff % 3600000) / 60000)
+    const s = Math.floor((diff % 60000) / 1000)
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 const LiveBanner = ({ contest }) => {
+    const [timeLeft, setTimeLeft] = useState('')
+
+    useEffect(() => {
+        if (!contest?.endTime) return
+        setTimeLeft(formatTimeRemaining(contest.endTime))
+        const interval = setInterval(() => {
+            setTimeLeft(formatTimeRemaining(contest.endTime))
+        }, 1000)
+        return () => clearInterval(interval)
+    }, [contest?.endTime])
+
     if (!contest) return null
+
+    const problemCount = contest.problemIds?.length || 0
 
     return (
         <div className="from-accent to-accent-hover group relative overflow-hidden rounded-2xl bg-gradient-to-r p-8 shadow-2xl transition-all">
@@ -20,18 +45,25 @@ const LiveBanner = ({ contest }) => {
                 <div className="text-text-inverse mb-8 flex flex-wrap items-center gap-6">
                     <div className="flex items-center gap-2">
                         <Timer className="size-6" />
-                        <span className="font-mono text-xl font-bold">
-                            {contest.timeRemaining} remaining
-                        </span>
+                        <span className="font-mono text-xl font-bold">{timeLeft} remaining</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Users className="size-6" />
-                        <span className="font-bold">{contest.participants} participants</span>
+                        <Code2 className="size-6" />
+                        <span className="font-bold">{problemCount} problems</span>
                     </div>
+                    {contest.maxParticipants && (
+                        <div className="flex items-center gap-2">
+                            <Users className="size-6" />
+                            <span className="font-bold">Max {contest.maxParticipants}</span>
+                        </div>
+                    )}
                 </div>
-                <button className="text-accent bg-bg-page rounded-xl px-8 py-3 font-black tracking-wider uppercase shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl active:scale-95">
+                <Link
+                    href={`/contests/${contest._id}`}
+                    className="text-accent bg-bg-page inline-block rounded-xl px-8 py-3 font-black tracking-wider uppercase shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl active:scale-95"
+                >
                     Enter Contest
-                </button>
+                </Link>
             </div>
         </div>
     )
