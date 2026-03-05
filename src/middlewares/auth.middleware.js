@@ -50,11 +50,13 @@ export async function protect(req) {
     try {
         const decoded = verifyToken(token)
 
+        const standardId = decoded.id || decoded._id
         // Standardize user object shape regardless of JWT payload key names
         return {
-            id: decoded.id || decoded._id,
-            role: decoded.role,
             ...decoded,
+            id: standardId,
+            _id: standardId,
+            role: decoded.role,
         }
     } catch (error) {
         if (error.name === 'TokenExpiredError') {

@@ -36,12 +36,56 @@ export default function ProfileHero({ user: userProp }) {
         authUser &&
         ((authUser.firebaseUid && authUser.firebaseUid === displayUser?.firebaseUid) ||
             (authUser.email && authUser.email === displayUser?.email) ||
-            (authUser._id && authUser._id === displayUser?._id))
+            (authUser._id &&
+                displayUser?._id &&
+                authUser._id.toString() === displayUser._id.toString()))
 
     const rank = stats?.globalRank ?? '—'
     const finalAvatarSeed = avatarSeed || name
 
     const [modalOpen, setModalOpen] = useState(false)
+    const [isFollowLoading, setIsFollowLoading] = useState(false)
+
+    // Manage local follow state for optimistic UI updates
+    const initialFollowersCount = displayUser?.followers?.length || 0
+    const initialFollowingCount = displayUser?.following?.length || 0
+    const currentUserId = authUser?._id || authUser?.id
+    const initialIsFollowing =
+        currentUserId &&
+        Array.isArray(displayUser?.followers) &&
+        displayUser.followers.some((fId) => fId.toString() === currentUserId.toString())
+
+    const [followersCount, setFollowersCount] = useState(initialFollowersCount)
+    const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
+
+    const handleFollowToggle = async () => {
+        if (!authUser) {
+            toast.error('You need to be logged in to follow users.')
+            return
+        }
+
+        setIsFollowLoading(true)
+        try {
+            const res = await fetch(`/api/users/${displayUser._id}/follow`, {
+                method: 'POST',
+            })
+            const data = await res.json()
+
+            if (res.ok && data.success) {
+                const nowFollowing = data.data.following
+                setIsFollowing(nowFollowing)
+                setFollowersCount((prev) => (nowFollowing ? prev + 1 : Math.max(0, prev - 1)))
+                toast.success(nowFollowing ? `Following ${name}` : `Unfollowed ${name}`)
+            } else {
+                toast.error(data.message || 'Failed to toggle follow.')
+            }
+        } catch (error) {
+            console.error('Follow toggle error:', error)
+            toast.error('An unexpected error occurred.')
+        } finally {
+            setIsFollowLoading(false)
+        }
+    }
 
     // Build a safe URL to prevent XSS via javascript: protocol
     const safeWebsiteUrl = (() => {
@@ -53,6 +97,7 @@ export default function ProfileHero({ user: userProp }) {
             return null
         }
     })()
+
     return (
         <div className="bg-bg-subtle/60 relative mb-8 overflow-hidden rounded-2xl border border-white/20 p-6 backdrop-blur-xl md:p-8 dark:border-white/10">
             {/* Decorative glowing blobs for enhanced glass effect */}
@@ -87,6 +132,19 @@ export default function ProfileHero({ user: userProp }) {
                                     🏆 #{rank}
                                 </span>
                             </div>
+
+                            <div className="mt-1 mb-2 flex items-center justify-center gap-4 text-sm md:justify-start">
+                                <span className="text-text-primary font-semibold">
+                                    {followersCount}{' '}
+                                    <span className="text-text-muted font-normal">Followers</span>
+                                </span>
+                                <span className="text-text-muted">•</span>
+                                <span className="text-text-primary font-semibold">
+                                    {initialFollowingCount}{' '}
+                                    <span className="text-text-muted font-normal">Following</span>
+                                </span>
+                            </div>
+
                             {bio && (
                                 <p className="text-text-primary text-center text-sm leading-relaxed font-medium md:text-left">
                                     {bio}
@@ -130,10 +188,12 @@ export default function ProfileHero({ user: userProp }) {
                     <div className="flex w-full justify-center md:justify-end">
                         {!isOwnProfile && (
                             <Button
-                                variant="default"
-                                className="shadow-accent-glow w-full md:w-auto"
+                                variant={isFollowing ? 'outline' : 'default'}
+                                onClick={handleFollowToggle}
+                                disabled={isFollowLoading}
+                                className={`w-full md:w-auto ${!isFollowing ? 'shadow-accent-glow' : ''}`}
                             >
-                                Follow
+                                {isFollowLoading ? '...' : isFollowing ? 'Unfollow' : 'Follow'}
                             </Button>
                         )}
                         {isOwnProfile && (
