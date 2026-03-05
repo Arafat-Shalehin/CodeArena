@@ -12,9 +12,13 @@ import {
     Maximize2,
     Minimize2,
     ChevronLeft,
+    X,
+    History,
 } from 'lucide-react'
 
 import SubmissionsTab from './SubmissionsTab'
+import SubmissionResultTab from './SubmissionResultTab'
+import { useProblemSolve } from '@/context/ProblemSolveContext'
 
 const DIFFICULTY_STYLES = {
     easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
@@ -115,7 +119,7 @@ function ProblemDescription({ problem }) {
 // ─── Main DescriptionPanel ──────────────────────────────────────────────────
 
 export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMaximized }) {
-    const [activeTab, setActiveTab] = useState('description')
+    const { leftTab, setLeftTab, submissionResult } = useProblemSolve()
 
     if (!problem) return null
 
@@ -127,9 +131,9 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                     {TABS.map((tab) => (
                         <button
                             key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
+                            onClick={() => setLeftTab(tab.key)}
                             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                                activeTab === tab.key
+                                leftTab === tab.key
                                     ? 'bg-[#3a3a3a] text-white'
                                     : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
                             }`}
@@ -137,6 +141,45 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                             <span>{tab.icon}</span> {tab.label}
                         </button>
                     ))}
+                    {submissionResult && (
+                        <div
+                            onClick={() => setLeftTab('submission-result')}
+                            className={`flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                                leftTab === 'submission-result'
+                                    ? 'bg-[#3a3a3a] text-white'
+                                    : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                            }`}
+                        >
+                            <span className="flex items-center gap-1">
+                                <History
+                                    size={13}
+                                    className={
+                                        submissionResult.passed
+                                            ? 'text-[#2cbb5d]'
+                                            : 'text-[#ef4444]'
+                                    }
+                                />
+                                <span
+                                    className={
+                                        submissionResult.passed
+                                            ? 'text-[#2cbb5d]'
+                                            : 'text-[#ef4444]'
+                                    }
+                                >
+                                    {submissionResult.passed ? 'Accepted' : 'Failed'}
+                                </span>
+                            </span>
+                            <div
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setLeftTab('description')
+                                }}
+                                className="ml-1 flex items-center justify-center rounded p-0.5 hover:bg-[#444] hover:text-white"
+                            >
+                                <X size={12} />
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-1 text-gray-500">
                     <button
@@ -160,10 +203,12 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-5">
-                {activeTab === 'description' ? (
+                {leftTab === 'description' ? (
                     <ProblemDescription problem={problem} />
-                ) : activeTab === 'submissions' ? (
+                ) : leftTab === 'submissions' ? (
                     <SubmissionsTab />
+                ) : leftTab === 'submission-result' ? (
+                    <SubmissionResultTab />
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-600">
                         <span className="mb-3 text-4xl">🚧</span>
