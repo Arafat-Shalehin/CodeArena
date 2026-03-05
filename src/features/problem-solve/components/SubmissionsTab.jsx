@@ -6,7 +6,7 @@ import { Clock, CheckCircle2, XCircle, Info } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export default function SubmissionsTab() {
-    const { problemId } = useProblemSolve()
+    const { problemId, viewSubmissionDetails } = useProblemSolve()
     const [submissions, setSubmissions] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -56,19 +56,28 @@ export default function SubmissionsTab() {
             {submissions.map((sub) => (
                 <div
                     key={sub._id}
+                    onClick={() => viewSubmissionDetails(sub._id)}
                     className="group flex cursor-pointer items-center justify-between rounded-lg border border-[#333] bg-[#262626] p-3 transition-colors hover:border-[#444]"
                 >
                     <div className="flex items-center gap-3">
-                        {sub.verdict === 'accepted' ? (
+                        {sub.status === 'queued' || sub.status === 'running' ? (
+                            <Clock className="animate-pulse text-[#ffc01e]" size={20} />
+                        ) : sub.verdict === 'accepted' ? (
                             <CheckCircle2 className="text-[#2cbb5d]" size={20} />
                         ) : (
                             <XCircle className="text-[#ff375f]" size={20} />
                         )}
                         <div>
                             <div
-                                className={`text-sm font-bold capitalize ${sub.verdict === 'accepted' ? 'text-[#2cbb5d]' : 'text-[#ff375f]'}`}
+                                className={`text-sm font-bold capitalize ${
+                                    sub.status === 'queued' || sub.status === 'running'
+                                        ? 'text-[#ffc01e]'
+                                        : sub.verdict === 'accepted'
+                                          ? 'text-[#2cbb5d]'
+                                          : 'text-[#ff375f]'
+                                }`}
                             >
-                                {sub.verdict.replace('_', ' ')}
+                                {(sub.verdict || sub.status || 'pending').replace(/_/g, ' ')}
                             </div>
                             <div className="flex items-center gap-2 text-[11px] text-gray-500">
                                 <span className="uppercase">{sub.language}</span>

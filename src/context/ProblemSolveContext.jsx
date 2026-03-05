@@ -53,7 +53,7 @@ const LANG_LABELS = {
 
 export { STARTER_CODES, LANG_LABELS }
 
-export function ProblemSolveProvider({ children, problemId, initialCode, problem }) {
+export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
     // Core code state
     const [code, setCode] = useState(initialCode || '')
     const [language, setLanguage] = useState('python')
@@ -199,6 +199,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                     timeLimit: problem.timeLimit || 5000,
                     memoryLimit: problem.memoryLimit || 512000,
                     comparisonMode: 'token',
+                    contestId: contestId,
                 }),
             })
             const data = await res.json()
@@ -248,36 +249,79 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
 
-    const fetchAiFeedback = useCallback(async () => {
-        setIsAiLoading(true)
-        setConsoleTab('ai')
-        setIsConsoleOpen(true)
+    const fetchAiFeedback = useCallback(
+        async (options = { switchTab: true }) => {
+            setIsAiLoading(true)
+            if (options.switchTab) {
+                setConsoleTab('ai')
+                setIsConsoleOpen(true)
+            }
+            try {
+                const res = await fetch('/api/evaluation/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code,
+                        language,
+                        problemTitle: problem?.title || 'Code Challenge',
+                        verdict: testResult?.verdict || 'UNKNOWN',
+                        executionTime: testResult?.time || 0,
+                        memoryUsed: testResult?.memory || 0,
+                    }),
+                })
+                const data = await res.json()
+                if (data.success) {
+                    setAiFeedback(data.feedback)
+                    // Also update submissionResult if it exists
+                    setSubmissionResult((prev) =>
+                        prev ? { ...prev, aiFeedback: data.feedback } : null
+                    )
+                } else {
+                    setAiFeedback({ error: data.error || 'AI analysis failed' })
+                }
+            } catch (err) {
+                console.error('AI feedback error:', err)
+                setAiFeedback({ error: err.message })
+            } finally {
+                setIsAiLoading(false)
+            }
+        },
+        [code, language, problem, testResult]
+    )
+
+    // ─── View Past Submission Details ──────────────────────────────────────
+    const viewSubmissionDetails = useCallback(async (submissionId) => {
+        setIsSubmitting(true)
         try {
-            const res = await fetch('/api/evaluation/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code,
-                    language,
-                    problemTitle: problem?.title || 'Code Challenge',
-                    verdict: testResult?.verdict || 'UNKNOWN',
-                    executionTime: testResult?.time || 0,
-                    memoryUsed: testResult?.memory || 0,
-                }),
-            })
+            const res = await fetch(`/api/submissions/${submissionId}`)
             const data = await res.json()
             if (data.success) {
-                setAiFeedback(data.feedback)
-            } else {
-                setAiFeedback({ error: data.error || 'AI analysis failed' })
+                const s = data.data
+                const isAccepted = s.verdict === 'accepted'
+
+                // Map DB submission to context state shape
+                setSubmissionResult({
+                    verdict: s.verdict?.toUpperCase(),
+                    passed: isAccepted,
+                    passedCount:
+                        s.testCaseResults?.filter((r) => r.passed || r.verdict === 'accepted')
+                            .length || 0,
+                    totalCount: s.testCaseResults?.length || 0,
+                    time: s.executionTime,
+                    memory: s.memoryUsed,
+                    submittedCode: s.code,
+                    submittedLanguage: s.language,
+                    submittedAt: s.createdAt,
+                    aiFeedback: s.aiFeedback,
+                })
+                setLeftTab('submission-result')
             }
         } catch (err) {
-            console.error('AI feedback error:', err)
-            setAiFeedback({ error: err.message })
+            console.error('Failed to fetch submission details:', err)
         } finally {
-            setIsAiLoading(false)
+            setIsSubmitting(false)
         }
-    }, [code, language, problem, testResult])
+    }, [])
 
     const value = {
         // Code
@@ -319,6 +363,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         setLeftTab,
         submissionResult,
         setSubmissionResult,
+        viewSubmissionDetails,
     }
 
     return <ProblemSolveContext.Provider value={value}>{children}</ProblemSolveContext.Provider>

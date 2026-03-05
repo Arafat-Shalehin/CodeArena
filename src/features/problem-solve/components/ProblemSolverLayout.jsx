@@ -36,6 +36,7 @@ function InnerLayout({
     problemIndex,
     navigateProblem,
     randomProblem,
+    contestId,
 }) {
     const { runCode, submitCode, isRunning, isSubmitting, testResult, fetchAiFeedback } =
         useProblemSolve()
@@ -479,7 +480,7 @@ function InnerLayout({
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
-export default function ProblemSolverLayout({ problemId }) {
+export default function ProblemSolverLayout({ problemId, contestId }) {
     const [problem, setProblem] = useState(null)
     const [problems, setProblems] = useState([])
     const [isLoading, setIsLoading] = useState(true)
@@ -566,6 +567,7 @@ export default function ProblemSolverLayout({ problemId }) {
             problemId={problem._id}
             initialCode={problem.defaultCode}
             problem={problem}
+            contestId={contestId}
         >
             <InnerLayout
                 problem={problem}
@@ -574,6 +576,7 @@ export default function ProblemSolverLayout({ problemId }) {
                 problemIndex={problemIndex}
                 navigateProblem={navigateProblem}
                 randomProblem={randomProblem}
+                contestId={contestId}
             />
         </ProblemSolveProvider>
     )
