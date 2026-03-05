@@ -176,3 +176,47 @@ export async function updateUser(id, updateData) {
 
     return user
 }
+
+/**
+ * Toggles follow/unfollow status between two users.
+ * @param {string} currentUserId - The ID of the primary user doing the following.
+ * @param {string} targetUserId - The ID of the user being followed/unfollowed.
+ * @returns {Promise<Object>} An object with the new status and updated user data.
+ */
+export async function toggleFollowUser(currentUserId, targetUserId) {
+    if (currentUserId === targetUserId) {
+        const err = new Error('You cannot follow yourself.')
+        err.status = 400
+        throw err
+    }
+
+    // Double-check both users exist
+    const [currentUser, targetUser] = await Promise.all([
+        User.findById(currentUserId),
+        User.findById(targetUserId),
+    ])
+
+    if (!currentUser || !targetUser) {
+        const err = new Error('User not found.')
+        err.status = 404
+        throw err
+    }
+
+    const isFollowing = currentUser.following.includes(targetUserId)
+
+    if (isFollowing) {
+        // Unfollow
+        await Promise.all([
+            User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } }),
+            User.findByIdAndUpdate(targetUserId, { $pull: { followers: currentUserId } }),
+        ])
+        return { following: false }
+    } else {
+        // Follow
+        await Promise.all([
+            User.findByIdAndUpdate(currentUserId, { $addToSet: { following: targetUserId } }),
+            User.findByIdAndUpdate(targetUserId, { $addToSet: { followers: currentUserId } }),
+        ])
+        return { following: true }
+    }
+}

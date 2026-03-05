@@ -1,6 +1,8 @@
 'use client'
 
-import { use } from 'react'
+import { use, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
@@ -14,43 +16,87 @@ import ContestPerformance from '@/features/profile/components/ContestPerformance
 import Achievements from '@/features/profile/components/Achievements'
 import RecentSubmissions from '@/features/profile/components/RecentSubmissions'
 
-// Leaderboard Data (to look up user by _id)
-import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data'
-
-/**
- * @component PublicProfilePage
- * @description Dynamic public profile page for viewing another user's profile.
- * Accessed via /profile/:id from leaderboard links.
- *
- * @param {Object} props
- * @param {Object} props.params - Route parameters containing the user ID.
- * @returns {JSX.Element} The rendered public profile page.
- */
 export default function PublicProfilePage({ params }) {
     const { id } = use(params)
+    const router = useRouter()
+    const { user: currentUser, isLoading: authLoading } = useAuth()
 
-    // Look up user from leaderboard mock data
-    const entry = leaderboardUsers.find((u) => u.userId._id === id)
-    const user = entry
-        ? {
-              name: entry.userId.name,
-              avatarSeed: entry.userId.name,
-              stats: {
-                  ...entry.userId.stats,
-                  globalRank: entry.rank,
-                  // Mock problem distribution since the API doesn't return it yet
-                  problemsSolved: {
-                      easy: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.4),
-                      medium: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.4),
-                      hard: Math.floor((entry.userId.stats?.totalSubmissions || 0) * 0.2),
-                  },
-              },
-          }
-        : {
-              name: 'User Not Found',
-              avatarSeed: 'unknown',
-              stats: null,
-          }
+    const [user, setUser] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+
+    useEffect(() => {
+        // Redirect to personal profile if viewing own ID
+        if (!authLoading && currentUser && currentUser._id === id) {
+            router.replace('/profile')
+            return
+        }
+
+        const fetchUser = async () => {
+            try {
+                const res = await fetch(`/api/users/${id}`)
+                const data = await res.json()
+
+                if (data.success && data.data) {
+                    const dbUser = data.data
+                    // Format user data for the existing components
+                    setUser({
+                        ...dbUser,
+                        name: dbUser.name,
+                        avatarSeed: dbUser.avatarSeed || dbUser.name,
+                        stats: {
+                            ...dbUser.stats,
+                            globalRank: dbUser.stats?.globalRank || 'N/A',
+                            // Fallback problem distribution if missing
+                            problemsSolved: dbUser.stats?.problemsSolvedDistribution || {
+                                easy: Math.floor((dbUser.stats?.totalSubmissions || 0) * 0.4),
+                                medium: Math.floor((dbUser.stats?.totalSubmissions || 0) * 0.4),
+                                hard: Math.floor((dbUser.stats?.totalSubmissions || 0) * 0.2),
+                            },
+                        },
+                    })
+                } else {
+                    setError('User Not Found')
+                }
+            } catch (err) {
+                console.error('Failed to fetch user:', err)
+                setError('User Not Found')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        if (!authLoading) {
+            fetchUser()
+        }
+    }, [id, currentUser, authLoading, router])
+
+    if (loading || authLoading) {
+        return (
+            <div className="bg-bg-page flex min-h-screen flex-col">
+                <Navbar />
+                <main className="flex flex-grow items-center justify-center">
+                    <div className="border-accent h-8 w-8 animate-spin rounded-full border-t-2"></div>
+                </main>
+                <Footer />
+            </div>
+        )
+    }
+
+    if (error || !user) {
+        return (
+            <div className="bg-bg-page flex min-h-screen flex-col">
+                <Navbar />
+                <main className="flex flex-grow flex-col items-center justify-center space-y-4">
+                    <h1 className="text-text-primary text-3xl font-bold">User Not Found</h1>
+                    <p className="text-text-secondary">
+                        The user you are looking for does not exist.
+                    </p>
+                </main>
+                <Footer />
+            </div>
+        )
+    }
 
     return (
         <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
@@ -88,7 +134,9 @@ export default function PublicProfilePage({ params }) {
                             </div>
                             <div className="divide-border divide-y">
                                 <div className="hover:bg-bg-muted/50 transition-colors">
-                                    <RecentSubmissions />
+                                    <RecentSubmissions
+                                        submissions={user.stats?.recentSubmissions || []}
+                                    />
                                 </div>
                             </div>
                         </section>

@@ -74,6 +74,18 @@ const userSchema = new mongoose.Schema(
                 },
             ],
         },
+        followers: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
+        following: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
         performanceStats: {
             type: Map,
             of: new mongoose.Schema(

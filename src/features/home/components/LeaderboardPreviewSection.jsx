@@ -159,7 +159,10 @@ function LeaderboardRow({ user, rank, index }) {
 
                 {/* Avatar & Name */}
                 <div className="flex items-center gap-4">
-                    <div className="from-accent-light to-accent size-12 rounded-2xl bg-gradient-to-br p-[2px] shadow-lg transition-transform group-hover:scale-105">
+                    <Link
+                        href={`/profile/${user.userId._id}`}
+                        className="from-accent-light to-accent size-12 rounded-2xl bg-gradient-to-br p-[2px] shadow-lg transition-transform group-hover:scale-105"
+                    >
                         <Avatar className="h-full w-full rounded-[14px]">
                             <AvatarImage
                                 src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.userId.username}`}
@@ -167,12 +170,15 @@ function LeaderboardRow({ user, rank, index }) {
                             />
                             <AvatarFallback>{user.userId.username.substring(0, 2)}</AvatarFallback>
                         </Avatar>
-                    </div>
+                    </Link>
                     <div>
-                        <div className="text-text-primary flex items-center gap-2 text-base font-bold">
+                        <Link
+                            href={`/profile/${user.userId._id}`}
+                            className="text-text-primary hover:text-accent flex items-center gap-2 text-base font-bold transition-colors"
+                        >
                             {user.userId.username}
                             {isFirst && <Crown className="h-4 w-4 fill-amber-500 text-amber-500" />}
-                        </div>
+                        </Link>
                         <div className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
                             {user.title || 'Master Coder'}
                         </div>

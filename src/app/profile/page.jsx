@@ -79,7 +79,7 @@ export default function ProfilePage() {
                             <h3 className="text-text-primary mb-6 text-xl font-semibold">
                                 Submission Activity
                             </h3>
-                            {user.stats?.submissionHistory &&
+                            {Array.isArray(user.stats?.submissionHistory) &&
                             user.stats.submissionHistory.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                     {user.stats.submissionHistory.map((_, i) => (

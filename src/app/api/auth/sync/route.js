@@ -72,7 +72,9 @@ export async function POST(request) {
                     ? 'Accepted'
                     : s.verdict === 'wrong_answer'
                       ? 'Wrong Answer'
-                      : s.verdict?.toUpperCase().replace('_', ' ') || 'Failed',
+                      : s.verdict
+                        ? s.verdict.toUpperCase().replace('_', ' ')
+                        : 'Failed',
             time: new Date(s.createdAt).toLocaleDateString(),
             lang: s.language === 'python' ? 'Python' : s.language?.toUpperCase() || 'Code',
         }))
@@ -98,7 +100,11 @@ export async function POST(request) {
     } catch (error) {
         console.error('Error in /api/auth/sync:', error)
         return NextResponse.json(
-            { success: false, error: 'An unexpected error occurred.' },
+            {
+                success: false,
+                error: error.message || 'An unexpected error occurred.',
+                stack: error.stack,
+            },
             { status: 500 }
         )
     }

@@ -7,6 +7,7 @@ import { User, LogOut, Search, ChevronRight } from 'lucide-react'
 
 // Navigation Data
 const NAV_LINKS = [
+    { name: 'Feed', href: '/feed' },
     { name: 'Problems', href: '/problems' },
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
