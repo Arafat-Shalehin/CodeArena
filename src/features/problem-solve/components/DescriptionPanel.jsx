@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import {
-    Loader2,
     Clock,
     HardDrive,
     Tag,
@@ -10,11 +9,12 @@ import {
     MessageSquare,
     Star,
     ExternalLink,
+    Maximize2,
+    Minimize2,
+    ChevronLeft,
 } from 'lucide-react'
 
 import SubmissionsTab from './SubmissionsTab'
-
-// ─── Difficulty Badge Styles ────────────────────────────────────────────────
 
 const DIFFICULTY_STYLES = {
     easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
@@ -22,17 +22,22 @@ const DIFFICULTY_STYLES = {
     hard: 'text-[#ff375f] bg-[#ff375f]/10',
 }
 
+const TABS = [
+    { key: 'description', label: 'Description', icon: '📄' },
+    { key: 'editorial', label: 'Editorial', icon: '📘' },
+    { key: 'solutions', label: 'Solutions', icon: '💡' },
+    { key: 'submissions', label: 'Submissions', icon: '🕐' },
+]
+
 // ─── Problem Description Content ────────────────────────────────────────────
 
 function ProblemDescription({ problem }) {
     return (
         <div>
-            {/* Title */}
             <h2 className="mb-2 text-xl font-bold" style={{ color: '#fff' }}>
                 {problem.title}
             </h2>
 
-            {/* Badges */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${DIFFICULTY_STYLES[problem.difficulty] || ''}`}
@@ -49,7 +54,6 @@ function ProblemDescription({ problem }) {
                 ))}
             </div>
 
-            {/* Stats bar */}
             <div className="mb-5 flex items-center gap-4 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
                     <Clock size={12} /> {problem.timeLimit}ms
@@ -60,12 +64,10 @@ function ProblemDescription({ problem }) {
                 <span>Acceptance: {problem.acceptanceRate}%</span>
             </div>
 
-            {/* Description */}
             <div className="mb-6 text-[14px] leading-7 whitespace-pre-wrap text-gray-300">
                 {problem.description}
             </div>
 
-            {/* Sample Test Cases */}
             {problem.sampleTestCases?.length > 0 && (
                 <div>
                     {problem.sampleTestCases.map((tc, i) => (
@@ -96,7 +98,6 @@ function ProblemDescription({ problem }) {
                 </div>
             )}
 
-            {/* Constraints */}
             <div className="mt-4 rounded-lg bg-[#262626] p-4 text-sm">
                 <h4 className="mb-2 font-bold" style={{ color: '#fff' }}>
                     Constraints:
@@ -113,40 +114,55 @@ function ProblemDescription({ problem }) {
 
 // ─── Main DescriptionPanel ──────────────────────────────────────────────────
 
-export default function DescriptionPanel({ problem }) {
-    const [leftTab, setLeftTab] = useState('description')
+export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMaximized }) {
+    const [activeTab, setActiveTab] = useState('description')
 
     if (!problem) return null
 
     return (
         <>
-            {/* Left Tabs */}
-            <div className="flex h-[38px] flex-shrink-0 items-center gap-1 border-b border-[#333] bg-[#282828] px-3">
-                {[
-                    { key: 'description', label: 'Description', icon: '📄' },
-                    { key: 'editorial', label: 'Editorial', icon: '📘' },
-                    { key: 'solutions', label: 'Solutions', icon: '💡' },
-                    { key: 'submissions', label: 'Submissions', icon: '🕐' },
-                ].map((tab) => (
+            {/* Tab Header */}
+            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] px-3">
+                <div className="flex items-center gap-1">
+                    {TABS.map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                                activeTab === tab.key
+                                    ? 'bg-[#3a3a3a] text-white'
+                                    : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                            }`}
+                        >
+                            <span>{tab.icon}</span> {tab.label}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-1 text-gray-500">
                     <button
-                        key={tab.key}
-                        onClick={() => setLeftTab(tab.key)}
-                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                            leftTab === tab.key
-                                ? 'bg-[#3a3a3a] text-white'
-                                : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
-                        }`}
+                        onClick={onMaximize}
+                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        title={isMaximized ? 'Restore' : 'Maximize'}
                     >
-                        <span>{tab.icon}</span> {tab.label}
+                        {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
-                ))}
+                    {onCollapse && (
+                        <button
+                            onClick={onCollapse}
+                            className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                            title="Collapse"
+                        >
+                            <ChevronLeft size={14} />
+                        </button>
+                    )}
+                </div>
             </div>
 
-            {/* Left Content */}
+            {/* Content */}
             <div className="flex-1 overflow-y-auto p-5">
-                {leftTab === 'description' ? (
+                {activeTab === 'description' ? (
                     <ProblemDescription problem={problem} />
-                ) : leftTab === 'submissions' ? (
+                ) : activeTab === 'submissions' ? (
                     <SubmissionsTab />
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-600">
@@ -156,8 +172,8 @@ export default function DescriptionPanel({ problem }) {
                 )}
             </div>
 
-            {/* Left Footer */}
-            <div className="flex h-[36px] flex-shrink-0 items-center justify-between border-t border-[#333] bg-[#282828] px-4 text-xs text-gray-500">
+            {/* Footer */}
+            <div className="flex h-[36px] flex-shrink-0 items-center justify-between border-t border-[#333] px-4 text-xs text-gray-500">
                 <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1">
                         <ThumbsUp size={12} /> {problem.totalSubmissions || 0}
