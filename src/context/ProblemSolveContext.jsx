@@ -73,6 +73,10 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     // Console visibility
     const [isConsoleOpen, setIsConsoleOpen] = useState(true)
 
+    // Left panel tab + submission result
+    const [leftTab, setLeftTab] = useState('description')
+    const [submissionResult, setSubmissionResult] = useState(null)
+
     // Persist code to localStorage
     useEffect(() => {
         const savedCode = localStorage.getItem(`codearena_code_${problemId}_${language}`)
@@ -218,6 +222,20 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                     memory: r.stats?.memoryUsed,
                     results: mappedResults,
                 })
+
+                // Auto-switch left panel to submission result
+                setSubmissionResult({
+                    verdict: r.verdict,
+                    passed: isAccepted,
+                    passedCount: pub.passed ?? 0,
+                    totalCount: pub.total ?? 0,
+                    time: r.stats?.executionTime,
+                    memory: r.stats?.memoryUsed,
+                    submittedCode: code,
+                    submittedLanguage: language,
+                    submittedAt: new Date().toISOString(),
+                })
+                setLeftTab('submission-result')
             } else {
                 setTestResult({ status: 'error', error: data.error, message: data.message })
             }
@@ -295,6 +313,12 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         aiFeedback,
         isAiLoading,
         fetchAiFeedback,
+
+        // Left panel
+        leftTab,
+        setLeftTab,
+        submissionResult,
+        setSubmissionResult,
     }
 
     return <ProblemSolveContext.Provider value={value}>{children}</ProblemSolveContext.Provider>
