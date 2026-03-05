@@ -5,21 +5,32 @@ set -e
 umask 000
 
 # Compilation and execution script for Java
-SOURCE_FILE="/workspace/Solution.java"
-CLASS_FILE="/workspace/Solution.class"
 INPUT_FILE="/workspace/input.txt"
 OUTPUT_FILE="/workspace/output.txt"
 ERROR_FILE="/workspace/error.txt"
 TIME_LIMIT=${TIME_LIMIT:-5}
 MEMORY_LIMIT=${MEMORY_LIMIT:-512000}
 OUTPUT_LIMIT=${OUTPUT_LIMIT:-10485760} # Default 10MB
+MULTI_FILE=${MULTI_FILE:-0}
+MAIN_CLASS=${MAIN_CLASS:-Solution}
 
-# Compile Java code
+# Compile Java code — supports both single-file and multi-file
 echo "Compiling Java code..."
-if ! javac "$SOURCE_FILE" 2>"$ERROR_FILE"; then
-    echo "COMPILATION_ERROR"
-    cat "$ERROR_FILE"
-    exit 1
+if [ "$MULTI_FILE" = "1" ]; then
+    # Multi-file: compile all .java files in workspace
+    if ! javac /workspace/*.java 2>"$ERROR_FILE"; then
+        echo "COMPILATION_ERROR"
+        cat "$ERROR_FILE"
+        exit 1
+    fi
+else
+    # Single-file backward compatible
+    SOURCE_FILE="/workspace/Solution.java"
+    if ! javac "$SOURCE_FILE" 2>"$ERROR_FILE"; then
+        echo "COMPILATION_ERROR"
+        cat "$ERROR_FILE"
+        exit 1
+    fi
 fi
 
 # Make class files readable
@@ -31,9 +42,9 @@ START_TIME=$(date +%s%N)
 EXIT_CODE=0
 
 if [ -f "$INPUT_FILE" ]; then
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" java -Xmx${MEMORY_LIMIT}k -Xms${MEMORY_LIMIT}k Solution < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" java -Xmx${MEMORY_LIMIT}k -Xms${MEMORY_LIMIT}k "$MAIN_CLASS" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
 else
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" java -Xmx${MEMORY_LIMIT}k -Xms${MEMORY_LIMIT}k Solution | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" java -Xmx${MEMORY_LIMIT}k -Xms${MEMORY_LIMIT}k "$MAIN_CLASS" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
 fi
 
 END_TIME=$(date +%s%N)

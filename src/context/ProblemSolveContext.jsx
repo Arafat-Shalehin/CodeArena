@@ -58,6 +58,12 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     const [code, setCode] = useState(initialCode || '')
     const [language, setLanguage] = useState('python')
 
+    // Multi-file state
+    const [files, setFiles] = useState([
+        { filename: 'solution.py', content: initialCode || '', isMain: true },
+    ])
+    const [activeFileIndex, setActiveFileIndex] = useState(0)
+
     // Execution state
     const [isRunning, setIsRunning] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -97,19 +103,75 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     const updateCode = (newCode) => {
         setCode(newCode)
         localStorage.setItem(`codearena_code_${problemId}_${language}`, newCode)
+        // Sync active file content
+        setFiles((prev) => {
+            const updated = [...prev]
+            if (updated[activeFileIndex]) {
+                updated[activeFileIndex] = { ...updated[activeFileIndex], content: newCode }
+            }
+            return updated
+        })
+    }
+
+    // ─── Multi-file helpers ───────────────────────────────────────────────────
+
+    const LANG_EXTENSIONS = { python: '.py', cpp: '.cpp', java: '.java', javascript: '.js' }
+
+    const addFile = (filename) => {
+        if (!filename) return
+        if (files.some((f) => f.filename === filename)) return
+        const newFile = { filename, content: '', isMain: false }
+        setFiles((prev) => [...prev, newFile])
+        setActiveFileIndex(files.length)
+        setCode('')
+    }
+
+    const removeFile = (index) => {
+        if (files[index]?.isMain) return // Cannot remove main file
+        setFiles((prev) => prev.filter((_, i) => i !== index))
+        if (activeFileIndex >= index && activeFileIndex > 0) {
+            setActiveFileIndex(activeFileIndex - 1)
+        }
+        // Update code to reflect new active file
+        const newIdx = activeFileIndex >= index ? Math.max(0, activeFileIndex - 1) : activeFileIndex
+        setCode(files[newIdx]?.content || '')
+    }
+
+    const renameFile = (index, newName) => {
+        if (!newName || files[index]?.isMain) return
+        setFiles((prev) => {
+            const updated = [...prev]
+            updated[index] = { ...updated[index], filename: newName }
+            return updated
+        })
+    }
+
+    const switchToFile = (index) => {
+        setActiveFileIndex(index)
+        setCode(files[index]?.content || '')
     }
 
     const handleLanguageChange = (lang) => {
         setLanguage(lang)
-        // Don't override localStorage-saved code
+        const ext = LANG_EXTENSIONS[lang] || '.txt'
+        const defaultFileName = lang === 'java' ? 'Solution' + ext : 'solution' + ext
+        // Reset to single main file for new language
         const savedCode = localStorage.getItem(`codearena_code_${problemId}_${lang}`)
+        const newCode = savedCode || STARTER_CODES[lang] || ''
+        setFiles([{ filename: defaultFileName, content: newCode, isMain: true }])
+        setActiveFileIndex(0)
         if (!savedCode) {
             setCode(STARTER_CODES[lang] || '')
         }
     }
 
     const resetCode = () => {
-        setCode(STARTER_CODES[language] || '')
+        const ext = LANG_EXTENSIONS[language] || '.txt'
+        const defaultFileName = language === 'java' ? 'Solution' + ext : 'solution' + ext
+        const starterCode = STARTER_CODES[language] || ''
+        setCode(starterCode)
+        setFiles([{ filename: defaultFileName, content: starterCode, isMain: true }])
+        setActiveFileIndex(0)
         localStorage.removeItem(`codearena_code_${problemId}_${language}`)
     }
 
@@ -128,6 +190,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     code,
+                    files: files.length > 1 ? files : undefined,
                     language,
                     input: testInput,
                     timeLimit: problem.timeLimit || 5000,
@@ -193,6 +256,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     code,
+                    files: files.length > 1 ? files : undefined,
                     language,
                     problemId: problem._id,
                     testCases,
@@ -330,6 +394,14 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         language,
         setLanguage: handleLanguageChange,
         resetCode,
+
+        // Multi-file
+        files,
+        activeFileIndex,
+        addFile,
+        removeFile,
+        renameFile,
+        switchToFile,
 
         // Problem
         problem,

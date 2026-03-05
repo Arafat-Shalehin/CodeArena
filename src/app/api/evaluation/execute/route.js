@@ -14,7 +14,7 @@ export async function POST(request) {
         await dbConnect()
 
         const body = await request.json()
-        const { code, language, input, timeLimit, memoryLimit } = body
+        const { code, files, language, input, timeLimit, memoryLimit } = body
 
         // Validate required fields
         if (!code || !language) {
@@ -24,6 +24,7 @@ export async function POST(request) {
         // Execute code
         const result = await executeCode({
             code,
+            files,
             language,
             input: input || '',
             timeLimit,

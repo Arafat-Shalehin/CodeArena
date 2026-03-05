@@ -42,7 +42,8 @@ try {
 
 /**
  * Execute code in a Docker container
- * @param {string} code - Source code to execute
+ * @param {string} code - Source code to execute (single-file fallback)
+ * @param {Array} files - Array of { filename, content, isMain } for multi-file submissions
  * @param {string} language - Programming language
  * @param {string} input - Input test case
  * @param {number} timeLimit - Time limit in milliseconds
@@ -50,10 +51,14 @@ try {
  * @param {number} outputLimit - Output limit in KB
  * @returns {Promise<Object>} - Execution result
  */
-export async function executeCode({ code, language, input = '', timeLimit, memoryLimit, outputLimit }) {
+export async function executeCode({ code, files, language, input = '', timeLimit, memoryLimit, outputLimit }) {
     try {
-        // Validate code security
-        const securityCheck = validateCodeSecurity(code)
+        // Validate code security — check all files or single code
+        const codeToValidate = files && files.length > 0
+            ? files.map(f => f.content).join('\n')
+            : code
+
+        const securityCheck = validateCodeSecurity(codeToValidate)
         if (!securityCheck.isValid) {
             return {
                 success: false,
@@ -73,6 +78,7 @@ export async function executeCode({ code, language, input = '', timeLimit, memor
         const container = await createContainer(
             langConfig,
             code,
+            files,
             input,
             effectiveTimeLimit,
             effectiveMemoryLimit,
@@ -99,11 +105,19 @@ export async function executeCode({ code, language, input = '', timeLimit, memor
 /**
  * Create a Docker container with code and input
  */
-async function createContainer(langConfig, code, input, timeLimit, memoryLimit, outputLimit) {
+async function createContainer(langConfig, code, files, input, timeLimit, memoryLimit, outputLimit) {
     const dockerConfig = getDockerRunConfig(langConfig.name)
     const outputLimitBytes = outputLimit * 1024
 
+    // Determine if this is a multi-file submission
+    const isMultiFile = files && files.length > 0
+
     // Create container with tail command to keep it running (override ENTRYPOINT)
+    // For multi-file Java, detect the main class name
+    const mainClass = isMultiFile
+        ? (files.find(f => f.isMain)?.filename || langConfig.mainFile).replace(/\.java$/, '')
+        : 'Solution'
+
     const container = await docker.createContainer({
         Image: langConfig.image,
         Entrypoint: ['/bin/sh', '-c'],
@@ -111,7 +125,9 @@ async function createContainer(langConfig, code, input, timeLimit, memoryLimit, 
         Env: [
             `TIME_LIMIT=${Math.ceil(timeLimit / 1000)}`,
             `MEMORY_LIMIT=${memoryLimit}`,
-            `OUTPUT_LIMIT=${outputLimitBytes}`
+            `OUTPUT_LIMIT=${outputLimitBytes}`,
+            `MULTI_FILE=${isMultiFile ? '1' : '0'}`,
+            `MAIN_CLASS=${mainClass}`,
         ],
         ...dockerConfig,
         OpenStdin: true,
@@ -155,9 +171,19 @@ async function createContainer(langConfig, code, input, timeLimit, memoryLimit, 
         // Set workspace directory with full permissions for all operations
         await runExec('rm -f /workspace/* && chmod 777 /workspace', 'root')
 
-        // Write source code file using base64 encoding
-        const codeB64 = Buffer.from(code).toString('base64')
-        await runExec(`echo "${codeB64}" | base64 -d > /workspace/${langConfig.fileName}`)
+        // Write source code file(s) using base64 encoding
+        if (isMultiFile) {
+            // Multi-file submission: write each file individually
+            for (const file of files) {
+                const fileB64 = Buffer.from(file.content).toString('base64')
+                await runExec(`echo "${fileB64}" | base64 -d > /workspace/${file.filename}`)
+            }
+            console.log(`[EXECUTOR] Wrote ${files.length} file(s) to container`)
+        } else {
+            // Single-file submission (backward compatible)
+            const codeB64 = Buffer.from(code).toString('base64')
+            await runExec(`echo "${codeB64}" | base64 -d > /workspace/${langConfig.fileName}`)
+        }
 
         // Write input file if provided
         if (input) {
