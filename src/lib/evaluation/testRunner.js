@@ -7,6 +7,7 @@ import { VERDICTS } from './verdicts.js'
  */
 export async function runSingleTest({
     code,
+    files,
     language,
     testCase,
     timeLimit,
@@ -17,6 +18,7 @@ export async function runSingleTest({
         // Execute code with test input
         const executionResult = await executeCode({
             code,
+            files,
             language,
             input: testCase.input,
             timeLimit,
@@ -75,6 +77,7 @@ export async function runSingleTest({
  */
 export async function runMultipleTests({
     code,
+    files,
     language,
     testCases,
     timeLimit,
@@ -91,6 +94,7 @@ export async function runMultipleTests({
 
         const result = await runSingleTest({
             code,
+            files,
             language,
             testCase,
             timeLimit,
@@ -139,6 +143,7 @@ export async function runMultipleTests({
  */
 export async function runAllTests({
     code,
+    files,
     language,
     publicTests,
     hiddenTests,
@@ -149,6 +154,7 @@ export async function runAllTests({
     // First run public test cases
     const publicResults = await runMultipleTests({
         code,
+        files,
         language,
         testCases: publicTests,
         timeLimit,
@@ -176,6 +182,7 @@ export async function runAllTests({
     // Run hidden test cases
     const hiddenResults = await runMultipleTests({
         code,
+        files,
         language,
         testCases: hiddenTests,
         timeLimit,

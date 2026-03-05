@@ -5,21 +5,32 @@ set -e
 umask 000
 
 # Compilation and execution script for C++
-SOURCE_FILE="/workspace/solution.cpp"
-BINARY_FILE="/workspace/solution"
 INPUT_FILE="/workspace/input.txt"
 OUTPUT_FILE="/workspace/output.txt"
 ERROR_FILE="/workspace/error.txt"
+BINARY_FILE="/workspace/solution"
 TIME_LIMIT=${TIME_LIMIT:-5}
 MEMORY_LIMIT=${MEMORY_LIMIT:-512000}
 OUTPUT_LIMIT=${OUTPUT_LIMIT:-10485760} # Default 10MB
+MULTI_FILE=${MULTI_FILE:-0}
 
-# Compile C++ code
+# Compile C++ code — supports both single-file and multi-file
 echo "Compiling C++ code..."
-if ! g++ -std=c++17 -O2 -Wall "$SOURCE_FILE" -o "$BINARY_FILE" 2>"$ERROR_FILE"; then
-    echo "COMPILATION_ERROR"
-    cat "$ERROR_FILE"
-    exit 1
+if [ "$MULTI_FILE" = "1" ]; then
+    # Multi-file: compile all .cpp files in workspace
+    if ! g++ -std=c++17 -O2 -Wall /workspace/*.cpp -o "$BINARY_FILE" 2>"$ERROR_FILE"; then
+        echo "COMPILATION_ERROR"
+        cat "$ERROR_FILE"
+        exit 1
+    fi
+else
+    # Single-file backward compatible
+    SOURCE_FILE="/workspace/solution.cpp"
+    if ! g++ -std=c++17 -O2 -Wall "$SOURCE_FILE" -o "$BINARY_FILE" 2>"$ERROR_FILE"; then
+        echo "COMPILATION_ERROR"
+        cat "$ERROR_FILE"
+        exit 1
+    fi
 fi
 
 # Make binary executable

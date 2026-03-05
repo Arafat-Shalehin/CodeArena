@@ -59,6 +59,7 @@ export function initSubmissionWorker() {
 
                         const result = await executeCode({
                             code: submission.code,
+                            files: submission.files || [],
                             language: submission.language,
                             input: testCase.input || '',
                             timeLimit: problem.timeLimit,
