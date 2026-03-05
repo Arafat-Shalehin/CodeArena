@@ -1,0 +1,58 @@
+{
+    "defaultAction": "SCMP_ACT_ALLOW",
+    "architectures": [
+        "SCMP_ARCH_X86_64",
+        "SCMP_ARCH_X86",
+        "SCMP_ARCH_AARCH64"
+    ],
+    "syscalls": [
+        {
+            "names": [
+                "mount",
+                "umount2",
+                "reboot",
+                "swapon",
+                "swapoff",
+                "ptrace",
+                "kexec_load",
+                "kexec_file_load",
+                "init_module",
+                "finit_module",
+                "delete_module",
+                "keyctl",
+                "request_key",
+                "add_key",
+                "unshare",
+                "setns",
+                "pivot_root",
+                "chroot",
+                "acct",
+                "settimeofday",
+                "clock_settime",
+                "adjtimex",
+                "nfsservctl",
+                "lookup_dcookie",
+                "perf_event_open",
+                "fanotify_init",
+                "open_by_handle_at",
+                "name_to_handle_at",
+                "kcmp",
+                "userfaultfd",
+                "bpf",
+                "io_uring_setup",
+                "io_uring_enter",
+                "io_uring_register",
+                "move_mount",
+                "open_tree",
+                "mount_setattr",
+                "fsopen",
+                "fsconfig",
+                "fsmount",
+                "fspick"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "args": [],
+            "comment": "Block dangerous syscalls: kernel modules, mount/namespace manipulation, ptrace, BPF, io_uring"
+        }
+    ]
+}

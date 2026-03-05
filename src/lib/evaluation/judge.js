@@ -6,6 +6,7 @@ import { VERDICTS, getVerdict } from './verdicts.js'
  */
 export async function judgeSubmission({
     code,
+    files,
     language,
     problemId,
     testCases,
@@ -31,6 +32,7 @@ export async function judgeSubmission({
         // Run all tests
         const result = await runAllTests({
             code,
+            files,
             language,
             publicTests,
             hiddenTests,
@@ -90,6 +92,7 @@ export async function judgeSubmission({
  */
 export async function quickJudge({
     code,
+    files,
     language,
     testCases,
     timeLimit,
@@ -99,6 +102,7 @@ export async function quickJudge({
     try {
         const result = await runMultipleTests({
             code,
+            files,
             language,
             testCases,
             timeLimit,

@@ -43,6 +43,7 @@ export async function POST(request) {
         const body = await request.json()
         const {
             code,
+            files,
             language,
             problemId,
             testCases,
@@ -64,6 +65,7 @@ export async function POST(request) {
         if (quick) {
             result = await quickJudge({
                 code,
+                files,
                 language,
                 testCases: testCases.filter((tc) => !tc.isHidden),
                 timeLimit,
@@ -73,6 +75,7 @@ export async function POST(request) {
         } else {
             result = await judgeSubmission({
                 code,
+                files,
                 language,
                 problemId,
                 testCases,
@@ -101,6 +104,7 @@ export async function POST(request) {
                     problemId: problemId,
                     contestId: contestId,
                     code: code,
+                    files: files || [],
                     language: language,
                     status: 'completed',
                     verdict: result.verdict.toLowerCase(),

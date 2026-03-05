@@ -20,6 +20,13 @@ const submissionSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Need to write some code before try to submit.'],
         },
+        files: [
+            {
+                filename: { type: String, required: true },
+                content: { type: String, required: true },
+                isMain: { type: Boolean, default: false },
+            },
+        ],
         language: {
             type: String,
             enum: ['javascript', 'java', 'python', 'cpp'],
