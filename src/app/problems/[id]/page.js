@@ -1,5 +1,4 @@
 import React from 'react'
-import Navbar from '@/components/layout/Navbar'
 import ProblemSolverLayout from '@/features/problem-solve/components/ProblemSolverLayout'
 
 export const metadata = {
@@ -10,12 +9,5 @@ export const metadata = {
 export default async function ProblemDetailPage({ params }) {
     const { id } = await params
 
-    return (
-        <div className="bg-bg-page site-gradient flex h-screen flex-col overflow-hidden">
-            <Navbar />
-            <main className="flex flex-1 overflow-hidden">
-                <ProblemSolverLayout problemId={id} />
-            </main>
-        </div>
-    )
+    return <ProblemSolverLayout problemId={id} />
 }
