@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,7 @@ const NAV_LINKS = [
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const router = useRouter()
+    const pathname = usePathname()
     const { user, isAuthenticated, logout } = useAuth()
 
     /** Handle logout action */
@@ -69,20 +70,23 @@ export default function Navbar() {
                     <nav className="hidden items-center gap-1 md:flex">
                         {NAV_LINKS.map((link) => {
                             const isActive =
-                                router.pathname === link.href ||
-                                (router.asPath && router.asPath.startsWith(link.href)) // fallback logic
+                                pathname === link.href ||
+                                (link.href !== '/' && pathname?.startsWith(link.href + '/'))
                             return (
                                 <Link
                                     key={link.name}
                                     href={link.href}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                    className={`group relative rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                                         isActive
                                             ? 'text-text-primary bg-bg-subtle'
                                             : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
                                     }`}
                                 >
                                     {link.name}
+                                    {isActive && (
+                                        <span className="bg-accent absolute right-3 bottom-1 left-3 h-0.5 rounded-full transition-all duration-300" />
+                                    )}
                                 </Link>
                             )
                         })}

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/context/AuthContext'
 
 const ProblemSolveContext = createContext()
 
@@ -54,6 +55,7 @@ const LANG_LABELS = {
 export { STARTER_CODES, LANG_LABELS }
 
 export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
+    const { syncUser } = useAuth()
     // Core code state
     const [code, setCode] = useState(initialCode || '')
     const [language, setLanguage] = useState('python')
@@ -271,6 +273,11 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             if (data.success) {
                 const r = data.result
                 const isAccepted = r.verdict === 'ACCEPTED'
+
+                if (isAccepted) {
+                    syncUser()
+                }
+
                 const pub = r.publicTests || {}
                 const mappedResults = (pub.results || []).map((tr) => ({
                     passed: tr.passed,
