@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema(
             totalSubmissions: { type: Number, default: 0 },
             accepted: { type: Number, default: 0 },
             score: { type: Number, default: 0 },
+            weeklyGoal: { type: Number, default: 10 },
             solvedProblems: [
                 {
                     type: mongoose.Schema.Types.ObjectId,

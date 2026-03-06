@@ -13,7 +13,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth'
  * @property {boolean}      isLoading         - Indicates if auth state is resolving.
  */
 
-const AuthContext = createContext(/** @type {AuthContextValue} */(undefined))
+const AuthContext = createContext(/** @type {AuthContextValue} */ (undefined))
 
 const STORAGE_KEY = 'codearena_auth_user_preferences'
 
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
         try {
             const stored = localStorage.getItem(STORAGE_KEY)
             if (stored) setLocalPreferences(JSON.parse(stored))
-        } catch { }
+        } catch {}
     }, [])
 
     useEffect(() => {
@@ -44,8 +44,8 @@ export function AuthProvider({ children }) {
                             email: firebaseUser.email,
                             displayName: firebaseUser.displayName,
                             photoURL: firebaseUser.photoURL,
-                            authProvider: 'firebase'
-                        })
+                            authProvider: 'firebase',
+                        }),
                     })
 
                     const syncData = await syncRes.json()
@@ -109,9 +109,31 @@ export function AuthProvider({ children }) {
         })
     }, [])
 
+    const syncUser = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ authProvider: 'firebase' }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                const dbUser = data.data?.user || data.user
+                setUser((prev) => ({
+                    ...prev,
+                    ...dbUser,
+                    ...localPreferences,
+                }))
+                return dbUser
+            }
+        } catch (error) {
+            console.error('Failed to sync user:', error)
+        }
+    }, [localPreferences])
+
     return (
         <AuthContext.Provider
-            value={{ user, isAuthenticated: !!user, logout, updateProfile, isLoading }}
+            value={{ user, isAuthenticated: !!user, logout, updateProfile, syncUser, isLoading }}
         >
             {children}
         </AuthContext.Provider>
