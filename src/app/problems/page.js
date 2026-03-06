@@ -54,30 +54,30 @@ export default function ProblemsPage() {
                 params.set('page', page)
                 params.set('limit', ITEMS_PER_PAGE)
 
-                // The API supports a single difficulty value — when multiple are selected
-                // we send the first one for now (multi-difficulty requires $or on the backend).
-                // TODO: extend the backend to accept comma-separated difficulties if needed.
-                if (selectedDifficulties.length === 1) {
-                    params.set('difficulty', selectedDifficulties[0].toLowerCase())
+                // Difficulty filtering (multiple supported)
+                if (selectedDifficulties.length > 0) {
+                    params.set(
+                        'difficulty',
+                        selectedDifficulties.map((d) => d.toLowerCase()).join(',')
+                    )
                 }
 
                 if (searchQuery.trim()) {
                     params.set('search', searchQuery.trim())
                 }
 
-                if (selectedTopics.length === 1) {
-                    params.set('tag', selectedTopics[0])
+                // Tag filtering (multiple supported)
+                if (selectedTopics.length > 0) {
+                    params.set('tag', selectedTopics.join(','))
                 }
 
-                if (selectedStatuses.length === 1) {
-                    params.set('status', selectedStatuses[0])
+                // Status filtering (one at a time)
+                if (selectedStatuses.length > 0) {
+                    params.set('status', selectedStatuses[0].toLowerCase())
                 }
 
-                // Status filtering (solved/attempted/unsolved)
-                // This is a special case that requires passing IDs to the backend or handling it there.
-                // For now, we pass the selected status to the API if only one is selected.
-                if (selectedStatuses.length === 1) {
-                    params.set('status', selectedStatuses[0])
+                if (sortBy) {
+                    params.set('sortBy', sortBy)
                 }
 
                 const res = await fetch(`/api/problems?${params.toString()}`)
@@ -100,7 +100,7 @@ export default function ProblemsPage() {
                 setIsLoading(false)
             }
         },
-        [selectedDifficulties, selectedTopics, searchQuery]
+        [selectedDifficulties, selectedTopics, selectedStatuses, searchQuery, sortBy]
     )
 
     /**
@@ -128,7 +128,7 @@ export default function ProblemsPage() {
         fetchProblems(1)
         fetchSolvedStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedDifficulties, selectedTopics, selectedStatuses])
+    }, [selectedDifficulties, selectedTopics, selectedStatuses, sortBy])
 
     /**
      * Debounced re-fetch when search query changes.

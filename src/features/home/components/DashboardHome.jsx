@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatDistanceToNow, format } from 'date-fns'
+import RecommendedProblems from './RecommendedProblems'
 
 export default function DashboardHome({ user }) {
     const [feed, setFeed] = useState([])
@@ -120,6 +121,8 @@ export default function DashboardHome({ user }) {
 
                 {/* MAIN FEED (6 cols on desktop) */}
                 <section className="col-span-1 flex flex-col gap-6 lg:col-span-6">
+                    <RecommendedProblems />
+
                     {loading ? (
                         <div className="bg-bg-subtle border-border rounded-lg border p-8 text-center shadow-sm">
                             <div className="animate-pulse space-y-4">
