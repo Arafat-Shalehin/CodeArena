@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext'
 
 // Data
 import { getLanguageStats } from '@/features/profile/data/languages.data'
+import { useEffect, useState } from 'react'
 
 /**
  * @component ProfilePage
@@ -37,6 +38,46 @@ const LANGUAGE_COLORS = ['text-success', 'text-warning', 'text-error', 'text-inf
 export default function ProfilePage() {
     const router = useRouter()
     const { user, isLoading } = useAuth()
+    const [submissions, setSubmissions] = useState([])
+    const [hasMoreSubmissions, setHasMoreSubmissions] = useState(true)
+    const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false)
+
+    useEffect(() => {
+        if (user) {
+            fetchSubmissions(5, 0, true)
+        }
+    }, [user])
+
+    const fetchSubmissions = async (limit = 10, offset = 0, reset = false) => {
+        if (!user) return
+        setIsSubmissionsLoading(true)
+        try {
+            const queryUrl = `/api/submissions?userId=${user._id || user.id}&limit=${limit}&offset=${offset}`
+            const res = await fetch(queryUrl)
+            const data = await res.json()
+            if (data.success) {
+                const newSubs = data.data || []
+                setSubmissions((prev) => (reset ? newSubs : [...prev, ...newSubs]))
+
+                const currentTotal = reset ? newSubs.length : submissions.length + newSubs.length
+                setHasMoreSubmissions(currentTotal < (data.pagination?.total || 0))
+            }
+        } catch (err) {
+            console.error('Failed to fetch submissions:', err)
+        } finally {
+            setIsSubmissionsLoading(false)
+        }
+    }
+
+    const handleLoadMore = () => {
+        fetchSubmissions(10, submissions.length)
+    }
+
+    const handleViewAll = (e) => {
+        e.preventDefault()
+        // Fetch a large number to "load all", starting from where we are
+        fetchSubmissions(100, submissions.length)
+    }
 
     // Loading state while Firebase resolves
     if (isLoading) {
@@ -79,21 +120,45 @@ export default function ProfilePage() {
                             <h3 className="text-text-primary mb-6 text-xl font-semibold">
                                 Submission Activity
                             </h3>
-                            {Array.isArray(user.stats?.submissionHistory) &&
-                            user.stats.submissionHistory.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                    {user.stats.submissionHistory.map((_, i) => (
+                            <div className="flex flex-wrap gap-1.5">
+                                {(() => {
+                                    const getActivityColor = (count) => {
+                                        if (!count) return 'bg-bg-muted opacity-20'
+                                        if (count < 3) return 'bg-success opacity-40'
+                                        if (count < 6) return 'bg-success opacity-70'
+                                        return 'bg-success opacity-100'
+                                    }
+                                    const activityDays = []
+                                    const calendar = user?.stats?.activityCalendar || {}
+                                    for (let i = 99; i >= 0; i--) {
+                                        const d = new Date()
+                                        d.setDate(d.getDate() - i)
+                                        const dateStr = d.toISOString().split('T')[0]
+                                        activityDays.push({
+                                            date: dateStr,
+                                            count:
+                                                calendar instanceof Map
+                                                    ? calendar.get(dateStr)
+                                                    : calendar[dateStr] || 0,
+                                        })
+                                    }
+                                    return activityDays.map((day) => (
                                         <div
-                                            key={i}
-                                            className="bg-accent h-3 w-3 rounded-sm opacity-20 transition-opacity hover:opacity-100"
+                                            key={day.date}
+                                            title={`${day.date}: ${day.count} accepted`}
+                                            className={`h-3 w-3 rounded-sm transition-all hover:scale-125 ${getActivityColor(day.count)}`}
                                         />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="border-border rounded-lg border border-dashed p-8 text-center">
-                                    <p className="text-text-muted text-sm">No recent activity</p>
-                                </div>
-                            )}
+                                    ))
+                                })()}
+                            </div>
+                            <div className="text-text-muted mt-4 flex items-center justify-end gap-2 text-[10px]">
+                                <span>Less</span>
+                                <div className="bg-bg-muted h-2.5 w-2.5 rounded-sm opacity-20" />
+                                <div className="bg-success h-2.5 w-2.5 rounded-sm opacity-40" />
+                                <div className="bg-success h-2.5 w-2.5 rounded-sm opacity-70" />
+                                <div className="bg-success h-2.5 w-2.5 rounded-sm opacity-100" />
+                                <span>More</span>
+                            </div>
                         </section>
 
                         {/* Recent Submissions */}
@@ -102,17 +167,25 @@ export default function ProfilePage() {
                                 <h3 className="text-text-primary text-xl font-semibold">
                                     Recent Submissions
                                 </h3>
-                                <button className="text-accent hover:text-accent-hover text-sm font-semibold">
-                                    View all
+                                <button
+                                    onClick={handleViewAll}
+                                    className="text-accent text-sm font-semibold hover:underline"
+                                >
+                                    View All
                                 </button>
                             </div>
-                            <div className="divide-border divide-y">
-                                <div className="hover:bg-bg-muted/50 transition-colors">
-                                    <RecentSubmissions
-                                        submissions={user.stats?.recentSubmissions || []}
-                                    />
+                            <RecentSubmissions submissions={submissions} />
+                            {hasMoreSubmissions && (
+                                <div className="border-border flex justify-center border-t p-4">
+                                    <button
+                                        onClick={handleLoadMore}
+                                        disabled={isSubmissionsLoading}
+                                        className="text-text-secondary hover:text-accent text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {isSubmissionsLoading ? 'Loading...' : 'Load More'}
+                                    </button>
                                 </div>
-                            </div>
+                            )}
                         </section>
                     </div>
 
