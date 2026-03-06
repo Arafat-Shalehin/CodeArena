@@ -143,8 +143,6 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
     // Write files using exec
     try {
 
-        console.log(`[EXECUTOR] Sending input (${Buffer.byteLength(input, 'utf8')} bytes) to container`)
-
         // Helper function to run exec and wait for completion
         const runExec = async (cmd, user = 'root') => {
             const exec = await container.exec({
@@ -178,7 +176,6 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
                 const fileB64 = Buffer.from(file.content).toString('base64')
                 await runExec(`echo "${fileB64}" | base64 -d > /workspace/${file.filename}`)
             }
-            console.log(`[EXECUTOR] Wrote ${files.length} file(s) to container`)
         } else {
             // Single-file submission (backward compatible)
             const codeB64 = Buffer.from(code).toString('base64')
@@ -193,10 +190,6 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
 
         // Ensure workspace is fully writable by everyone (including coderunner)
         await runExec('chmod 777 /workspace && chmod 666 /workspace/* 2>/dev/null || true', 'root')
-
-        // Verify setup (for debugging)
-        const verifyOutput = await runExec('ls -la /workspace/ 2>&1', 'root')
-        console.log('Workspace contents:', verifyOutput)
     } catch (error) {
         console.error('Error writing files to container:', error)
         try {
