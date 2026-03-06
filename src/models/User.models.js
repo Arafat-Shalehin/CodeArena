@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
         },
         stats: {
             totalSubmissions: { type: Number, default: 0 },
-            accepted: { type: Number, default: 0 },
+            accepted: { type: Number, default: 0 }, // Unique problems solved
             score: { type: Number, default: 0 },
             weeklyGoal: { type: Number, default: 10 },
             solvedProblems: [
@@ -74,6 +74,17 @@ const userSchema = new mongoose.Schema(
                     ref: 'Problem',
                 },
             ],
+            solvedDistribution: {
+                easy: { type: Number, default: 0 },
+                medium: { type: Number, default: 0 },
+                hard: { type: Number, default: 0 },
+            },
+            activityCalendar: {
+                type: Map,
+                of: Number,
+                default: {},
+            },
+            contestsParticipated: { type: Number, default: 0 },
         },
         followers: [
             {

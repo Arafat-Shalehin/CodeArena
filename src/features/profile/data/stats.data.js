@@ -6,7 +6,7 @@
  * @returns {Array<{label: string, solved: number, total: number, color: string, text: string}>}
  */
 export function getStatsData(stats) {
-    const ps = stats?.problemsSolved ?? { easy: 0, medium: 0, hard: 0 }
+    const ps = stats?.solvedDistribution ?? { easy: 0, medium: 0, hard: 0 }
     return [
         { label: 'Easy', solved: ps.easy, total: 100, color: 'bg-success', text: 'text-success' },
         {

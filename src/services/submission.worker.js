@@ -170,30 +170,44 @@ export function initSubmissionWorker() {
                     }
 
                     if (isAccepted) {
-                        userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
-                        userUpdate.$inc['stats.accepted'] = 1
+                        // Activity Calendar - Increment on every AC submission
+                        const today = new Date().toISOString().split('T')[0]
+                        const calendarKey = `stats.activityCalendar.${today}`
+                        userUpdate.$inc[calendarKey] = 1
+
+                        // Check if this problem was already solved
+                        const existingUser = await User.findById(submission.userId).select(
+                            'stats.solvedProblems'
+                        )
+                        const isUniqueSolved = !existingUser?.stats?.solvedProblems?.some(
+                            (id) => id.toString() === submission.problemId.toString()
+                        )
+
+                        if (isUniqueSolved) {
+                            userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
+                            userUpdate.$inc['stats.accepted'] = 1
+
+                            // Increment Difficulty Distribution
+                            const diff = problem.difficulty?.toLowerCase() || 'easy'
+                            userUpdate.$inc[`stats.solvedDistribution.${diff}`] = 1
+                        }
                     }
 
                     // 7. Update User Performance Stats by Tag
                     if (problem.tags && problem.tags.length > 0) {
-                        // Build $set for date fields (can't mix $set and $inc on same path)
+                        // Build $set for date fields
                         userUpdate.$set = userUpdate.$set || {}
 
                         problem.tags.forEach((tag) => {
                             const mapKey = 'performanceStats.' + tag
-                            userUpdate.$inc = userUpdate.$inc || {}
                             userUpdate.$inc[mapKey + '.attempted'] = 1
-
-                            // Track last attempt timestamp for recency scoring
                             userUpdate.$set[mapKey + '.lastAttemptDate'] = new Date()
 
                             if (isAccepted) {
                                 userUpdate.$inc[mapKey + '.solved'] = 1
-                                // Increment solve streak on success
                                 userUpdate.$inc[mapKey + '.recentSolveStreak'] = 1
                             } else {
                                 userUpdate.$inc[mapKey + '.failed'] = 1
-                                // Reset solve streak on failure
                                 userUpdate.$set[mapKey + '.recentSolveStreak'] = 0
                             }
                         })
