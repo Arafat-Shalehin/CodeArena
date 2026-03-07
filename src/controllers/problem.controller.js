@@ -19,6 +19,7 @@ export async function fetchProblems(req) {
         search: searchParams.get('search'),
         tag: searchParams.get('tag'),
         status: searchParams.get('status'),
+        sortBy: searchParams.get('sortBy'),
         userId: req.user?._id,
     }
 

@@ -25,6 +25,10 @@ export default function PublicProfilePage({ params }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
+    const [submissions, setSubmissions] = useState([])
+    const [hasMoreSubmissions, setHasMoreSubmissions] = useState(true)
+    const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false)
+
     useEffect(() => {
         // Redirect to personal profile if viewing own ID
         if (!authLoading && currentUser && currentUser._id === id) {
@@ -39,22 +43,12 @@ export default function PublicProfilePage({ params }) {
 
                 if (data.success && data.data) {
                     const dbUser = data.data
-                    // Format user data for the existing components
                     setUser({
                         ...dbUser,
-                        name: dbUser.name,
                         avatarSeed: dbUser.avatarSeed || dbUser.name,
-                        stats: {
-                            ...dbUser.stats,
-                            globalRank: dbUser.stats?.globalRank || 'N/A',
-                            // Fallback problem distribution if missing
-                            problemsSolved: dbUser.stats?.problemsSolvedDistribution || {
-                                easy: Math.floor((dbUser.stats?.totalSubmissions || 0) * 0.4),
-                                medium: Math.floor((dbUser.stats?.totalSubmissions || 0) * 0.4),
-                                hard: Math.floor((dbUser.stats?.totalSubmissions || 0) * 0.2),
-                            },
-                        },
                     })
+                    // Initial submissions fetch
+                    fetchSubmissions(5, 0, true)
                 } else {
                     setError('User Not Found')
                 }
@@ -70,6 +64,34 @@ export default function PublicProfilePage({ params }) {
             fetchUser()
         }
     }, [id, currentUser, authLoading, router])
+
+    const fetchSubmissions = async (limit = 10, offset = 0, reset = false) => {
+        setIsSubmissionsLoading(true)
+        try {
+            const res = await fetch(`/api/submissions?userId=${id}&limit=${limit}&offset=${offset}`)
+            const data = await res.json()
+            if (data.success) {
+                const newSubs = data.data || []
+                setSubmissions((prev) => (reset ? newSubs : [...prev, ...newSubs]))
+
+                const currentTotal = reset ? newSubs.length : submissions.length + newSubs.length
+                setHasMoreSubmissions(currentTotal < (data.pagination?.total || 0))
+            }
+        } catch (err) {
+            console.error('Failed to fetch submissions:', err)
+        } finally {
+            setIsSubmissionsLoading(false)
+        }
+    }
+
+    const handleLoadMore = () => {
+        fetchSubmissions(10, submissions.length)
+    }
+
+    const handleViewAll = (e) => {
+        e.preventDefault()
+        fetchSubmissions(100, submissions.length)
+    }
 
     if (loading || authLoading) {
         return (
@@ -115,30 +137,72 @@ export default function PublicProfilePage({ params }) {
                             <h3 className="text-text-primary mb-6 text-xl font-semibold">
                                 Submission Activity
                             </h3>
-                            <div className="flex flex-wrap gap-1">
-                                {[...Array(50)].map((_, i) => (
-                                    <div
-                                        key={i}
-                                        className="bg-accent h-3 w-3 rounded-sm opacity-20 transition-opacity hover:opacity-100"
-                                    />
-                                ))}
+                            <div className="flex flex-wrap gap-1.5">
+                                {(() => {
+                                    const getActivityColor = (count) => {
+                                        if (!count) return 'bg-bg-muted opacity-20'
+                                        if (count < 3) return 'bg-success opacity-40'
+                                        if (count < 6) return 'bg-success opacity-70'
+                                        return 'bg-success opacity-100'
+                                    }
+                                    const activityDays = []
+                                    const calendar = user?.stats?.activityCalendar || {}
+                                    for (let i = 99; i >= 0; i--) {
+                                        const d = new Date()
+                                        d.setDate(d.getDate() - i)
+                                        const dateStr = d.toISOString().split('T')[0]
+                                        activityDays.push({
+                                            date: dateStr,
+                                            count:
+                                                calendar instanceof Map
+                                                    ? calendar.get(dateStr)
+                                                    : calendar[dateStr] || 0,
+                                        })
+                                    }
+                                    return activityDays.map((day) => (
+                                        <div
+                                            key={day.date}
+                                            title={`${day.date}: ${day.count} accepted`}
+                                            className={`h-3 w-3 rounded-sm transition-all hover:scale-125 ${getActivityColor(day.count)}`}
+                                        />
+                                    ))
+                                })()}
+                            </div>
+                            <div className="text-text-muted mt-4 flex items-center justify-end gap-2 text-[10px]">
+                                <span>Less</span>
+                                <div className="bg-bg-muted h-2.5 w-2.5 rounded-sm opacity-20" />
+                                <div className="bg-success h-2.5 w-2.5 rounded-sm opacity-40" />
+                                <div className="bg-success h-2.5 w-2.5 rounded-sm opacity-70" />
+                                <div className="bg-success h-2.5 w-2.5 rounded-sm opacity-100" />
+                                <span>More</span>
                             </div>
                         </section>
 
                         {/* Recent Submissions */}
                         <section className="bg-bg-subtle border-border overflow-hidden rounded-lg border">
-                            <div className="border-border border-b p-6">
+                            <div className="border-border flex items-center justify-between border-b p-6">
                                 <h3 className="text-text-primary text-xl font-semibold">
                                     Recent Submissions
                                 </h3>
+                                <button
+                                    onClick={handleViewAll}
+                                    className="text-accent text-xs font-medium hover:underline"
+                                >
+                                    View All
+                                </button>
                             </div>
-                            <div className="divide-border divide-y">
-                                <div className="hover:bg-bg-muted/50 transition-colors">
-                                    <RecentSubmissions
-                                        submissions={user.stats?.recentSubmissions || []}
-                                    />
+                            <RecentSubmissions submissions={submissions} />
+                            {hasMoreSubmissions && (
+                                <div className="border-border flex justify-center border-t p-4">
+                                    <button
+                                        onClick={handleLoadMore}
+                                        disabled={isSubmissionsLoading}
+                                        className="text-text-secondary hover:text-accent text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {isSubmissionsLoading ? 'Loading...' : 'Load More'}
+                                    </button>
                                 </div>
-                            </div>
+                            )}
                         </section>
                     </div>
 
