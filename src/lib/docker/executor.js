@@ -342,7 +342,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             verdict: 'SUCCESS',
             output: extractOutput(output),
             executionTime: extractExecutionTime(output) || executionTime,
-            memoryUsed: extractMemory(output),
+            memoryUsed: extractMemory(output) || 0,
         }
     }
 

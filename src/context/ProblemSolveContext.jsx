@@ -280,6 +280,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
 
             if (data.success) {
                 const r = data.result
+                // console.log(r)
                 const isAccepted = r.verdict === 'ACCEPTED'
 
                 if (isAccepted) {
@@ -292,6 +293,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                     actual: tr.actualOutput ?? '',
                     expected: tr.testCase?.expectedOutput ?? '',
                 }))
+                // console.log(r.stats?.maxMemoryUsed)
                 setTestResult({
                     status: 'done',
                     verdict: r.verdict,
@@ -299,7 +301,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                     passedCount: pub.passed ?? 0,
                     totalCount: pub.total ?? 0,
                     time: r.stats?.executionTime,
-                    memory: r.stats?.memoryUsed,
+                    memory: r.stats?.maxMemoryUsed,
                     results: mappedResults,
                 })
 
@@ -310,7 +312,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                     passedCount: pub.passed ?? 0,
                     totalCount: pub.total ?? 0,
                     time: r.stats?.executionTime,
-                    memory: r.stats?.memoryUsed,
+                    memory: r.stats?.maxMemoryUsed,
                     submittedCode: code,
                     submittedLanguage: language,
                     submittedAt: new Date().toISOString(),

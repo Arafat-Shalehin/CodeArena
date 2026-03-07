@@ -62,6 +62,10 @@ export default function PublicProfilePage({ params }) {
 
         if (!authLoading) {
             fetchUser()
+            // If viewing own profile, trigger a stats sync to ensure consistency
+            if (currentUser && currentUser._id === id) {
+                fetch('/api/user/sync', { method: 'POST' }).catch(console.error)
+            }
         }
     }, [id, currentUser, authLoading, router])
 
@@ -153,10 +157,7 @@ export default function PublicProfilePage({ params }) {
                                         const dateStr = d.toISOString().split('T')[0]
                                         activityDays.push({
                                             date: dateStr,
-                                            count:
-                                                calendar instanceof Map
-                                                    ? calendar.get(dateStr)
-                                                    : calendar[dateStr] || 0,
+                                            count: calendar[dateStr] || 0,
                                         })
                                     }
                                     return activityDays.map((day) => (
