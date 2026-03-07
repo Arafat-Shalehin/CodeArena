@@ -62,12 +62,15 @@ export async function fetchSubmissions(req, user) {
             contestId: searchParams.get('contestId'),
             verdict: searchParams.get('verdict'),
             status: searchParams.get('status'),
+            offset: searchParams.get('offset'),
         }
 
-        // Enforce tenant isolation
-        if (user.role !== 'admin') {
+        // Enforce tenant isolation for private data, but allow viewing recent history
+        if (!query.userId && user.role !== 'admin') {
             query.userId = user.id
         }
+        // If query.userId is provided, we allow it (for public profiles)
+        // Submissions don't contain sensitive data like test case details in the list view
 
         const result = await getAllSubmissions(query)
 

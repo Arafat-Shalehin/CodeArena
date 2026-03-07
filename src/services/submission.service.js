@@ -99,9 +99,6 @@ export async function createSubmission(data) {
             { session }
         )
 
-        // 6️⃣ Increment user stats atomically
-        await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } }, { session })
-
         await session.commitTransaction()
         session.endSession()
 
@@ -145,8 +142,8 @@ export async function createSubmission(data) {
  */
 export async function getAllSubmissions(query) {
     const page = Math.max(parseInt(query.page) || 1, 1)
-    const limit = Math.min(parseInt(query.limit) || 10, 50)
-    const skip = (page - 1) * limit
+    const limit = Math.min(parseInt(query.limit) || 10, 100)
+    const skip = query.offset !== undefined ? parseInt(query.offset) : (page - 1) * limit
 
     const filter = {}
 
