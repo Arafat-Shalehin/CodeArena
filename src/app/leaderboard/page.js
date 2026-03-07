@@ -69,6 +69,7 @@ export default function LeaderboardPage() {
 
                 const res = await fetch(`/api/leaderboard?${params.toString()}`, { signal })
                 const json = await res.json()
+                console.log(json)
 
                 if (json.success) {
                     // Transform API User objects to match the expected leaderboard format
@@ -84,9 +85,9 @@ export default function LeaderboardPage() {
                             stats: u.stats,
                         },
                         title:
-                            u.stats?.score > 5000
+                            u.stats?.score > 40
                                 ? 'Supreme Architect'
-                                : u.stats?.score > 1000
+                                : u.stats?.score > 10
                                   ? 'Elite Engineer'
                                   : 'Code Warrior',
                         country: 'Global',
