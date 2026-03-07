@@ -1,7 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { io } from 'socket.io-client'
 import { useAuth } from '@/context/AuthContext'
+import { toast } from 'sonner'
 
 const ProblemSolveContext = createContext()
 
@@ -55,6 +57,8 @@ const LANG_LABELS = {
 export { STARTER_CODES, LANG_LABELS }
 
 export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
+    const { user } = useAuth()
+
     const { syncUser } = useAuth()
     // Core code state
     const [code, setCode] = useState(initialCode || '')
@@ -84,6 +88,10 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     // Left panel tab + submission result
     const [leftTab, setLeftTab] = useState('description')
     const [submissionResult, setSubmissionResult] = useState(null)
+
+    // Socket state
+    const [socket, setSocket] = useState(null)
+    const [latestSubmissionEvent, setLatestSubmissionEvent] = useState(null)
 
     // Persist code to localStorage
     useEffect(() => {
@@ -394,6 +402,45 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         }
     }, [])
 
+    // ─── Socket.io Connection ──────────────────────────────────────────────
+    useEffect(() => {
+        if (!user || !(user._id || user.id)) return
+
+        const userId = user._id || user.id
+        const newSocket = io(`http://${window.location.hostname}:3002`)
+
+        newSocket.on('connect', () => {
+            console.log('[Socket] Connected to realtime server')
+            newSocket.emit('join_room', userId)
+        })
+
+        newSocket.on('submission_update', (data) => {
+            console.log('[Socket] Submission update:', data)
+            setLatestSubmissionEvent(data)
+
+            // Only handle active notifications if the problem matches
+            if (data.problemId === problemId) {
+                if (data.type === 'submission_evaluated') {
+                    setIsSubmitting(false)
+
+                    if (data.verdict === 'accepted') {
+                        toast.success('Accepted!')
+                    } else if (data.status === 'error') {
+                        toast.error(data.error || 'System Error')
+                    } else {
+                        toast.error((data.verdict || '').replace('_', ' ').toUpperCase())
+                    }
+
+                    // Fetch submission details automatically to verify UI state
+                    viewSubmissionDetails(data.submissionId)
+                }
+            }
+        })
+
+        setSocket(newSocket)
+        return () => newSocket.disconnect()
+    }, [user, problemId, viewSubmissionDetails])
+
     const value = {
         // Code
         code,
@@ -443,6 +490,10 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         submissionResult,
         setSubmissionResult,
         viewSubmissionDetails,
+
+        // Realtime
+        socket,
+        latestSubmissionEvent,
     }
 
     return <ProblemSolveContext.Provider value={value}>{children}</ProblemSolveContext.Provider>

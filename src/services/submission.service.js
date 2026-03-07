@@ -5,6 +5,7 @@ import { Problem } from '@/models/Problem.models'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
 import { Contest } from '@/models/Contest.models'
 import { getSubmissionQueue } from '@/lib/queue'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Create a new submission
@@ -107,6 +108,21 @@ export async function createSubmission(data) {
             await queue.add('process-submission', {
                 submissionId: submission[0]._id,
             })
+
+            // 8️⃣ Publish event for real-time updates
+            if (redisClient.isOpen) {
+                redisClient
+                    .publish(
+                        'submission_updates',
+                        JSON.stringify({
+                            type: 'submission_queued',
+                            userId,
+                            submissionId: submission[0]._id,
+                            problemId,
+                        })
+                    )
+                    .catch(console.error)
+            }
         } catch (queueError) {
             console.error('Failed to add submission to queue:', queueError)
             // Note: We don't throw here because the DB record is already saved.
