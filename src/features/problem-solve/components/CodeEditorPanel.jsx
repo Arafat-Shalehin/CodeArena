@@ -13,6 +13,8 @@ import {
     Plus,
     X,
     FileCode2,
+    Check,
+    AlignLeft,
 } from 'lucide-react'
 
 import { useProblemSolve, LANG_LABELS } from '@/context/ProblemSolveContext'
@@ -35,10 +37,26 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
     const [showAddFile, setShowAddFile] = useState(false)
     const [newFileName, setNewFileName] = useState('')
 
+    const editorRef = React.useRef(null)
+    const [copied, setCopied] = useState(false)
+
     const handleEditorMount = (editor) => {
+        editorRef.current = editor
         editor.onDidChangeCursorPosition((e) => {
             setCursor({ ln: e.position.lineNumber, col: e.position.column })
         })
+    }
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+    }
+
+    const handleFormat = () => {
+        if (editorRef.current) {
+            editorRef.current.getAction('editor.action.formatDocument').run()
+        }
     }
 
     const LANG_EXTENSIONS = { python: '.py', cpp: '.cpp', java: '.java', javascript: '.js' }
@@ -55,98 +73,121 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
     return (
         <>
             {/* Header */}
-            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] px-3">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-300">{'</>'} Code</span>
+            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-3">
+                <div className="flex items-center gap-3">
+                    <span className="text-text-primary flex items-center gap-1.5 text-xs font-bold">
+                        <FileCode2 size={14} className="text-accent" />
+                        Code Editor
+                    </span>
+                    <div className="bg-border mx-1 h-4 w-px" />
                     <div className="relative">
                         <button
                             onClick={() => setShowLangDropdown(!showLangDropdown)}
-                            className="flex items-center gap-1 rounded-md bg-[#3a3a3a] px-2.5 py-1 text-xs font-medium text-gray-300 hover:bg-[#444]"
+                            className="bg-bg-muted hover:bg-bg-muted/80 text-text-primary flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold transition-all"
                         >
                             {LANG_LABELS[language]}
-                            <ChevronDown size={12} />
+                            <ChevronDown
+                                size={14}
+                                className={`transition-transform ${showLangDropdown ? 'rotate-180' : ''}`}
+                            />
                         </button>
                         {showLangDropdown && (
-                            <div className="absolute top-full left-0 z-50 mt-1 w-40 rounded-md border border-[#444] bg-[#2a2a2a] py-1 shadow-xl">
-                                {Object.entries(LANG_LABELS).map(([key, label]) => (
-                                    <button
-                                        key={key}
-                                        onClick={() => {
-                                            setLanguage(key)
-                                            setShowLangDropdown(false)
-                                        }}
-                                        className={`w-full px-3 py-1.5 text-left text-xs hover:bg-[#3a3a3a] ${
-                                            language === key
-                                                ? 'bg-[#3a3a3a] text-white'
-                                                : 'text-gray-400'
-                                        }`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                            <div className="border-border bg-bg-subtle animate-fade-up absolute top-full left-0 z-50 mt-1 w-44 rounded-xl border shadow-2xl">
+                                <div className="p-1">
+                                    {Object.entries(LANG_LABELS).map(([key, label]) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => {
+                                                setLanguage(key)
+                                                setShowLangDropdown(false)
+                                            }}
+                                            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
+                                                language === key
+                                                    ? 'bg-accent/10 text-accent font-bold'
+                                                    : 'text-text-secondary hover:bg-bg-muted/50 hover:text-text-primary'
+                                            }`}
+                                        >
+                                            {label}
+                                            {language === key && <Check size={12} />}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
-                    <span className="text-[10px] text-gray-600">| Auto</span>
                 </div>
-                <div className="flex items-center gap-1 text-gray-500">
+                <div className="flex items-center gap-1.5">
+                    <button
+                        onClick={handleFormat}
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                        title="Format Code"
+                    >
+                        <AlignLeft size={16} />
+                    </button>
                     <button
                         onClick={resetCode}
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                         title="Reset"
                     >
-                        <RotateCcw size={14} />
+                        <RotateCcw size={16} />
                     </button>
                     <button
-                        onClick={() => navigator.clipboard.writeText(code)}
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
-                        title="Copy"
+                        onClick={handleCopy}
+                        className={`rounded-lg p-1.5 transition-all ${copied ? 'text-success bg-success/10' : 'text-text-muted hover:bg-bg-muted hover:text-text-primary'}`}
+                        title="Copy Code"
                     >
-                        <Copy size={14} />
+                        {copied ? <Check size={16} /> : <Copy size={16} />}
                     </button>
+                    <div className="bg-border mx-1 h-4 w-px" />
                     <button
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                         title="Settings"
                     >
-                        <Settings2 size={14} />
+                        <Settings2 size={16} />
                     </button>
                     <button
                         onClick={onMaximize}
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                         title={isMaximized ? 'Restore' : 'Fullscreen'}
                     >
-                        {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                     {onCollapse && (
                         <button
                             onClick={onCollapse}
-                            className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                            className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                             title="Collapse"
                         >
-                            <ChevronUp size={14} />
+                            <ChevronUp size={16} />
                         </button>
                     )}
                 </div>
             </div>
 
             {/* File Tabs Bar */}
-            <div className="flex h-[32px] flex-shrink-0 items-center gap-0 overflow-x-auto border-b border-[#333] bg-[#252525] px-1">
+            <div className="bg-bg-page border-border no-scrollbar flex h-[34px] flex-shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
                 {files.map((file, idx) => (
                     <button
                         key={idx}
                         onClick={() => switchToFile(idx)}
-                        className={`group flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                        className={`group relative flex items-center gap-2 rounded-t-lg px-4 py-1.5 text-[11px] font-bold transition-all ${
                             activeFileIndex === idx
-                                ? 'border-b-2 border-emerald-500 bg-[#1e1e1e] text-white'
-                                : 'text-gray-500 hover:bg-[#2e2e2e] hover:text-gray-300'
+                                ? 'bg-bg-subtle text-accent'
+                                : 'text-text-muted hover:bg-bg-muted/30 hover:text-text-secondary'
                         }`}
                     >
-                        <FileCode2 size={12} className="flex-shrink-0 text-gray-500" />
+                        <FileCode2
+                            size={12}
+                            className={activeFileIndex === idx ? 'text-accent' : 'opacity-60'}
+                        />
                         <span className="max-w-[120px] truncate">{file.filename}</span>
                         {file.isMain && (
-                            <span className="rounded bg-emerald-600/20 px-1 py-0.5 text-[8px] font-bold text-emerald-400">
-                                MAIN
+                            <span className="bg-accent/15 text-accent rounded px-1.5 py-0.5 text-[9px] font-black tracking-wider uppercase">
+                                Main
                             </span>
+                        )}
+                        {activeFileIndex === idx && (
+                            <div className="bg-accent absolute bottom-0 left-0 h-[2px] w-full" />
                         )}
                         {!file.isMain && (
                             <span
@@ -154,7 +195,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                                     e.stopPropagation()
                                     removeFile(idx)
                                 }}
-                                className="ml-0.5 hidden rounded p-0.5 group-hover:inline-flex hover:bg-[#555]"
+                                className="hover:bg-bg-muted/80 ml-1 hidden rounded-full p-0.5 group-hover:inline-flex"
                                 title="Remove file"
                             >
                                 <X size={10} />
@@ -234,11 +275,21 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
             </div>
 
             {/* Footer */}
-            <div className="flex h-[24px] flex-shrink-0 items-center justify-between border-t border-[#333] px-3 text-[10px] text-gray-600">
-                <span>{files.length > 1 ? `${files.length} files` : 'Saved'}</span>
-                <span>
-                    Ln {cursor.ln}, Col {cursor.col}
-                </span>
+            <div className="border-border bg-bg-subtle text-text-muted flex h-[28px] flex-shrink-0 items-center justify-between border-t px-4 text-[11px] font-medium">
+                <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5">
+                        <div className="bg-success h-1.5 w-1.5 rounded-full" />
+                        {files.length} {files.length > 1 ? 'files' : 'file'} synced
+                    </span>
+                    <div className="bg-border h-3 w-px" />
+                    <span className="text-[10px] uppercase">{language}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                    <span className="font-mono">
+                        Line <span className="text-text-primary px-0.5">{cursor.ln}</span>, Col{' '}
+                        <span className="text-text-primary px-0.5">{cursor.col}</span>
+                    </span>
+                </div>
             </div>
         </>
     )

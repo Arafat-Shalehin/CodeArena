@@ -30,16 +30,18 @@ import { useProblemSolve } from '@/context/ProblemSolveContext'
 
 function QualityBar({ label, value, maxValue = 5, color }) {
     return (
-        <div className="flex items-center gap-3">
-            <span className="w-[72px] text-[11px] text-gray-500">{label}</span>
-            <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#1a1a1a]">
+        <div className="flex items-center gap-4">
+            <span className="text-text-muted w-[80px] text-[11px] font-semibold tracking-wider uppercase">
+                {label}
+            </span>
+            <div className="bg-bg-page h-[6px] flex-1 overflow-hidden rounded-full shadow-inner">
                 <div
-                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
                     style={{ width: `${(value / maxValue) * 100}%`, background: color }}
                 />
             </div>
-            <span className="w-7 text-right font-mono text-[11px] text-gray-400">
-                {value}/{maxValue}
+            <span className="text-text-secondary w-8 text-right font-mono text-xs font-bold">
+                {value}
             </span>
         </div>
     )
@@ -55,7 +57,7 @@ function TestCaseTab() {
     return (
         <div className="p-5">
             {problem.sampleTestCases?.length > 0 && (
-                <div className="mb-4 flex items-center gap-2">
+                <div className="mb-6 flex flex-wrap items-center gap-2">
                     {problem.sampleTestCases.map((_, i) => (
                         <button
                             key={i}
@@ -63,31 +65,38 @@ function TestCaseTab() {
                                 setActiveTestCase(i)
                                 setTestInput(problem.sampleTestCases[i].input || '')
                             }}
-                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                                 activeTestCase === i
-                                    ? 'bg-[#3a3a3a] text-white'
-                                    : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                    ? 'bg-bg-muted text-text-primary shadow-sm'
+                                    : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                             }`}
                         >
-                            <CheckCircle2 size={12} className="text-[#2cbb5d]" /> Case {i + 1}
+                            <div
+                                className={`h-1.5 w-1.5 rounded-full ${activeTestCase === i ? 'bg-success' : 'bg-text-muted opacity-40'}`}
+                            />
+                            Case {i + 1}
                         </button>
                     ))}
                 </div>
             )}
-            <div className="mb-4">
-                <div className="mb-2 text-xs font-medium text-gray-500">Input</div>
+            <div className="mb-6">
+                <div className="text-text-muted mb-2 text-[11px] font-bold tracking-wider uppercase">
+                    Input
+                </div>
                 <textarea
                     value={testInput}
                     onChange={(e) => setTestInput(e.target.value)}
-                    className="w-full resize-none rounded-lg border-none bg-[#262626] p-4 font-mono text-sm text-white outline-none focus:ring-1 focus:ring-[#444]"
+                    className="bg-bg-muted text-text-primary border-border focus:border-accent/40 focus:ring-accent/20 w-full resize-none rounded-xl border p-4 font-mono text-[13px] transition-all outline-none focus:ring-1"
                     rows={4}
                     spellCheck="false"
                 />
             </div>
             {problem.sampleTestCases?.[activeTestCase]?.output && (
                 <div>
-                    <div className="mb-2 text-xs font-medium text-gray-500">Expected Output</div>
-                    <div className="rounded-lg bg-[#262626] p-4 font-mono text-sm text-white">
+                    <div className="text-text-muted mb-2 text-[11px] font-bold tracking-wider uppercase">
+                        Expected Output
+                    </div>
+                    <div className="bg-bg-muted text-text-primary border-border w-full rounded-xl border border-dashed p-4 font-mono text-[13px]">
                         {problem.sampleTestCases[activeTestCase].output}
                     </div>
                 </div>
@@ -104,6 +113,8 @@ function TestCaseTab() {
 function TestResultTab() {
     const { testResult: result, problem } = useProblemSolve()
     const [viewingCase, setViewingCase] = useState(0)
+
+    console.log(result)
 
     if (!result) {
         return (
@@ -134,7 +145,7 @@ function TestResultTab() {
     }
 
     const isAccepted = result.verdict === 'ACCEPTED'
-    const verdictColor = isAccepted ? 'text-[#2cbb5d]' : 'text-[#ef4444]'
+    const verdictColor = isAccepted ? 'text-success' : 'text-error'
     const caseResults = result.results || []
     const testCases = problem?.sampleTestCases || []
     const currentCaseResult = caseResults[viewingCase]
@@ -145,20 +156,29 @@ function TestResultTab() {
             {/* Verdict Header */}
             <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-baseline gap-3">
-                    <span className={`text-xl font-bold ${verdictColor}`}>
+                    <span className={`text-2xl font-black ${verdictColor}`}>
                         {result.verdict?.replace(/_/g, ' ')}
                     </span>
                     {result.time !== undefined && (
-                        <span className="text-sm text-gray-500">
-                            Runtime: <span className="text-gray-300">{result.time} ms</span>
+                        <span className="text-text-muted text-[13px]">
+                            Runtime:{' '}
+                            <span className="text-text-primary font-bold">{result.time} ms</span>
+                        </span>
+                    )}
+                    {result.memory !== undefined && (
+                        <span className="text-text-muted text-[13px]">
+                            Memory:{' '}
+                            <span className="text-text-primary font-bold">
+                                {(result.memory / 1024).toFixed(2)} MB
+                            </span>
                         </span>
                     )}
                 </div>
                 <button
-                    className="rounded p-1 text-gray-500 hover:bg-[#3a3a3a] hover:text-white"
+                    className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-2 transition-colors"
                     title="View Details"
                 >
-                    <Eye size={16} />
+                    <Eye size={18} />
                 </button>
             </div>
             {result.passedCount !== undefined && (
@@ -169,24 +189,24 @@ function TestResultTab() {
 
             {/* Case Badges */}
             {(caseResults.length > 0 || testCases.length > 0) && (
-                <div className="mb-5 flex flex-wrap items-center gap-3">
+                <div className="mb-6 flex flex-wrap items-center gap-2">
                     {(caseResults.length > 0 ? caseResults : testCases).map((_, i) => {
                         const passed = caseResults[i]?.passed
                         return (
                             <button
                                 key={i}
                                 onClick={() => setViewingCase(i)}
-                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                                     viewingCase === i
-                                        ? 'bg-[#3a3a3a] text-white'
-                                        : 'text-gray-500 hover:text-gray-300'
+                                        ? 'bg-bg-muted text-text-primary shadow-sm'
+                                        : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                                 }`}
                             >
                                 {passed !== undefined &&
                                     (passed ? (
-                                        <CheckCircle2 size={12} className="text-[#2cbb5d]" />
+                                        <div className="bg-success h-1.5 w-1.5 rounded-full" />
                                     ) : (
-                                        <XCircle size={12} className="text-[#ef4444]" />
+                                        <div className="bg-error h-1.5 w-1.5 rounded-full" />
                                     ))}
                                 Case {i + 1}
                             </button>
@@ -240,11 +260,11 @@ function TestResultTab() {
 function DataBlock({ label, value }) {
     return (
         <div>
-            <div className="mb-2 text-xs font-medium text-gray-500">{label}</div>
-            <div className="rounded-lg bg-[#262626] p-4">
-                <pre className="font-mono text-sm font-bold whitespace-pre-wrap text-white">
-                    {value}
-                </pre>
+            <div className="text-text-muted mb-2 text-[11px] font-bold tracking-wider uppercase">
+                {label}
+            </div>
+            <div className="bg-bg-muted text-text-primary border-border overflow-hidden rounded-xl border p-4 font-mono text-[13px]">
+                <pre className="whitespace-pre-wrap">{value}</pre>
             </div>
         </div>
     )
@@ -319,7 +339,8 @@ function AiFeedbackTab() {
     }
 
     const rating = feedback.rating || 0
-    const ratingColor = rating >= 8 ? '#2cbb5d' : rating >= 5 ? '#ffc01e' : '#ef4444'
+    const ratingColor =
+        rating >= 8 ? 'var(--success)' : rating >= 5 ? 'var(--warning)' : 'var(--error)'
     const cq = feedback.code_quality || {}
 
     return (
@@ -541,27 +562,27 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
     return (
         <>
             {/* Header */}
-            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] px-4">
-                <div className="flex items-center gap-1">
+            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-2">
+                <div className="flex items-center gap-0.5">
                     <button
                         onClick={() => setConsoleTab('testcase')}
-                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        className={`hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
                             consoleTab === 'testcase'
-                                ? 'bg-[#3a3a3a] text-white'
-                                : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                ? 'bg-bg-muted text-text-primary shadow-sm'
+                                : 'text-text-muted hover:bg-bg-muted/50'
                         }`}
                     >
-                        <CheckCircle2 size={13} className="text-[#2cbb5d]" /> Testcase
+                        <CheckCircle2 size={14} className="text-success" /> Testcase
                     </button>
                     <button
                         onClick={() => setConsoleTab('result')}
-                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        className={`hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
                             consoleTab === 'result'
-                                ? 'bg-[#3a3a3a] text-white'
-                                : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                ? 'bg-bg-muted text-text-primary shadow-sm'
+                                : 'text-text-muted hover:bg-bg-muted/50'
                         }`}
                     >
-                        <Terminal size={13} /> Test Result
+                        <Terminal size={14} className="text-accent" /> Test Result
                     </button>
                     {testResult?.status === 'done' && (
                         <button
@@ -569,30 +590,30 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
                                 setConsoleTab('ai')
                                 fetchAiFeedback()
                             }}
-                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                            className={`hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
                                 consoleTab === 'ai'
-                                    ? 'bg-purple-500/15 text-purple-400'
-                                    : 'text-gray-500 hover:bg-[#333] hover:text-purple-300'
+                                    ? 'bg-accent/10 text-accent font-bold'
+                                    : 'text-text-muted hover:bg-bg-muted/50'
                             }`}
                         >
-                            <Sparkles size={13} /> AI Analysis
+                            <Sparkles size={14} className="animate-pulse" /> AI Analysis
                         </button>
                     )}
                 </div>
-                <div className="flex items-center gap-1 text-gray-500">
+                <div className="flex items-center gap-1 px-2">
                     <button
                         onClick={onMaximize}
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                         title={isMaximized ? 'Restore' : 'Maximize'}
                     >
-                        {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                     <button
                         onClick={onCollapse}
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                         title="Collapse"
                     >
-                        <ChevronDown size={14} />
+                        <ChevronDown size={16} />
                     </button>
                 </div>
             </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { formatAcceptanceRate } from '@/lib/utils'
 
 const TAG_BASE = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium'
 
@@ -66,7 +67,7 @@ export default function ProblemCard({ problem, highlightTags = [], badge }) {
             </div>
 
             <div className="text-text-muted mt-4 flex items-center justify-between text-xs">
-                <span>{problem.acceptanceRate || 0}% Acceptance</span>
+                <span>{formatAcceptanceRate(problem.acceptanceRate)} Acceptance</span>
             </div>
         </Link>
     )

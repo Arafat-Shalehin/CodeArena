@@ -109,7 +109,7 @@ export async function POST(request) {
                     status: 'completed',
                     verdict: result.verdict.toLowerCase(),
                     executionTime: result.stats?.executionTime || 0,
-                    memoryUsed: result.stats?.memoryUsed || 0,
+                    memoryUsed: result.stats?.maxMemoryUsed || 0,
                     testCaseResults: (result.publicTests?.results || []).map((r) => ({
                         passed: r.passed,
                         verdict: r.verdict,
