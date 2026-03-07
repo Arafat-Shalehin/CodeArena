@@ -33,7 +33,10 @@ export default function RootLayout({ children }) {
             lang="en"
             className={`${inter.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}
         >
-            <body className="bg-bg-page site-gradient text-text-primary font-sans antialiased">
+            <body
+                suppressHydrationWarning={true}
+                className="bg-bg-page site-gradient text-text-primary font-sans antialiased"
+            >
                 <AuthProvider>{children}</AuthProvider>
                 <Toaster position="top-center" />
             </body>

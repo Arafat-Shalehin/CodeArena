@@ -75,7 +75,7 @@ export default function CreateProblemPage() {
                 <option value="hard">Hard</option>
             </select>
 
-            <button className="rounded bg-black px-6 py-2 text-white">Create Problem</button>
+            <button className="rounded bg-[#00bc7d] px-6 py-2 text-white">Create Problem</button>
         </form>
     )
 }
