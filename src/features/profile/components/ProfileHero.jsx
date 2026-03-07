@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Settings, MapPin, Link as LinkIcon, Github, Linkedin, Twitter } from 'lucide-react'
 import Link from 'next/link'
 import EditProfileModal from './EditProfileModal'
+import FollowersListModal from './FollowersListModal'
 
 /**
  * @component ProfileHero
@@ -50,13 +51,23 @@ export default function ProfileHero({ user: userProp }) {
     const initialFollowersCount = displayUser?.followers?.length || 0
     const initialFollowingCount = displayUser?.following?.length || 0
     const currentUserId = authUser?._id || authUser?.id
-    const initialIsFollowing =
-        currentUserId &&
-        Array.isArray(displayUser?.followers) &&
-        displayUser.followers.some((fId) => fId.toString() === currentUserId.toString())
+
+    const checkIsFollowing = (user) => {
+        if (!currentUserId || !Array.isArray(user?.followers)) return false
+        return user.followers.some((fId) => fId.toString() === currentUserId.toString())
+    }
 
     const [followersCount, setFollowersCount] = useState(initialFollowersCount)
-    const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
+    const [isFollowing, setIsFollowing] = useState(checkIsFollowing(displayUser))
+    const [friendsModalType, setFriendsModalType] = useState(null) // 'followers' | 'following' | null
+
+    // Sync state if displayUser changes from network fetch
+    import('react').then((React) => {
+        React.useEffect(() => {
+            setFollowersCount(displayUser?.followers?.length || 0)
+            setIsFollowing(checkIsFollowing(displayUser))
+        }, [displayUser, currentUserId])
+    })
 
     const handleFollowToggle = async () => {
         if (!authUser) {
@@ -64,7 +75,15 @@ export default function ProfileHero({ user: userProp }) {
             return
         }
 
+        // Optimistic UI Update
+        const previousIsFollowing = isFollowing
+        const previousCount = followersCount
+        const newIsFollowing = !isFollowing
+
+        setIsFollowing(newIsFollowing)
+        setFollowersCount(newIsFollowing ? previousCount + 1 : Math.max(0, previousCount - 1))
         setIsFollowLoading(true)
+
         try {
             const res = await fetch(`/api/users/${displayUser._id}/follow`, {
                 method: 'POST',
@@ -72,16 +91,21 @@ export default function ProfileHero({ user: userProp }) {
             const data = await res.json()
 
             if (res.ok && data.success) {
-                const nowFollowing = data.data.following
-                setIsFollowing(nowFollowing)
-                setFollowersCount((prev) => (nowFollowing ? prev + 1 : Math.max(0, prev - 1)))
-                toast.success(nowFollowing ? `Following ${name}` : `Unfollowed ${name}`)
+                // Read truth from server to ensure sync
+                if (data.data?.followersCount !== undefined) {
+                    setFollowersCount(data.data.followersCount)
+                }
+                setIsFollowing(data.data.following)
+                toast.success(data.data.following ? `Following ${name}` : `Unfollowed ${name}`)
             } else {
-                toast.error(data.message || 'Failed to toggle follow.')
+                throw new Error(data.message || 'Failed to toggle follow.')
             }
         } catch (error) {
             console.error('Follow toggle error:', error)
-            toast.error('An unexpected error occurred.')
+            toast.error(error.message || 'An unexpected error occurred.')
+            // Revert optimistic update
+            setIsFollowing(previousIsFollowing)
+            setFollowersCount(previousCount)
         } finally {
             setIsFollowLoading(false)
         }
@@ -134,15 +158,25 @@ export default function ProfileHero({ user: userProp }) {
                             </div>
 
                             <div className="mt-1 mb-2 flex items-center justify-center gap-4 text-sm md:justify-start">
-                                <span className="text-text-primary font-semibold">
-                                    {followersCount}{' '}
+                                <button
+                                    onClick={() => setFriendsModalType('followers')}
+                                    className="hover:text-accent flex items-center gap-1 transition-colors"
+                                >
+                                    <span className="text-text-primary font-semibold">
+                                        {followersCount}
+                                    </span>
                                     <span className="text-text-muted font-normal">Followers</span>
-                                </span>
+                                </button>
                                 <span className="text-text-muted">•</span>
-                                <span className="text-text-primary font-semibold">
-                                    {initialFollowingCount}{' '}
+                                <button
+                                    onClick={() => setFriendsModalType('following')}
+                                    className="hover:text-accent flex items-center gap-1 transition-colors"
+                                >
+                                    <span className="text-text-primary font-semibold">
+                                        {initialFollowingCount}
+                                    </span>
                                     <span className="text-text-muted font-normal">Following</span>
-                                </span>
+                                </button>
                             </div>
 
                             {bio && (
@@ -179,6 +213,15 @@ export default function ProfileHero({ user: userProp }) {
 
                         {/* Edit Profile Modal logic */}
                         {modalOpen && <EditProfileModal onClose={() => setModalOpen(false)} />}
+
+                        {/* Followers/Following Modal */}
+                        {friendsModalType && (
+                            <FollowersListModal
+                                type={friendsModalType}
+                                userId={displayUser._id}
+                                onClose={() => setFriendsModalType(null)}
+                            />
+                        )}
                     </div>
                 </div>
 

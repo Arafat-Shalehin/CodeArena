@@ -206,17 +206,41 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
 
     if (isFollowing) {
         // Unfollow
-        await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } }),
-            User.findByIdAndUpdate(targetUserId, { $pull: { followers: currentUserId } }),
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findByIdAndUpdate(
+                currentUserId,
+                { $pull: { following: targetUserId } },
+                { new: true }
+            ),
+            User.findByIdAndUpdate(
+                targetUserId,
+                { $pull: { followers: currentUserId } },
+                { new: true }
+            ),
         ])
-        return { following: false }
+        return {
+            following: false,
+            followersCount: updatedTargetUser.followers.length,
+            followingCount: updatedTargetUser.following.length, // Returns target user's stats
+        }
     } else {
         // Follow
-        await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $addToSet: { following: targetUserId } }),
-            User.findByIdAndUpdate(targetUserId, { $addToSet: { followers: currentUserId } }),
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findByIdAndUpdate(
+                currentUserId,
+                { $addToSet: { following: targetUserId } },
+                { new: true }
+            ),
+            User.findByIdAndUpdate(
+                targetUserId,
+                { $addToSet: { followers: currentUserId } },
+                { new: true }
+            ),
         ])
-        return { following: true }
+        return {
+            following: true,
+            followersCount: updatedTargetUser.followers.length,
+            followingCount: updatedTargetUser.following.length,
+        }
     }
 }
