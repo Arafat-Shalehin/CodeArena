@@ -66,6 +66,7 @@ export default function LeaderboardPage() {
                 params.set('league', league)
                 params.set('timeframe', timeframe)
                 if (search) params.set('search', search)
+                if (user?._id || user?.id) params.set('currentUserId', user._id || user.id)
 
                 const res = await fetch(`/api/leaderboard?${params.toString()}`, { signal })
                 const json = await res.json()
@@ -187,6 +188,8 @@ export default function LeaderboardPage() {
 
                 <FilterBar
                     searchQuery={searchQuery}
+                    league={league}
+                    timeframe={timeframe}
                     onSearchChange={handleSearch}
                     onFilterChange={handleFilterChange}
                 />
