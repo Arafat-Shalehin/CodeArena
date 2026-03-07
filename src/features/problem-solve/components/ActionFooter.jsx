@@ -46,45 +46,12 @@ export default function ActionFooter() {
                 return
             }
 
-            const submissionId = responseData.data._id
-
-            // Poll for results
-            pollResult(submissionId)
+            toast.info('Submission queued. Waiting for evaluation...')
+            // Socket listener in ProblemSolveContext will handle the real-time updates and success/error toasts.
         } catch (error) {
             toast.error('An error occurred during submission')
             setIsSubmitting(false)
         }
-    }
-
-    const pollResult = async (id) => {
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`/api/submissions/${id}`)
-                const data = await res.json()
-
-                if (data.success && data.data.status === 'completed') {
-                    clearInterval(interval)
-                    setSubmissionResult(data.data)
-                    setTestCaseResults(data.data.testCaseResults || [])
-                    setIsSubmitting(false)
-
-                    if (data.data.verdict === 'accepted') {
-                        toast.success('Accepted!')
-                    } else {
-                        toast.error(data.data.verdict.replace('_', ' ').toUpperCase())
-                    }
-                } else if (data.success && data.data.status === 'error') {
-                    clearInterval(interval)
-                    setSubmissionResult(data.data)
-                    setIsSubmitting(false)
-                    // Show a more descriptive error if available
-                    const errorMessage = data.data.error || 'System Error'
-                    toast.error(errorMessage)
-                }
-            } catch (err) {
-                console.error('Polling error:', err)
-            }
-        }, 2000)
     }
 
     return (

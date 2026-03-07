@@ -1,51 +1,10 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
-import { Server } from 'socket.io'
+import { initSocketServer } from '@/lib/socket-server'
 
-/**
- * Socket.IO Singleton & Change Stream Initialization
- * Since Next.js App Router route handlers are isolated, we use a global singleton
- * to host a standalone Socket.IO server on a separate port for real-time updates.
- */
-let io
 if (process.env.NODE_ENV !== 'production') {
-    if (!global._io) {
-        // Start Socket.IO server on a separate port (3002) for real-time live rankings
-        // This keeps the logic contained within the leaderboard feature context.
-        const port = 3002
-        global._io = new Server(port, {
-            cors: {
-                origin: '*', // Adjust for production
-                methods: ['GET', 'POST'],
-            },
-        })
-        console.log(`[Socket.IO] Real-time leaderboard server started on port ${port}`)
-
-        // Initialize MongoDB Change Stream to watch for Score updates
-        dbConnect().then(() => {
-            const userChangeStream = User.watch([], { fullDocument: 'updateLookup' })
-
-            userChangeStream.on('change', (change) => {
-                if (change.operationType === 'update' || change.operationType === 'replace') {
-                    const statsChanged =
-                        change.updateDescription?.updatedFields?.stats ||
-                        change.updateDescription?.updatedFields?.['stats.score']
-
-                    if (statsChanged) {
-                        // Broadcast update to all connected clients
-                        global._io.emit('rank_update', {
-                            type: 'score_changed',
-                            userId: change.documentKey._id,
-                            timestamp: new Date(),
-                        })
-                    }
-                }
-            })
-            console.log('[Socket.IO] MongoDB Change Stream active on User collection')
-        })
-    }
-    io = global._io
+    initSocketServer().catch(console.error)
 }
 
 /**

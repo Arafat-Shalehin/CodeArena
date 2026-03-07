@@ -6,6 +6,7 @@ import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
 import { executeCode } from '@/lib/docker/executor'
 import { logger } from '@/lib/logger'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Worker to process code submissions
@@ -25,6 +26,19 @@ export function initSubmissionWorker() {
 
                 // Update status to 'running'
                 await Submission.findByIdAndUpdate(submissionId, { status: 'running' })
+                if (redisClient.isOpen) {
+                    redisClient
+                        .publish(
+                            'submission_updates',
+                            JSON.stringify({
+                                type: 'submission_running',
+                                userId: submission.userId,
+                                submissionId,
+                                problemId: submission.problemId,
+                            })
+                        )
+                        .catch(console.error)
+                }
 
                 // 2. Fetch problem details for limits
                 const problem = await Problem.findById(submission.problemId)
@@ -143,14 +157,36 @@ export function initSubmissionWorker() {
                 }
 
                 // 4. Update submission with results
-                await Submission.findByIdAndUpdate(submissionId, {
-                    status: 'completed',
-                    verdict: finalVerdict,
-                    executionTime: maxTime,
-                    memoryUsed: maxMemory,
-                    error: firstError, // You might want to add this to the Submission model
-                    testCaseResults: testCaseResults,
-                })
+                const updatedSubmission = await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: 'completed',
+                        verdict: finalVerdict,
+                        executionTime: maxTime,
+                        memoryUsed: maxMemory,
+                        error: firstError, // You might want to add this to the Submission model
+                        testCaseResults: testCaseResults,
+                    },
+                    { new: true }
+                )
+
+                if (redisClient.isOpen && updatedSubmission) {
+                    redisClient
+                        .publish(
+                            'submission_updates',
+                            JSON.stringify({
+                                type: 'submission_evaluated',
+                                userId: submission.userId,
+                                submissionId,
+                                problemId: submission.problemId,
+                                status: 'completed',
+                                verdict: finalVerdict,
+                                executionTime: maxTime,
+                                memoryUsed: maxMemory,
+                            })
+                        )
+                        .catch(console.error)
+                }
 
                 // 5. Update Problem stats if result is a valid attempt (not a judge error)
                 if (finalVerdict !== 'system_error' && finalVerdict !== 'error') {
@@ -227,11 +263,32 @@ export function initSubmissionWorker() {
                 // Capture the exact error message to help debugging
                 const errorMessage = error.message || 'Unknown system error'
 
-                await Submission.findByIdAndUpdate(submissionId, {
-                    status: 'error',
-                    verdict: 'system_error',
-                    error: `Judge Error: ${errorMessage} `,
-                })
+                const erSubmission = await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: 'error',
+                        verdict: 'system_error',
+                        error: `Judge Error: ${errorMessage} `,
+                    },
+                    { new: true }
+                )
+
+                if (redisClient.isOpen && erSubmission) {
+                    redisClient
+                        .publish(
+                            'submission_updates',
+                            JSON.stringify({
+                                type: 'submission_evaluated',
+                                userId: erSubmission.userId,
+                                submissionId,
+                                problemId: erSubmission.problemId,
+                                status: 'error',
+                                verdict: 'system_error',
+                                error: `Judge Error: ${errorMessage} `,
+                            })
+                        )
+                        .catch(console.error)
+                }
                 throw error
             }
         },

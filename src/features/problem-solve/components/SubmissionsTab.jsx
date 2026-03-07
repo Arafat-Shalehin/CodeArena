@@ -6,7 +6,7 @@ import { Clock, CheckCircle2, XCircle, Info } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export default function SubmissionsTab() {
-    const { problemId, viewSubmissionDetails } = useProblemSolve()
+    const { problemId, viewSubmissionDetails, latestSubmissionEvent, language } = useProblemSolve()
     const [submissions, setSubmissions] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -23,6 +23,46 @@ export default function SubmissionsTab() {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        if (!latestSubmissionEvent || latestSubmissionEvent.problemId !== problemId) return
+
+        const event = latestSubmissionEvent
+
+        if (event.type === 'submission_queued') {
+            setSubmissions((prev) => {
+                if (prev.some((s) => s._id === event.submissionId)) return prev
+                const newSub = {
+                    _id: event.submissionId,
+                    status: 'queued',
+                    verdict: 'pending',
+                    language: language || 'code',
+                    createdAt: new Date().toISOString(),
+                    executionTime: 0,
+                    memoryUsed: 0,
+                }
+                return [newSub, ...prev]
+            })
+        } else if (event.type === 'submission_running') {
+            setSubmissions((prev) =>
+                prev.map((s) => (s._id === event.submissionId ? { ...s, status: 'running' } : s))
+            )
+        } else if (event.type === 'submission_evaluated') {
+            setSubmissions((prev) =>
+                prev.map((s) =>
+                    s._id === event.submissionId
+                        ? {
+                              ...s,
+                              status: event.status,
+                              verdict: event.verdict,
+                              executionTime: event.executionTime,
+                              memoryUsed: event.memoryUsed,
+                          }
+                        : s
+                )
+            )
+        }
+    }, [latestSubmissionEvent, problemId, language])
 
     useEffect(() => {
         fetchSubmissions()
