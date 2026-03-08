@@ -1,4 +1,3 @@
-// app/admin/dashboard/page.jsx
 'use client'
 
 import { motion } from 'framer-motion'
@@ -10,9 +9,7 @@ const containerVariant = {
     hidden: { opacity: 0 },
     show: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-        },
+        transition: { staggerChildren: 0.1 },
     },
 }
 
@@ -24,16 +21,16 @@ const cardVariant = {
 const StatCard = ({ title, value, icon: Icon }) => (
     <motion.div variants={cardVariant}>
         <Card className="rounded-2xl shadow-sm transition-all hover:shadow-md">
-            <CardContent className="flex items-center justify-between p-6">
-                <div>
-                    <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+            <CardContent className="flex items-center justify-between p-4 md:p-6">
+                <div className="min-w-0">
+                    <p className="text-muted-foreground truncate text-[10px] font-medium tracking-wide uppercase md:text-sm">
                         {title}
                     </p>
-                    <h3 className="mt-2 text-3xl font-bold">{value}</h3>
+                    <h3 className="mt-1 text-xl font-bold md:text-3xl">{value}</h3>
                 </div>
 
-                <div className="rounded-xl bg-emerald-500 p-3">
-                    <Icon className="h-6 w-6 text-white" />
+                <div className="shrink-0 rounded-xl bg-emerald-500 p-2 md:p-3">
+                    <Icon className="h-5 w-5 text-white md:h-6 md:w-6" />
                 </div>
             </CardContent>
         </Card>
@@ -42,16 +39,18 @@ const StatCard = ({ title, value, icon: Icon }) => (
 
 export default function AdminDashboard() {
     return (
-        <div className="space-y-10">
+        <div className="space-y-6 md:space-y-10">
             {/* Heading */}
             <div>
-                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-                <p className="text-muted-foreground mt-1">Platform overview and quick actions</p>
+                <h1 className="text-2xl font-bold md:text-3xl">Admin Dashboard</h1>
+                <p className="text-muted-foreground mt-1 text-sm">
+                    Platform overview and quick actions
+                </p>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Grid - Mobile: 1 col, Tablet: 2 col, Desktop: 4 col */}
             <motion.div
-                className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4"
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-4"
                 variants={containerVariant}
                 initial="hidden"
                 animate="show"
@@ -69,16 +68,19 @@ export default function AdminDashboard() {
                 transition={{ delay: 0.2 }}
             >
                 <Card className="rounded-2xl shadow-sm">
-                    <CardContent className="p-6">
-                        <h2 className="mb-6 text-xl font-semibold">Quick Actions</h2>
+                    <CardContent className="p-4 md:p-6">
+                        <h2 className="mb-4 text-lg font-semibold md:mb-6 md:text-xl">
+                            Quick Actions
+                        </h2>
 
-                        <div className="flex flex-wrap gap-4">
-                            <Button className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600">
+                        <div className="flex flex-col gap-3 sm:flex-row md:gap-4">
+                            <Button className="flex w-full items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 sm:w-auto">
                                 <Plus className="h-4 w-4" />
                                 Add New Problem
                             </Button>
-
-                            <Button variant="outline">Create Contest</Button>
+                            <Button variant="outline" className="w-full sm:w-auto">
+                                Create Contest
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
