@@ -66,9 +66,11 @@ export default function LeaderboardPage() {
                 params.set('league', league)
                 params.set('timeframe', timeframe)
                 if (search) params.set('search', search)
+                if (user?._id || user?.id) params.set('currentUserId', user._id || user.id)
 
                 const res = await fetch(`/api/leaderboard?${params.toString()}`, { signal })
                 const json = await res.json()
+                console.log(json)
 
                 if (json.success) {
                     // Transform API User objects to match the expected leaderboard format
@@ -84,9 +86,9 @@ export default function LeaderboardPage() {
                             stats: u.stats,
                         },
                         title:
-                            u.stats?.score > 5000
+                            u.stats?.score > 40
                                 ? 'Supreme Architect'
-                                : u.stats?.score > 1000
+                                : u.stats?.score > 10
                                   ? 'Elite Engineer'
                                   : 'Code Warrior',
                         country: 'Global',
@@ -186,53 +188,46 @@ export default function LeaderboardPage() {
 
                 <FilterBar
                     searchQuery={searchQuery}
+                    league={league}
+                    timeframe={timeframe}
                     onSearchChange={handleSearch}
                     onFilterChange={handleFilterChange}
                 />
 
-                {/* Error State */}
-                {error && (
-                    <div className="bg-error/10 border-error/20 text-error rounded-xl border p-8 text-center">
-                        <p className="text-lg font-bold">Oops! Something went wrong.</p>
-                        <p className="text-sm opacity-80">{error}</p>
-                    </div>
-                )}
-
-                {/* Loading State Skeleton */}
+                {/* Content Area */}
                 {isLoading ? (
                     <div className="space-y-4">
                         {[...Array(10)].map((_, i) => (
                             <Skeleton key={i} className="h-20 w-full rounded-2xl" />
                         ))}
                     </div>
+                ) : error ? (
+                    <div className="bg-error/10 border-error/20 text-error rounded-xl border p-8 text-center">
+                        <p className="text-lg font-bold">Oops! Something went wrong.</p>
+                        <p className="text-sm opacity-80">{error}</p>
+                    </div>
+                ) : users.length > 0 ? (
+                    <>
+                        <RankingTable
+                            data={currentTableData}
+                            currentUser={user?.username || user?.name}
+                        />
+
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={Math.max(1, totalPages)}
+                            onPageChange={setCurrentPage}
+                        />
+                    </>
                 ) : (
-                    !error && (
-                        <>
-                            <RankingTable
-                                data={currentTableData}
-                                currentUser={user?.username || user?.name}
-                            />
-
-                            {currentTableData.length > 0 && (
-                                <Pagination
-                                    currentPage={currentPage}
-                                    totalPages={Math.max(1, totalPages)}
-                                    onPageChange={setCurrentPage}
-                                />
-                            )}
-
-                            {currentTableData.length === 0 && (
-                                <div className="text-text-muted py-20 text-center">
-                                    <p className="text-xl font-medium">
-                                        No results found for your search.
-                                    </p>
-                                    <p className="text-sm">
-                                        Try adjusting your filters or search query.
-                                    </p>
-                                </div>
-                            )}
-                        </>
-                    )
+                    <div className="text-text-muted py-20 text-center">
+                        <p className="text-xl font-medium">No legends found here yet.</p>
+                        <p className="text-sm">
+                            {isFiltering
+                                ? 'Try adjusting your filters or search query.'
+                                : 'The arena is waiting for its first champions.'}
+                        </p>
+                    </div>
                 )}
             </main>
 

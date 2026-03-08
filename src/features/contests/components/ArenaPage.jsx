@@ -25,6 +25,42 @@ export default function ArenaPage({ contestId }) {
     const [activeProblemId, setActiveProblemId] = useState(null)
     const [showLeaderboard, setShowLeaderboard] = useState(true)
 
+    // Show skeleton while loading initial contest data
+    if (isLoading) {
+        return (
+            <div className="bg-bg-page flex h-screen flex-col overflow-hidden">
+                {/* Skeleton header */}
+                <header className="border-border bg-bg-page/90 flex-shrink-0 border-b">
+                    <div className="flex h-14 items-center justify-between gap-4 px-4">
+                        <div className="bg-bg-muted h-4 w-32 animate-pulse rounded" />
+                        <div className="bg-bg-muted h-8 w-40 animate-pulse rounded-lg" />
+                        <div className="bg-bg-muted h-8 w-20 animate-pulse rounded-lg" />
+                    </div>
+                    <div className="flex gap-2 border-t border-[#333] px-4 py-2">
+                        {[1, 2, 3].map((i) => (
+                            <div
+                                key={i}
+                                className="bg-bg-muted h-7 w-24 animate-pulse rounded-md"
+                            />
+                        ))}
+                    </div>
+                </header>
+                {/* Skeleton body */}
+                <div className="flex flex-1 overflow-hidden">
+                    <div className="w-[35%] space-y-4 border-r border-[#333] p-6">
+                        <div className="bg-bg-muted h-6 w-3/4 animate-pulse rounded" />
+                        <div className="bg-bg-muted h-4 w-full animate-pulse rounded" />
+                        <div className="bg-bg-muted h-4 w-5/6 animate-pulse rounded" />
+                        <div className="bg-bg-muted h-4 w-full animate-pulse rounded" />
+                        <div className="bg-bg-muted h-4 w-2/3 animate-pulse rounded" />
+                    </div>
+                    <div className="flex-1 bg-[#111]" />
+                    <div className="w-[240px] border-l border-[#333]" />
+                </div>
+            </div>
+        )
+    }
+
     // Redirect if not active
     if (!isLoading && contest && phase !== 'active') {
         return (

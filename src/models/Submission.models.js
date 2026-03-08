@@ -16,9 +16,19 @@ const submissionSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Contest',
         },
+        // 'run' is for temporary test executions, 'submit' is for actual problem submissions
+        type: {
+            type: String,
+            enum: ['run', 'submit'],
+            default: 'submit',
+        },
         code: {
             type: String,
             required: [true, 'Need to write some code before try to submit.'],
+        },
+        customInput: {
+            type: String,
+            default: '',
         },
         files: [
             {
@@ -39,15 +49,18 @@ const submissionSchema = new mongoose.Schema(
         },
         verdict: {
             type: String,
+            // Standardized uppercase verdicts
             enum: [
-                'accepted',
-                'wrong_answer',
-                'time_limit_exceeded',
-                'memory_limit_exceeded',
-                'runtime_error',
-                'compilation_error',
-                'system_error',
-                'security_error',
+                'ACCEPTED',
+                'WRONG_ANSWER',
+                'TIME_LIMIT_EXCEEDED',
+                'MEMORY_LIMIT_EXCEEDED',
+                'RUNTIME_ERROR',
+                'COMPILATION_ERROR',
+                'SYSTEM_ERROR',
+                'SECURITY_ERROR',
+                'PENDING',
+                'JUDGING',
             ],
         },
         executionTime: { type: Number }, // ms

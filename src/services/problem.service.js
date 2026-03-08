@@ -15,35 +15,37 @@ import mongoose from 'mongoose'
  */
 export async function getAllProblems(query) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1)
-    const limit = Math.min(parseInt(query.limit, 10) || 10, 50) // cap limit
+    const limit = Math.min(parseInt(query.limit, 10) || 20, 50)
     const skip = (page - 1) * limit
 
     const filter = {}
 
-    // Filter by difficulty
+    // 1. Difficulty Filter (Supports comma-separated or single)
     if (query.difficulty) {
-        filter.difficulty = query.difficulty
+        const diffs = query.difficulty.split(',')
+        filter.difficulty = { $in: diffs }
     }
 
-    // Search by title (case-insensitive)
+    // 2. Search by title
     if (query.search) {
         filter.title = { $regex: query.search, $options: 'i' }
     }
 
-    // Filter by tag (e.g. ?tag=Array)
+    // 3. Tag Filter (Supports comma-separated or single)
     if (query.tag) {
-        filter.tags = { $in: [query.tag] }
+        // Use case-insensitive regex for tags to ensure matching regardless of casing
+        const tags = query.tag.split(',').map((t) => new RegExp(`^${t.trim()}$`, 'i'))
+        filter.tags = { $in: tags }
     }
 
-    // Filter by status (Solved, Attempted, Unsolved)
-    // Requires userId to be passed in the query object
+    // 4. Status Filter (Solved, Attempted, Unsolved)
     if (query.status && query.userId) {
         const { Submission } = await import('@/models/Submission.models')
 
         if (query.status === 'solved') {
             const solvedIds = await Submission.find({
                 userId: query.userId,
-                verdict: 'accepted',
+                verdict: { $regex: new RegExp('^ACCEPTED$', 'i') },
             }).distinct('problemId')
             filter._id = { $in: solvedIds }
         } else if (query.status === 'attempted') {
@@ -52,10 +54,9 @@ export async function getAllProblems(query) {
             }).distinct('problemId')
             const solvedIds = await Submission.find({
                 userId: query.userId,
-                verdict: 'accepted',
+                verdict: { $regex: new RegExp('^ACCEPTED$', 'i') },
             }).distinct('problemId')
 
-            // Attempted but NOT solved
             const attemptedOnly = allAttempted.filter(
                 (id) => !solvedIds.some((s) => s.toString() === id.toString())
             )
@@ -64,27 +65,77 @@ export async function getAllProblems(query) {
             const allAttempted = await Submission.find({
                 userId: query.userId,
             }).distinct('problemId')
-            filter._id = { $not: { $in: allAttempted } }
+            filter._id = { $nin: allAttempted }
         }
     }
 
-    // Running queries in parallel for better performance.
-    const [problems, total] = await Promise.all([
-        Problem.find(filter)
-            .select('-sampleTestCases') // Keep list view light
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
+    // 5. Build Aggregation Pipeline for Sorting and Calculation
+    const pipeline = [
+        { $match: filter },
+        {
+            $addFields: {
+                // acceptanceRate = (accepted / total) * 100
+                acceptanceRate: {
+                    $cond: [
+                        { $eq: ['$totalSubmissions', 0] },
+                        0,
+                        {
+                            $multiply: [
+                                { $divide: ['$acceptedSubmissions', '$totalSubmissions'] },
+                                100,
+                            ],
+                        },
+                    ],
+                },
+                // numericDifficulty for logical sorting
+                numericDifficulty: {
+                    $switch: {
+                        branches: [
+                            { case: { $eq: ['$difficulty', 'easy'] }, then: 1 },
+                            { case: { $eq: ['$difficulty', 'medium'] }, then: 2 },
+                            { case: { $eq: ['$difficulty', 'hard'] }, then: 3 },
+                        ],
+                        default: 2,
+                    },
+                },
+            },
+        },
+    ]
+
+    // 6. Apply Sorting Logic
+    let sortStage = { createdAt: -1 } // Default: Most Recent
+    const sortBy = query.sortBy?.toLowerCase()
+
+    if (sortBy === 'difficulty') {
+        sortStage = { numericDifficulty: 1, createdAt: -1 }
+    } else if (sortBy === 'acceptance rate') {
+        sortStage = { acceptanceRate: -1, createdAt: -1 }
+    } else if (sortBy === 'frequency') {
+        sortStage = { totalSubmissions: -1, createdAt: -1 }
+    } else if (sortBy === 'most recent') {
+        sortStage = { createdAt: -1 }
+    }
+
+    pipeline.push({ $sort: sortStage })
+
+    // 7. Execute Queries
+    const [results, totalCount] = await Promise.all([
+        Problem.aggregate([
+            ...pipeline,
+            { $skip: skip },
+            { $limit: limit },
+            { $project: { sampleTestCases: 0, specialJudgeCode: 0 } },
+        ]),
         Problem.countDocuments(filter),
     ])
 
     return {
-        problems,
+        problems: results,
         pagination: {
-            total,
+            total: totalCount,
             page,
             limit,
-            pages: Math.ceil(total / limit),
+            pages: Math.ceil(totalCount / limit),
         },
     }
 }

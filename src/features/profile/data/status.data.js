@@ -13,7 +13,7 @@ export function getStatusCards(stats) {
     return [
         {
             label: 'Problems Solved',
-            value: String(stats?.totalSubmissions ?? 0),
+            value: String(stats?.accepted ?? 0),
             border: 'border-success',
         },
         { label: 'Contest Rating', value: String(stats?.score ?? 0), border: 'border-accent' },

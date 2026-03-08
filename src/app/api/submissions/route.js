@@ -3,6 +3,11 @@ import dbConnect from '@/lib/mongodb'
 import { submitCode, fetchSubmissions } from '@/controllers/submission.controller'
 import { asyncHandler } from '@/lib/asyncHandler'
 import { protect } from '@/middlewares/auth.middleware'
+import { initSocketServer } from '@/lib/socket-server'
+
+if (process.env.NODE_ENV !== 'production') {
+    initSocketServer().catch(console.error)
+}
 
 export const POST = asyncHandler(async (req) => {
     await dbConnect()

@@ -23,24 +23,24 @@ export default function ContestPerformance({ performance }) {
     }
 
     return (
-        <section className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
-            <h3 className="text-text-primary mb-6 text-lg font-semibold">Contest Performance</h3>
+        <section className="bg-bg-subtle border-border rounded-2xl border p-6 shadow-sm">
+            <h3 className="text-text-primary mb-6 text-lg font-bold">Contest Performance</h3>
 
             {/* Best & Avg Rank Stats */}
             <div className="mb-8 grid grid-cols-2 gap-4">
-                <div className="bg-bg-muted/30 border-border/50 rounded-lg border p-4">
+                <div className="bg-bg-page border-border/50 rounded-xl border p-4 shadow-xs">
                     <p className="text-text-muted mb-1 text-[10px] font-bold tracking-widest uppercase">
                         Best Rank
                     </p>
-                    <p className="text-text-primary text-2xl font-bold">
+                    <p className="text-text-primary text-2xl font-bold tabular-nums">
                         {performance.bestRank ? `#${performance.bestRank}` : '—'}
                     </p>
                 </div>
-                <div className="bg-bg-muted/30 border-border/50 rounded-lg border p-4">
+                <div className="bg-bg-page border-border/50 rounded-xl border p-4 shadow-xs">
                     <p className="text-text-muted mb-1 text-[10px] font-bold tracking-widest uppercase">
                         Avg Rank
                     </p>
-                    <p className="text-text-primary text-2xl font-bold">
+                    <p className="text-text-primary text-2xl font-bold tabular-nums">
                         {performance.avgRank ? `#${performance.avgRank}` : '—'}
                     </p>
                 </div>
@@ -53,11 +53,11 @@ export default function ContestPerformance({ performance }) {
                         {performance.ratingTrend.map((height, index) => (
                             <div
                                 key={index}
-                                className="bg-accent/20 hover:bg-accent group relative flex-1 cursor-pointer rounded-t-sm transition-all duration-300"
+                                className="bg-accent/30 hover:bg-accent group relative flex-1 cursor-pointer rounded-t-sm transition-all duration-300"
                                 style={{ height: `${height}%` }}
                             >
                                 {/* Tooltip on hover */}
-                                <div className="bg-text-primary text-bg-page absolute -top-8 left-1/2 z-10 -translate-x-1/2 rounded px-2 py-1 text-[10px] whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100">
+                                <div className="bg-text-primary text-bg-page absolute -top-8 left-1/2 z-10 -translate-x-1/2 rounded px-2 py-1 text-[10px] whitespace-nowrap opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
                                     Rank: #{100 - height}
                                 </div>
                             </div>
@@ -65,12 +65,14 @@ export default function ContestPerformance({ performance }) {
                     </div>
 
                     {/* Bottom Label */}
-                    <p className="text-text-muted mt-4 text-center text-[10px] font-medium tracking-tighter uppercase">
+                    <p className="text-text-muted mt-4 text-center text-[10px] font-bold tracking-widest uppercase">
                         Rating Trend (Last 10 Contests)
                     </p>
                 </div>
             ) : (
-                <p className="text-text-muted py-4 text-center text-sm">No recent contests</p>
+                <p className="text-text-muted py-4 text-center text-sm font-medium">
+                    No recent contests
+                </p>
             )}
         </section>
     )
