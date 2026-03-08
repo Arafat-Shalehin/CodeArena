@@ -220,3 +220,23 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
         return { following: true }
     }
 }
+
+/**
+ * Searches for users by name.
+ * @param {string} query - The search query.
+ * @param {number} limit - Maximum number of results to return.
+ * @returns {Promise<Array>} List of matching users (public fields only).
+ */
+export async function searchUsers(query, limit = 6) {
+    if (!query) return []
+
+    // Escape regex special characters to prevent regex injection
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+    return User.find({
+        name: { $regex: escapedQuery, $options: 'i' },
+    })
+        .select('_id name avatarSeed')
+        .limit(limit)
+        .lean()
+}
