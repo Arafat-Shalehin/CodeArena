@@ -10,14 +10,12 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, Save, Loader2, AlertCircle, RefreshCcw } from 'lucide-react'
 import Link from 'next/link'
 
-// Shadcn UI Components
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
-// Validation Schema
 const problemSchema = z.object({
     title: z.string().min(5, 'Title must be at least 5 characters'),
     difficulty: z.enum(['easy', 'medium', 'hard']),
@@ -41,7 +39,6 @@ export default function EditProblemPage() {
         resolver: zodResolver(problemSchema),
     })
 
-    // Fetch existing problem data
     useEffect(() => {
         const fetchProblem = async () => {
             try {
@@ -49,11 +46,12 @@ export default function EditProblemPage() {
                 const result = await res.json()
 
                 if (result.success) {
-                    // Convert tags array back to comma-separated string for the input
                     const problemData = result.data
                     reset({
                         ...problemData,
-                        tags: problemData.tags.join(', '),
+                        tags: Array.isArray(problemData.tags)
+                            ? problemData.tags.join(', ')
+                            : problemData.tags,
                     })
                 } else {
                     Swal.fire('Error', 'Problem not found', 'error')
@@ -72,7 +70,10 @@ export default function EditProblemPage() {
         try {
             const formattedData = {
                 ...data,
-                tags: data.tags.split(',').map((tag) => tag.trim()),
+                tags: data.tags
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag !== ''),
             }
 
             const res = await fetch(`/api/problems/${params.id}`, {
@@ -84,17 +85,23 @@ export default function EditProblemPage() {
             const result = await res.json()
 
             if (result.success) {
-                await Swal.fire({
+                const alertResult = await Swal.fire({
                     title: 'Updated Successfully!',
-                    text: 'The problem has been updated.',
+                    text: 'The problem has been updated in the database.',
                     icon: 'success',
                     confirmButtonColor: '#00bc7d',
+                    confirmButtonText: 'OK',
                 })
-                router.push('/admin/problems')
-                router.refresh()
+
+                if (alertResult.isConfirmed) {
+                    router.push('/admin/problems')
+                    router.refresh()
+                }
+            } else {
+                Swal.fire('Update Failed', result.message || 'Check your input data', 'error')
             }
         } catch (error) {
-            Swal.fire('Error', 'Update failed', 'error')
+            Swal.fire('Error', 'Network error. Please try again.', 'error')
         }
     }
 
@@ -124,17 +131,15 @@ export default function EditProblemPage() {
 
             <Card className="border-none bg-white/90 shadow-2xl backdrop-blur-sm">
                 <CardHeader className="border-b border-slate-200 bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="rounded-lg bg-amber-100 p-2 text-amber-600">
-                                <RefreshCcw className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-2xl font-bold text-slate-800">
-                                    Edit Problem
-                                </CardTitle>
-                                <CardDescription>ID: {params.id}</CardDescription>
-                            </div>
+                    <div className="flex items-center gap-3">
+                        <div className="rounded-lg bg-amber-100 p-2 text-amber-600">
+                            <RefreshCcw className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-2xl font-bold text-slate-800">
+                                Edit Problem
+                            </CardTitle>
+                            <CardDescription>Update details for ID: {params.id}</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -148,9 +153,7 @@ export default function EditProblemPage() {
                                 className={errors.title ? 'border-rose-500' : ''}
                             />
                             {errors.title && (
-                                <p className="mt-1 flex items-center gap-1 text-xs text-rose-500">
-                                    <AlertCircle className="h-3 w-3" /> {errors.title.message}
-                                </p>
+                                <p className="text-xs text-rose-500">{errors.title.message}</p>
                             )}
                         </div>
 
@@ -158,7 +161,7 @@ export default function EditProblemPage() {
                             <Label className="font-semibold text-slate-700">Description</Label>
                             <Textarea
                                 {...register('description')}
-                                className={`min-h-[250px] ${errors.description ? 'border-rose-500' : ''}`}
+                                className={`min-h-[200px] ${errors.description ? 'border-rose-500' : ''}`}
                             />
                             {errors.description && (
                                 <p className="text-xs text-rose-500">
@@ -169,7 +172,9 @@ export default function EditProblemPage() {
 
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label className="font-semibold text-slate-700">Difficulty</Label>
+                                <Label className="font-semibold text-slate-700">
+                                    Difficulty Level
+                                </Label>
                                 <select
                                     {...register('difficulty')}
                                     className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
@@ -221,7 +226,7 @@ export default function EditProblemPage() {
                                 type="button"
                                 variant="outline"
                                 onClick={() => router.back()}
-                                className="h-11 border-slate-200 hover:bg-slate-50"
+                                className="h-11"
                             >
                                 Cancel
                             </Button>

@@ -223,7 +223,7 @@ export default function AdminProblems() {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem>
                                                         <Link
-                                                            href={`/admin/problems/testcases/${p._id}`}
+                                                            href={`/admin/problems/${p._id}/testcases`}
                                                             className="flex w-full items-center text-emerald-600"
                                                         >
                                                             <Database className="mr-2 h-4 w-4" />{' '}
