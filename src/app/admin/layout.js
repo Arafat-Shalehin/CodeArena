@@ -24,7 +24,7 @@ export default function AdminLayout({ children }) {
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="bg-background sticky top-0 z-40 flex h-16 items-center justify-between border-b px-4 shadow-sm md:px-8"
+                    className="bg-background sticky top-0 z-40 flex h-16 items-center justify-between px-4 shadow-sm md:px-8"
                 >
                     <div className="flex items-center gap-3">
                         {/* Mobile Sidebar Trigger (Only visible on Mobile) */}
