@@ -158,11 +158,15 @@ export async function updateUser(id, updateData) {
     const allowedFields = ['name', 'bio', 'location', 'website', 'socials', 'avatarSeed']
     const safeData = {}
 
+    console.log('updateUser called with:', { id, updateData, allowedFields })
+
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
             safeData[field] = updateData[field]
         }
     }
+
+    console.log('safeData to update:', safeData)
 
     const user = await User.findByIdAndUpdate(
         id,
@@ -176,6 +180,7 @@ export async function updateUser(id, updateData) {
         throw err
     }
 
+    console.log('Updated user:', user)
     return user
 }
 

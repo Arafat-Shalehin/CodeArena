@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // Shared Components
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -12,7 +12,6 @@ import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
 import { Settings, MapPin, Link as LinkIcon, Github, Linkedin, Twitter } from 'lucide-react'
 import Link from 'next/link'
-import EditProfileModal from './EditProfileModal'
 import FollowersListModal from './FollowersListModal'
 
 /**
@@ -26,7 +25,7 @@ import FollowersListModal from './FollowersListModal'
  * @returns {JSX.Element} The rendered profile hero section.
  */
 export default function ProfileHero({ user: userProp }) {
-    const { user: authUser, updateProfile } = useAuth()
+    const { user: authUser } = useAuth()
 
     const displayUser = userProp || authUser
     const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
@@ -44,7 +43,6 @@ export default function ProfileHero({ user: userProp }) {
     const rank = stats?.globalRank ?? '—'
     const finalAvatarSeed = avatarSeed || name
 
-    const [modalOpen, setModalOpen] = useState(false)
     const [isFollowLoading, setIsFollowLoading] = useState(false)
 
     // Manage local follow state for optimistic UI updates
@@ -58,16 +56,16 @@ export default function ProfileHero({ user: userProp }) {
     }
 
     const [followersCount, setFollowersCount] = useState(initialFollowersCount)
+    const [followingCount, setFollowingCount] = useState(initialFollowingCount)
     const [isFollowing, setIsFollowing] = useState(checkIsFollowing(displayUser))
     const [friendsModalType, setFriendsModalType] = useState(null) // 'followers' | 'following' | null
 
     // Sync state if displayUser changes from network fetch
-    import('react').then((React) => {
-        React.useEffect(() => {
-            setFollowersCount(displayUser?.followers?.length || 0)
-            setIsFollowing(checkIsFollowing(displayUser))
-        }, [displayUser, currentUserId])
-    })
+    useEffect(() => {
+        setFollowersCount(displayUser?.followers?.length || 0)
+        setFollowingCount(displayUser?.following?.length || 0)
+        setIsFollowing(checkIsFollowing(displayUser))
+    }, [displayUser, currentUserId])
 
     const handleFollowToggle = async () => {
         if (!authUser) {
@@ -123,23 +121,24 @@ export default function ProfileHero({ user: userProp }) {
     })()
 
     return (
-        <div className="bg-bg-subtle/60 relative mb-8 overflow-hidden rounded-2xl border border-white/20 p-6 backdrop-blur-xl md:p-8 dark:border-white/10">
-            {/* Decorative glowing blobs for enhanced glass effect */}
-            <div className="bg-accent/20 pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full blur-3xl"></div>
-            <div className="bg-accent/20 pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full blur-3xl"></div>
+        <div className="border-border relative mb-8 overflow-hidden rounded-2xl border p-6 md:p-8">
+            {/* Glass-Gradient Background */}
+            <div className="from-accent-light via-bg-page to-info-light absolute inset-0 z-0 bg-gradient-to-r opacity-50" />
+            <div className="absolute inset-0 z-0 backdrop-blur-xl" />
 
             <div className="relative z-10 flex flex-col items-center justify-between gap-8 md:flex-row md:items-start">
                 {/* Left Side: Avatar, Name, Description */}
                 <div className="flex w-full flex-1 flex-col items-center justify-center gap-6 text-center md:flex-row md:justify-start md:text-left">
-                    {/* Avatar */}
-                    <div className="bg-bg-page border-border shrink-0 rounded-xl border p-1">
-                        <Avatar className="h-24 w-24 rounded-lg md:h-32 md:w-32">
+                    {/* Avatar with Pro styling */}
+                    <div className="relative shrink-0">
+                        <div className="bg-bg-page absolute -inset-1 rounded-2xl shadow-lg" />
+                        <Avatar className="dark:border-border h-32 w-32 rounded-2xl border-4 border-white shadow-sm">
                             <AvatarImage
                                 src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${finalAvatarSeed}`}
                                 alt={`${name}'s avatar`}
-                                className="rounded-lg object-cover"
+                                className="rounded-2xl object-cover"
                             />
-                            <AvatarFallback className="bg-bg-muted text-text-primary rounded-lg text-3xl font-bold">
+                            <AvatarFallback className="bg-bg-muted text-text-primary rounded-2xl text-4xl font-bold">
                                 {(name || 'U').substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                         </Avatar>
@@ -149,54 +148,68 @@ export default function ProfileHero({ user: userProp }) {
                     <div className="flex max-w-[400px] flex-col items-center space-y-4 md:items-start">
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                                <h1 className="text-text-primary text-2xl font-bold drop-shadow-sm md:text-3xl">
+                                <h1 className="text-text-primary text-3xl font-bold tracking-tight drop-shadow-sm">
                                     {name}
                                 </h1>
-                                <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium tracking-wider uppercase">
+                                <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold tracking-wider uppercase">
                                     🏆 #{rank}
                                 </span>
                             </div>
 
-                            <div className="mt-1 mb-2 flex items-center justify-center gap-4 text-sm md:justify-start">
+                            <div className="mt-1 mb-2 flex items-center justify-center gap-4 text-sm font-medium md:justify-start">
                                 <button
                                     onClick={() => setFriendsModalType('followers')}
                                     className="hover:text-accent flex items-center gap-1 transition-colors"
                                 >
-                                    <span className="text-text-primary font-semibold">
+                                    <span className="text-text-primary font-bold">
                                         {followersCount}
                                     </span>
-                                    <span className="text-text-muted font-normal">Followers</span>
+                                    <span className="text-text-secondary font-medium">
+                                        Followers
+                                    </span>
                                 </button>
                                 <span className="text-text-muted">•</span>
                                 <button
                                     onClick={() => setFriendsModalType('following')}
                                     className="hover:text-accent flex items-center gap-1 transition-colors"
                                 >
-                                    <span className="text-text-primary font-semibold">
-                                        {initialFollowingCount}
+                                    <span className="text-text-primary font-bold">
+                                        {followingCount}
                                     </span>
-                                    <span className="text-text-muted font-normal">Following</span>
+                                    <span className="text-text-secondary font-medium">
+                                        Following
+                                    </span>
                                 </button>
                             </div>
 
-                            {bio && (
-                                <p className="text-text-primary text-center text-sm leading-relaxed font-medium md:text-left">
+                            {bio ? (
+                                <p className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left">
                                     {bio}
                                 </p>
-                            )}
+                            ) : isOwnProfile ? (
+                                <p className="text-text-muted text-center text-sm italic md:text-left">
+                                    No bio yet. Tell the world about your coding journey!
+                                </p>
+                            ) : null}
                         </div>
 
-                        {/* Quick info: Location & Website moving here */}
+                        {/* Quick info: Location & Website */}
                         {(location || website) && (
                             <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-sm md:justify-start">
                                 {location && (
-                                    <div className="hover:text-text-primary flex items-center gap-1.5 transition-colors">
+                                    <div
+                                        className="hover:text-text-primary flex items-center gap-1.5 transition-colors"
+                                        title="Location"
+                                    >
                                         <MapPin size={16} className="text-accent/70" />
                                         <span>{location}</span>
                                     </div>
                                 )}
                                 {safeWebsiteUrl && (
-                                    <div className="hover:text-text-primary flex items-center gap-1.5 transition-colors">
+                                    <div
+                                        className="hover:text-text-primary flex items-center gap-1.5 transition-colors"
+                                        title="Website"
+                                    >
                                         <LinkIcon size={16} className="text-accent/70" />
                                         <a
                                             href={safeWebsiteUrl}
@@ -211,9 +224,6 @@ export default function ProfileHero({ user: userProp }) {
                             </div>
                         )}
 
-                        {/* Edit Profile Modal logic */}
-                        {modalOpen && <EditProfileModal onClose={() => setModalOpen(false)} />}
-
                         {/* Followers/Following Modal */}
                         {friendsModalType && (
                             <FollowersListModal
@@ -226,15 +236,15 @@ export default function ProfileHero({ user: userProp }) {
                 </div>
 
                 {/* Right Side: Buttons & Socials */}
-                <div className="border-border/20 mt-6 flex w-full shrink-0 flex-col items-center border-t pt-6 md:mt-0 md:w-auto md:min-w-[200px] md:items-end md:justify-between md:self-stretch md:border-t-0 md:border-l md:pt-0 md:pl-8">
+                <div className="mt-2 flex w-full shrink-0 flex-col items-center md:w-auto md:min-w-[200px] md:items-end">
                     {/* Action Button */}
-                    <div className="flex w-full justify-center md:justify-end">
+                    <div className="mb-8 flex w-full justify-center md:justify-end">
                         {!isOwnProfile && (
                             <Button
                                 variant={isFollowing ? 'outline' : 'default'}
                                 onClick={handleFollowToggle}
                                 disabled={isFollowLoading}
-                                className={`w-full md:w-auto ${!isFollowing ? 'shadow-accent-glow' : ''}`}
+                                className={`w-full md:w-auto ${!isFollowing ? 'bg-accent hover:bg-accent-hover shadow-accent-glow text-white' : ''}`}
                             >
                                 {isFollowLoading ? '...' : isFollowing ? 'Unfollow' : 'Follow'}
                             </Button>
@@ -242,8 +252,8 @@ export default function ProfileHero({ user: userProp }) {
                         {isOwnProfile && (
                             <Link href="/profile/settings" className="w-full md:w-auto">
                                 <Button
-                                    variant="outline"
-                                    className="bg-bg-page/50 border-accent/40 text-text-primary hover:bg-accent hover:border-accent h-10 w-full border-2 px-8 py-2 font-semibold backdrop-blur-md transition-all duration-300 hover:text-white"
+                                    variant="secondary"
+                                    className="bg-bg-page hover:bg-bg-subtle text-text-primary border-border h-10 w-full border px-8 py-2 font-semibold shadow-sm transition-all md:w-auto"
                                 >
                                     <Settings className="mr-2 h-4 w-4" /> Edit Profile
                                 </Button>
@@ -260,7 +270,7 @@ export default function ProfileHero({ user: userProp }) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     aria-label={`${name}'s GitHub profile`}
-                                    className="text-text-muted hover:text-text-primary hover:bg-bg-muted rounded-full p-1.5 transition-colors"
+                                    className="text-text-muted hover:text-text-primary transition-colors"
                                 >
                                     <Github size={20} />
                                 </a>
@@ -271,7 +281,7 @@ export default function ProfileHero({ user: userProp }) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     aria-label={`${name}'s LinkedIn profile`}
-                                    className="text-text-muted hover:bg-bg-muted rounded-full p-1.5 transition-colors hover:text-[#0077b5]"
+                                    className="text-text-muted hover:text-accent transition-colors"
                                 >
                                     <Linkedin size={20} />
                                 </a>
@@ -282,7 +292,7 @@ export default function ProfileHero({ user: userProp }) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     aria-label={`${name}'s Twitter profile`}
-                                    className="text-text-muted hover:bg-bg-muted rounded-full p-1.5 transition-colors hover:text-[#1DA1F2]"
+                                    className="text-text-muted hover:text-info transition-colors"
                                 >
                                     <Twitter size={20} />
                                 </a>

@@ -2,19 +2,19 @@ import React from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, Mail, MapPin, Globe, CheckCircle, AtSign } from 'lucide-react'
+import { User, MapPin, Globe, AtSign } from 'lucide-react'
 
 export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
     return (
         <Card className="p-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Unique Handle (backend name) */}
+                {/* Display Name */}
                 <div className="space-y-2 md:col-span-2">
                     <Label
                         htmlFor="name"
                         className="text-text-muted text-xs font-bold tracking-wider uppercase"
                     >
-                        Username / Handle Display Name
+                        Display Name
                     </Label>
                     <div className="relative">
                         <AtSign
@@ -30,38 +30,6 @@ export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
                     </div>
                     {errors.name && (
                         <p className="text-error text-xs font-medium">{errors.name.message}</p>
-                    )}
-                </div>
-
-                {/* Username Input with Availability Indicator */}
-                <div className="space-y-2">
-                    <Label
-                        htmlFor="username"
-                        className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                    >
-                        Username
-                    </Label>
-                    <div className="relative">
-                        <Mail
-                            className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
-                            size={16}
-                        />
-                        <Input
-                            id="username"
-                            {...register('username')}
-                            className="pr-24 pl-10"
-                            placeholder="your_unique_handle"
-                        />
-                        {/* Dummy Indicator temporarily */}
-                        {!errors.username && (
-                            <div className="bg-success-light text-success absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-bold">
-                                <CheckCircle size={10} />
-                                Available
-                            </div>
-                        )}
-                    </div>
-                    {errors.username && (
-                        <p className="text-error text-xs font-medium">{errors.username.message}</p>
                     )}
                 </div>
 
@@ -132,7 +100,6 @@ export default function PersonalInfoForm({ register, errors, bioValue = '' }) {
                         />
                         <Input
                             id="website"
-                            type="url"
                             {...register('website')}
                             className="pl-10"
                             placeholder="https://arivera.dev"

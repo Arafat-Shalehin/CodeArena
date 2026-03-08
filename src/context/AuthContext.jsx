@@ -53,8 +53,11 @@ export function AuthProvider({ children }) {
                     if (syncData.success) {
                         // 2. Set the combined user object (MongoDB data + UI preferences)
                         const dbUser = syncData.data?.user || syncData.user // flexible for API response shape
+                        const userId = dbUser._id?.toString()
                         setUser({
                             ...dbUser,
+                            id: userId,
+                            _id: userId,
                             firebaseUid: firebaseUser.uid,
                             ...localPreferences,
                         })
@@ -119,9 +122,12 @@ export function AuthProvider({ children }) {
             const data = await res.json()
             if (data.success) {
                 const dbUser = data.data?.user || data.user
+                const userId = dbUser._id?.toString()
                 setUser((prev) => ({
                     ...prev,
                     ...dbUser,
+                    id: userId,
+                    _id: userId,
                     ...localPreferences,
                 }))
                 return dbUser

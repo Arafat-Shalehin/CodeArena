@@ -94,28 +94,27 @@ export default function RecommendedProblems() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Weakness-Based Recommendations */}
+        <div className="space-y-8">
+            {/* Weakness-Based Recommendations (Focus Areas) */}
             {hasRecommendations && (
-                <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
-                    <h3 className="text-text-primary mb-1 text-xl font-semibold">Focus Areas</h3>
+                <div className="bg-bg-subtle border-border rounded-2xl border p-6 shadow-sm">
+                    <h3 className="text-text-primary mb-1 text-lg font-bold">Focus Areas</h3>
                     {weakTags.length > 0 ? (
                         <p className="text-text-secondary mb-6 text-sm">
-                            We noticed you've been struggling with{' '}
-                            <span className="text-accent-text font-semibold">
+                            We noticed you&apos;ve been struggling with{' '}
+                            <span className="text-accent-text font-bold">
                                 {weakTags.join(', ')}
                             </span>
                             . Try these to improve your skills.
                         </p>
                     ) : (
-                        <p className="text-text-secondary mb-6 text-sm">
-                            Here are some problems curated to help you practice and improve your
-                            skills.
+                        <p className="text-text-secondary mb-6 text-sm font-medium">
+                            Tailored problems to help you sharpen your edge.
                         </p>
                     )}
 
                     <div className="grid grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
-                        {recommendations.map((problem) => (
+                        {recommendations.slice(0, 3).map((problem) => (
                             <ProblemCard
                                 key={problem._id}
                                 problem={problem}
@@ -128,22 +127,20 @@ export default function RecommendedProblems() {
 
             {/* Discovery Section */}
             {hasDiscovery && (
-                <div className="bg-bg-subtle border-border rounded-lg border border-dashed p-6 shadow-sm">
+                <div className="bg-bg-subtle border-border rounded-2xl border border-dashed p-6 shadow-sm">
                     <div className="mb-1 flex items-center gap-2">
                         <Compass size={20} className="text-accent" />
-                        <h3 className="text-text-primary text-xl font-semibold">
-                            Explore New Topics
-                        </h3>
+                        <h3 className="text-text-primary text-lg font-bold">Explore New Topics</h3>
                     </div>
                     <p className="text-text-secondary mb-6 text-sm">
                         Broaden your skills — try something new:{' '}
-                        <span className="text-accent-text font-semibold">
+                        <span className="text-accent-text font-bold">
                             {discoveryTags.join(', ')}
                         </span>
                     </p>
 
-                    <div className="grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
-                        {discoveryProblems.map((problem) => (
+                    <div className="grid grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
+                        {discoveryProblems.slice(0, 3).map((problem) => (
                             <ProblemCard
                                 key={problem._id}
                                 problem={problem}
