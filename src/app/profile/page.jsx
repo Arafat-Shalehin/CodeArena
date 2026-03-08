@@ -41,13 +41,13 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (user) {
-            fetchSubmissions(10, 0, true)
+            fetchSubmissions(5, 0, true)
             // Background sync to ensure stats/heatmap are up to date
             syncUser?.()
         }
     }, [user, syncUser])
 
-    const fetchSubmissions = async (limit = 10, offset = 0, reset = false) => {
+    const fetchSubmissions = async (limit = 5, offset = 0, reset = false) => {
         if (!user) return
         setIsSubmissionsLoading(true)
         try {
@@ -70,12 +70,12 @@ export default function ProfilePage() {
     }
 
     const handleLoadMore = () => {
-        fetchSubmissions(10, submissions.length)
+        fetchSubmissions(5, submissions.length)
     }
 
     const handleViewAll = (e) => {
         e.preventDefault()
-        fetchSubmissions(100, submissions.length)
+        fetchSubmissions(100, 0, true)
     }
 
     if (isLoading || (!user && !isLoading)) {

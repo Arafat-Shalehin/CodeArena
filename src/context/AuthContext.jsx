@@ -88,6 +88,8 @@ export function AuthProvider({ children }) {
         try {
             await signOut(auth)
             setUser(null)
+            setLocalPreferences({})
+            localStorage.removeItem(STORAGE_KEY)
         } catch (error) {
             console.error('Error logging out:', error)
         } finally {
@@ -98,12 +100,14 @@ export function AuthProvider({ children }) {
     const updateProfile = useCallback((updatedData) => {
         setLocalPreferences((prev) => {
             const newPrefs = { ...prev, ...updatedData }
+            delete newPrefs.stats // Never persist dynamic stats in local preferences
             return newPrefs
         })
 
-        // Persist to localStorage outside of the setState updater (no side effects in updater)
+        // Persist to localStorage outside of the setState updater
         const currentPrefs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
         const merged = { ...currentPrefs, ...updatedData }
+        delete merged.stats // Never persist dynamic stats
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
 
         setUser((prevUser) => {

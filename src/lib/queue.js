@@ -22,6 +22,7 @@ export function getSubmissionQueue() {
                 },
                 removeOnComplete: true,
                 removeOnFail: false,
+                timeout: 30000, // 30 seconds to prevent hanging
             },
         })
     }
