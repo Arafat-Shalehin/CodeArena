@@ -2,6 +2,7 @@ import React from 'react'
 import StatusIcon from './StatusIcon'
 import { Pagination } from '@/shared/components/ui/Pagination'
 import { difficultyConfig, normalizeDifficulty } from '../data/problems.data'
+import { formatAcceptanceRate } from '@/lib/utils'
 
 // Number of skeleton rows to show while loading
 const SKELETON_ROWS = 8
@@ -245,7 +246,7 @@ export default function ProblemsTable({
                                                 />
                                             </div>
                                             <span className="text-text-muted font-mono text-xs">
-                                                {p.acceptanceRate ?? 0}%
+                                                {formatAcceptanceRate(p.acceptanceRate)}
                                             </span>
                                         </td>
 

@@ -13,12 +13,12 @@ import {
 } from 'lucide-react'
 
 import { useProblemSolve, LANG_LABELS } from '@/context/ProblemSolveContext'
+import { useAuth } from '@/context/AuthContext'
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react'
 
 // ─── Simple Bar Chart ───────────────────────────────────────────────────────
 
 function DistributionChart({ userValue, label, unit }) {
-    // Generate mock distribution data (in real app, backend provides this)
     const bars = [
         { range: `${unit === 'ms' ? '0' : '15'}`, height: 35, count: 12 },
         { range: `1${unit}`, height: 95, count: 45 },
@@ -29,35 +29,33 @@ function DistributionChart({ userValue, label, unit }) {
     const maxH = Math.max(...bars.map((b) => b.height))
 
     return (
-        <div className="mt-3">
-            <div className="relative flex h-[100px] items-end gap-[2px]">
-                {/* Y-axis labels */}
-                <div className="absolute top-0 left-0 flex h-full flex-col justify-between text-[9px] text-gray-600">
-                    <span>150%</span>
+        <div className="mt-4">
+            <div className="relative flex h-[120px] items-end gap-[4px] px-2 shadow-inner">
+                <div className="text-text-muted absolute top-0 left-0 flex h-full flex-col justify-between text-[9px] font-bold opacity-40">
                     <span>100%</span>
                     <span>50%</span>
                     <span>0%</span>
                 </div>
-                {/* Bars */}
-                <div className="ml-8 flex flex-1 items-end gap-1">
+                <div className="ml-10 flex flex-1 items-end gap-2">
                     {bars.map((bar, i) => (
                         <div key={i} className="group relative flex flex-1 flex-col items-center">
                             <div
-                                className={`w-full rounded-t transition-all ${i === 0 ? 'bg-[#007acc]' : 'bg-[#007acc]/40'}`}
-                                style={{ height: `${(bar.height / maxH) * 80}px` }}
+                                className={`w-full rounded-t-lg transition-all duration-700 ease-out ${i === 0 ? 'bg-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]' : 'bg-accent/20'}`}
+                                style={{ height: `${(bar.height / maxH) * 100}px` }}
                             />
-                            {/* User marker on the first bar */}
                             {i === 0 && userValue !== undefined && (
-                                <div className="absolute -top-5 left-1/2 -translate-x-1/2">
-                                    <div className="h-3 w-3 rounded-full border-2 border-[#007acc] bg-[#1a1a1a]" />
+                                <div className="absolute -top-6 left-1/2 flex -translate-x-1/2 flex-col items-center">
+                                    <div className="bg-bg-subtle border-accent text-accent rounded-full border px-1.5 py-0.5 text-[9px] font-black shadow-lg">
+                                        YOU
+                                    </div>
+                                    <div className="bg-accent h-3 w-0.5" />
                                 </div>
                             )}
                         </div>
                     ))}
                 </div>
             </div>
-            {/* X-axis labels */}
-            <div className="mt-1 ml-8 flex justify-between text-[9px] text-gray-600">
+            <div className="text-text-muted mt-2 ml-10 flex justify-between text-[10px] font-bold">
                 {bars.map((bar, i) => (
                     <span key={i}>{bar.range}</span>
                 ))}
@@ -70,18 +68,22 @@ function DistributionChart({ userValue, label, unit }) {
 
 function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white' }) {
     return (
-        <div className="flex-1 rounded-xl border border-[#333] bg-[#262626] p-4">
-            <div className="mb-2 flex items-center gap-1.5">
-                <Icon size={14} className="text-gray-400" />
-                <span className="text-xs font-medium text-gray-400">{label}</span>
+        <div className="border-border bg-bg-muted/50 flex-1 rounded-2xl border p-5 transition-all hover:shadow-lg">
+            <div className="text-text-muted mb-3 flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
+                <Icon size={14} className="opacity-70" />
+                {label}
             </div>
-            <div className="flex items-baseline gap-2">
-                <span className={`text-2xl font-bold ${color}`}>{value ?? '—'}</span>
-                <span className="text-sm text-gray-500">{unit}</span>
+            <div className="flex items-baseline gap-3">
+                <span className={`text-3xl font-black tracking-tight ${color}`}>
+                    {value ?? '—'}
+                </span>
+                <span className="text-text-muted text-sm font-bold uppercase">{unit}</span>
             </div>
             {beats !== undefined && (
-                <div className="mt-1 text-xs">
-                    Beats <span className="font-bold text-white">{beats}%</span>
+                <div className="text-text-muted mt-3 flex items-center gap-1.5 text-xs font-medium">
+                    <TrendingUp size={14} className="text-success" />
+                    Beats <span className="text-text-primary px-1 font-black">{beats}%</span> of
+                    users
                 </div>
             )}
         </div>
@@ -91,67 +93,81 @@ function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white'
 function AiFeedbackSection({ feedback, isLoading, onFetch }) {
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-[#333] bg-[#262626] p-8 text-center">
-                <Loader2 className="mb-3 animate-spin text-purple-500" size={24} />
-                <p className="text-sm text-gray-400">AI is analyzing your code...</p>
+            <div className="border-border bg-bg-muted animate-fade-up flex flex-col items-center justify-center rounded-2xl border p-12 text-center">
+                <Loader2 className="text-accent mb-4 animate-spin" size={32} />
+                <p className="text-text-muted text-sm font-bold tracking-wider uppercase">
+                    AI Analysis in progress...
+                </p>
             </div>
         )
     }
 
     if (!feedback) {
         return (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-[#333] bg-[#262626] p-6 text-center">
-                <Sparkles className="mb-2 text-purple-400" size={24} />
-                <h4 className="mb-1 text-sm font-bold text-white">Get AI Insights</h4>
-                <p className="mb-4 text-xs text-gray-500">
-                    Receive detailed feedback on complexity, strengths, and improvements.
+            <div className="border-border bg-bg-muted/30 hover:border-accent/40 group animate-fade-up flex flex-col items-center justify-center rounded-2xl border border-dashed p-8 text-center transition-all">
+                <div className="bg-bg-page mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner transition-transform group-hover:scale-110">
+                    <Sparkles className="text-accent/60" size={32} />
+                </div>
+                <h4 className="text-text-primary mb-2 text-lg font-black tracking-tight">
+                    Unlock AI Insights
+                </h4>
+                <p className="text-text-muted mb-6 max-w-[320px] text-[13px] leading-relaxed font-medium">
+                    Get deep analysis on complexity and receive actionable tips to optimize your
+                    code.
                 </p>
                 <button
                     onClick={() => onFetch({ switchTab: false })}
-                    className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-purple-700"
+                    className="bg-accent hover:bg-accent/90 flex items-center gap-2.5 rounded-xl px-6 py-3 text-[13px] font-black text-white shadow-xl transition-all hover:translate-y-[-2px] active:translate-y-0"
                 >
-                    <Zap size={14} /> Analyze Code
+                    <Zap size={16} fill="currentColor" /> Analyze Solution
                 </button>
             </div>
         )
     }
 
     return (
-        <div className="space-y-4 rounded-xl border border-purple-500/30 bg-[#262626] p-5 shadow-lg shadow-purple-500/5">
+        <div className="border-accent/30 bg-accent/5 animate-fade-up shadow-accent/5 space-y-5 rounded-2xl border p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400">
-                        <Sparkles size={16} />
+                <div className="flex items-center gap-4">
+                    <div className="bg-accent/20 text-accent flex h-10 w-10 items-center justify-center rounded-xl shadow-inner">
+                        <Sparkles size={20} />
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-white">AI Insights</h4>
-                        <p className="text-[10px] tracking-wider text-gray-500 uppercase">
-                            Comprehensive Analysis
+                        <h4 className="text-text-primary text-base font-black tracking-tight">
+                            AI Insights
+                        </h4>
+                        <p className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+                            Deep Code Analysis
                         </p>
                     </div>
                 </div>
                 {feedback.rating && (
-                    <div className="flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1">
-                        <span className="text-[10px] font-bold text-purple-400">SCORE</span>
-                        <span className="text-sm font-black text-white">{feedback.rating}/10</span>
+                    <div className="border-accent/20 bg-accent/10 flex items-center gap-2 rounded-xl border px-4 py-2">
+                        <span className="text-accent text-[10px] font-black tracking-widest">
+                            SCORE
+                        </span>
+                        <span className="text-text-primary text-lg font-black">
+                            {feedback.rating}
+                            <span className="text-xs opacity-40">/10</span>
+                        </span>
                     </div>
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-white/5 bg-[#1e1e1e] p-3">
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
-                        <Clock size={12} className="text-blue-400" /> TIME COMPLEXITY
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-bg-page border-border rounded-xl border p-4 shadow-inner">
+                    <div className="text-text-muted mb-2 flex items-center gap-2 text-[10px] font-black tracking-widest uppercase">
+                        <Clock size={12} className="text-accent" /> Time
                     </div>
-                    <div className="font-mono text-xs font-bold text-blue-400">
+                    <div className="text-accent font-mono text-sm font-black">
                         {feedback.timeComplexity || 'O(N)'}
                     </div>
                 </div>
-                <div className="rounded-lg border border-white/5 bg-[#1e1e1e] p-3">
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
-                        <HardDrive size={12} className="text-green-400" /> SPACE COMPLEXITY
+                <div className="bg-bg-page border-border rounded-xl border p-4 shadow-inner">
+                    <div className="text-text-muted mb-2 flex items-center gap-2 text-[10px] font-black tracking-widest uppercase">
+                        <HardDrive size={12} className="text-success" /> Space
                     </div>
-                    <div className="font-mono text-xs font-bold text-green-400">
+                    <div className="text-success font-mono text-sm font-black">
                         {feedback.spaceComplexity || 'O(1)'}
                     </div>
                 </div>
@@ -204,11 +220,12 @@ function AiFeedbackSection({ feedback, isLoading, onFetch }) {
 
 export default function SubmissionResultTab() {
     const { submissionResult: result, setLeftTab, fetchAiFeedback, isAiLoading } = useProblemSolve()
+    const { user } = useAuth()
 
     if (!result) return null
 
     const isAccepted = result.verdict === 'ACCEPTED'
-    const verdictColor = isAccepted ? 'text-[#2cbb5d]' : 'text-[#ef4444]'
+    const verdictColor = isAccepted ? 'text-success' : 'text-error'
     const verdictLabel = (result.verdict || 'UNKNOWN').replace(/_/g, ' ')
 
     const submittedDate = result.submittedAt
@@ -221,64 +238,59 @@ export default function SubmissionResultTab() {
           })
         : ''
 
-    const memoryMB = result.memory ? (result.memory / 1024).toFixed(2) : '—'
-
-    // Mock percentile (in production, backend calculates this)
+    const memoryMB = typeof result.memory === 'number' ? (result.memory / 1024).toFixed(2) : '—'
     const runtimeBeats = result.time === 0 ? '100.00' : (Math.random() * 40 + 60).toFixed(2)
     const memoryBeats = (Math.random() * 30 + 60).toFixed(2)
 
     return (
-        <div className="space-y-5">
-            {/* ── "← All Submissions" link ── */}
+        <div className="animate-fade-up space-y-6">
+            {/* Nav */}
             <button
                 onClick={() => setLeftTab('submissions')}
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
+                className="text-text-muted hover:text-text-primary flex items-center gap-2 text-xs font-bold tracking-widest uppercase transition-colors"
             >
-                <ChevronLeft size={14} /> All Submissions
+                <ChevronLeft size={16} /> All Submissions
             </button>
 
-            {/* ── Verdict Header ── */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="flex items-baseline gap-3">
-                        <span className={`text-2xl font-bold ${verdictColor}`}>{verdictLabel}</span>
+            {/* Verdict */}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="space-y-2">
+                    <div className="flex items-baseline gap-4">
+                        <span className={`text-4xl font-black tracking-tighter ${verdictColor}`}>
+                            {verdictLabel}
+                        </span>
                         {result.totalCount > 0 && (
-                            <span className="text-sm text-gray-400">
-                                {result.passedCount} / {result.totalCount} testcases passed
-                            </span>
+                            <div className="text-text-muted border-border bg-bg-muted rounded-lg border px-2 py-0.5 text-xs font-black">
+                                {result.passedCount} / {result.totalCount} PASSED
+                            </div>
                         )}
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                        {isAccepted ? (
-                            <CheckCircle2 size={13} className="text-[#2cbb5d]" />
-                        ) : (
-                            <XCircle size={13} className="text-[#ef4444]" />
-                        )}
-                        <span>
-                            <span className="font-medium text-gray-300">Muzahid</span> submitted at{' '}
-                            {submittedDate}
+                    <div className="flex items-center gap-2.5 text-sm font-medium">
+                        <div
+                            className={`h-2 w-2 rounded-full ${isAccepted ? 'bg-success' : 'bg-error'} shadow-[0_0_8px_rgba(var(--accent-rgb),0.5)]`}
+                        />
+                        <span className="text-text-muted">
+                            <span className="text-text-primary font-black">
+                                {user?.name || user?.displayName || 'Developer'}
+                            </span>{' '}
+                            submitted {submittedDate}
                         </span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="rounded-full border border-[#555] px-4 py-1.5 text-xs font-medium text-gray-300 transition-colors hover:bg-[#333]">
-                        Editorial
-                    </button>
-                    <button className="rounded-full bg-[#ff375f] px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#e02e52]">
-                        Solution
-                    </button>
+                <div className="flex items-center gap-3">
+                    {/* Editorial and Solution buttons removed as they are non-functional */}
                 </div>
             </div>
 
-            {/* ── Performance Metrics ── */}
-            <div className="flex gap-3">
+            {/* Performance */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <MetricBox
                     icon={Clock}
                     label="Runtime"
                     value={result.time ?? 0}
                     unit="ms"
                     beats={runtimeBeats}
-                    color={isAccepted ? 'text-[#2cbb5d]' : 'text-white'}
+                    color={isAccepted ? 'text-success' : 'text-text-primary'}
                 />
                 <MetricBox
                     icon={HardDrive}
@@ -286,7 +298,7 @@ export default function SubmissionResultTab() {
                     value={memoryMB}
                     unit="MB"
                     beats={memoryBeats}
-                    color={isAccepted ? 'text-[#2cbb5d]' : 'text-white'}
+                    color={isAccepted ? 'text-success' : 'text-text-primary'}
                 />
             </div>
 
@@ -297,25 +309,34 @@ export default function SubmissionResultTab() {
                 onFetch={fetchAiFeedback}
             />
 
-            {/* ── Distribution Chart ── */}
-            <div className="rounded-xl border border-[#333] bg-[#262626] p-4">
-                <div className="mb-3 text-[10px] font-bold tracking-widest text-gray-500 uppercase">
-                    Distribution
+            {/* Distribution */}
+            <div className="border-border bg-bg-muted/50 rounded-2xl border p-6">
+                <div className="text-text-muted mb-2 text-[10px] font-black tracking-widest text-gray-500 uppercase">
+                    Network Distribution
                 </div>
                 <DistributionChart userValue={result.time} label="Runtime" unit="ms" />
             </div>
 
-            {/* ── Submitted Code ── */}
-            <div>
-                <div className="mb-2 flex items-center gap-2 text-xs text-gray-500">
-                    <span className="font-medium text-gray-300">Code</span>
-                    <span>|</span>
-                    <span>{LANG_LABELS[result.submittedLanguage] || result.submittedLanguage}</span>
+            {/* Code */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                    <div className="text-text-muted flex items-center gap-3 text-xs font-black tracking-widest uppercase">
+                        <span className="text-accent underline underline-offset-4">
+                            Submitted Code
+                        </span>
+                        <span className="opacity-20">|</span>
+                        <span>
+                            {LANG_LABELS[result.submittedLanguage] || result.submittedLanguage}
+                        </span>
+                    </div>
                 </div>
-                <div className="max-h-[300px] overflow-y-auto rounded-lg bg-[#1e1e1e] p-4">
-                    <pre className="font-mono text-[13px] leading-6 whitespace-pre-wrap text-gray-300">
-                        <code>{result.submittedCode}</code>
-                    </pre>
+                <div className="border-border bg-bg-page relative max-h-[400px] overflow-hidden rounded-2xl border shadow-2xl">
+                    <div className="bg-accent/20 absolute top-0 left-0 h-full w-1.5" />
+                    <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent overflow-y-auto p-6">
+                        <pre className="text-text-secondary font-mono text-[13px] leading-relaxed select-all">
+                            <code>{result.submittedCode}</code>
+                        </pre>
+                    </div>
                 </div>
             </div>
         </div>

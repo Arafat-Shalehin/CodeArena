@@ -14,6 +14,7 @@ import ProblemCard from '@/features/problems/components/ProblemCard'
 
 // Data
 import { normalizeDifficulty } from '@/features/problems/data/problems.data'
+import { formatAcceptanceRate } from '@/lib/utils'
 
 /**
  * @component RecentProblemsSection
@@ -86,7 +87,7 @@ export default function RecentProblemsSection() {
                                 difficulty={normalizeDifficulty(problem.difficulty)}
                                 solvedCount={problem.acceptedSubmissions || 0}
                                 tags={problem.tags || []}
-                                successRate={`${problem.acceptanceRate || 0}%`}
+                                successRate={formatAcceptanceRate(problem.acceptanceRate)}
                             />
                         </motion.div>
                     ))

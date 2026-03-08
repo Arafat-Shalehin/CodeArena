@@ -19,6 +19,7 @@ import {
 import SubmissionsTab from './SubmissionsTab'
 import SubmissionResultTab from './SubmissionResultTab'
 import { useProblemSolve } from '@/context/ProblemSolveContext'
+import { formatAcceptanceRate } from '@/lib/utils'
 
 const DIFFICULTY_STYLES = {
     easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
@@ -37,64 +38,84 @@ const TABS = [
 
 function ProblemDescription({ problem }) {
     return (
-        <div>
-            <h2 className="mb-2 text-xl font-bold" style={{ color: '#fff' }}>
+        <div className="animate-fade-up">
+            <h2 className="text-text-primary mb-3 text-2xl font-bold tracking-tight">
                 {problem.title}
             </h2>
 
-            <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="mb-5 flex flex-wrap items-center gap-2">
                 <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${DIFFICULTY_STYLES[problem.difficulty] || ''}`}
+                    className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${DIFFICULTY_STYLES[problem.difficulty] || ''}`}
                 >
                     {problem.difficulty}
                 </span>
                 {problem.tags?.map((tag) => (
                     <span
                         key={tag}
-                        className="flex items-center gap-1 rounded-full bg-[#333] px-2.5 py-0.5 text-[10px] text-gray-400"
+                        className="bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition-colors"
                     >
-                        <Tag size={10} /> {tag}
+                        <Tag size={12} className="opacity-70" /> {tag}
                     </span>
                 ))}
             </div>
 
-            <div className="mb-5 flex items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                    <Clock size={12} /> {problem.timeLimit}ms
+            <div className="border-border bg-bg-page/50 text-text-secondary mb-6 flex items-center gap-6 rounded-xl border p-4 text-[13px]">
+                <span className="flex items-center gap-2">
+                    <Clock size={14} className="text-accent" />
+                    <span className="font-medium">{problem.timeLimit}ms</span>
                 </span>
-                <span className="flex items-center gap-1">
-                    <HardDrive size={12} /> {(problem.memoryLimit / 1024).toFixed(0)}MB
+                <span className="flex items-center gap-2">
+                    <HardDrive size={14} className="text-accent" />
+                    <span className="font-medium">{(problem.memoryLimit / 1024).toFixed(0)}MB</span>
                 </span>
-                <span>Acceptance: {problem.acceptanceRate}%</span>
+                <div className="bg-border h-4 w-px" />
+                <span className="font-medium italic">
+                    Acceptance:{' '}
+                    <span className="text-text-primary not-italic">
+                        {formatAcceptanceRate(problem.acceptanceRate)}
+                    </span>
+                </span>
             </div>
 
-            <div className="mb-6 text-[14px] leading-7 whitespace-pre-wrap text-gray-300">
+            <div className="prose-markdown text-text-secondary mb-8 text-[15px] leading-relaxed">
                 {problem.description}
             </div>
 
             {problem.sampleTestCases?.length > 0 && (
-                <div>
+                <div className="space-y-6">
                     {problem.sampleTestCases.map((tc, i) => (
-                        <div key={i} className="mb-5">
-                            <h4 className="mb-2 text-sm font-bold" style={{ color: '#fff' }}>
+                        <div
+                            key={i}
+                            className="animate-fade-up"
+                            style={{ animationDelay: `${i * 0.1}s` }}
+                        >
+                            <h4 className="text-text-primary mb-3 text-sm font-bold">
                                 Example {i + 1}:
                             </h4>
-                            <div className="rounded-lg bg-[#262626] p-4 font-mono text-sm">
-                                <div className="mb-1">
-                                    <span className="font-bold text-gray-400">Input: </span>
-                                    <span className="text-gray-300">{tc.input}</span>
+                            <div className="border-border bg-bg-muted/50 overflow-hidden rounded-xl border font-mono text-[13px]">
+                                <div className="border-border text-text-muted border-b px-4 py-2 text-xs font-bold tracking-wider uppercase">
+                                    Input
                                 </div>
-                                <div className="mb-1">
-                                    <span className="font-bold text-gray-400">Output: </span>
-                                    <span className="text-gray-300">{tc.output}</span>
+                                <div className="text-text-primary p-4 whitespace-pre-wrap">
+                                    {tc.input}
                                 </div>
+
+                                <div className="border-border text-text-muted border-y px-4 py-2 text-xs font-bold tracking-wider uppercase">
+                                    Output
+                                </div>
+                                <div className="text-text-primary p-4 whitespace-pre-wrap">
+                                    {tc.output}
+                                </div>
+
                                 {tc.explanation && (
-                                    <div>
-                                        <span className="font-bold text-gray-400">
-                                            Explanation:{' '}
-                                        </span>
-                                        <span className="text-gray-300">{tc.explanation}</span>
-                                    </div>
+                                    <>
+                                        <div className="border-border text-text-muted border-y px-4 py-2 text-xs font-bold tracking-wider uppercase">
+                                            Explanation
+                                        </div>
+                                        <div className="text-text-secondary p-4 whitespace-pre-wrap italic">
+                                            {tc.explanation}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -102,14 +123,25 @@ function ProblemDescription({ problem }) {
                 </div>
             )}
 
-            <div className="mt-4 rounded-lg bg-[#262626] p-4 text-sm">
-                <h4 className="mb-2 font-bold" style={{ color: '#fff' }}>
-                    Constraints:
+            <div className="border-accent/20 bg-accent/5 mt-8 rounded-xl border p-5">
+                <h4 className="text-accent mb-3 flex items-center gap-2 text-sm font-bold tracking-wider uppercase">
+                    <Star size={14} /> Constraints
                 </h4>
-                <ul className="space-y-1 font-mono text-xs text-gray-400">
-                    <li>• Time Limit: {problem.timeLimit}ms</li>
-                    <li>• Memory Limit: {(problem.memoryLimit / 1024).toFixed(0)}MB</li>
-                    {problem.codeSizeLimit && <li>• Code Size Limit: {problem.codeSizeLimit}KB</li>}
+                <ul className="text-text-secondary space-y-2 font-mono text-[13px] font-medium">
+                    <li className="flex items-center gap-2">
+                        <div className="bg-accent h-1 w-1 rounded-full" />
+                        Time Limit: {problem.timeLimit}ms
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <div className="bg-accent h-1 w-1 rounded-full" />
+                        Memory Limit: {(problem.memoryLimit / 1024).toFixed(0)}MB
+                    </li>
+                    {problem.codeSizeLimit && (
+                        <li className="flex items-center gap-2">
+                            <div className="bg-accent h-1 w-1 rounded-full" />
+                            Code Size Limit: {problem.codeSizeLimit}KB
+                        </li>
+                    )}
                 </ul>
             </div>
         </div>
@@ -126,16 +158,16 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
     return (
         <>
             {/* Tab Header */}
-            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] px-3">
-                <div className="flex items-center gap-1">
+            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-2">
+                <div className="flex items-center gap-0.5">
                     {TABS.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setLeftTab(tab.key)}
-                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                            className={`hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
                                 leftTab === tab.key
-                                    ? 'bg-[#3a3a3a] text-white'
-                                    : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                    ? 'bg-bg-muted text-text-primary shadow-sm'
+                                    : 'text-text-muted hover:bg-bg-muted/50'
                             }`}
                         >
                             <span>{tab.icon}</span> {tab.label}
@@ -144,26 +176,22 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                     {submissionResult && (
                         <div
                             onClick={() => setLeftTab('submission-result')}
-                            className={`flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                            className={`hover:text-text-primary relative flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                                 leftTab === 'submission-result'
-                                    ? 'bg-[#3a3a3a] text-white'
-                                    : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                    ? 'bg-bg-muted text-text-primary shadow-sm'
+                                    : 'text-text-muted hover:bg-bg-muted/50'
                             }`}
                         >
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-2">
                                 <History
-                                    size={13}
+                                    size={14}
                                     className={
-                                        submissionResult.passed
-                                            ? 'text-[#2cbb5d]'
-                                            : 'text-[#ef4444]'
+                                        submissionResult.passed ? 'text-success' : 'text-error'
                                     }
                                 />
                                 <span
                                     className={
-                                        submissionResult.passed
-                                            ? 'text-[#2cbb5d]'
-                                            : 'text-[#ef4444]'
+                                        submissionResult.passed ? 'text-success' : 'text-error'
                                     }
                                 >
                                     {submissionResult.passed ? 'Accepted' : 'Failed'}
@@ -174,28 +202,28 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                                     e.stopPropagation()
                                     setLeftTab('description')
                                 }}
-                                className="ml-1 flex items-center justify-center rounded p-0.5 hover:bg-[#444] hover:text-white"
+                                className="bg-bg-page/50 hover:bg-bg-muted text-text-muted hover:text-text-primary ml-2 flex h-4 w-4 items-center justify-center rounded-full transition-colors"
                             >
-                                <X size={12} />
+                                <X size={10} />
                             </div>
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-1 text-gray-500">
+                <div className="flex items-center gap-1 px-2">
                     <button
                         onClick={onMaximize}
-                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                         title={isMaximized ? 'Restore' : 'Maximize'}
                     >
-                        {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                     {onCollapse && (
                         <button
                             onClick={onCollapse}
-                            className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                            className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                             title="Collapse"
                         >
-                            <ChevronLeft size={14} />
+                            <ChevronLeft size={16} />
                         </button>
                     )}
                 </div>

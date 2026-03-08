@@ -5,8 +5,8 @@ import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
 import { executeCode } from '@/lib/docker/executor'
-import { logger } from '@/lib/logger'
 import { redisClient } from '@/lib/redis'
+import { syncUserStats } from '@/services/user.service'
 
 /**
  * Worker to process code submissions
@@ -199,40 +199,9 @@ export function initSubmissionWorker() {
                         },
                     })
 
-                    // 6. Update User unique stats
-                    const userUpdate = {
-                        $addToSet: { 'stats.attemptedProblems': submission.problemId },
-                        $inc: { 'stats.totalSubmissions': 1 },
-                    }
-
-                    if (isAccepted) {
-                        // Activity Calendar - Increment on every AC submission
-                        const today = new Date().toISOString().split('T')[0]
-                        const calendarKey = `stats.activityCalendar.${today}`
-                        userUpdate.$inc[calendarKey] = 1
-
-                        // Check if this problem was already solved
-                        const existingUser = await User.findById(submission.userId).select(
-                            'stats.solvedProblems'
-                        )
-                        const isUniqueSolved = !existingUser?.stats?.solvedProblems?.some(
-                            (id) => id.toString() === submission.problemId.toString()
-                        )
-
-                        if (isUniqueSolved) {
-                            userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
-                            userUpdate.$inc['stats.accepted'] = 1
-
-                            // Increment Difficulty Distribution
-                            const diff = problem.difficulty?.toLowerCase() || 'easy'
-                            userUpdate.$inc[`stats.solvedDistribution.${diff}`] = 1
-                        }
-                    }
-
-                    // 7. Update User Performance Stats by Tag
+                    // 6. Update User Performance Stats by Tag (Keep this incremental for efficiency/legacy)
                     if (problem.tags && problem.tags.length > 0) {
-                        // Build $set for date fields
-                        userUpdate.$set = userUpdate.$set || {}
+                        const userUpdate = { $inc: {}, $set: {} }
 
                         problem.tags.forEach((tag) => {
                             const mapKey = 'performanceStats.' + tag
@@ -247,12 +216,7 @@ export function initSubmissionWorker() {
                                 userUpdate.$set[mapKey + '.recentSolveStreak'] = 0
                             }
                         })
-                    }
 
-                    await User.findByIdAndUpdate(submission.userId, userUpdate, { upsert: true })
-
-                    // 8. Track unique problems per tag (separate update to avoid $inc/$set conflicts)
-                    if (problem.tags && problem.tags.length > 0) {
                         // Check if this problem was already attempted for these tags
                         const existingUser = await User.findById(submission.userId).select(
                             'stats.attemptedProblems'
@@ -262,13 +226,17 @@ export function initSubmissionWorker() {
                         )
 
                         if (isFirstAttempt) {
-                            const uniqueUpdate = { $inc: {} }
                             problem.tags.forEach((tag) => {
-                                uniqueUpdate.$inc['performanceStats.' + tag + '.uniqueProblems'] = 1
+                                userUpdate.$inc['performanceStats.' + tag + '.uniqueProblems'] = 1
                             })
-                            await User.findByIdAndUpdate(submission.userId, uniqueUpdate)
                         }
+
+                        await User.findByIdAndUpdate(submission.userId, userUpdate)
                     }
+
+                    // 7. Synchronize Global Stats (Solved Count, Distribution, Calendar)
+                    // This is our single source of truth fix.
+                    await syncUserStats(submission.userId)
                 }
 
                 return { verdict: finalVerdict, passedCount, totalCount }
