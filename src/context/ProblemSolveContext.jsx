@@ -57,9 +57,7 @@ const LANG_LABELS = {
 export { STARTER_CODES, LANG_LABELS }
 
 export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
-    const { user } = useAuth()
-
-    const { syncUser } = useAuth()
+    const { user, syncUser } = useAuth()
     // Core code state
     const [code, setCode] = useState(initialCode || '')
     const [language, setLanguage] = useState('python')
@@ -185,8 +183,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         localStorage.removeItem(`codearena_code_${problemId}_${language}`)
     }
 
-    // ─── Run Code (Single test case via Docker) ──────────────────────────────
-
+    // ─── Run Code (Asynchronous via BullMQ) ──────────────────────────────────
     const runCode = useCallback(async () => {
         if (!problem) return
         setIsRunning(true)
@@ -195,57 +192,34 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         setTestResult({ status: 'running' })
 
         try {
-            const res = await fetch('/api/evaluation/execute', {
+            const res = await fetch('/api/submissions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    problemId: problem._id,
                     code,
                     files: files.length > 1 ? files : undefined,
                     language,
-                    input: testInput,
-                    timeLimit: problem.timeLimit || 5000,
-                    memoryLimit: problem.memoryLimit || 512000,
+                    type: 'run',
+                    customInput: testInput, // Custom input for 'run' type
                 }),
             })
             const data = await res.json()
 
-            if (data.success) {
-                const r = data.result
-                const expected = problem.sampleTestCases?.[activeTestCase]?.output?.trim()
-                const actual = (r.output || '').trim()
-
-                let verdict = r.verdict
-                let passed = null
-                if (r.success && expected) {
-                    passed = actual === expected
-                    verdict = passed ? 'ACCEPTED' : 'WRONG_ANSWER'
-                } else if (r.success && !expected) {
-                    verdict = 'SUCCESS'
-                    passed = null
-                }
-
-                setTestResult({
-                    status: 'done',
-                    verdict,
-                    passed,
-                    output: r.output,
-                    expected,
-                    error: r.error,
-                    time: r.executionTime,
-                    memory: r.memoryUsed,
-                })
-            } else {
-                setTestResult({ status: 'error', error: data.error, message: data.message })
+            if (!data.success) {
+                setTestResult({ status: 'error', error: data.message })
+                setIsRunning(false)
             }
+            // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
             setTestResult({ status: 'error', error: err.message })
-        } finally {
             setIsRunning(false)
         }
-    }, [code, language, testInput, problem, activeTestCase])
+    }, [code, language, testInput, problem, files])
 
     // ─── Submit Code (Full Judge via Docker) ─────────────────────────────────
 
+    // ─── Submit Code (Asynchronous via BullMQ) ───────────────────────────────
     const submitCode = useCallback(async () => {
         if (!problem) return
         setIsSubmitting(true)
@@ -255,76 +229,30 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         setAiFeedback(null)
 
         try {
-            const testCases = (problem.sampleTestCases || []).map((tc) => ({
-                input: tc.input,
-                expectedOutput: tc.output,
-                isHidden: false,
-            }))
-
-            const res = await fetch('/api/evaluation/judge', {
+            const res = await fetch('/api/submissions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    problemId: problem._id,
                     code,
                     files: files.length > 1 ? files : undefined,
                     language,
-                    problemId: problem._id,
-                    testCases,
-                    timeLimit: problem.timeLimit || 5000,
-                    memoryLimit: problem.memoryLimit || 512000,
-                    comparisonMode: 'token',
+                    type: 'submit',
                     contestId: contestId,
                 }),
             })
             const data = await res.json()
 
-            if (data.success) {
-                const r = data.result
-                const isAccepted = r.verdict === 'ACCEPTED'
-
-                if (isAccepted) {
-                    syncUser()
-                }
-
-                const pub = r.publicTests || {}
-                const mappedResults = (pub.results || []).map((tr) => ({
-                    passed: tr.passed,
-                    actual: tr.actualOutput ?? '',
-                    expected: tr.testCase?.expectedOutput ?? '',
-                }))
-                setTestResult({
-                    status: 'done',
-                    verdict: r.verdict,
-                    passed: isAccepted,
-                    passedCount: pub.passed ?? 0,
-                    totalCount: pub.total ?? 0,
-                    time: r.stats?.executionTime,
-                    memory: r.stats?.memoryUsed,
-                    results: mappedResults,
-                })
-
-                // Auto-switch left panel to submission result
-                setSubmissionResult({
-                    verdict: r.verdict,
-                    passed: isAccepted,
-                    passedCount: pub.passed ?? 0,
-                    totalCount: pub.total ?? 0,
-                    time: r.stats?.executionTime,
-                    memory: r.stats?.memoryUsed,
-                    submittedCode: code,
-                    submittedLanguage: language,
-                    submittedAt: new Date().toISOString(),
-                })
-                setLeftTab('submission-result')
-            } else {
-                setTestResult({ status: 'error', error: data.error, message: data.message })
+            if (!data.success) {
+                setTestResult({ status: 'error', error: data.message })
+                setIsSubmitting(false)
             }
+            // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
             setTestResult({ status: 'error', error: err.message })
-        } finally {
             setIsSubmitting(false)
         }
-    }, [code, language, problem])
+    }, [code, language, problem, files, contestId])
 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
 
@@ -369,38 +297,71 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     )
 
     // ─── View Past Submission Details ──────────────────────────────────────
-    const viewSubmissionDetails = useCallback(async (submissionId) => {
-        setIsSubmitting(true)
-        try {
-            const res = await fetch(`/api/submissions/${submissionId}`)
-            const data = await res.json()
-            if (data.success) {
-                const s = data.data
-                const isAccepted = s.verdict === 'accepted'
+    const viewSubmissionDetails = useCallback(
+        async (submissionId) => {
+            try {
+                const res = await fetch(`/api/submissions/${submissionId}`)
+                const data = await res.json()
+                if (data.success) {
+                    const s = data.data
+                    const isRun = s.type === 'run'
+                    const verdict = (s.verdict || '').toUpperCase()
+                    const isAccepted = verdict === 'ACCEPTED'
 
-                // Map DB submission to context state shape
-                setSubmissionResult({
-                    verdict: s.verdict?.toUpperCase(),
-                    passed: isAccepted,
-                    passedCount:
-                        s.testCaseResults?.filter((r) => r.passed || r.verdict === 'accepted')
-                            .length || 0,
-                    totalCount: s.testCaseResults?.length || 0,
-                    time: s.executionTime,
-                    memory: s.memoryUsed,
-                    submittedCode: s.code,
-                    submittedLanguage: s.language,
-                    submittedAt: s.createdAt,
-                    aiFeedback: s.aiFeedback,
-                })
-                setLeftTab('submission-result')
+                    // 1. Update Test Result (Used for the console panel)
+                    const mappedTestResults = (s.testCaseResults || []).map((tr) => ({
+                        passed: tr.verdict === 'ACCEPTED',
+                        actual: tr.actualOutput ?? '',
+                        expected: '(Hidden)', // Backend doesn't return expected for all
+                    }))
+
+                    setTestResult({
+                        status: 'done',
+                        verdict: verdict,
+                        passed: isAccepted,
+                        passedCount:
+                            s.testCaseResults?.filter((r) => r.verdict === 'ACCEPTED').length || 0,
+                        totalCount: s.testCaseResults?.length || 0,
+                        time: s.executionTime,
+                        memory: s.memoryUsed,
+                        results: mappedTestResults,
+                        error: s.error,
+                    })
+
+                    // 2. If it's a 'submit', also update the submission result and switch tab
+                    if (s.type === 'submit') {
+                        setSubmissionResult({
+                            id: s._id,
+                            verdict: verdict,
+                            passed: isAccepted,
+                            passedCount:
+                                s.testCaseResults?.filter((r) => r.verdict === 'ACCEPTED').length ||
+                                0,
+                            totalCount: s.testCaseResults?.length || 0,
+                            time: s.executionTime,
+                            memory: s.memoryUsed,
+                            submittedCode: s.code,
+                            submittedLanguage: s.language,
+                            submittedAt: s.createdAt,
+                            aiFeedback: s.aiFeedback,
+                        })
+                        setLeftTab('submission-result')
+
+                        // Sync user stats on successful submission
+                        if (isAccepted) {
+                            syncUser()
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch submission details:', err)
+            } finally {
+                setIsSubmitting(false)
+                setIsRunning(false)
             }
-        } catch (err) {
-            console.error('Failed to fetch submission details:', err)
-        } finally {
-            setIsSubmitting(false)
-        }
-    }, [])
+        },
+        [syncUser]
+    )
 
     // ─── Socket.io Connection ──────────────────────────────────────────────
     useEffect(() => {
@@ -420,19 +381,21 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
 
             // Only handle active notifications if the problem matches
             if (data.problemId === problemId) {
-                if (data.type === 'submission_evaluated') {
-                    setIsSubmitting(false)
-
-                    if (data.verdict === 'accepted') {
-                        toast.success('Accepted!')
-                    } else if (data.status === 'error') {
-                        toast.error(data.error || 'System Error')
-                    } else {
-                        toast.error((data.verdict || '').replace('_', ' ').toUpperCase())
-                    }
-
-                    // Fetch submission details automatically to verify UI state
+                // Determine if we should clear running/submitting states
+                if (data.type === 'submission_evaluated' || data.type === 'submission_error') {
+                    // Fetch full details to update the UI
                     viewSubmissionDetails(data.submissionId)
+
+                    // Show notifications
+                    if (data.verdict?.toUpperCase() === 'ACCEPTED') {
+                        toast.success('Accepted!')
+                    } else if (data.status === 'error' || data.type === 'submission_error') {
+                        toast.error(data.error || 'Evaluation Error')
+                        setIsSubmitting(false)
+                        setIsRunning(false)
+                    } else if (data.verdict) {
+                        toast.error(data.verdict.replace(/_/g, ' '))
+                    }
                 }
             }
         })

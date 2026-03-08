@@ -33,7 +33,8 @@ export async function getAllProblems(query) {
 
     // 3. Tag Filter (Supports comma-separated or single)
     if (query.tag) {
-        const tags = query.tag.split(',')
+        // Use case-insensitive regex for tags to ensure matching regardless of casing
+        const tags = query.tag.split(',').map((t) => new RegExp(`^${t.trim()}$`, 'i'))
         filter.tags = { $in: tags }
     }
 
@@ -44,7 +45,7 @@ export async function getAllProblems(query) {
         if (query.status === 'solved') {
             const solvedIds = await Submission.find({
                 userId: query.userId,
-                verdict: 'accepted',
+                verdict: { $regex: new RegExp('^ACCEPTED$', 'i') },
             }).distinct('problemId')
             filter._id = { $in: solvedIds }
         } else if (query.status === 'attempted') {
@@ -53,7 +54,7 @@ export async function getAllProblems(query) {
             }).distinct('problemId')
             const solvedIds = await Submission.find({
                 userId: query.userId,
-                verdict: 'accepted',
+                verdict: { $regex: new RegExp('^ACCEPTED$', 'i') },
             }).distinct('problemId')
 
             const attemptedOnly = allAttempted.filter(

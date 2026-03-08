@@ -53,8 +53,11 @@ export function AuthProvider({ children }) {
                     if (syncData.success) {
                         // 2. Set the combined user object (MongoDB data + UI preferences)
                         const dbUser = syncData.data?.user || syncData.user // flexible for API response shape
+                        const userId = dbUser._id?.toString()
                         setUser({
                             ...dbUser,
+                            id: userId,
+                            _id: userId,
                             firebaseUid: firebaseUser.uid,
                             ...localPreferences,
                         })
@@ -85,6 +88,8 @@ export function AuthProvider({ children }) {
         try {
             await signOut(auth)
             setUser(null)
+            setLocalPreferences({})
+            localStorage.removeItem(STORAGE_KEY)
         } catch (error) {
             console.error('Error logging out:', error)
         } finally {
@@ -95,12 +100,14 @@ export function AuthProvider({ children }) {
     const updateProfile = useCallback((updatedData) => {
         setLocalPreferences((prev) => {
             const newPrefs = { ...prev, ...updatedData }
+            delete newPrefs.stats // Never persist dynamic stats in local preferences
             return newPrefs
         })
 
-        // Persist to localStorage outside of the setState updater (no side effects in updater)
+        // Persist to localStorage outside of the setState updater
         const currentPrefs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
         const merged = { ...currentPrefs, ...updatedData }
+        delete merged.stats // Never persist dynamic stats
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
 
         setUser((prevUser) => {
@@ -119,9 +126,12 @@ export function AuthProvider({ children }) {
             const data = await res.json()
             if (data.success) {
                 const dbUser = data.data?.user || data.user
+                const userId = dbUser._id?.toString()
                 setUser((prev) => ({
                     ...prev,
                     ...dbUser,
+                    id: userId,
+                    _id: userId,
                     ...localPreferences,
                 }))
                 return dbUser

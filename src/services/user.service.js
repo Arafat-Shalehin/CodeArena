@@ -1,4 +1,6 @@
 import { User } from '@/models/User.models'
+import { Submission } from '@/models/Submission.models'
+import { Problem } from '@/models/Problem.models'
 import { signToken } from '@/lib/jwt'
 
 /**
@@ -156,11 +158,15 @@ export async function updateUser(id, updateData) {
     const allowedFields = ['name', 'bio', 'location', 'website', 'socials', 'avatarSeed']
     const safeData = {}
 
+    console.log('updateUser called with:', { id, updateData, allowedFields })
+
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
             safeData[field] = updateData[field]
         }
     }
+
+    console.log('safeData to update:', safeData)
 
     const user = await User.findByIdAndUpdate(
         id,
@@ -174,6 +180,7 @@ export async function updateUser(id, updateData) {
         throw err
     }
 
+    console.log('Updated user:', user)
     return user
 }
 
@@ -206,19 +213,133 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
 
     if (isFollowing) {
         // Unfollow
-        await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } }),
-            User.findByIdAndUpdate(targetUserId, { $pull: { followers: currentUserId } }),
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findByIdAndUpdate(
+                currentUserId,
+                { $pull: { following: targetUserId } },
+                { new: true }
+            ),
+            User.findByIdAndUpdate(
+                targetUserId,
+                { $pull: { followers: currentUserId } },
+                { new: true }
+            ),
         ])
-        return { following: false }
+        return {
+            following: false,
+            followersCount: updatedTargetUser.followers.length,
+            followingCount: updatedTargetUser.following.length, // Returns target user's stats
+        }
     } else {
         // Follow
-        await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $addToSet: { following: targetUserId } }),
-            User.findByIdAndUpdate(targetUserId, { $addToSet: { followers: currentUserId } }),
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findByIdAndUpdate(
+                currentUserId,
+                { $addToSet: { following: targetUserId } },
+                { new: true }
+            ),
+            User.findByIdAndUpdate(
+                targetUserId,
+                { $addToSet: { followers: currentUserId } },
+                { new: true }
+            ),
         ])
-        return { following: true }
+        return {
+            following: true,
+            followersCount: updatedTargetUser.followers.length,
+            followingCount: updatedTargetUser.following.length,
+        }
     }
+}
+
+/**
+ * Re-calculates and synchronizes a user's problem-solving statistics from their submissions.
+ * This is the single source of truth for user stats (solved problems, distribution, activity).
+ * @param {string} userId - The ID of the user to synchronize.
+ * @returns {Promise<Object>} The updated user object.
+ */
+export async function syncUserStats(userId) {
+    const submissions = await Submission.find({ userId }).lean()
+
+    // 1. Total Submissions
+    const totalSubmissions = submissions.length
+
+    // 2. Map all problem interactions
+    const problemMap = new Map() // problemId -> { isAccepted: boolean, date: string }
+
+    submissions.forEach((sub) => {
+        const pId = sub.problemId.toString()
+        const verdict = (sub.verdict || '').toUpperCase()
+        const isAccepted = verdict === 'ACCEPTED'
+        const date = sub.createdAt.toISOString().split('T')[0]
+
+        if (!problemMap.has(pId)) {
+            problemMap.set(pId, { isAccepted, dates: new Set([date]), acceptedDates: new Set() })
+            if (isAccepted) problemMap.get(pId).acceptedDates.add(date)
+        } else {
+            const entry = problemMap.get(pId)
+            entry.dates.add(date)
+            if (isAccepted) {
+                entry.isAccepted = true
+                entry.acceptedDates.add(date)
+            }
+        }
+    })
+
+    const attemptedProblems = Array.from(problemMap.keys())
+    const solvedProblems = Array.from(problemMap.entries())
+        .filter(([_, entry]) => entry.isAccepted)
+        .map(([pId, _]) => pId)
+
+    const acceptedCount = solvedProblems.length
+
+    // 3. Solved Distribution and Score (Easy, Medium, Hard)
+    const solvedDistribution = { easy: 0, medium: 0, hard: 0 }
+    let calculatedScore = 0
+
+    if (solvedProblems.length > 0) {
+        const problems = await Problem.find({ _id: { $in: solvedProblems } }).select('difficulty')
+        const pointsMap = { easy: 10, medium: 20, hard: 50 }
+
+        problems.forEach((p) => {
+            const diff = p.difficulty?.toLowerCase() || 'medium'
+            if (solvedDistribution[diff] !== undefined) {
+                solvedDistribution[diff]++
+            }
+            // Add points according to difficulty mapping, fallback to medium points
+            calculatedScore += pointsMap[diff] || 20
+        })
+    }
+
+    // 4. Activity Calendar
+    // Rule: Increment count for EVERY accepted submission on a given day (not just unique problems)
+    const activityCalendar = new Map()
+    submissions.forEach((sub) => {
+        const verdict = (sub.verdict || '').toUpperCase()
+        if (verdict === 'ACCEPTED') {
+            const date = sub.createdAt.toISOString().split('T')[0]
+            activityCalendar.set(date, (activityCalendar.get(date) || 0) + 1)
+        }
+    })
+
+    // 5. Update User Record
+    const user = await User.findByIdAndUpdate(
+        userId,
+        {
+            $set: {
+                'stats.totalSubmissions': totalSubmissions,
+                'stats.accepted': acceptedCount,
+                'stats.score': calculatedScore,
+                'stats.solvedProblems': solvedProblems,
+                'stats.attemptedProblems': attemptedProblems,
+                'stats.solvedDistribution': solvedDistribution,
+                'stats.activityCalendar': Object.fromEntries(activityCalendar),
+            },
+        },
+        { new: true }
+    ).select('-password')
+
+    return user
 }
 
 /**

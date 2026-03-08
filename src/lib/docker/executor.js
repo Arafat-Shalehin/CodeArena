@@ -49,14 +49,25 @@ try {
  * @param {number} timeLimit - Time limit in milliseconds
  * @param {number} memoryLimit - Memory limit in KB
  * @param {number} outputLimit - Output limit in KB
+ * @param {string} specialJudgeCode - Code for special judge (JavaScript)
+ * @param {string} expectedOutput - Expected output for special judge
  * @returns {Promise<Object>} - Execution result
  */
-export async function executeCode({ code, files, language, input = '', timeLimit, memoryLimit, outputLimit }) {
+export async function executeCode({
+    code,
+    files,
+    language,
+    input = '',
+    timeLimit,
+    memoryLimit,
+    outputLimit,
+    specialJudgeCode,
+    expectedOutput,
+}) {
     try {
         // Validate code security — check all files or single code
-        const codeToValidate = files && files.length > 0
-            ? files.map(f => f.content).join('\n')
-            : code
+        const codeToValidate =
+            files && files.length > 0 ? files.map((f) => f.content).join('\n') : code
 
         const securityCheck = validateCodeSecurity(codeToValidate)
         if (!securityCheck.isValid) {
@@ -82,7 +93,7 @@ export async function executeCode({ code, files, language, input = '', timeLimit
             input,
             effectiveTimeLimit,
             effectiveMemoryLimit,
-            outputLimit || (SANDBOX_CONFIG.execution.maxOutputSize / 1024)
+            outputLimit || SANDBOX_CONFIG.execution.maxOutputSize / 1024
         )
 
         // Start container and get results
@@ -90,6 +101,25 @@ export async function executeCode({ code, files, language, input = '', timeLimit
 
         // Cleanup container
         await cleanupContainer(container)
+
+        // Handle Special Judge if result was SUCCESS
+        if (result.success && specialJudgeCode) {
+            const judgeResult = await runSpecialJudgeInSandbox({
+                specialJudgeCode,
+                input,
+                actualOutput: result.output,
+                expectedOutput: expectedOutput || '',
+            })
+
+            if (!judgeResult.success) {
+                return {
+                    ...result,
+                    success: false,
+                    verdict: 'WRONG_ANSWER',
+                    error: judgeResult.error || 'Special judge rejected the output',
+                }
+            }
+        }
 
         return result
     } catch (error) {
@@ -342,7 +372,7 @@ function parseExecutionOutput(output, statusCode, executionTime) {
             verdict: 'SUCCESS',
             output: extractOutput(output),
             executionTime: extractExecutionTime(output) || executionTime,
-            memoryUsed: extractMemory(output),
+            memoryUsed: extractMemory(output) || 0,
         }
     }
 
@@ -415,6 +445,74 @@ function extractExecutionTime(output) {
 function extractMemory(output) {
     const match = output.match(/Memory used:\s*(\d+)KB/)
     return match ? parseInt(match[1]) : null
+}
+
+/**
+ * Run special judge code in a dedicated sandbox
+ */
+async function runSpecialJudgeInSandbox({
+    specialJudgeCode,
+    input,
+    actualOutput,
+    expectedOutput,
+}) {
+    try {
+        // Create a wrapper for the special judge code
+        // The code expects 'input', 'output', and 'expected' variables
+        const wrapper = `
+const input = process.env.INPUT;
+const output = process.env.ACTUAL_OUTPUT;
+const expected = process.env.EXPECTED_OUTPUT;
+
+try {
+    const judgeFn = (function(input, output, expected) {
+        ${specialJudgeCode}
+    });
+    
+    // We expect the specialJudgeCode to either 'return' a value or be a block that we can wrap
+    // If it doesn't have a return, we might need to handle it.
+    // Given the previous eval implementation, it's likely a block.
+    
+    const result = judgeFn(input, output, expected);
+    process.stdout.write(result ? "PASS" : "FAIL");
+} catch (e) {
+    process.stderr.write(e.message);
+    process.exit(1);
+}
+`
+
+        const langConfig = getLanguageConfig('javascript')
+        const dockerConfig = getDockerRunConfig(langConfig.name)
+
+        const container = await docker.createContainer({
+            Image: langConfig.image,
+            Entrypoint: ['node', '-e', wrapper],
+            Env: [
+                `INPUT=${input}`,
+                `ACTUAL_OUTPUT=${actualOutput}`,
+                `EXPECTED_OUTPUT=${expectedOutput}`,
+            ],
+            ...dockerConfig,
+        })
+
+        await container.start()
+
+        // Wait for completion
+        const result = await container.wait()
+        const logs = await container.logs({ stdout: true, stderr: true })
+        const outputString = logs.toString('utf8').trim()
+
+        await cleanupContainer(container)
+
+        if (result.StatusCode !== 0) {
+            return { success: false, error: 'Special judge crashed: ' + outputString }
+        }
+
+        return { success: outputString.includes('PASS') }
+    } catch (error) {
+        console.error('Special judge execution error:', error)
+        return { success: false, error: error.message }
+    }
 }
 
 /**

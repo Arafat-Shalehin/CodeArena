@@ -22,10 +22,10 @@ START_TIME=$(date +%s%N)
 EXIT_CODE=0
 if [ -f "$INPUT_FILE" ]; then
     MAX_OLD_SPACE=$((MEMORY_LIMIT / 1024))
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" node --max-old-space-size=$MAX_OLD_SPACE "$SOURCE_FILE" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    ( /usr/bin/time -f "%M" timeout ${TIME_LIMIT}s node --max-old-space-size=$MAX_OLD_SPACE "$SOURCE_FILE" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" ) 2>>"$ERROR_FILE" || EXIT_CODE=$?
 else
     MAX_OLD_SPACE=$((MEMORY_LIMIT / 1024))
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" node --max-old-space-size=$MAX_OLD_SPACE "$SOURCE_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    ( /usr/bin/time -f "%M" timeout ${TIME_LIMIT}s node --max-old-space-size=$MAX_OLD_SPACE "$SOURCE_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" ) 2>>"$ERROR_FILE" || EXIT_CODE=$?
 fi
 
 # Capture output from temp file if we used redirection

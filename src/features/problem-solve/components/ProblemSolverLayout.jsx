@@ -21,6 +21,7 @@ import {
 
 import ProblemListSidebar from '@/app/test-docker/ProblemListSidebar'
 import { ProblemSolveProvider, useProblemSolve } from '@/context/ProblemSolveContext'
+import { useAuth } from '@/context/AuthContext'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
 
 import DescriptionPanel from './DescriptionPanel'
@@ -40,6 +41,7 @@ function InnerLayout({
 }) {
     const { runCode, submitCode, isRunning, isSubmitting, testResult, fetchAiFeedback } =
         useProblemSolve()
+    const { user } = useAuth()
 
     // ── Panel state: null = normal, 'description'|'editor'|'console' = that panel maximized ──
     const [maximizedPanel, setMaximizedPanel] = useState(null)
@@ -93,11 +95,9 @@ function InnerLayout({
 
     return (
         <div
-            className="flex h-screen w-full flex-col overflow-hidden"
+            className="bg-bg-page text-text-primary flex h-screen w-full flex-col overflow-hidden"
             style={{
-                fontFamily: "'Inter', system-ui, sans-serif",
-                background: '#1a1a1a',
-                color: '#e5e7eb',
+                fontFamily: 'var(--font-sans)',
                 isolation: 'isolate',
             }}
         >
@@ -108,39 +108,39 @@ function InnerLayout({
                 problems={problems}
                 selectedProblemId={problem?._id}
                 onSelectProblem={onSelectProblem}
-                solvedIds={[]}
+                solvedIds={user?.stats?.solvedProblems || []}
                 onShuffle={randomProblem}
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <nav className="flex h-[44px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
+            <nav className="border-border bg-bg-subtle flex h-[48px] flex-shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}
                 <div className="flex items-center gap-1">
                     <button
                         onClick={() => setShowProblemList(true)}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-gray-300 hover:bg-[#3a3a3a]"
+                        className="hover:bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors"
                     >
-                        <List size={14} />
-                        <span className="font-medium">Problem List</span>
+                        <List size={16} />
+                        <span className="font-semibold">Problem List</span>
                     </button>
-                    <div className="mx-1 h-4 w-px bg-[#444]" />
+                    <div className="bg-border mx-2 h-4 w-px" />
                     <button
                         onClick={() => navigateProblem(-1)}
-                        className="rounded p-1 text-gray-400 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                     >
-                        <ChevronLeft size={18} />
+                        <ChevronLeft size={20} />
                     </button>
                     <button
                         onClick={() => navigateProblem(1)}
-                        className="rounded p-1 text-gray-400 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                     >
-                        <ChevronRight size={18} />
+                        <ChevronRight size={20} />
                     </button>
                     <button
                         onClick={randomProblem}
-                        className="rounded p-1 text-gray-400 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
                     >
-                        <Shuffle size={16} />
+                        <Shuffle size={18} />
                     </button>
                 </div>
                 {/* Center */}
@@ -193,7 +193,7 @@ function InnerLayout({
                     <>
                         {/* Left side: Description or collapsed stub */}
                         {maximizedPanel === 'description' ? (
-                            <div className="flex flex-1 flex-col overflow-hidden rounded-lg bg-[#282828]">
+                            <div className="border-border bg-bg-subtle flex flex-1 flex-col overflow-hidden rounded-xl border">
                                 <DescriptionPanel
                                     problem={problem}
                                     onMaximize={() => toggleMaximize('description')}
@@ -201,28 +201,28 @@ function InnerLayout({
                                 />
                             </div>
                         ) : (
-                            <div className="group relative flex w-[36px] flex-shrink-0 items-center justify-center rounded-lg bg-[#282828] text-xs text-gray-500 transition-colors hover:bg-[#333] hover:text-gray-300">
+                            <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex w-[40px] flex-shrink-0 items-center justify-center rounded-xl border transition-colors">
                                 <span
                                     style={{ writingMode: 'vertical-rl' }}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer font-medium"
                                     onClick={() => toggleMaximize('description')}
                                 >
                                     📄 Description
                                 </span>
-                                <div className="absolute bottom-2 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-1 group-hover:flex">
+                                <div className="absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-2 group-hover:flex">
                                     <button
                                         onClick={() => toggleCollapse('description')}
-                                        className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                        className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                         title="Unfold"
                                     >
-                                        <ChevronRight size={12} />
+                                        <ChevronRight size={14} />
                                     </button>
                                     <button
                                         onClick={() => toggleMaximize('description')}
-                                        className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                        className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                         title="Maximize"
                                     >
-                                        <Maximize2 size={12} />
+                                        <Maximize2 size={14} />
                                     </button>
                                 </div>
                             </div>
@@ -232,34 +232,34 @@ function InnerLayout({
                         <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
                             {/* Editor or stub */}
                             {maximizedPanel === 'editor' ? (
-                                <div className="flex flex-1 flex-col overflow-hidden rounded-lg bg-[#282828]">
+                                <div className="border-border bg-bg-subtle flex flex-1 flex-col overflow-hidden rounded-xl border">
                                     <CodeEditorPanel
                                         onMaximize={() => toggleMaximize('editor')}
                                         isMaximized={true}
                                     />
                                 </div>
                             ) : (
-                                <div className="group relative flex h-[36px] flex-shrink-0 items-center gap-2 rounded-lg bg-[#282828] px-4 text-xs text-gray-500 transition-colors hover:bg-[#333] hover:text-gray-300">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
-                                        className="cursor-pointer"
+                                        className="cursor-pointer font-medium"
                                         onClick={() => toggleMaximize('editor')}
                                     >
                                         {'</>'} Code
                                     </span>
-                                    <div className="absolute right-2 hidden items-center gap-1 group-hover:flex">
+                                    <div className="absolute right-3 hidden items-center gap-2 group-hover:flex">
                                         <button
                                             onClick={() => toggleCollapse('editor')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Unfold"
                                         >
-                                            <ChevronDown size={12} />
+                                            <ChevronDown size={14} />
                                         </button>
                                         <button
                                             onClick={() => toggleMaximize('editor')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Maximize"
                                         >
-                                            <Maximize2 size={12} />
+                                            <Maximize2 size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -267,7 +267,7 @@ function InnerLayout({
 
                             {/* Console or stub */}
                             {maximizedPanel === 'console' ? (
-                                <div className="flex flex-1 flex-col overflow-hidden rounded-lg bg-[#282828]">
+                                <div className="border-border bg-bg-subtle flex flex-1 flex-col overflow-hidden rounded-xl border">
                                     <ExecutionConsole
                                         onMaximize={() => toggleMaximize('console')}
                                         onCollapse={() => toggleCollapse('console')}
@@ -275,28 +275,27 @@ function InnerLayout({
                                     />
                                 </div>
                             ) : (
-                                <div className="group relative flex h-[36px] flex-shrink-0 items-center gap-2 rounded-lg bg-[#282828] px-4 text-xs text-gray-500 transition-colors hover:bg-[#333] hover:text-gray-300">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
-                                        className="flex cursor-pointer items-center gap-1.5"
+                                        className="flex cursor-pointer items-center gap-2 font-medium"
                                         onClick={() => toggleMaximize('console')}
                                     >
-                                        <CheckCircle2 size={12} className="text-[#2cbb5d]" />{' '}
-                                        Console
+                                        <CheckCircle2 size={14} className="text-success" /> Console
                                     </span>
-                                    <div className="absolute right-2 hidden items-center gap-1 group-hover:flex">
+                                    <div className="absolute right-3 hidden items-center gap-2 group-hover:flex">
                                         <button
                                             onClick={() => toggleCollapse('console')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Unfold"
                                         >
-                                            <ChevronUp size={12} />
+                                            <ChevronUp size={14} />
                                         </button>
                                         <button
                                             onClick={() => toggleMaximize('console')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Maximize"
                                         >
-                                            <Maximize2 size={12} />
+                                            <Maximize2 size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -308,35 +307,35 @@ function InnerLayout({
                     <>
                         {/* ─── Left: Description or collapsed stub ─── */}
                         {collapsedPanels.description ? (
-                            <div className="group relative flex w-[36px] flex-shrink-0 items-center justify-center rounded-lg bg-[#282828] text-xs text-gray-500 transition-colors hover:bg-[#333] hover:text-gray-300">
+                            <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex w-[40px] flex-shrink-0 items-center justify-center rounded-xl border transition-colors">
                                 <span
                                     style={{ writingMode: 'vertical-rl' }}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer font-medium"
                                     onClick={() => toggleCollapse('description')}
                                 >
                                     📄 Description
                                 </span>
-                                <div className="absolute bottom-2 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-1 group-hover:flex">
+                                <div className="absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-2 group-hover:flex">
                                     <button
                                         onClick={() => toggleCollapse('description')}
-                                        className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                        className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                         title="Unfold"
                                     >
-                                        <ChevronRight size={12} />
+                                        <ChevronRight size={14} />
                                     </button>
                                     <button
                                         onClick={() => toggleMaximize('description')}
-                                        className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                        className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                         title="Maximize"
                                     >
-                                        <Maximize2 size={12} />
+                                        <Maximize2 size={14} />
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <div
                                 style={{ width: `${hSplit.ratio * 100}%` }}
-                                className="flex flex-col overflow-hidden rounded-lg bg-[#282828]"
+                                className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                             >
                                 <DescriptionPanel
                                     problem={problem}
@@ -355,9 +354,9 @@ function InnerLayout({
                                 }
                                 hSplit.onMouseDown(e)
                             }}
-                            className="flex w-[6px] cursor-col-resize items-center justify-center rounded bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
+                            className="bg-bg-page hover:bg-accent/40 flex w-[8px] cursor-col-resize items-center justify-center transition-colors"
                         >
-                            <GripVertical size={10} className="text-gray-600" />
+                            <GripVertical size={12} className="text-text-muted" />
                         </div>
 
                         {/* ─── Right Side: Editor + Console ─── */}
@@ -372,27 +371,27 @@ function InnerLayout({
                         >
                             {/* Editor or collapsed stub */}
                             {collapsedPanels.editor ? (
-                                <div className="group relative flex h-[36px] flex-shrink-0 items-center gap-2 rounded-lg bg-[#282828] px-4 text-xs text-gray-500 transition-colors hover:bg-[#333] hover:text-gray-300">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
-                                        className="cursor-pointer"
+                                        className="cursor-pointer font-medium"
                                         onClick={() => toggleCollapse('editor')}
                                     >
                                         {'</>'} Code
                                     </span>
-                                    <div className="absolute right-2 hidden items-center gap-1 group-hover:flex">
+                                    <div className="absolute right-3 hidden items-center gap-2 group-hover:flex">
                                         <button
                                             onClick={() => toggleCollapse('editor')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Unfold"
                                         >
-                                            <ChevronDown size={12} />
+                                            <ChevronDown size={14} />
                                         </button>
                                         <button
                                             onClick={() => toggleMaximize('editor')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Maximize"
                                         >
-                                            <Maximize2 size={12} />
+                                            <Maximize2 size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -403,7 +402,7 @@ function InnerLayout({
                                             ? '100%'
                                             : `${vSplit.ratio * 100}%`,
                                     }}
-                                    className="flex flex-col overflow-hidden rounded-lg bg-[#282828]"
+                                    className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                                 >
                                     <CodeEditorPanel
                                         onMaximize={() => toggleMaximize('editor')}
@@ -422,35 +421,34 @@ function InnerLayout({
                                         setCollapsedPanels((p) => ({ ...p, console: false }))
                                     vSplit.onMouseDown(e)
                                 }}
-                                className="flex h-[6px] cursor-row-resize items-center justify-center rounded bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
+                                className="bg-bg-page hover:bg-accent/40 flex h-[8px] cursor-row-resize items-center justify-center transition-colors"
                             >
-                                <GripHorizontal size={10} className="text-gray-600" />
+                                <GripHorizontal size={12} className="text-text-muted" />
                             </div>
 
                             {/* Console or collapsed stub */}
                             {collapsedPanels.console ? (
-                                <div className="group relative flex h-[36px] flex-shrink-0 items-center gap-2 rounded-lg bg-[#282828] px-4 text-xs text-gray-500 transition-colors hover:bg-[#333] hover:text-gray-300">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
-                                        className="flex cursor-pointer items-center gap-1.5"
+                                        className="flex cursor-pointer items-center gap-2 font-medium"
                                         onClick={() => toggleCollapse('console')}
                                     >
-                                        <CheckCircle2 size={12} className="text-[#2cbb5d]" />{' '}
-                                        Console
+                                        <CheckCircle2 size={14} className="text-success" /> Console
                                     </span>
-                                    <div className="absolute right-2 hidden items-center gap-1 group-hover:flex">
+                                    <div className="absolute right-3 hidden items-center gap-2 group-hover:flex">
                                         <button
                                             onClick={() => toggleCollapse('console')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Unfold"
                                         >
-                                            <ChevronUp size={12} />
+                                            <ChevronUp size={14} />
                                         </button>
                                         <button
                                             onClick={() => toggleMaximize('console')}
-                                            className="rounded bg-[#444] p-1 text-gray-300 hover:bg-[#555] hover:text-white"
+                                            className="bg-bg-muted text-text-primary rounded-lg p-1.5 transition-all hover:scale-110"
                                             title="Maximize"
                                         >
-                                            <Maximize2 size={12} />
+                                            <Maximize2 size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -461,7 +459,7 @@ function InnerLayout({
                                             ? '100%'
                                             : `${(1 - vSplit.ratio) * 100}%`,
                                     }}
-                                    className="flex flex-col overflow-hidden rounded-lg bg-[#282828]"
+                                    className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                                 >
                                     <ExecutionConsole
                                         onMaximize={() => toggleMaximize('console')}
@@ -527,13 +525,20 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
 
     if (isLoading) {
         return (
-            <div
-                className="flex h-screen w-full items-center justify-center"
-                style={{ background: '#1a1a1a' }}
-            >
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 size={32} className="animate-spin text-gray-500" />
-                    <p className="animate-pulse text-sm text-gray-400">Initializing workspace...</p>
+            <div className="bg-bg-page flex h-screen w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-6">
+                    <div className="relative">
+                        <Loader2 size={48} className="text-accent animate-spin" />
+                        <div className="bg-accent/20 absolute inset-0 animate-pulse rounded-full blur-xl" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-text-primary text-lg font-bold">
+                            Initializing Workspace
+                        </p>
+                        <p className="text-text-muted mt-1 text-sm">
+                            Preparing your coding environment...
+                        </p>
+                    </div>
                 </div>
             </div>
         )

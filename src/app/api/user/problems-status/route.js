@@ -24,7 +24,7 @@ export async function GET(request) {
         // Find all accepted submissions for this user
         const solvedProblems = await Submission.find({
             userId: user._id,
-            verdict: 'accepted',
+            verdict: { $regex: new RegExp('^ACCEPTED$', 'i') },
         }).distinct('problemId')
 
         // Attempted but NOT solved

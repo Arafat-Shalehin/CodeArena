@@ -21,15 +21,18 @@ export async function POST(request) {
         await dbConnect()
 
         // Check if user already exists
-        let user = await User.findOne({ email }).lean() // Use lean for easier modification
+        let user = await User.findOne({ email })
+            .select(
+                'name email username bio location website socials avatarSeed stats role performanceStats followers following'
+            )
+            .lean()
 
         if (!user) {
-            // Extract a base username from email or displayName if not provided
+            // ... (user creation logic remains same as restored)
             let baseUsername = displayName
                 ? displayName.toLowerCase().replace(/[^a-z0-9]/g, '')
                 : email.split('@')[0].replace(/[^a-z0-9]/g, '')
 
-            // Ensure username is unique
             let existingUser = await User.findOne({ name: baseUsername })
             let counter = 1
             let uniqueName = baseUsername
@@ -39,7 +42,6 @@ export async function POST(request) {
             }
 
             try {
-                // Create new user in MongoDB
                 user = await User.create({
                     email,
                     name: uniqueName,
@@ -57,7 +59,29 @@ export async function POST(request) {
             }
         }
 
-        // --- FETCH RECENT SUBMISSIONS & ACTIVITY ---
+        // --- CALC ACTIVITY CALENDAR (Heatmap) ---
+        // If the activityCalendar is empty or missing, compute it from recent submissions
+        if (!user.stats) user.stats = {}
+
+        const submissionsLastYear = await Submission.find({
+            userId: user._id,
+            verdict: 'accepted',
+            createdAt: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) },
+        })
+            .select('createdAt')
+            .lean()
+
+        // Generate map of date -> count
+        const calendarMap = {}
+        submissionsLastYear.forEach((sub) => {
+            const dateStr = sub.createdAt.toISOString().split('T')[0]
+            calendarMap[dateStr] = (calendarMap[dateStr] || 0) + 1
+        })
+
+        // Merge computed map into stats for frontend (but don't necessarily persist to User model yet)
+        user.stats.activityCalendar = calendarMap
+
+        // --- FETCH RECENT SUBMISSIONS (List) ---
         const recentSubmissions = await Submission.find({ userId: user._id })
             .sort({ createdAt: -1 })
             .limit(10)
@@ -79,18 +103,7 @@ export async function POST(request) {
             lang: s.language === 'python' ? 'Python' : s.language?.toUpperCase() || 'Code',
         }))
 
-        // Simple activity history (count per day/submission)
-        const allRecent = await Submission.find({
-            userId: user._id,
-            createdAt: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) },
-        })
-            .select('createdAt')
-            .lean()
-
-        // Attach to user object for frontend consistency
-        if (!user.stats) user.stats = {}
         user.stats.recentSubmissions = mappedSubmissions
-        user.stats.submissionHistory = allRecent.map((s) => s.createdAt)
 
         // --- AUTH BRIDGE: Issue JWT for our protected APIs ---
         const token = signToken({ id: user._id, role: user.role, email: user.email })

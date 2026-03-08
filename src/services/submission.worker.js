@@ -5,8 +5,9 @@ import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
 import { executeCode } from '@/lib/docker/executor'
-import { logger } from '@/lib/logger'
 import { redisClient } from '@/lib/redis'
+import { syncUserStats } from '@/services/user.service'
+import { VERDICTS } from '@/lib/evaluation/verdicts'
 
 /**
  * Worker to process code submissions
@@ -22,6 +23,14 @@ export function initSubmissionWorker() {
                 const submission = await Submission.findById(submissionId)
                 if (!submission) {
                     throw new Error(`Submission ${submissionId} not found`)
+                }
+
+                // Idempotency: skip if already evaluating or completed
+                if (submission.status === 'running' || submission.status === 'completed') {
+                    console.log(
+                        `[WORKER] Skipping submission ${submissionId} - already ${submission.status}`
+                    )
+                    return
                 }
 
                 // Update status to 'running'
@@ -61,16 +70,41 @@ export function initSubmissionWorker() {
                 let passedCount = 0
                 let maxTime = 0
                 let maxMemory = 0
-                let finalVerdict = 'accepted'
+                let finalVerdict = VERDICTS.ACCEPTED
                 let firstError = null
 
-                if (totalCount === 0) {
-                    finalVerdict = 'error'
+                if (submission.type === 'run') {
+                    // 🚀 'RUN' Path: Execute once with custom input
+                    const result = await executeCode({
+                        code: submission.code,
+                        files: submission.files || [],
+                        language: submission.language,
+                        input: submission.customInput || '',
+                        timeLimit: problem.timeLimit,
+                        memoryLimit: problem.memoryLimit,
+                    })
+
+                    maxTime = result.executionTime || 0
+                    maxMemory = result.memoryUsed || 0
+                    finalVerdict = result.verdict.toUpperCase()
+                    firstError = result.error
+
+                    testCaseResults.push({
+                        verdict: finalVerdict,
+                        time: maxTime,
+                        memory: maxMemory,
+                        error: firstError,
+                        actualOutput: result.output,
+                    })
+                } else if (totalCount === 0) {
+                    finalVerdict = VERDICTS.SYSTEM_ERROR
                     firstError = 'No test cases found for this problem.'
                 } else {
+                    // 🏁 'SUBMIT' Path: Run all test cases
                     for (let i = 0; i < totalCount; i++) {
                         const testCase = testCases[i]
 
+                        // Execute code (including special judge if enabled)
                         const result = await executeCode({
                             code: submission.code,
                             files: submission.files || [],
@@ -78,15 +112,41 @@ export function initSubmissionWorker() {
                             input: testCase.input || '',
                             timeLimit: problem.timeLimit,
                             memoryLimit: problem.memoryLimit,
+                            // Pass special judge details to executor for secure sandboxed execution
+                            specialJudgeCode:
+                                problem.judgeType === 'special' ? problem.specialJudgeCode : null,
+                            expectedOutput: testCase.expectedOutput,
                         })
 
                         maxTime = Math.max(maxTime, result.executionTime || 0)
                         maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
 
+                        // Normalize result verdict to our enum
+                        let resultVerdict = result.verdict.toUpperCase()
+
+                        if (resultVerdict === 'SUCCESS' || resultVerdict === 'ACCEPTED') {
+                            if (!problem.judgeType || problem.judgeType === 'exact') {
+                                // Compare exact match ignoring spacing variations
+                                const normalizeOutput = (str) =>
+                                    (str || '').trim().split(/\s+/).join(' ')
+                                const actual = normalizeOutput(result.output)
+                                const expected = normalizeOutput(testCase.expectedOutput)
+
+                                if (actual !== expected) {
+                                    resultVerdict = VERDICTS.WRONG_ANSWER
+                                    result.error = 'Output does not match expected output'
+                                }
+                            }
+                        }
+
+                        if (resultVerdict === 'SUCCESS') {
+                            resultVerdict = VERDICTS.ACCEPTED
+                        }
+
                         // 4. Update individual test case result
                         const caseResult = {
                             testCaseId: testCase._id,
-                            verdict: result.verdict.toLowerCase(),
+                            verdict: resultVerdict,
                             time: result.executionTime || 0,
                             memory: result.memoryUsed || 0,
                             error: result.error || '',
@@ -100,58 +160,15 @@ export function initSubmissionWorker() {
 
                         testCaseResults.push(caseResult)
 
-                        if (result.verdict === 'SUCCESS') {
-                            if (problem.judgeType === 'special') {
-                                // ⚖️ Special Judge Logic
-                                // For now, we'll use a simple eval-based judge for demonstration.
-                                // In production, this should be executed in a separate sandbox.
-                                try {
-                                    const judgeFn = new Function(
-                                        'input',
-                                        'output',
-                                        'expected',
-                                        problem.specialJudgeCode
-                                    )
-                                    const isCorrect = judgeFn(
-                                        testCase.input,
-                                        result.output,
-                                        testCase.expectedOutput
-                                    )
-
-                                    if (isCorrect) {
-                                        passedCount++
-                                    } else {
-                                        finalVerdict = 'wrong_answer'
-                                        break
-                                    }
-                                } catch (judgeError) {
-                                    console.error('Special Judge Error:', judgeError)
-                                    finalVerdict = 'system_error'
-                                    firstError = 'Special judge execution failed.'
-                                    break
-                                }
-                            } else {
-                                // 🏁 Exact Match Logic
-                                // Normalize CRLF → LF (Windows Docker may produce \r\n)
-                                const normalize = (s) => (s ?? '').replace(/\r\n/g, '\n').trim()
-                                const actualOutput = normalize(result.output)
-                                const expectedOutput = normalize(testCase.expectedOutput)
-
-                                console.log(
-                                    `[JUDGE] Case ${i + 1} | actual: ${JSON.stringify(actualOutput)} | expected: ${JSON.stringify(expectedOutput)} | match: ${actualOutput === expectedOutput}`
-                                )
-
-                                if (actualOutput === expectedOutput) {
-                                    passedCount++
-                                } else {
-                                    finalVerdict = 'wrong_answer'
-                                    break
-                                }
-                            }
+                        if (resultVerdict === 'SUCCESS' || resultVerdict === VERDICTS.ACCEPTED) {
+                            // If it's a success, it means it passed either exact match (default)
+                            // or the special judge (inside Docker)
+                            passedCount++
                         } else {
-                            finalVerdict = result.verdict.toLowerCase()
+                            // First failure determines final verdict
+                            finalVerdict = resultVerdict
                             firstError = result.error
-                            break // Stop at first non-success verdict
+                            break
                         }
                     }
                 }
@@ -164,7 +181,7 @@ export function initSubmissionWorker() {
                         verdict: finalVerdict,
                         executionTime: maxTime,
                         memoryUsed: maxMemory,
-                        error: firstError, // You might want to add this to the Submission model
+                        error: firstError,
                         testCaseResults: testCaseResults,
                     },
                     { new: true }
@@ -188,100 +205,62 @@ export function initSubmissionWorker() {
                         .catch(console.error)
                 }
 
-                // 5. Update Problem stats if result is a valid attempt (not a judge error)
-                if (finalVerdict !== 'system_error' && finalVerdict !== 'error') {
-                    const isAccepted = finalVerdict === 'accepted'
+                // 5. Update Global Stats via Service (Single Source of Truth)
+                // Only sync for 'submit' type
+                if (submission.type === 'submit' && finalVerdict !== VERDICTS.SYSTEM_ERROR) {
+                    const isAccepted = finalVerdict === VERDICTS.ACCEPTED
 
+                    // Always increment total submission counter for the problem
                     await Problem.findByIdAndUpdate(submission.problemId, {
-                        $inc: {
-                            acceptedSubmissions: isAccepted ? 1 : 0,
-                            totalSubmissions: 1,
-                        },
+                        $inc: { totalSubmissions: 1 },
                     })
 
-                    // 6. Update User unique stats
-                    const userUpdate = {
-                        $addToSet: { 'stats.attemptedProblems': submission.problemId },
-                        $inc: { 'stats.totalSubmissions': 1 },
-                    }
+                    // Synchronize all user stats (recalculate from DB — single source of truth)
+                    await syncUserStats(submission.userId)
 
+                    // Only increment problem's accepted count the FIRST time this user solves it
                     if (isAccepted) {
-                        // Activity Calendar - Increment on every AC submission
-                        const today = new Date().toISOString().split('T')[0]
-                        const calendarKey = `stats.activityCalendar.${today}`
-                        userUpdate.$inc[calendarKey] = 1
-
-                        // Check if this problem was already solved
-                        const existingUser = await User.findById(submission.userId).select(
-                            'stats.solvedProblems'
-                        )
-                        const isUniqueSolved = !existingUser?.stats?.solvedProblems?.some(
-                            (id) => id.toString() === submission.problemId.toString()
-                        )
-
-                        if (isUniqueSolved) {
-                            userUpdate.$addToSet['stats.solvedProblems'] = submission.problemId
-                            userUpdate.$inc['stats.accepted'] = 1
-
-                            // Increment Difficulty Distribution
-                            const diff = problem.difficulty?.toLowerCase() || 'easy'
-                            userUpdate.$inc[`stats.solvedDistribution.${diff}`] = 1
-                        }
-                    }
-
-                    // 7. Update User Performance Stats by Tag
-                    if (problem.tags && problem.tags.length > 0) {
-                        // Build $set for date fields
-                        userUpdate.$set = userUpdate.$set || {}
-
-                        problem.tags.forEach((tag) => {
-                            const mapKey = 'performanceStats.' + tag
-                            userUpdate.$inc[mapKey + '.attempted'] = 1
-                            userUpdate.$set[mapKey + '.lastAttemptDate'] = new Date()
-
-                            if (isAccepted) {
-                                userUpdate.$inc[mapKey + '.solved'] = 1
-                                userUpdate.$inc[mapKey + '.recentSolveStreak'] = 1
-                            } else {
-                                userUpdate.$inc[mapKey + '.failed'] = 1
-                                userUpdate.$set[mapKey + '.recentSolveStreak'] = 0
-                            }
+                        const previousAcceptedCount = await Submission.countDocuments({
+                            userId: submission.userId,
+                            problemId: submission.problemId,
+                            verdict: { $regex: new RegExp(`^${VERDICTS.ACCEPTED}$`, 'i') },
+                            _id: { $ne: submission._id }, // exclude the current one
                         })
+
+                        if (previousAcceptedCount === 0) {
+                            // First accepted submission for this user on this problem
+                            await Problem.findByIdAndUpdate(submission.problemId, {
+                                $inc: { acceptedSubmissions: 1 },
+                            })
+                        }
                     }
 
-                    await User.findByIdAndUpdate(submission.userId, userUpdate, { upsert: true })
-
-                    // 8. Track unique problems per tag (separate update to avoid $inc/$set conflicts)
-                    if (problem.tags && problem.tags.length > 0) {
-                        // Check if this problem was already attempted for these tags
-                        const existingUser = await User.findById(submission.userId).select(
-                            'stats.attemptedProblems'
+                    // 6. Invalidate Redis Caches to prevent stale data
+                    if (redisClient.isOpen) {
+                        const keysToInvalidate = [
+                            'leaderboard:global',
+                            `user:stats:${submission.userId}`,
+                            `problem:stats:${submission.problemId}`,
+                        ]
+                        await Promise.all(
+                            keysToInvalidate.map((key) => redisClient.del(key).catch(() => {}))
                         )
-                        const isFirstAttempt = !existingUser?.stats?.attemptedProblems?.some(
-                            (id) => id.toString() === submission.problemId.toString()
+                        console.log(
+                            `[WORKER] Invalidated Redis caches for user ${submission.userId}`
                         )
-
-                        if (isFirstAttempt) {
-                            const uniqueUpdate = { $inc: {} }
-                            problem.tags.forEach((tag) => {
-                                uniqueUpdate.$inc['performanceStats.' + tag + '.uniqueProblems'] = 1
-                            })
-                            await User.findByIdAndUpdate(submission.userId, uniqueUpdate)
-                        }
                     }
                 }
 
                 return { verdict: finalVerdict, passedCount, totalCount }
             } catch (error) {
                 console.error(`CRITICAL: Error processing submission ${submissionId}: `, error)
-                // Capture the exact error message to help debugging
                 const errorMessage = error.message || 'Unknown system error'
 
                 const erSubmission = await Submission.findByIdAndUpdate(
                     submissionId,
                     {
                         status: 'error',
-                        verdict: 'system_error',
+                        verdict: VERDICTS.SYSTEM_ERROR,
                         error: `Judge Error: ${errorMessage} `,
                     },
                     { new: true }
@@ -297,7 +276,7 @@ export function initSubmissionWorker() {
                                 submissionId,
                                 problemId: erSubmission.problemId,
                                 status: 'error',
-                                verdict: 'system_error',
+                                verdict: VERDICTS.SYSTEM_ERROR,
                                 error: `Judge Error: ${errorMessage} `,
                             })
                         )
@@ -308,7 +287,7 @@ export function initSubmissionWorker() {
         },
         {
             connection,
-            concurrency: 2, // Adjust based on Docker capacity
+            concurrency: 2,
         }
     )
 

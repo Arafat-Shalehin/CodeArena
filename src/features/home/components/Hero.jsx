@@ -7,63 +7,16 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CodeEditorPreview from './CodeEditorPreview'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
-
-/**
- * @component FloatingElement
- * @description Renders a floating tech-themed icon/text for the background.
- */
-const FloatingElement = ({ children, initialX, initialY, duration, delay = 0 }) => {
-    const [isMounted, setIsMounted] = useState(false)
-    const shouldReduceMotion = useReducedMotion()
-
-    useEffect(() => {
-        setIsMounted(true)
-    }, [])
-
-    if (!isMounted || shouldReduceMotion) return null
-
-    return (
-        <motion.div
-            initial={{ x: initialX, y: initialY, opacity: 0 }}
-            animate={{
-                y: [initialY, initialY - 40, initialY],
-                opacity: [0, 0.4, 0],
-            }}
-            transition={{
-                duration,
-                repeat: Infinity,
-                delay,
-                ease: 'easeInOut',
-            }}
-            className="text-accent/30 absolute font-mono text-4xl select-none"
-        >
-            {children}
-        </motion.div>
-    )
-}
+import { Tiles } from '@/components/ui/tiles'
 
 export default function Hero() {
     const shouldReduceMotion = useSafeReducedMotion()
 
     return (
         <section className="hero-gradient relative overflow-hidden py-4 md:py-12">
-            {/* Background Animations: Tech Debris */}
-            <div className="absolute inset-0 z-0 opacity-40">
-                <FloatingElement initialX={60} initialY={120} duration={8}>
-                    {'</>'}
-                </FloatingElement>
-                <FloatingElement initialX={500} initialY={60} duration={10} delay={2}>
-                    {'{ }'}
-                </FloatingElement>
-                <FloatingElement initialX={20} initialY={300} duration={12} delay={1}>
-                    {';'}
-                </FloatingElement>
-                <FloatingElement initialX={560} initialY={350} duration={9} delay={3}>
-                    {'['}
-                </FloatingElement>
-                <FloatingElement initialX={250} initialY={40} duration={14} delay={5}>
-                    {'def'}
-                </FloatingElement>
+            {/* Background Animations: Interactive Tiles */}
+            <div className="absolute inset-0 z-0 opacity-50">
+                <Tiles rows={40} cols={20} tileSize="md" />
             </div>
 
             <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 sm:gap-12 lg:grid-cols-2 lg:gap-16">

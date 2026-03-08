@@ -22,10 +22,10 @@ export default function Achievements({ achievements }) {
     const earnedCount = badges.filter((b) => b.earned).length
 
     return (
-        <section className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
+        <section className="bg-bg-subtle border-border rounded-2xl border p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-text-primary text-lg font-semibold">Achievements</h3>
-                <span className="text-text-muted text-xs font-medium">{earnedCount} Earned</span>
+                <h3 className="text-text-primary text-lg font-bold">Achievements</h3>
+                <span className="text-text-muted text-xs font-bold">{earnedCount} Earned</span>
             </div>
 
             {/* Badges Grid */}
@@ -36,7 +36,7 @@ export default function Achievements({ achievements }) {
                         className={`group relative flex aspect-square cursor-help items-center justify-center rounded-full border transition-transform hover:scale-110 ${
                             badge.earned
                                 ? `${badge.bg} ${badge.border} ${badge.color}`
-                                : 'bg-bg-muted/50 border-border/50 text-text-muted grayscale'
+                                : 'bg-bg-muted/50 border-border/50 text-text-muted border-dashed opacity-50 grayscale'
                         }`}
                     >
                         <div className="[&_svg]:size-6">{badge.icon}</div>
@@ -64,10 +64,10 @@ export default function Achievements({ achievements }) {
                         .map((badge) => (
                             <div
                                 key={badge.id}
-                                className="bg-bg-muted/20 border-border/50 flex items-center gap-3 rounded-lg border p-3"
+                                className="bg-bg-page border-border/50 flex items-center gap-3 rounded-xl border p-3 shadow-xs"
                             >
                                 <div
-                                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded ${badge.bg} ${badge.color}`}
+                                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${badge.bg} ${badge.color}`}
                                 >
                                     <div className="[&_svg]:size-5">{badge.icon}</div>
                                 </div>
