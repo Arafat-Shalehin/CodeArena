@@ -158,11 +158,15 @@ export async function updateUser(id, updateData) {
     const allowedFields = ['name', 'bio', 'location', 'website', 'socials', 'avatarSeed']
     const safeData = {}
 
+    console.log('updateUser called with:', { id, updateData, allowedFields })
+
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
             safeData[field] = updateData[field]
         }
     }
+
+    console.log('safeData to update:', safeData)
 
     const user = await User.findByIdAndUpdate(
         id,
@@ -176,6 +180,7 @@ export async function updateUser(id, updateData) {
         throw err
     }
 
+    console.log('Updated user:', user)
     return user
 }
 
@@ -208,18 +213,42 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
 
     if (isFollowing) {
         // Unfollow
-        await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } }),
-            User.findByIdAndUpdate(targetUserId, { $pull: { followers: currentUserId } }),
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findByIdAndUpdate(
+                currentUserId,
+                { $pull: { following: targetUserId } },
+                { new: true }
+            ),
+            User.findByIdAndUpdate(
+                targetUserId,
+                { $pull: { followers: currentUserId } },
+                { new: true }
+            ),
         ])
-        return { following: false }
+        return {
+            following: false,
+            followersCount: updatedTargetUser.followers.length,
+            followingCount: updatedTargetUser.following.length, // Returns target user's stats
+        }
     } else {
         // Follow
-        await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $addToSet: { following: targetUserId } }),
-            User.findByIdAndUpdate(targetUserId, { $addToSet: { followers: currentUserId } }),
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findByIdAndUpdate(
+                currentUserId,
+                { $addToSet: { following: targetUserId } },
+                { new: true }
+            ),
+            User.findByIdAndUpdate(
+                targetUserId,
+                { $addToSet: { followers: currentUserId } },
+                { new: true }
+            ),
         ])
-        return { following: true }
+        return {
+            following: true,
+            followersCount: updatedTargetUser.followers.length,
+            followingCount: updatedTargetUser.following.length,
+        }
     }
 }
 

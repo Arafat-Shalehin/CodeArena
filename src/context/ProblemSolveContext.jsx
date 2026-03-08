@@ -57,9 +57,7 @@ const LANG_LABELS = {
 export { STARTER_CODES, LANG_LABELS }
 
 export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
-    const { user } = useAuth()
-
-    const { syncUser } = useAuth()
+    const { user, syncUser } = useAuth()
     // Core code state
     const [code, setCode] = useState(initialCode || '')
     const [language, setLanguage] = useState('python')

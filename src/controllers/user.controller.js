@@ -81,6 +81,13 @@ export async function updateUserDetails(req, { params }) {
     const resolvedParams = await params
     const body = await req.json()
 
+    console.log('updateUserDetails called:', {
+        params: resolvedParams,
+        body,
+        userId: req.user?.id,
+        userRole: req.user?.role,
+    })
+
     // Ensure the req.user exists and matches the ID (or is admin)
     // Assuming req.user is populated by protect middleware
     const userId = req.user?.id || req.user?._id

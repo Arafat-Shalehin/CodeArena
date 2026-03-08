@@ -21,12 +21,17 @@ export default function StatsGrid({ user: userProp }) {
     return (
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {cards.map((stat) => (
-                <Card key={stat.label} className={`border-l-4 ${stat.border} shadow-sm`}>
-                    <CardContent className="p-6">
-                        <p className="text-text-muted mb-1 text-xs font-medium tracking-wide uppercase">
-                            {stat.label}
-                        </p>
-                        <p className="text-text-primary text-2xl font-bold">{stat.value}</p>
+                <Card
+                    key={stat.label}
+                    className={`bg-bg-page border-border rounded-xl border-t-4 p-5 shadow-sm transition-shadow hover:shadow-md ${stat.border.replace('border-l', 'border-t')}`}
+                >
+                    <CardContent className="p-0">
+                        <div className="flex items-center justify-between">
+                            <p className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+                                {stat.label}
+                            </p>
+                        </div>
+                        <p className="text-text-primary mt-1 text-3xl font-bold">{stat.value}</p>
                     </CardContent>
                 </Card>
             ))}
