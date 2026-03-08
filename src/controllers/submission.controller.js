@@ -14,7 +14,7 @@ export async function submitCode(req, user) {
         const body = await req.json()
 
         // Whitelist allowed fields
-        const { problemId, code, language, contestId } = body
+        const { problemId, code, language, contestId, type, customInput } = body
 
         if (!problemId || !code || !language) {
             return Response.json(
@@ -36,6 +36,8 @@ export async function submitCode(req, user) {
             code,
             language,
             contestId,
+            type,
+            customInput,
         })
 
         return Response.json({ success: true, data: submission }, { status: 201 })
