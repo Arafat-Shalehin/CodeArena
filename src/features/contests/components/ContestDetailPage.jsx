@@ -62,7 +62,7 @@ export default function ContestDetailPage({ contestId }) {
                         <ContestParticipants
                             participants={[]}
                             countLabel="Registered"
-                            onViewAll={() => {}}
+                            contestId={contestId}
                         />
                     </div>
                 </div>
