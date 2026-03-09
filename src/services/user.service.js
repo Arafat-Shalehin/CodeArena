@@ -269,7 +269,8 @@ export async function syncUserStats(userId) {
 
     submissions.forEach((sub) => {
         const pId = sub.problemId.toString()
-        const isAccepted = sub.verdict === 'accepted'
+        const verdict = (sub.verdict || '').toUpperCase()
+        const isAccepted = verdict === 'ACCEPTED'
         const date = sub.createdAt.toISOString().split('T')[0]
 
         if (!problemMap.has(pId)) {
@@ -292,15 +293,21 @@ export async function syncUserStats(userId) {
 
     const acceptedCount = solvedProblems.length
 
-    // 3. Solved Distribution (Easy, Medium, Hard)
+    // 3. Solved Distribution and Score (Easy, Medium, Hard)
     const solvedDistribution = { easy: 0, medium: 0, hard: 0 }
+    let calculatedScore = 0
+
     if (solvedProblems.length > 0) {
         const problems = await Problem.find({ _id: { $in: solvedProblems } }).select('difficulty')
+        const pointsMap = { easy: 10, medium: 20, hard: 50 }
+
         problems.forEach((p) => {
-            const diff = p.difficulty?.toLowerCase() || 'easy'
+            const diff = p.difficulty?.toLowerCase() || 'medium'
             if (solvedDistribution[diff] !== undefined) {
                 solvedDistribution[diff]++
             }
+            // Add points according to difficulty mapping, fallback to medium points
+            calculatedScore += pointsMap[diff] || 20
         })
     }
 
@@ -308,7 +315,8 @@ export async function syncUserStats(userId) {
     // Rule: Increment count for EVERY accepted submission on a given day (not just unique problems)
     const activityCalendar = new Map()
     submissions.forEach((sub) => {
-        if (sub.verdict === 'accepted') {
+        const verdict = (sub.verdict || '').toUpperCase()
+        if (verdict === 'ACCEPTED') {
             const date = sub.createdAt.toISOString().split('T')[0]
             activityCalendar.set(date, (activityCalendar.get(date) || 0) + 1)
         }
@@ -321,10 +329,11 @@ export async function syncUserStats(userId) {
             $set: {
                 'stats.totalSubmissions': totalSubmissions,
                 'stats.accepted': acceptedCount,
+                'stats.score': calculatedScore,
                 'stats.solvedProblems': solvedProblems,
                 'stats.attemptedProblems': attemptedProblems,
                 'stats.solvedDistribution': solvedDistribution,
-                'stats.activityCalendar': activityCalendar,
+                'stats.activityCalendar': Object.fromEntries(activityCalendar),
             },
         },
         { new: true }

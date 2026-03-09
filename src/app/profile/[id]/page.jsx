@@ -56,7 +56,7 @@ export default function PublicProfilePage({ params }) {
                         avatarSeed: dbUser.avatarSeed || dbUser.name,
                     })
                     // Initial submissions fetch
-                    fetchSubmissions(10, 0, true)
+                    fetchSubmissions(5, 0, true)
                 } else {
                     setError('User Not Found')
                 }
@@ -77,7 +77,7 @@ export default function PublicProfilePage({ params }) {
         }
     }, [id, currentUser, authLoading, router])
 
-    const fetchSubmissions = async (limit = 10, offset = 0, reset = false) => {
+    const fetchSubmissions = async (limit = 5, offset = 0, reset = false) => {
         setIsSubmissionsLoading(true)
         try {
             const res = await fetch(`/api/submissions?userId=${id}&limit=${limit}&offset=${offset}`)
@@ -97,12 +97,12 @@ export default function PublicProfilePage({ params }) {
     }
 
     const handleLoadMore = () => {
-        fetchSubmissions(10, submissions.length)
+        fetchSubmissions(5, submissions.length)
     }
 
     const handleViewAll = (e) => {
         e.preventDefault()
-        fetchSubmissions(100, submissions.length)
+        fetchSubmissions(100, 0, true)
     }
 
     if (loading || authLoading) {

@@ -11,7 +11,7 @@ import { redisClient } from '@/lib/redis'
  * Create a new submission
  */
 export async function createSubmission(data) {
-    const { userId, problemId, code, language, contestId } = data
+    const { userId, problemId, code, language, contestId, type = 'submit', customInput } = data
 
     if (!userId || !problemId) {
         throw new Error('User and problem are required.')
@@ -38,17 +38,22 @@ export async function createSubmission(data) {
         }
 
         // 3️⃣ Rate limit (basic DB-based throttle: 3 sec cooldown)
-        // Here i will use redis for rate limit later
-        const lastSubmission = await Submission.findOne({ userId })
-            .sort({ createdAt: -1 })
-            .session(session)
+        // Only apply rate limit for actual submissions, not runs
+        if (type === 'submit') {
+            const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
+                .sort({ createdAt: -1 })
+                .session(session)
 
-        if (lastSubmission && Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000) {
-            throw new Error('Submission rate limit exceeded. Please wait.')
+            if (
+                lastSubmission &&
+                Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000
+            ) {
+                throw new Error('Submission rate limit exceeded. Please wait.')
+            }
         }
 
         // 4️⃣ Contest validation (if provided)
-        if (contestId) {
+        if (contestId && type === 'submit') {
             const contest = await Contest.findById(contestId).session(session)
             if (!contest) {
                 throw new Error('Contest not found.')
@@ -91,7 +96,9 @@ export async function createSubmission(data) {
                     userId,
                     problemId,
                     contestId,
+                    type,
                     code,
+                    customInput,
                     language,
                     status: 'queued',
                 },
@@ -125,8 +132,6 @@ export async function createSubmission(data) {
             }
         } catch (queueError) {
             console.error('Failed to add submission to queue:', queueError)
-            // Note: We don't throw here because the DB record is already saved.
-            // In production, we might want a background cron to retry queued items.
         }
 
         return submission[0]
@@ -143,7 +148,7 @@ export async function createSubmission(data) {
 export async function getAllSubmissions(query) {
     const page = Math.max(parseInt(query.page) || 1, 1)
     const limit = Math.min(parseInt(query.limit) || 10, 100)
-    const skip = query.offset !== undefined ? parseInt(query.offset) : (page - 1) * limit
+    const skip = query.offset != null ? parseInt(query.offset) : (page - 1) * limit
 
     const filter = {}
 

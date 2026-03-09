@@ -27,10 +27,10 @@ export const SANDBOX_CONFIG = {
 
     // Resource limits
     resources: {
-        cpus: '1.0',
-        memory: '512m',
-        memorySwap: '512m',
-        pidsLimit: 64,
+        cpus: '0.5',
+        memory: '256m',
+        memorySwap: '256m',
+        pidsLimit: 32,
     },
 
     // Security options

@@ -21,10 +21,43 @@ export default function RecentSubmissions({ submissions = [] }) {
     return (
         <div className="divide-border divide-y">
             {submissions.map((item) => {
-                const isAccepted = item.verdict === 'accepted'
+                const verdictRaw = (item.verdict || '').toLowerCase()
+                const isAccepted = verdictRaw === 'accepted'
                 const statusLabel = isAccepted
                     ? 'Accepted'
-                    : item.verdict?.replace('_', ' ')?.toUpperCase() || 'FAILED'
+                    : item.verdict?.replace(/_/g, ' ')?.toUpperCase() || 'FAILED'
+
+                const getBadgeColor = (v) => {
+                    if (v === 'accepted') return 'bg-success-light text-success'
+                    if (v === 'time_limit_exceeded') return 'bg-warning-light text-warning'
+                    if (
+                        [
+                            'wrong_answer',
+                            'runtime_error',
+                            'compilation_error',
+                            'system_error',
+                        ].includes(v)
+                    ) {
+                        return 'bg-error-light text-error'
+                    }
+                    return 'bg-bg-muted text-text-muted'
+                }
+
+                const getDotColor = (v) => {
+                    if (v === 'accepted') return 'text-success'
+                    if (v === 'time_limit_exceeded') return 'text-warning'
+                    if (
+                        [
+                            'wrong_answer',
+                            'runtime_error',
+                            'compilation_error',
+                            'system_error',
+                        ].includes(v)
+                    ) {
+                        return 'text-error'
+                    }
+                    return 'text-text-muted'
+                }
 
                 return (
                     <div
@@ -33,7 +66,7 @@ export default function RecentSubmissions({ submissions = [] }) {
                     >
                         <div className="flex items-center gap-4">
                             {/* Status Icon */}
-                            <span className={isAccepted ? 'text-success' : 'text-error'}>
+                            <span className={getDotColor(verdictRaw)}>
                                 {isAccepted ? '●' : '■'}
                             </span>
                             <div>
@@ -53,11 +86,7 @@ export default function RecentSubmissions({ submissions = [] }) {
 
                         {/* Status Badge */}
                         <span
-                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                isAccepted
-                                    ? 'bg-success-light text-success'
-                                    : 'bg-error-light text-error'
-                            }`}
+                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${getBadgeColor(verdictRaw)}`}
                         >
                             {statusLabel}
                         </span>
