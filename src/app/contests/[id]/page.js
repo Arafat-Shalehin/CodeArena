@@ -1,6 +1,5 @@
 import ContestDetailPage from '@/features/contests/components/ContestDetailPage'
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 
 export async function generateMetadata({ params }) {
     const { id } = await params
@@ -18,7 +17,6 @@ export default async function Page({ params }) {
             <main className="flex-1">
                 <ContestDetailPage contestId={id} />
             </main>
-            <Footer />
         </div>
     )
 }

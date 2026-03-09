@@ -63,6 +63,7 @@ const submissionSchema = new mongoose.Schema(
                 'JUDGING',
             ],
         },
+        likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         executionTime: { type: Number }, // ms
         memoryUsed: { type: Number }, // KB
         error: { type: String }, // Compilation or Runtime error details

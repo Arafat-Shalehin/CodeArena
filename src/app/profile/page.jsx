@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 import { Dot, Loader2 } from 'lucide-react'
 
 // Profile Components
@@ -316,8 +315,6 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </main>
-
-            <Footer />
         </div>
     )
 }

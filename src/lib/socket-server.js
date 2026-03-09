@@ -43,6 +43,18 @@ export async function initSocketServer() {
                 console.error('[Socket.IO] Failed to parse Redis message', e)
             }
         })
+
+        await subClient.subscribe('reaction_updates', (message) => {
+            try {
+                const data = JSON.parse(message)
+                if (data.problemId) {
+                    // Emit only to users looking at this specific problem
+                    serverIo.to(`problem:${data.problemId}`).emit('reaction_update', data)
+                }
+            } catch (e) {
+                console.error('[Socket.IO] Failed to parse reaction update', e)
+            }
+        })
     } catch (e) {
         console.error('[Socket.IO] Failed to connect Redis subscriber', e)
     }
