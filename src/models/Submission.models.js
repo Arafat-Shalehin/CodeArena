@@ -69,9 +69,17 @@ const submissionSchema = new mongoose.Schema(
         aiFeedback: {
             timeComplexity: { type: String },
             spaceComplexity: { type: String },
+            algorithm: { type: String },
+            optimal_approach: { type: String },
+            verdict_explanation: { type: String },
             strengths: [{ type: String }],
             improvements: [{ type: String }],
             rating: { type: Number },
+            code_quality: {
+                readability: { type: Number },
+                efficiency: { type: Number },
+                correctness: { type: Number },
+            },
         },
         testCaseResults: [
             {

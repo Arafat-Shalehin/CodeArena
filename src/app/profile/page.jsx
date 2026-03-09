@@ -172,9 +172,9 @@ export default function ProfilePage() {
                                     <div className="text-text-muted flex items-center gap-1.5 text-[10px] font-bold uppercase">
                                         <span>Less</span>
                                         <div className="flex gap-1">
-                                            <div className="bg-bg-muted/30 h-3 w-3 rounded-sm" />
-                                            <div className="bg-success/30 h-3 w-3 rounded-sm" />
-                                            <div className="bg-success/60 h-3 w-3 rounded-sm" />
+                                            <div className="h-3 w-3 rounded-sm bg-gray-200" />
+                                            <div className="bg-success/40 h-3 w-3 rounded-sm" />
+                                            <div className="bg-success/70 h-3 w-3 rounded-sm" />
                                             <div className="bg-success h-3 w-3 rounded-sm" />
                                         </div>
                                         <span>More</span>
@@ -214,9 +214,9 @@ export default function ProfilePage() {
                                             <div className="grid min-w-max grid-flow-col grid-rows-7 gap-1.5">
                                                 {(() => {
                                                     const getActivityColor = (count) => {
-                                                        if (!count) return 'bg-bg-muted/30'
-                                                        if (count < 3) return 'bg-success/30'
-                                                        if (count < 6) return 'bg-success/60'
+                                                        if (!count) return 'bg-gray-200'
+                                                        if (count < 3) return 'bg-success/40'
+                                                        if (count < 6) return 'bg-success/70'
                                                         return 'bg-success'
                                                     }
                                                     const activityDays = []

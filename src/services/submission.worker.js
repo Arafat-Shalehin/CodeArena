@@ -8,6 +8,7 @@ import { executeCode } from '@/lib/docker/executor'
 import { redisClient } from '@/lib/redis'
 import { syncUserStats } from '@/services/user.service'
 import { VERDICTS } from '@/lib/evaluation/verdicts'
+import { analyzeSubmissionCode } from '@/lib/ai/groqClient'
 
 /**
  * Worker to process code submissions
@@ -255,6 +256,34 @@ export function initSubmissionWorker() {
                         console.log(
                             `[WORKER] Invalidated Redis caches for user ${submission.userId}`
                         )
+                    }
+
+                    // 7. AI Analysis (Optional/Async-ish)
+                    // Trigger AI evaluation if enabled and it's a real submission
+                    if (process.env.ENABLE_AI_ANALYSIS === 'true') {
+                        console.log(
+                            `[WORKER] Triggering AI analysis for submission ${submissionId}`
+                        )
+                        // We run this AFTER the user sees the verdict to not block main result
+                        // But before job finishes to ensure it's tracked
+                        try {
+                            const aiFeedback = await analyzeSubmissionCode({
+                                code: submission.code,
+                                language: submission.language,
+                                problemTitle: problem.title,
+                                verdict: finalVerdict,
+                                executionTime: maxTime,
+                                memoryUsed: maxMemory,
+                            })
+
+                            if (aiFeedback) {
+                                await Submission.findByIdAndUpdate(submissionId, { aiFeedback })
+                                console.log(`[WORKER] AI feedback saved for ${submissionId}`)
+                            }
+                        } catch (aiErr) {
+                            console.error('[WORKER] AI Analysis failed:', aiErr.message)
+                            // We don't fail the job if AI analysis fails
+                        }
                     }
                 }
 
