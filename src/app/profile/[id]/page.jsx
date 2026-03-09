@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import React, { use, useEffect, useState, cloneElement } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
@@ -18,6 +18,12 @@ import Achievements from '@/features/profile/components/Achievements'
 import RecentSubmissions from '@/features/profile/components/RecentSubmissions'
 import RecommendedProblems from '@/features/profile/components/RecommendedProblems'
 
+// Heatmap Components
+import { ActivityCalendar } from 'react-activity-calendar'
+import { Tooltip as ReactTooltip } from 'react-tooltip'
+import 'react-tooltip/dist/react-tooltip.css'
+import { useTheme } from 'next-themes'
+
 // Data
 import { getLanguageStats } from '@/features/profile/data/languages.data'
 
@@ -28,6 +34,7 @@ export default function PublicProfilePage({ params }) {
     const { id } = use(params)
     const router = useRouter()
     const { user: currentUser, isLoading: authLoading } = useAuth()
+    const { theme } = useTheme()
 
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -196,92 +203,117 @@ export default function PublicProfilePage({ params }) {
                         {/* Right Column (8/12) */}
                         <div className="order-1 space-y-8 lg:order-2 lg:col-span-8">
                             {/* Submission Activity Section */}
-                            <section className="bg-bg-subtle border-border rounded-2xl border p-6 shadow-sm">
-                                <div className="mb-6 flex items-center justify-between">
-                                    <h3 className="text-text-primary text-lg font-bold">
-                                        Submission Activity
-                                    </h3>
-                                    <div className="text-text-muted flex items-center gap-1.5 text-[10px] font-bold uppercase">
-                                        <span>Less</span>
-                                        <div className="flex gap-1">
-                                            <div className="h-3 w-3 rounded-sm bg-gray-200" />
-                                            <div className="bg-success/40 h-3 w-3 rounded-sm" />
-                                            <div className="bg-success/70 h-3 w-3 rounded-sm" />
-                                            <div className="bg-success h-3 w-3 rounded-sm" />
-                                        </div>
-                                        <span>More</span>
-                                    </div>
-                                </div>
+                            <section className="bg-bg-subtle border-border overflow-hidden rounded-2xl border p-6 shadow-sm">
+                                <h3 className="text-text-primary mb-6 text-lg font-bold">
+                                    Submission Activity
+                                </h3>
 
-                                <div className="flex flex-col gap-1">
-                                    {/* Month Labels */}
-                                    <div className="text-text-muted ml-8 flex justify-between px-2 text-[9px] font-bold tracking-tighter uppercase">
-                                        <span>Jan</span>
-                                        <span>Feb</span>
-                                        <span>Mar</span>
-                                        <span>Apr</span>
-                                        <span>May</span>
-                                        <span>Jun</span>
-                                        <span>Jul</span>
-                                        <span>Aug</span>
-                                        <span>Sep</span>
-                                        <span>Oct</span>
-                                        <span>Nov</span>
-                                        <span>Dec</span>
-                                    </div>
+                                <div className="no-scrollbar flex w-full justify-start overflow-x-auto pb-4 sm:justify-center">
+                                    {(() => {
+                                        const rawCalendar = user?.stats?.activityCalendar || {}
+                                        const calendar =
+                                            rawCalendar instanceof Map
+                                                ? Object.fromEntries(rawCalendar)
+                                                : rawCalendar
 
-                                    <div className="flex gap-2">
-                                        {/* Weekday Labels */}
-                                        <div className="text-text-muted flex flex-col justify-between py-1 text-[9px] leading-none font-bold uppercase">
-                                            <span className="h-3"></span>
-                                            <span className="h-3">Mon</span>
-                                            <span className="h-3"></span>
-                                            <span className="h-3">Wed</span>
-                                            <span className="h-3"></span>
-                                            <span className="h-3">Fri</span>
-                                            <span className="h-3"></span>
-                                        </div>
+                                        // Ensure 365 dates
+                                        const calendarData = []
+                                        for (let i = 364; i >= 0; i--) {
+                                            const d = new Date()
+                                            d.setDate(d.getDate() - i)
+                                            const dateStr = d.toISOString().split('T')[0]
+                                            const count = calendar[dateStr] || 0
 
-                                        <div className="no-scrollbar flex-1 overflow-x-auto pb-2">
-                                            <div className="grid min-w-max grid-flow-col grid-rows-7 gap-1.5">
-                                                {(() => {
-                                                    const getActivityColor = (count) => {
-                                                        if (!count) return 'bg-gray-200'
-                                                        if (count < 3) return 'bg-success/40'
-                                                        if (count < 6) return 'bg-success/70'
-                                                        return 'bg-success'
+                                            // Determine level 0-4
+                                            let level = 0
+                                            if (count > 0 && count <= 2) level = 1
+                                            else if (count >= 3 && count <= 5) level = 2
+                                            else if (count >= 6 && count <= 9) level = 3
+                                            else if (count >= 10) level = 4
+
+                                            calendarData.push({
+                                                date: dateStr,
+                                                count: count,
+                                                level: level,
+                                            })
+                                        }
+
+                                        return (
+                                            <div className="w-max min-w-full">
+                                                <ActivityCalendar
+                                                    data={calendarData}
+                                                    colorScheme={
+                                                        theme === 'dark' ? 'dark' : 'light'
                                                     }
-                                                    const activityDays = []
-                                                    const rawCalendar =
-                                                        user?.stats?.activityCalendar || {}
-                                                    const calendar =
-                                                        rawCalendar instanceof Map
-                                                            ? Object.fromEntries(rawCalendar)
-                                                            : rawCalendar
-
-                                                    // Use 364 days (52 weeks)
-                                                    for (let i = 363; i >= 0; i--) {
-                                                        const d = new Date()
-                                                        d.setDate(d.getDate() - i)
-                                                        const dateStr = d
-                                                            .toISOString()
-                                                            .split('T')[0]
-                                                        activityDays.push({
-                                                            date: dateStr,
-                                                            count: calendar[dateStr] || 0,
+                                                    theme={{
+                                                        light: [
+                                                            '#ebedf0',
+                                                            '#9be9a8',
+                                                            '#40c463',
+                                                            '#30a14e',
+                                                            '#216e39',
+                                                        ],
+                                                        dark: [
+                                                            '#161b22',
+                                                            '#0e4429',
+                                                            '#006d32',
+                                                            '#26a641',
+                                                            '#39d353',
+                                                        ],
+                                                    }}
+                                                    labels={{
+                                                        legend: {
+                                                            less: 'Less',
+                                                            more: 'More',
+                                                            colors: [
+                                                                'No activity',
+                                                                '1-2 submissions',
+                                                                '3-5 submissions',
+                                                                '6-9 submissions',
+                                                                '10+ submissions',
+                                                            ],
+                                                        },
+                                                        months: [
+                                                            'Jan',
+                                                            'Feb',
+                                                            'Mar',
+                                                            'Apr',
+                                                            'May',
+                                                            'Jun',
+                                                            'Jul',
+                                                            'Aug',
+                                                            'Sep',
+                                                            'Oct',
+                                                            'Nov',
+                                                            'Dec',
+                                                        ],
+                                                        weekdays: [
+                                                            'Sun',
+                                                            'Mon',
+                                                            'Tue',
+                                                            'Wed',
+                                                            'Thu',
+                                                            'Fri',
+                                                            'Sat',
+                                                        ],
+                                                        totalCount:
+                                                            '{{count}} submissions in the last year',
+                                                    }}
+                                                    fontSize={12}
+                                                    blockSize={12}
+                                                    blockMargin={4}
+                                                    blockRadius={2}
+                                                    renderBlock={(block, activity) =>
+                                                        React.cloneElement(block, {
+                                                            'data-tooltip-id': 'activity-tooltip',
+                                                            'data-tooltip-html': `<strong>${activity.count} submissions</strong> on ${activity.date}`,
                                                         })
                                                     }
-                                                    return activityDays.map((day) => (
-                                                        <div
-                                                            key={day.date}
-                                                            title={`${day.date}: ${day.count} accepted`}
-                                                            className={`h-3 w-3 rounded-sm transition-all hover:z-10 hover:scale-150 ${getActivityColor(day.count)}`}
-                                                        />
-                                                    ))
-                                                })()}
+                                                />
+                                                <ReactTooltip id="activity-tooltip" />
                                             </div>
-                                        </div>
-                                    </div>
+                                        )
+                                    })()}
                                 </div>
                             </section>
 
