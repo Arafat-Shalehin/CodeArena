@@ -29,7 +29,7 @@ export async function GET(req) {
         // Limit to the last 20 recent success submissions
         const recentSubmissions = await Submission.find({
             userId: { $in: followingIds },
-            verdict: 'accepted',
+            verdict: { $in: ['accepted', 'ACCEPTED'] },
         })
             .sort({ createdAt: -1 })
             .limit(20)
@@ -58,6 +58,9 @@ export async function GET(req) {
                     title: sub.problemId.title,
                     difficulty: sub.problemId.difficulty,
                 },
+                language: sub.language || 'javascript',
+                executionTime: sub.executionTime,
+                memoryUsed: sub.memoryUsed,
                 createdAt: sub.createdAt,
             }))
 
