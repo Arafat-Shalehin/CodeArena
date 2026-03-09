@@ -25,6 +25,21 @@ export async function POST(req, { params }) {
         if (likeIndex === -1) {
             post.likes.push(userId)
             action = 'liked'
+
+            // NEW: Send Real-time Notification to the post owner
+            if (post.userId.toString() !== userId) {
+                const { sendNotification } = await import('@/services/notification.service')
+                await sendNotification({
+                    recipientId: post.userId,
+                    senderId: user._id,
+                    type: 'social',
+                    message: `${user.name} liked your post: "${post.content.substring(0, 30)}${post.content.length > 30 ? '...' : ''}"`,
+                    link: `/feed`,
+                    metadata: {
+                        postId: post._id,
+                    },
+                })
+            }
         } else {
             post.likes.splice(likeIndex, 1)
             action = 'unliked'

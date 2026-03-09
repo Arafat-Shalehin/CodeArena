@@ -56,6 +56,26 @@ export async function POST(req, { params }) {
                 { new: true }
             )
             action = 'liked'
+
+            // NEW: Send Real-time Notification to the submission owner
+            const { sendNotification } = await import('@/services/notification.service')
+            if (submission.userId.toString() !== userIdStr) {
+                // Get problem title for the message if possible
+                const { Problem } = await import('@/models/Problem.models')
+                const problem = await Problem.findById(submission.problemId).select('title')
+
+                await sendNotification({
+                    recipientId: submission.userId,
+                    senderId: user._id,
+                    type: 'social',
+                    message: `${user.name} congratulated you on your solution for "${problem?.title || 'a problem'}"`,
+                    link: `/problems/${submission.problemId}`,
+                    metadata: {
+                        submissionId: submission._id,
+                        problemId: submission.problemId,
+                    },
+                })
+            }
         }
 
         return NextResponse.json({

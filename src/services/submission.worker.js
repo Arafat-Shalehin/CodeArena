@@ -224,7 +224,21 @@ export function initSubmissionWorker() {
                     })
 
                     // Synchronize all user stats (recalculate from DB — single source of truth)
-                    await syncUserStats(submission.userId)
+                    const oldUser = await User.findById(submission.userId).select(
+                        'stats.globalRank'
+                    )
+                    const updatedUser = await syncUserStats(submission.userId)
+
+                    // NEW: Rank Shift Notification
+                    if (oldUser && updatedUser && updatedUser.stats?.globalRank) {
+                        const { checkAndNotifyRankShift } =
+                            await import('@/services/notification.service')
+                        const oldRank = oldUser.stats?.globalRank || 999999
+                        const newRank = updatedUser.stats.globalRank
+                        if (newRank < oldRank) {
+                            await checkAndNotifyRankShift(submission.userId, oldRank, newRank)
+                        }
+                    }
 
                     // Only increment problem's accepted count the FIRST time this user solves it
                     if (isAccepted) {
@@ -279,12 +293,37 @@ export function initSubmissionWorker() {
                             if (aiFeedback) {
                                 await Submission.findByIdAndUpdate(submissionId, { aiFeedback })
                                 console.log(`[WORKER] AI feedback saved for ${submissionId}`)
+
+                                // NEW: AI Insight Notification
+                                const { sendNotification } =
+                                    await import('@/services/notification.service')
+                                await sendNotification({
+                                    recipientId: submission.userId,
+                                    type: 'ai_insight',
+                                    message: `AI Insights are ready for your solution to "${problem.title}"`,
+                                    link: `/problems/${submission.problemId}?tab=results&submission=${submissionId}`,
+                                    metadata: { submissionId, problemId: submission.problemId },
+                                })
                             }
                         } catch (aiErr) {
                             console.error('[WORKER] AI Analysis failed:', aiErr.message)
                             // We don't fail the job if AI analysis fails
                         }
                     }
+
+                    // NEW: Judging Result Notification
+                    const { sendNotification } = await import('@/services/notification.service')
+                    await sendNotification({
+                        recipientId: submission.userId,
+                        type: 'judging',
+                        message: `Solution for "${problem.title}" ${finalVerdict === VERDICTS.ACCEPTED ? 'Accepted! 🚀' : 'evaluated: ' + finalVerdict}`,
+                        link: `/problems/${submission.problemId}?tab=results&submission=${submissionId}`,
+                        metadata: {
+                            submissionId,
+                            problemId: submission.problemId,
+                            verdict: finalVerdict,
+                        },
+                    })
                 }
 
                 return { verdict: finalVerdict, passedCount, totalCount }

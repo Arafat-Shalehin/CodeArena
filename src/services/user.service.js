@@ -244,6 +244,17 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
+
+        // NEW: Follower Notification
+        const { sendNotification } = await import('@/services/notification.service')
+        await sendNotification({
+            recipientId: targetUserId,
+            senderId: currentUserId,
+            type: 'social',
+            message: `${currentUser.name} started following you! 👤`,
+            link: `/profile/${currentUserId}`,
+        })
+
         return {
             following: true,
             followersCount: updatedTargetUser.followers.length,

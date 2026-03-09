@@ -13,5 +13,15 @@ export async function register() {
             5 * 60 * 1000
         )
         console.log('>>> CodeArena Reaction Sync Scheduler Initialized')
+
+        // Start Contest Reminder Worker (runs every 5 minutes)
+        const { checkUpcomingContests } = await import('@/services/notification.service')
+        setInterval(
+            () => {
+                checkUpcomingContests().catch(console.error)
+            },
+            5 * 60 * 1000
+        )
+        console.log('>>> CodeArena Contest Reminder Scheduler Initialized')
     }
 }
