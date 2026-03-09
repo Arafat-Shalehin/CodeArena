@@ -24,6 +24,7 @@ import { formatDistanceToNow, format } from 'date-fns'
 import DailyPicks from './DailyPicks'
 import FeedItem from './FeedItem'
 import { useAuth } from '@/context/AuthContext'
+import { cn } from '@/lib/utils'
 
 export default function DashboardHome({ user: initialUser }) {
     const { user: contextUser, updateProfile } = useAuth()
@@ -39,6 +40,9 @@ export default function DashboardHome({ user: initialUser }) {
         topContributors: [],
     })
     const [loading, setLoading] = useState(true)
+    const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+    const [postContent, setPostContent] = useState('')
+    const [isPosting, setIsPosting] = useState(false)
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -67,6 +71,42 @@ export default function DashboardHome({ user: initialUser }) {
         fetchDashboardData()
     }, [])
 
+    const handleCreatePost = async () => {
+        if (!postContent.trim() || isPosting) return
+        setIsPosting(true)
+        try {
+            const res = await fetch('/api/posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: postContent }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                // Add the new post to the top of the feed
+                // The API returns a populated post
+                const newPost = {
+                    ...data.data,
+                    type: 'post',
+                    id: data.data._id,
+                    user: {
+                        _id: data.data.userId._id,
+                        name: data.data.userId.name,
+                        avatarSeed: data.data.userId.avatarSeed,
+                    },
+                    likes: 0,
+                    hasLiked: false,
+                }
+                setFeed([newPost, ...feed])
+                setPostContent('')
+                setIsPostModalOpen(false)
+            }
+        } catch (error) {
+            console.error('Failed to create post:', error)
+        } finally {
+            setIsPosting(false)
+        }
+    }
+
     const handleUpdateGoal = async () => {
         updateProfile({ stats: { ...user.stats, weeklyGoal: parseInt(newGoal) } })
         setIsEditingGoal(false)
@@ -90,7 +130,12 @@ export default function DashboardHome({ user: initialUser }) {
 
     return (
         <div className="max-w-container mx-auto w-full px-4 pb-8 md:px-6">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div
+                className={cn(
+                    'grid grid-cols-1 gap-6 transition-all duration-300 lg:grid-cols-12',
+                    isPostModalOpen ? 'pointer-events-none opacity-60 blur-[2px]' : ''
+                )}
+            >
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
                 <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
                     {/* Quick Stats Card */}
@@ -231,7 +276,10 @@ export default function DashboardHome({ user: initialUser }) {
                                     {(user?.name || 'U').substring(0, 2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="bg-bg-page border-border hover:border-accent/40 flex flex-1 cursor-pointer items-center rounded-full border px-5 shadow-inner transition-colors">
+                            <div
+                                onClick={() => setIsPostModalOpen(true)}
+                                className="bg-bg-page border-border hover:border-accent/40 flex flex-1 cursor-pointer items-center rounded-full border px-5 shadow-inner transition-colors"
+                            >
                                 <span className="text-text-muted text-sm font-medium">
                                     Share your coding progress or ask for a hint...
                                 </span>
@@ -471,6 +519,60 @@ export default function DashboardHome({ user: initialUser }) {
                     </div>
                 </aside>
             </div>
+
+            {/* Post Creation Modal */}
+            {isPostModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setIsPostModalOpen(false)}
+                    ></div>
+                    <div className="bg-bg-subtle border-border relative w-full max-w-lg rounded-xl border shadow-2xl">
+                        <div className="border-border flex items-center justify-between border-b p-4">
+                            <h3 className="text-text-primary text-lg font-bold">Create Post</h3>
+                            <button
+                                onClick={() => setIsPostModalOpen(false)}
+                                className="text-text-muted hover:text-text-primary transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <div className="mb-4 flex items-center gap-3">
+                                <Avatar className="h-10 w-10 border">
+                                    <AvatarImage
+                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user?.avatarSeed || user?.name || 'User'}`}
+                                    />
+                                </Avatar>
+                                <div>
+                                    <p className="text-text-primary text-sm font-bold">
+                                        {user?.name}
+                                    </p>
+                                    <p className="text-text-muted text-[11px] font-medium">
+                                        Posting to Feed
+                                    </p>
+                                </div>
+                            </div>
+                            <textarea
+                                className="bg-bg-page border-border text-text-primary focus:border-accent focus:ring-accent min-h-[150px] w-full resize-none rounded-lg border p-3 text-sm outline-none focus:ring-1"
+                                placeholder="Share your coding progress or ask for a hint..."
+                                value={postContent}
+                                onChange={(e) => setPostContent(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="border-border flex items-center justify-end border-t p-4">
+                            <Button
+                                onClick={handleCreatePost}
+                                disabled={!postContent.trim() || isPosting}
+                                className="px-8 font-bold"
+                            >
+                                {isPosting ? 'Posting...' : 'Post'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -72,13 +72,13 @@ export default function FeedItem({ item, getDifficultyClass }) {
         setLikeCount(item.likes || 0)
     }, [item.hasLiked, item.likes])
 
-    // Dynamic extraction
+    const isPost = item.type === 'post'
     const langKey = item.language?.toLowerCase() || 'javascript'
     const language = LANGUAGE_MAP[langKey] || LANGUAGE_MAP.javascript
-    const story = getDynamicStory(item)
+    const story = !isPost ? getDynamicStory(item) : null
 
-    const diff = item.problem?.difficulty || 'easy'
-    const diffClass = getDifficultyClass(diff)
+    const diff = !isPost ? item.problem?.difficulty || 'easy' : null
+    const diffClass = !isPost ? getDifficultyClass(diff) : ''
     const formattedTime = formatDistanceToNow(new Date(item.createdAt || Date.now()), {
         addSuffix: true,
     })
@@ -111,7 +111,11 @@ export default function FeedItem({ item, getDifficultyClass }) {
             }
 
             try {
-                const res = await fetch(`/api/submissions/${item.id || item._id}/congratulate`, {
+                const endpoint = isPost
+                    ? `/api/posts/${item.id || item._id}/like`
+                    : `/api/submissions/${item.id || item._id}/congratulate`
+
+                const res = await fetch(endpoint, {
                     method: 'POST',
                 })
                 const data = await res.json()
@@ -122,7 +126,7 @@ export default function FeedItem({ item, getDifficultyClass }) {
 
                 // Sync with server data (in case optimistic was wrong)
                 setLikeCount(data.likes)
-                setCongratulated(data.action === 'liked')
+                setCongratulated(data.action === 'liked' || data.action === 'congratulated')
             } catch (error) {
                 console.error('Error congratulating:', error)
                 // Revert optimistic update
@@ -132,12 +136,14 @@ export default function FeedItem({ item, getDifficultyClass }) {
                 setIsLoading(false)
             }
         },
-        [congratulated, isLoading, item.id, item._id]
+        [congratulated, isLoading, item.id, item._id, isPost]
     )
 
     return (
         <div className="bg-bg-subtle border-border duration-normal rounded-lg border p-6 shadow-sm transition-shadow hover:shadow">
-            <div className="mb-4 flex items-start justify-between">
+            <div
+                className={`mb-4 flex items-start justify-between ${isPost ? 'items-center' : ''}`}
+            >
                 <div className="flex items-center gap-3">
                     <Link href={`/profile/${item.user?._id || ''}`}>
                         <Avatar className="border-border hover:border-accent h-10 w-10 border transition-colors">
@@ -157,35 +163,55 @@ export default function FeedItem({ item, getDifficultyClass }) {
                             >
                                 {item.user?.name || 'Unknown User'}
                             </Link>
-                            <span className="text-text-secondary ml-1 font-normal">solved</span>
-                            <Link
-                                href={`/problems/${item.problem?._id || ''}`}
-                                className="text-accent ml-1 font-semibold hover:underline"
-                            >
-                                {item.problem?.title || 'Unknown Problem'}
-                            </Link>
+                            {!isPost && (
+                                <>
+                                    <span className="text-text-secondary ml-1 font-normal">
+                                        solved
+                                    </span>
+                                    <Link
+                                        href={`/problems/${item.problem?._id || ''}`}
+                                        className="text-accent ml-1 font-semibold hover:underline"
+                                    >
+                                        {item.problem?.title || 'Unknown Problem'}
+                                    </Link>
+                                </>
+                            )}
                         </p>
                         <p className="text-text-muted mt-0.5 flex items-center gap-2 text-xs">
                             <span>{formattedTime}</span>
-                            <span>•</span>
-                            <span
-                                className={`flex items-center gap-1 font-semibold ${language.color}`}
-                            >
-                                <language.icon className="h-3.5 w-3.5" /> {language.name}
-                            </span>
+                            {!isPost && (
+                                <>
+                                    <span>•</span>
+                                    <span
+                                        className={`flex items-center gap-1 font-semibold ${language.color}`}
+                                    >
+                                        <language.icon className="h-3.5 w-3.5" /> {language.name}
+                                    </span>
+                                </>
+                            )}
                         </p>
                     </div>
                 </div>
-                <span
-                    className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${diffClass}`}
-                >
-                    {diff}
-                </span>
+                {!isPost && (
+                    <span
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${diffClass}`}
+                    >
+                        {diff}
+                    </span>
+                )}
             </div>
 
-            {/* Story/Flex Message */}
-            <div className="bg-bg-page border-border mb-5 rounded-md border p-3">
-                <p className="text-text-secondary text-sm italic">"{story}"</p>
+            {/* Story/Flex Message or Post Content */}
+            <div
+                className={`bg-bg-page border-border mb-5 rounded-md border p-3 ${isPost ? 'border-none bg-transparent !p-0' : ''}`}
+            >
+                {isPost ? (
+                    <p className="text-text-primary text-[15px] leading-relaxed whitespace-pre-wrap">
+                        {item.content}
+                    </p>
+                ) : (
+                    <p className="text-text-secondary text-sm italic">"{story}"</p>
+                )}
             </div>
 
             <div className="flex items-center gap-3">

@@ -5,6 +5,8 @@ import { User } from '@/models/User.models'
 import { protect } from '@/middlewares/auth.middleware'
 import { Problem } from '@/models/Problem.models'
 
+import { Post } from '@/models/Post.models'
+
 export const dynamic = 'force-dynamic'
 
 export async function GET(req) {
@@ -19,16 +21,12 @@ export async function GET(req) {
             user.following = fullUser?.following || []
         }
 
-        const followingIds = user.following || []
+        // We also want to see our own posts in the feed
+        const feedIds = [...(user.following || []), user._id]
 
-        if (followingIds.length === 0) {
-            return NextResponse.json({ success: true, data: [] })
-        }
-
-        // 2. Fetch recent successful submissions from followed users
-        // Limit to the last 20 recent success submissions
-        const recentSubmissions = await Submission.find({
-            userId: { $in: followingIds },
+        // 2. Fetch recent successful submissions from followed users + self
+        const recentSubmissionsPromise = Submission.find({
+            userId: { $in: feedIds },
             verdict: { $in: ['accepted', 'ACCEPTED'] },
         })
             .sort({ createdAt: -1 })
@@ -43,12 +41,30 @@ export async function GET(req) {
             })
             .lean()
 
-        // 3. Format feed items
-        const feed = recentSubmissions
-            .filter((sub) => sub.userId && sub.problemId) // Filter out any broken references
+        // 3. Fetch recent posts from followed users + self
+        const recentPostsPromise = Post.find({
+            userId: { $in: feedIds },
+        })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .populate({
+                path: 'userId',
+                select: 'name avatarSeed',
+            })
+            .lean()
+
+        const [recentSubmissions, recentPosts] = await Promise.all([
+            recentSubmissionsPromise,
+            recentPostsPromise,
+        ])
+
+        // 4. Format and merge items
+        const formattedSubmissions = recentSubmissions
+            .filter((sub) => sub.userId && sub.problemId)
             .map((sub) => ({
                 id: sub._id,
                 _id: sub._id,
+                type: 'submission',
                 user: {
                     _id: sub.userId._id,
                     name: sub.userId.name,
@@ -68,6 +84,26 @@ export async function GET(req) {
                 ),
                 createdAt: sub.createdAt,
             }))
+
+        const formattedPosts = recentPosts.map((post) => ({
+            id: post._id,
+            _id: post._id,
+            type: 'post',
+            user: {
+                _id: post.userId._id,
+                name: post.userId.name,
+                avatarSeed: post.userId.avatarSeed,
+            },
+            content: post.content,
+            likes: post.likes?.length || 0,
+            hasLiked: (post.likes || []).some((id) => id && id.toString() === user._id.toString()),
+            createdAt: post.createdAt,
+        }))
+
+        const feed = [...formattedSubmissions, formattedPosts]
+            .flat()
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 30)
 
         return NextResponse.json({ success: true, data: feed })
     } catch (error) {
