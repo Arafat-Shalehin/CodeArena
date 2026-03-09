@@ -35,25 +35,43 @@ const SPARKLINES = [
 ]
 
 /* ── Tiny SVG Sparkline ──────────────────────────────────── */
-function Sparkline({ data, positive, stable }) {
+export function Sparkline({ data, positive, stable }) {
+    if (!data || data.length === 0) return null
+
     const width = 64
     const height = 24
     const pad = 2
     const w = width - pad * 2
     const h = height - pad * 2
 
+    // Normalize data internally to 0-1 range for mapping
+    const min = Math.min(...data)
+    const max = Math.max(...data)
+    const range = max - min
+
     const points = data
         .map((v, i) => {
-            const x = pad + (i / (data.length - 1)) * w
-            const y = pad + (1 - v) * h
+            const x = pad + (i / (data.length - 1 || 1)) * w
+            // Map to middle (0.5) if all values are same
+            const normalizedV = range === 0 ? 0.5 : (v - min) / range
+            const y = pad + (1 - normalizedV) * h
             return `${x},${y}`
         })
         .join(' ')
 
-    // Area fill path
-    const first = `${pad},${pad + (1 - data[0]) * h}`
-    const last = `${pad + w},${pad + (1 - data[data.length - 1]) * h}`
-    const area = `M ${first} L ${points.split(' ').join(' L ')} L ${last} L ${pad + w},${pad + h} L ${pad},${pad + h} Z`
+    // Terminal dot coordinates
+    const lastV = data[data.length - 1]
+    const lastNormalizedV = range === 0 ? 0.5 : (lastV - min) / range
+    const terminalX = pad + w
+    const terminalY = pad + (1 - lastNormalizedV) * h
+
+    // Construct area fill path
+    const polyPoints = points.split(' ')
+    const firstPoint = polyPoints[0]
+    const areaPath =
+        `M ${firstPoint} ` +
+        polyPoints.map((p) => `L ${p}`).join(' ') +
+        ` L ${pad + w},${pad + h} L ${pad},${pad + h} Z`
 
     const color = stable
         ? 'var(--color-text-muted)'
@@ -70,7 +88,7 @@ function Sparkline({ data, positive, stable }) {
             aria-hidden="true"
         >
             {/* Area fill */}
-            <path d={area} fill={color} opacity="0.10" />
+            <path d={areaPath} fill={color} opacity="0.10" />
             {/* Line */}
             <polyline
                 points={points}
@@ -81,7 +99,7 @@ function Sparkline({ data, positive, stable }) {
                 strokeLinejoin="round"
             />
             {/* Terminal dot */}
-            <circle cx={pad + w} cy={pad + (1 - data[data.length - 1]) * h} r="2.5" fill={color} />
+            <circle cx={terminalX} cy={terminalY} r="2.5" fill={color} />
         </svg>
     )
 }
