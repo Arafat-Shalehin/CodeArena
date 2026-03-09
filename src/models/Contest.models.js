@@ -31,6 +31,7 @@ const contestSchema = new mongoose.Schema(
             default: false,
         },
         maxParticipants: { type: Number, default: null },
+        reminderSent: { type: Boolean, default: false },
     },
     { timestamps: true }
 )
