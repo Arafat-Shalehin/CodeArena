@@ -13,7 +13,7 @@ export const redisClient =
             host: REDIS_HOST,
             port: REDIS_PORT,
         },
-        password: process.env.REDIS_PASSWORD,
+        ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
     })
 
 if (!globalForRedis.redis) {

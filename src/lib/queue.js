@@ -4,7 +4,7 @@ const connection = {
     host:
         process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
     port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD,
+    ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
 }
 
 // Singleton for the submission queue

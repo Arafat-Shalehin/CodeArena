@@ -17,6 +17,7 @@ export function initSubmissionWorker() {
         'submission-queue',
         async (job) => {
             const { submissionId } = job.data
+            // console.log(`[WORKER] Started processing submission: ${submissionId}`)
 
             try {
                 // 1. Fetch submission
@@ -101,6 +102,9 @@ export function initSubmissionWorker() {
                     firstError = 'No test cases found for this problem.'
                 } else {
                     // 🏁 'SUBMIT' Path: Run all test cases
+                    console.log(
+                        `[WORKER] Running ${totalCount} test case(s) for submission ${submissionId}`
+                    )
                     for (let i = 0; i < totalCount; i++) {
                         const testCase = testCases[i]
 
@@ -144,6 +148,9 @@ export function initSubmissionWorker() {
                         }
 
                         // 4. Update individual test case result
+                        console.log(
+                            `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
+                        )
                         const caseResult = {
                             testCaseId: testCase._id,
                             verdict: resultVerdict,
