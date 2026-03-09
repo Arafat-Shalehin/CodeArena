@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import React from 'react'
 
-const AreanaLogo = () => {
+const AreanaLogo = ({ href = '/', className = '' }) => {
     return (
-        <Link href="/" className="group flex shrink-0 items-center gap-2">
+        <Link href={href} className={`group flex shrink-0 items-center gap-2 ${className}`}>
             <div className="size-8 transition-transform group-hover:scale-110">
                 <img src="/logo.svg" alt="CodeArena Logo" className="h-full w-full" />
             </div>

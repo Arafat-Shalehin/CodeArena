@@ -118,7 +118,7 @@ export default function SignupForm() {
                 data.password
             )
             await updateProfile(userCredential.user, { displayName: data.username })
-            router.push('/profile')
+            router.push('/feed')
         } catch (err) {
             if (err.code === 'auth/email-already-in-use') {
                 setApiError('An account with this email already exists.')
