@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatDistanceToNow, format } from 'date-fns'
-import RecommendedProblems from './RecommendedProblems'
+import DailyPicks from './DailyPicks'
 import { useAuth } from '@/context/AuthContext'
 
 export default function DashboardHome({ user: initialUser }) {
@@ -86,10 +86,10 @@ export default function DashboardHome({ user: initialUser }) {
     }
 
     return (
-        <div className="max-w-container mx-auto w-full px-4 py-8 md:px-6">
+        <div className="max-w-container mx-auto w-full px-4 pb-8 md:px-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="hidden flex-col gap-6 lg:col-span-3 lg:flex">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
                     {/* Quick Stats Card */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <p className="text-text-muted mb-4 text-xs font-bold tracking-wider uppercase">
@@ -188,8 +188,8 @@ export default function DashboardHome({ user: initialUser }) {
                 </aside>
 
                 {/* MAIN FEED (6 cols on desktop) */}
-                <section className="col-span-1 flex flex-col gap-6 lg:col-span-6">
-                    <RecommendedProblems />
+                <section className="no-scrollbar col-span-1 flex flex-col gap-6 px-1 pt-8 pb-8 lg:sticky lg:top-16 lg:col-span-6 lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
+                    <DailyPicks />
 
                     {loading ? (
                         <div className="bg-bg-subtle border-border rounded-lg border p-8 text-center shadow-sm">
@@ -293,7 +293,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </section>
 
                 {/* RIGHT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="hidden flex-col gap-6 lg:col-span-3 lg:flex">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
                     {/* Trending Problems */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <h4 className="text-text-primary mb-4 flex items-center gap-2 font-semibold">

@@ -15,7 +15,7 @@ export default function Hero() {
     return (
         <section className="hero-gradient relative overflow-hidden py-4 md:py-12">
             {/* Background Animations: Interactive Tiles */}
-            <div className="absolute inset-0 z-0 opacity-50">
+            <div className="absolute inset-0 z-0 opacity-10">
                 <Tiles rows={40} cols={20} tileSize="md" />
             </div>
 
