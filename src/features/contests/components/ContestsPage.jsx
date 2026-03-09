@@ -106,7 +106,7 @@ export default function ContestsPage() {
                                     {activeTab} Contests
                                 </h3>
                                 {!isLoading && (
-                                    <span className="bg-bg-muted text-text-secondary inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
+                                    <span className="bg-bg-muted text-text-secondar y inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
                                         {contests.length}
                                     </span>
                                 )}
@@ -140,7 +140,10 @@ export default function ContestsPage() {
                                     className={`grid grid-cols-1 gap-6 ${activeTab === 'Past' ? 'md:grid-cols-2' : 'sm:grid-cols-2'} xl:grid-cols-3`}
                                 >
                                     {contests.map((contest) => (
-                                        <Link key={contest._id} href={`/contests/${contest._id}`}>
+                                        <Link
+                                            key={contest._id}
+                                            href={`/contests/${contest._id}${activeTab === 'Past' ? '/results' : ''}`}
+                                        >
                                             {activeTab === 'Past' ? (
                                                 <PastContestCard contest={contest} />
                                             ) : (

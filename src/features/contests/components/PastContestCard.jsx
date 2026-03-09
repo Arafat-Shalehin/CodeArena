@@ -25,7 +25,7 @@ const PastContestCard = ({ contest }) => {
     const problemCount = contest.problemIds?.length || 0
 
     return (
-        <div className="card-hover group border-border bg-bg-subtle/50 hover:bg-bg-subtle flex flex-col justify-between rounded-xl border p-5 transition-all">
+        <div className="card-hover group border-border bg-bg-subtle/50 hover:bg-bg-subtle flex h-full flex-col justify-between rounded-xl border p-5 transition-all">
             <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                     <h4 className="text-text-primary group-hover:text-accent mb-2 line-clamp-1 text-lg font-bold transition-colors">
@@ -49,7 +49,7 @@ const PastContestCard = ({ contest }) => {
                 </div>
             </div>
 
-            <div className="border-border mt-4 flex items-center justify-between border-t pt-4">
+            <div className="border-border mt-auto flex items-center justify-between border-t pt-4">
                 <div className="flex items-center gap-3">
                     <span className="text-text-muted flex items-center gap-1.5 text-xs font-medium">
                         <Users className="size-3.5" />
@@ -60,7 +60,7 @@ const PastContestCard = ({ contest }) => {
                     </span>
                 </div>
                 <button className="text-text-secondary hover:text-accent flex items-center gap-1 text-xs font-bold tracking-wider uppercase transition-colors">
-                    Results
+                    View Results
                     <ChevronRight className="size-4" />
                 </button>
             </div>

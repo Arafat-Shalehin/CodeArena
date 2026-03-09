@@ -37,7 +37,7 @@ const ContestCard = ({ contest = {} }) => {
 
     return (
         <div
-            className={`card-hover group border-border bg-bg-subtle rounded-lg p-6 transition-all hover:shadow ${
+            className={`card-hover group border-border bg-bg-subtle flex h-full flex-col rounded-lg p-6 transition-all hover:shadow ${
                 isPro ? 'border-l-accent border-l-4' : 'border'
             }`}
         >
@@ -83,7 +83,7 @@ const ContestCard = ({ contest = {} }) => {
 
             {/* CTA */}
             <div
-                className={`inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                className={`mt-auto inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
                     status === 'active'
                         ? 'bg-accent hover:bg-accent-hover text-white'
                         : isPro
