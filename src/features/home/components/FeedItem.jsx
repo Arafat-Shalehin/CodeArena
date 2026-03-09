@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { MessageCircle, Heart, Zap, Sparkles, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -62,7 +62,15 @@ const getDynamicStory = (item) => {
 }
 
 export default function FeedItem({ item, getDifficultyClass }) {
-    const [congratulated, setCongratulated] = useState(false)
+    const [congratulated, setCongratulated] = useState(item.hasLiked || false)
+    const [likeCount, setLikeCount] = useState(item.likes || 0)
+    const [isLoading, setIsLoading] = useState(false)
+
+    // Sync state with props in case the parent re-fetches or feed data changes
+    useEffect(() => {
+        setCongratulated(item.hasLiked || false)
+        setLikeCount(item.likes || 0)
+    }, [item.hasLiked, item.likes])
 
     // Dynamic extraction
     const langKey = item.language?.toLowerCase() || 'javascript'
@@ -76,15 +84,22 @@ export default function FeedItem({ item, getDifficultyClass }) {
     })
 
     const handleCongratulate = useCallback(
-        (e) => {
-            if (!congratulated) {
-                setCongratulated(true)
+        async (e) => {
+            if (isLoading) return
 
-                // Fire confetti from the button's position
-                const rect = e.currentTarget.getBoundingClientRect()
-                const x = (rect.left + rect.width / 2) / window.innerWidth
-                const y = (rect.top + rect.height / 2) / window.innerHeight
+            // Capture the event object since we need its coords for confetti before async logic
+            const rect = e.currentTarget.getBoundingClientRect()
+            const x = (rect.left + rect.width / 2) / window.innerWidth
+            const y = (rect.top + rect.height / 2) / window.innerHeight
 
+            // Optimistic update
+            const wasCongratulated = congratulated
+            setCongratulated(!wasCongratulated)
+            setLikeCount((prev) => (wasCongratulated ? prev - 1 : prev + 1))
+            setIsLoading(true)
+
+            if (!wasCongratulated) {
+                // Fire confetti right away for instant feedback
                 confetti({
                     particleCount: 50,
                     spread: 60,
@@ -93,11 +108,31 @@ export default function FeedItem({ item, getDifficultyClass }) {
                     disableForReducedMotion: true,
                     zIndex: 100,
                 })
-            } else {
-                setCongratulated(false)
+            }
+
+            try {
+                const res = await fetch(`/api/submissions/${item.id || item._id}/congratulate`, {
+                    method: 'POST',
+                })
+                const data = await res.json()
+
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to toggle congratulate')
+                }
+
+                // Sync with server data (in case optimistic was wrong)
+                setLikeCount(data.likes)
+                setCongratulated(data.action === 'liked')
+            } catch (error) {
+                console.error('Error congratulating:', error)
+                // Revert optimistic update
+                setCongratulated(wasCongratulated)
+                setLikeCount((prev) => (wasCongratulated ? prev + 1 : prev - 1))
+            } finally {
+                setIsLoading(false)
             }
         },
-        [congratulated]
+        [congratulated, isLoading, item.id, item._id]
     )
 
     return (
@@ -158,17 +193,26 @@ export default function FeedItem({ item, getDifficultyClass }) {
                     variant={congratulated ? 'ghost' : 'default'}
                     size="sm"
                     onClick={handleCongratulate}
+                    disabled={isLoading}
                     className={`h-8 text-xs font-semibold transition-all ${congratulated ? 'text-accent hover:bg-accent/10 border-accent/30 border' : ''}`}
                 >
                     {congratulated ? (
                         <span className="flex items-center gap-1.5">
                             <Sparkles className="fill-accent h-4 w-4" />
                             Congratulated!
+                            {likeCount > 0 && (
+                                <span className="text-text-muted ml-0.5 text-[10px] font-bold">
+                                    ({likeCount})
+                                </span>
+                            )}
                         </span>
                     ) : (
                         <span className="flex items-center gap-1.5">
                             <Flame className="h-4 w-4" />
                             Congratulate
+                            {likeCount > 0 && (
+                                <span className="ml-0.5 text-[10px] opacity-70">({likeCount})</span>
+                            )}
                         </span>
                     )}
                 </Button>

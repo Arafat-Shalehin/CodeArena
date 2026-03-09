@@ -48,6 +48,7 @@ export async function GET(req) {
             .filter((sub) => sub.userId && sub.problemId) // Filter out any broken references
             .map((sub) => ({
                 id: sub._id,
+                _id: sub._id,
                 user: {
                     _id: sub.userId._id,
                     name: sub.userId.name,
@@ -61,6 +62,10 @@ export async function GET(req) {
                 language: sub.language || 'javascript',
                 executionTime: sub.executionTime,
                 memoryUsed: sub.memoryUsed,
+                likes: sub.likes?.length || 0,
+                hasLiked: (sub.likes || []).some(
+                    (id) => id && id.toString() === user._id.toString()
+                ),
                 createdAt: sub.createdAt,
             }))
 
