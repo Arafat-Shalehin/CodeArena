@@ -90,132 +90,6 @@ function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white'
     )
 }
 
-function AiFeedbackSection({ feedback, isLoading, onFetch }) {
-    if (isLoading) {
-        return (
-            <div className="border-border bg-bg-muted animate-fade-up flex flex-col items-center justify-center rounded-2xl border p-12 text-center">
-                <Loader2 className="text-accent mb-4 animate-spin" size={32} />
-                <p className="text-text-muted text-sm font-bold tracking-wider uppercase">
-                    AI Analysis in progress...
-                </p>
-            </div>
-        )
-    }
-
-    if (!feedback) {
-        return (
-            <div className="border-border bg-bg-muted/30 hover:border-accent/40 group animate-fade-up flex flex-col items-center justify-center rounded-2xl border border-dashed p-8 text-center transition-all">
-                <div className="bg-bg-page mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner transition-transform group-hover:scale-110">
-                    <Sparkles className="text-accent/60" size={32} />
-                </div>
-                <h4 className="text-text-primary mb-2 text-lg font-black tracking-tight">
-                    Unlock AI Insights
-                </h4>
-                <p className="text-text-muted mb-6 max-w-[320px] text-[13px] leading-relaxed font-medium">
-                    Get deep analysis on complexity and receive actionable tips to optimize your
-                    code.
-                </p>
-                <button
-                    onClick={() => onFetch({ switchTab: false })}
-                    className="bg-accent hover:bg-accent/90 flex items-center gap-2.5 rounded-xl px-6 py-3 text-[13px] font-black text-white shadow-xl transition-all hover:translate-y-[-2px] active:translate-y-0"
-                >
-                    <Zap size={16} fill="currentColor" /> Analyze Solution
-                </button>
-            </div>
-        )
-    }
-
-    return (
-        <div className="border-accent/30 bg-accent/5 animate-fade-up shadow-accent/5 space-y-5 rounded-2xl border p-6 shadow-2xl">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="bg-accent/20 text-accent flex h-10 w-10 items-center justify-center rounded-xl shadow-inner">
-                        <Sparkles size={20} />
-                    </div>
-                    <div>
-                        <h4 className="text-text-primary text-base font-black tracking-tight">
-                            AI Insights
-                        </h4>
-                        <p className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
-                            Deep Code Analysis
-                        </p>
-                    </div>
-                </div>
-                {feedback.rating && (
-                    <div className="border-accent/20 bg-accent/10 flex items-center gap-2 rounded-xl border px-4 py-2">
-                        <span className="text-accent text-[10px] font-black tracking-widest">
-                            SCORE
-                        </span>
-                        <span className="text-text-primary text-lg font-black">
-                            {feedback.rating}
-                            <span className="text-xs opacity-40">/10</span>
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-bg-page border-border rounded-xl border p-4 shadow-inner">
-                    <div className="text-text-muted mb-2 flex items-center gap-2 text-[10px] font-black tracking-widest uppercase">
-                        <Clock size={12} className="text-accent" /> Time
-                    </div>
-                    <div className="text-accent font-mono text-sm font-black">
-                        {feedback.timeComplexity || 'O(N)'}
-                    </div>
-                </div>
-                <div className="bg-bg-page border-border rounded-xl border p-4 shadow-inner">
-                    <div className="text-text-muted mb-2 flex items-center gap-2 text-[10px] font-black tracking-widest uppercase">
-                        <HardDrive size={12} className="text-success" /> Space
-                    </div>
-                    <div className="text-success font-mono text-sm font-black">
-                        {feedback.spaceComplexity || 'O(1)'}
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-3">
-                {feedback.strengths?.length > 0 && (
-                    <div>
-                        <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold text-green-500 uppercase">
-                            <TrendingUp size={12} /> Key Strengths
-                        </div>
-                        <ul className="grid grid-cols-1 gap-1.5">
-                            {feedback.strengths.slice(0, 2).map((s, i) => (
-                                <li
-                                    key={i}
-                                    className="flex items-start gap-2 rounded-md border border-green-500/10 bg-green-500/5 p-2 text-xs text-gray-300"
-                                >
-                                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-green-500" />
-                                    {s}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {feedback.improvements?.length > 0 && (
-                    <div>
-                        <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold text-orange-400 uppercase">
-                            <TrendingDown size={12} /> Potential Improvements
-                        </div>
-                        <ul className="grid grid-cols-1 gap-1.5">
-                            {feedback.improvements.slice(0, 2).map((s, i) => (
-                                <li
-                                    key={i}
-                                    className="flex items-start gap-2 rounded-md border border-orange-400/10 bg-orange-400/5 p-2 text-xs text-gray-300"
-                                >
-                                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-orange-400" />
-                                    {s}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
-
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function SubmissionResultTab() {
@@ -303,11 +177,32 @@ export default function SubmissionResultTab() {
             </div>
 
             {/* ── AI Feedback Section ── */}
-            <AiFeedbackSection
-                feedback={result.aiFeedback}
-                isLoading={isAiLoading}
-                onFetch={fetchAiFeedback}
-            />
+            <div className="border-border/50 bg-bg-muted/20 animate-fade-up flex flex-col items-center justify-between gap-4 rounded-xl border p-4 sm:flex-row">
+                <div className="flex items-center gap-3">
+                    <Sparkles size={16} className="text-accent" />
+                    <div>
+                        <div className="text-text-primary text-[13px] font-medium">AI Analysis</div>
+                        <div className="text-text-muted mt-0.5 text-[12px]">
+                            We've generated detailed complexity and logic insights for this code.
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={() => fetchAiFeedback({ switchTab: true })}
+                    className="bg-bg-subtle hover:bg-bg-muted border-border text-text-primary flex items-center gap-2 rounded-lg border px-4 py-2 text-[12px] font-medium whitespace-nowrap transition-colors"
+                >
+                    {isAiLoading ? (
+                        <Loader2 size={14} className="text-accent animate-spin" />
+                    ) : (
+                        <Zap size={14} className="text-accent" />
+                    )}
+                    {isAiLoading
+                        ? 'Analyzing...'
+                        : result.aiFeedback
+                          ? 'View AI Feedback'
+                          : 'Analyze Now'}
+                </button>
+            </div>
 
             {/* Distribution */}
             <div className="border-border bg-bg-muted/50 rounded-2xl border p-6">
