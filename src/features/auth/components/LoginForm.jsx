@@ -72,7 +72,7 @@ export default function LoginForm() {
                 signInWithEmailLink(auth, emailForSignIn, window.location.href)
                     .then(() => {
                         window.localStorage.removeItem('emailForSignIn')
-                        router.push('/profile')
+                        router.push('/feed')
                     })
                     .catch((err) => {
                         setApiError(err.message.replace('Firebase: ', ''))
@@ -88,7 +88,7 @@ export default function LoginForm() {
         setIsLoading(true)
         try {
             await signInWithEmailAndPassword(auth, data.email, data.password)
-            router.push('/profile')
+            router.push('/feed')
         } catch (err) {
             setApiError(err.message.replace('Firebase: ', ''))
         } finally {

@@ -1,6 +1,9 @@
 # JavaScript (Node.js) Execution Environment
 FROM node:20-slim
 
+LABEL project="codearena"
+LABEL component="executor-javascript"
+
 # Install necessary tools
 RUN apt-get update && apt-get install -y \
     time \

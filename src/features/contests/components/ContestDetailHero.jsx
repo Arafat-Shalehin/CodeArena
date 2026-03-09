@@ -182,7 +182,10 @@ export default function ContestDetailHero({
 
                         {phase === 'ended' && (
                             <Link href={`/contests/${contest._id}/results`} className="w-full">
-                                <Button variant="outline" className="w-full">
+                                <Button
+                                    variant="outline"
+                                    className="hover:bg-bg-muted hover:text-accent border-border w-full bg-white text-[10px] font-black tracking-widest uppercase shadow-sm transition-all"
+                                >
                                     View Results
                                 </Button>
                             </Link>

@@ -17,7 +17,12 @@ import {
     List,
     GripVertical,
     GripHorizontal,
+    User as UserIcon,
 } from 'lucide-react'
+
+import Link from 'next/link'
+import AreanaLogo from '@/shared/components/ui/AreanaLogo'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 import ProblemListSidebar from '@/app/test-docker/ProblemListSidebar'
 import { ProblemSolveProvider, useProblemSolve } from '@/context/ProblemSolveContext'
@@ -116,6 +121,11 @@ function InnerLayout({
             <nav className="border-border bg-bg-subtle flex h-[48px] flex-shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}
                 <div className="flex items-center gap-1">
+                    <AreanaLogo
+                        href="/feed"
+                        className="mr-4 scale-90 transition-transform hover:scale-95"
+                    />
+                    <div className="bg-border mr-2 h-6 w-px" />
                     <button
                         onClick={() => setShowProblemList(true)}
                         className="hover:bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors"
@@ -171,7 +181,7 @@ function InnerLayout({
                     </button>
                 </div>
                 {/* Right */}
-                <div className="flex items-center gap-2 text-gray-400">
+                <div className="flex items-center gap-4 text-gray-400">
                     {testResult?.status === 'done' && (
                         <button
                             onClick={fetchAiFeedback}
@@ -180,9 +190,28 @@ function InnerLayout({
                             <Sparkles size={14} /> AI Analysis
                         </button>
                     )}
-                    <button className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white">
+                    <button className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors">
                         <Settings2 size={18} />
                     </button>
+
+                    <div className="bg-border h-6 w-px" />
+
+                    {user && (
+                        <Link
+                            href="/profile"
+                            className="group flex items-center transition-transform hover:scale-105"
+                        >
+                            <Avatar className="border-accent/20 group-hover:border-accent/40 size-8 border transition-colors">
+                                <AvatarImage
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                                    alt={user.name}
+                                />
+                                <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
+                                    <UserIcon size={12} />
+                                </AvatarFallback>
+                            </Avatar>
+                        </Link>
+                    )}
                 </div>
             </nav>
 
