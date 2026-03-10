@@ -217,7 +217,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                 {/* Bottom row: trend pill + sparkline */}
                 <div className="flex items-end justify-between gap-2">
                     {/* Trend pill */}
-                    {/* <div
+                    <div
                         className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold"
                         style={{ background: trendBg, color: trendColour }}
                     >
@@ -227,10 +227,10 @@ function StatCard({ stat, icon, sparkline, index }) {
                             </span>
                         )}
                         <span>{stat.trend}</span>
-                    </div> */}
+                    </div>
 
                     {/* Sparkline */}
-                    {/* <Sparkline data={sparkline} positive={isPositive} stable={isStable} /> */}
+                    <Sparkline data={sparkline} positive={isPositive} stable={isStable} />
                 </div>
             </div>
         </Card>
@@ -242,37 +242,42 @@ function StatCard({ stat, icon, sparkline, index }) {
 export function PlatformStats() {
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
-
+    console.log(stats)
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const res = await fetch('/api/stats/platform')
                 const json = await res.json()
+                // console.log(json)
                 if (json.success) {
                     const mappedStats = [
                         {
                             label: 'Total Participants',
                             value: json.data.totalParticipants.toLocaleString(),
-                            trend: '+0.0%',
-                            trendUp: true,
+                            trend: `${json.data.participantsTrend >= 0 ? '+' : ''}${json.data.participantsTrend}%`,
+                            trendUp: json.data.participantsTrendUp,
+                            history: json.data.participantsHistory,
                         },
                         {
                             label: 'Submissions Today',
                             value: json.data.submissionsToday.toLocaleString(),
-                            trend: '+0.0%',
-                            trendUp: true,
+                            trend: `${json.data.submissionsTrend >= 0 ? '+' : ''}${json.data.submissionsTrend}%`,
+                            trendUp: json.data.submissionsTrendUp,
+                            history: json.data.submissionsHistory,
                         },
                         {
                             label: 'Active Contests',
                             value: json.data.activeContests.toString(),
-                            trend: 'Live',
-                            trendUp: null,
+                            trend: `${json.data.contestsTrend >= 0 ? '+' : ''}${json.data.contestsTrend}%`,
+                            trendUp: json.data.contestsTrendUp,
+                            history: json.data.contestsHistory,
                         },
                         {
                             label: 'Avg. Solve Rate',
                             value: json.data.avgSolveRate,
-                            trend: '-',
-                            trendUp: null,
+                            trend: `${json.data.solveRateTrend >= 0 ? '+' : ''}${json.data.solveRateTrend}%`,
+                            trendUp: json.data.solveRateTrendUp,
+                            history: json.data.solveRateHistory,
                         },
                     ]
                     setStats(mappedStats)
@@ -307,7 +312,7 @@ export function PlatformStats() {
                         key={stat.label}
                         stat={stat}
                         icon={STAT_ICONS[idx]}
-                        sparkline={SPARKLINES[idx]}
+                        sparkline={stat.history}
                         index={idx}
                     />
                 ))}

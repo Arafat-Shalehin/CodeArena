@@ -11,7 +11,6 @@ const NAV_LINKS = [
     { name: 'Problems', href: '/problems' },
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
-    { name: 'Practice', href: '/practice' },
 ]
 
 /**

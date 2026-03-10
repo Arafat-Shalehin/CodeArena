@@ -22,35 +22,47 @@ export default function CodeEditor({ initialCode = '' }) {
         monaco.editor.defineTheme('codearena-dark', {
             base: 'vs-dark',
             inherit: true,
-            rules: [],
+            rules: [
+                { token: 'comment', foreground: '6272a4', fontStyle: 'italic' },
+                { token: 'keyword', foreground: 'ff79c6' },
+                { token: 'identifier', foreground: 'f8f8f2' },
+                { token: 'string', foreground: 'f1fa8c' },
+                { token: 'number', foreground: 'bd93f9' },
+            ],
             colors: {
-                'editor.background': '#1e1e1e',
-                'editor.lineHighlightBackground': '#2d2d2d',
-                'editorLineNumber.foreground': '#858585',
+                'editor.background': '#0f0f0f', // Matches bg-page approximately
+                'editor.lineHighlightBackground': '#1a1a1a',
+                'editorLineNumber.foreground': '#4b5563',
+                'editorLineNumber.activeForeground': '#a78bfa',
                 'editorIndentGuide.background': '#2d2d2d',
+                'editor.selectionBackground': '#3e445166',
             },
         })
         monaco.editor.setTheme('codearena-dark')
     }
 
     return (
-        <div className="relative h-full w-full flex-1 bg-[#1e1e1e]">
+        <div className="relative h-full w-full flex-1 bg-[#0f0f0f]">
             <Editor
                 height="100%"
                 language={language === 'cpp' ? 'cpp' : language}
                 value={code}
                 onChange={(value) => updateCode(value)}
-                theme="vs-dark"
+                theme="codearena-dark"
                 options={{
                     minimap: { enabled: false },
                     fontSize: 14,
-                    fontFamily: '"JetBrains Mono", monospace',
-                    lineHeight: 24,
-                    padding: { top: 16, bottom: 16 },
+                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                    lineHeight: 22,
+                    padding: { top: 20, bottom: 20 },
                     scrollBeyondLastLine: false,
                     smoothScrolling: true,
                     cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on',
                     renderLineHighlight: 'all',
+                    bracketPairColorization: { enabled: true },
+                    guides: { indentation: true },
+                    fontLigatures: true,
                 }}
                 onMount={handleEditorDidMount}
             />

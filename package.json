@@ -25,11 +25,13 @@
         "class-variance-authority": "^0.7.1",
         "client-only": "^0.0.1",
         "clsx": "^2.1.1",
+        "cmdk": "^1.1.1",
         "date-fns": "^4.1.0",
         "dockerode": "^4.0.9",
         "firebase": "^12.9.0",
         "framer-motion": "^12.34.4",
         "groq-sdk": "^0.37.0",
+        "gsap": "^3.14.2",
         "jsonwebtoken": "^9.0.3",
         "katex": "^0.16.33",
         "lucide-react": "^0.564.0",
@@ -54,6 +56,7 @@
         "swr": "^2.4.0",
         "tailwind-merge": "^3.5.0",
         "tar-stream": "^3.1.7",
+        "three": "^0.183.2",
         "zod": "^4.3.6"
     },
     "devDependencies": {

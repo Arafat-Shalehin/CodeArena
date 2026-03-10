@@ -12,13 +12,23 @@ import {
     UserPlus,
     Calendar,
     Award,
+    Edit2,
+    Check,
+    X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatDistanceToNow, format } from 'date-fns'
+import RecommendedProblems from './RecommendedProblems'
+import { useAuth } from '@/context/AuthContext'
 
-export default function DashboardHome({ user }) {
+export default function DashboardHome({ user: initialUser }) {
+    const { user: contextUser, updateProfile } = useAuth()
+    const user = contextUser || initialUser
+
     const [feed, setFeed] = useState([])
+    const [isEditingGoal, setIsEditingGoal] = useState(false)
+    const [newGoal, setNewGoal] = useState(user?.stats?.weeklyGoal || 10)
     const [sidebarData, setSidebarData] = useState({
         trendingProblems: [],
         suggestedUsers: [],
@@ -54,6 +64,20 @@ export default function DashboardHome({ user }) {
         fetchDashboardData()
     }, [])
 
+    const handleUpdateGoal = async () => {
+        updateProfile({ stats: { ...user.stats, weeklyGoal: parseInt(newGoal) } })
+        setIsEditingGoal(false)
+        try {
+            await fetch('/api/users/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'stats.weeklyGoal': parseInt(newGoal) }),
+            })
+        } catch (err) {
+            console.error('Failed to update goal on backend:', err)
+        }
+    }
+
     const getDifficultyClass = (diff) => {
         const d = diff?.toLowerCase()
         if (d === 'easy') return 'bg-success-light text-success'
@@ -74,7 +98,7 @@ export default function DashboardHome({ user }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-text-primary text-2xl font-bold">
-                                    {user?.stats?.globalRank || '—'}
+                                    {user?.stats?.globalRank || 'N/A'}
                                 </p>
                                 <p className="text-text-muted text-[10px] font-medium uppercase">
                                     Global Rank
@@ -90,12 +114,57 @@ export default function DashboardHome({ user }) {
                             </div>
                         </div>
                         <div className="border-border mt-6 border-t pt-4">
-                            <div className="mb-2 flex justify-between text-xs">
+                            <div className="mb-2 flex items-center justify-between text-xs">
                                 <span className="text-text-secondary font-medium">Weekly Goal</span>
-                                <span className="text-text-primary font-bold">8/10</span>
+                                <div className="flex items-center gap-2">
+                                    {isEditingGoal ? (
+                                        <div className="flex items-center gap-1">
+                                            <input
+                                                type="number"
+                                                value={newGoal}
+                                                onChange={(e) => setNewGoal(e.target.value)}
+                                                className="bg-bg-muted border-border w-12 rounded border px-1 text-center text-xs font-bold"
+                                                autoFocus
+                                            />
+                                            <button
+                                                onClick={handleUpdateGoal}
+                                                className="text-success transition-transform hover:scale-110"
+                                            >
+                                                <Check className="h-3 w-3" />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setIsEditingGoal(false)
+                                                    setNewGoal(user?.stats?.weeklyGoal || 10)
+                                                }}
+                                                className="text-error transition-transform hover:scale-110"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className="text-text-primary font-bold">
+                                                {user?.stats?.accepted || 0}/
+                                                {user?.stats?.weeklyGoal || 10}
+                                            </span>
+                                            <button
+                                                onClick={() => setIsEditingGoal(true)}
+                                                className="text-text-muted hover:text-accent transition-colors"
+                                            >
+                                                <Edit2 className="h-3 w-3" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                             <div className="bg-border h-1.5 w-full overflow-hidden rounded-full">
-                                <div className="bg-accent h-full w-[80%] rounded-full"></div>
+                                <div
+                                    className="bg-accent h-full rounded-full transition-all duration-500"
+                                    style={{
+                                        width: `${Math.min(100, ((user?.stats?.accepted || 0) / (user?.stats?.weeklyGoal || 10)) * 100)}%`,
+                                    }}
+                                ></div>
                             </div>
                         </div>
                     </div>
@@ -120,6 +189,8 @@ export default function DashboardHome({ user }) {
 
                 {/* MAIN FEED (6 cols on desktop) */}
                 <section className="col-span-1 flex flex-col gap-6 lg:col-span-6">
+                    <RecommendedProblems />
+
                     {loading ? (
                         <div className="bg-bg-subtle border-border rounded-lg border p-8 text-center shadow-sm">
                             <div className="animate-pulse space-y-4">

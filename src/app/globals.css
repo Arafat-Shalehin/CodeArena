@@ -120,6 +120,9 @@
 
     /* Border Radius */
     --radius: 0.5rem;
+
+    /* Interactive Tiles */
+    --tile: var(--ca-accent);
 }
 
 /* ----------------------------------------------------------

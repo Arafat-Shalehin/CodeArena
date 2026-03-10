@@ -29,11 +29,6 @@ const editProfileSchema = z.object({
         .string()
         .min(2, 'Display name must be at least 2 characters')
         .max(50, 'Display name must be at most 50 characters'),
-    username: z
-        .string()
-        .min(3, 'Username must be at least 3 characters')
-        .max(20, 'Username must be at most 20 characters')
-        .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores'),
     bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
     location: z.string().max(100, 'Location is too long').optional().or(z.literal('')),
     website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
@@ -65,7 +60,7 @@ const PREDEFINED_AVATARS = [
 ]
 
 export default function SettingsPage() {
-    const { user, updateProfile: updateLocalContext, isLoading: authLoading } = useAuth()
+    const { user, updateProfile: updateLocalContext, isLoading: authLoading, syncUser } = useAuth()
     const [activeSection, setActiveSection] = useState('profile')
 
     const {
@@ -79,7 +74,6 @@ export default function SettingsPage() {
         resolver: zodResolver(editProfileSchema),
         defaultValues: {
             name: '',
-            username: '',
             bio: '',
             location: '',
             website: '',
@@ -92,7 +86,6 @@ export default function SettingsPage() {
         if (user) {
             reset({
                 name: user.name || '',
-                username: user.username || '',
                 bio: user.bio || '',
                 location: user.location || '',
                 website: user.website || '',
@@ -103,7 +96,7 @@ export default function SettingsPage() {
                 },
             })
             if (!watch('avatarSeed')) {
-                setValue('avatarSeed', user.avatarSeed || user.username || PREDEFINED_AVATARS[0])
+                setValue('avatarSeed', user.avatarSeed || user.name || PREDEFINED_AVATARS[0])
             }
         }
     }, [user, reset, setValue])
@@ -111,6 +104,50 @@ export default function SettingsPage() {
     const avatarSeed = watch('avatarSeed')
 
     const onSubmit = async (data) => {
+        // First, update the MongoDB database
+        const userId = user?.id || user?._id
+        console.log('User object:', user)
+        console.log('Extracted userId:', userId)
+
+        if (userId) {
+            try {
+                const userIdString = userId.toString()
+                const payload = {
+                    name: data.name,
+                    bio: data.bio || '',
+                    location: data.location || '',
+                    website: data.website || '',
+                    socials: data.socials || { github: '', linkedin: '', twitter: '' },
+                    avatarSeed,
+                }
+                console.log('Sending profile update:', { userId: userIdString, payload })
+
+                const res = await fetch(`/api/users/${userIdString}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                })
+
+                const responseData = await res.json()
+                console.log('Profile update response:', { status: res.status, data: responseData })
+
+                if (!res.ok) {
+                    throw new Error(responseData.message || 'Failed to update profile')
+                }
+            } catch (error) {
+                console.error('Database profile sync failed:', error)
+                toast.error(error.message || 'Failed to save profile. Please try again.')
+                return // Stop here - don't update local context or show success
+            }
+        } else {
+            console.error('No user ID found:', user)
+            toast.error('Unable to update profile. Please log in again.')
+            return
+        }
+
+        // Update Firebase display name
         if (auth.currentUser) {
             try {
                 await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
@@ -120,45 +157,22 @@ export default function SettingsPage() {
             }
         }
 
-        // Also update the MongoDB database
-        if (user && (user.id || user._id)) {
-            try {
-                const userId = user.id || user._id
-                const res = await fetch(`/api/users/${userId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: data.name,
-                        bio: data.bio || '',
-                        location: data.location || '',
-                        website: data.website || '',
-                        socials: data.socials,
-                        avatarSeed,
-                    }),
-                })
-
-                if (!res.ok) {
-                    const errMap = await res.json()
-                    throw new Error(errMap.message || 'Failed to update profile')
-                }
-            } catch (error) {
-                console.error('Database profile sync failed:', error)
-                toast.error('Failed to sync profile to database.')
-            }
-        }
-
         // Update local auth context (which also handles localStorage caching mapping)
         updateLocalContext({
             name: data.name,
-            username: data.username,
             bio: data.bio || '',
             location: data.location || '',
             website: data.website || '',
             socials: data.socials,
             avatarSeed,
         })
+
+        // Sync with server to get fresh data
+        try {
+            await syncUser()
+        } catch (syncError) {
+            console.error('Sync failed:', syncError)
+        }
 
         toast.success('Changes saved successfully!')
     }

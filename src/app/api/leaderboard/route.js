@@ -1,51 +1,10 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
-import { Server } from 'socket.io'
+import { initSocketServer } from '@/lib/socket-server'
 
-/**
- * Socket.IO Singleton & Change Stream Initialization
- * Since Next.js App Router route handlers are isolated, we use a global singleton
- * to host a standalone Socket.IO server on a separate port for real-time updates.
- */
-let io
 if (process.env.NODE_ENV !== 'production') {
-    if (!global._io) {
-        // Start Socket.IO server on a separate port (3002) for real-time live rankings
-        // This keeps the logic contained within the leaderboard feature context.
-        const port = 3002
-        global._io = new Server(port, {
-            cors: {
-                origin: '*', // Adjust for production
-                methods: ['GET', 'POST'],
-            },
-        })
-        console.log(`[Socket.IO] Real-time leaderboard server started on port ${port}`)
-
-        // Initialize MongoDB Change Stream to watch for Score updates
-        dbConnect().then(() => {
-            const userChangeStream = User.watch([], { fullDocument: 'updateLookup' })
-
-            userChangeStream.on('change', (change) => {
-                if (change.operationType === 'update' || change.operationType === 'replace') {
-                    const statsChanged =
-                        change.updateDescription?.updatedFields?.stats ||
-                        change.updateDescription?.updatedFields?.['stats.score']
-
-                    if (statsChanged) {
-                        // Broadcast update to all connected clients
-                        global._io.emit('rank_update', {
-                            type: 'score_changed',
-                            userId: change.documentKey._id,
-                            timestamp: new Date(),
-                        })
-                    }
-                }
-            })
-            console.log('[Socket.IO] MongoDB Change Stream active on User collection')
-        })
-    }
-    io = global._io
+    initSocketServer().catch(console.error)
 }
 
 /**
@@ -67,19 +26,14 @@ export async function GET(request) {
         const page = Math.max(1, parseInt(searchParams.get('page')) || 1)
         const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit')) || 20))
         const search = (searchParams.get('search') || '').trim()
-
-        // Placeholders for future feature implementation
         const league = searchParams.get('league') || 'all'
         const timeframe = searchParams.get('timeframe') || 'all_time'
+        const currentUserId = searchParams.get('currentUserId')
 
         const skip = (page - 1) * limit
-
-        /**
-         * Build the database query
-         * We show all users by default to ensure maximum visibility.
-         */
         const query = {}
 
+        // 1. Handle Search
         if (search) {
             query.$or = [
                 { name: { $regex: search, $options: 'i' } },
@@ -87,21 +41,104 @@ export async function GET(request) {
             ]
         }
 
-        /**
-         * Query users with activity, sorted by score (primary) then accepted count (secondary)
-         */
-        const [users, total] = await Promise.all([
-            User.find(query)
-                .select('name username email stats createdAt')
-                .sort({
-                    'stats.score': -1,
-                    'stats.accepted': -1,
-                })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            User.countDocuments(query),
-        ])
+        // 2. Handle League (Friends or Location/Company Filter)
+        if (league === 'friends' && currentUserId) {
+            const currentUser = await User.findById(currentUserId).select('following')
+            if (currentUser && currentUser.following.length > 0) {
+                query._id = { $in: currentUser.following }
+            } else if (currentUser) {
+                query._id = { $in: [] }
+            }
+        } else if (league === 'company' && currentUserId) {
+            const currentUser = await User.findById(currentUserId).select('location')
+            if (currentUser && currentUser.location) {
+                query.location = currentUser.location
+            } else {
+                // If user has no location, maybe show global or empty
+                query.location = '__NON_EXISTENT__'
+            }
+        }
+
+        let users = []
+        let total = 0
+
+        // 3. Handle Timeframe (Aggregation for Weekly/Monthly)
+        if (timeframe === 'weekly' || timeframe === 'monthly') {
+            const days = timeframe === 'weekly' ? 7 : 30
+            const today = new Date()
+            const dateStrings = []
+
+            for (let i = 0; i < days; i++) {
+                const d = new Date(today)
+                d.setDate(d.getDate() - i)
+                dateStrings.push(d.toISOString().split('T')[0])
+            }
+
+            // Aggregation pipeline to sum activity for the selected timeframe
+            const pipeline = [
+                { $match: query },
+                {
+                    $addFields: {
+                        timeframeScore: {
+                            $sum: {
+                                $map: {
+                                    input: dateStrings,
+                                    as: 'dateKey',
+                                    in: {
+                                        $ifNull: [
+                                            {
+                                                $getField: {
+                                                    field: '$$dateKey',
+                                                    input: {
+                                                        $ifNull: ['$stats.activityCalendar', {}],
+                                                    },
+                                                },
+                                            },
+                                            0,
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                { $sort: { timeframeScore: -1, 'stats.score': -1 } },
+                {
+                    $facet: {
+                        metadata: [{ $count: 'total' }],
+                        data: [{ $skip: skip }, { $limit: limit }],
+                    },
+                },
+            ]
+
+            const results = await User.aggregate(pipeline)
+            users = results[0].data
+            total = results[0].metadata[0]?.total || 0
+
+            // Mapping to ensure consistent output format
+            users = users.map((u) => ({
+                ...u,
+                stats: {
+                    ...u.stats,
+                    // Optionally override displayed score with timeframe score if desired
+                    // score: u.timeframeScore
+                },
+            }))
+        } else {
+            // Standard All-Time approach
+            ;[users, total] = await Promise.all([
+                User.find(query)
+                    .select('name username email stats createdAt')
+                    .sort({
+                        'stats.score': -1,
+                        'stats.accepted': -1,
+                    })
+                    .skip(skip)
+                    .limit(limit)
+                    .lean(),
+                User.countDocuments(query),
+            ])
+        }
 
         return NextResponse.json({
             success: true,
@@ -112,7 +149,7 @@ export async function GET(request) {
                 limit,
                 pages: Math.ceil(total / limit),
             },
-            livePort: 3002, // Notify frontend where to connect for live updates
+            livePort: 3002,
         })
     } catch (error) {
         console.error('[LeaderboardAPI] Execution Error:', error)

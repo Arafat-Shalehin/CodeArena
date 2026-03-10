@@ -42,9 +42,9 @@ START_TIME=$(date +%s%N)
 EXIT_CODE=0
 
 if [ -f "$INPUT_FILE" ]; then
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" "$BINARY_FILE" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    ( /usr/bin/time -f "%M" timeout ${TIME_LIMIT}s "$BINARY_FILE" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" ) 2>>"$ERROR_FILE" || EXIT_CODE=$?
 else
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" "$BINARY_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    ( /usr/bin/time -f "%M" timeout ${TIME_LIMIT}s "$BINARY_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" ) 2>>"$ERROR_FILE" || EXIT_CODE=$?
 fi
 
 END_TIME=$(date +%s%N)

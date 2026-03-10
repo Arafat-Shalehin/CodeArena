@@ -22,17 +22,39 @@ import { Rocket } from 'lucide-react'
 export const ContestHero = ({ title, description, status, startTime, onRegister }) => {
     const [timeLeft, setTimeLeft] = useState({
         days: '00',
-        hours: '24',
-        minutes: '45',
-        seconds: '12',
+        hours: '00',
+        minutes: '00',
+        seconds: '00',
     })
 
-    // Mock countdown effect
     useEffect(() => {
-        const timer = setInterval(() => {
-            // In a real app, this would calculate the actual difference
-            // For now, we'll just keep the static values from the source
-        }, 1000)
+        const calcTimeLeft = () => {
+            if (!startTime) return
+
+            const diff = new Date(startTime).getTime() - Date.now()
+
+            if (diff <= 0) {
+                setTimeLeft({ days: '00', hours: '00', minutes: '00', seconds: '00' })
+                return
+            }
+
+            const totalSeconds = Math.floor(diff / 1000)
+            const days = Math.floor(totalSeconds / 86400)
+            const hours = Math.floor((totalSeconds % 86400) / 3600)
+            const minutes = Math.floor((totalSeconds % 3600) / 60)
+            const seconds = totalSeconds % 60
+
+            const pad = (n) => String(n).padStart(2, '0')
+            setTimeLeft({
+                days: pad(days),
+                hours: pad(hours),
+                minutes: pad(minutes),
+                seconds: pad(seconds),
+            })
+        }
+
+        calcTimeLeft()
+        const timer = setInterval(calcTimeLeft, 1000)
         return () => clearInterval(timer)
     }, [startTime])
 

@@ -30,10 +30,6 @@ import { motion, AnimatePresence } from 'framer-motion'
  * @returns {JSX.Element} The rendered ranking table.
  */
 export function RankingTable({ data, currentUser }) {
-    if (!data || data.length === 0) {
-        return <div className="text-text-muted py-20 text-center">No legends found.</div>
-    }
-
     return (
         <div className="bg-bg-page border-border mb-8 overflow-hidden rounded-[2rem] border shadow-xl">
             <div className="w-full">

@@ -16,79 +16,66 @@ export default function ProblemStats({ user: userProp }) {
     const { user: authUser } = useAuth()
     const displayUser = userProp || authUser
     const statsData = getStatsData(displayUser?.stats)
-    const totalSolved = statsData.reduce((acc, curr) => acc + curr.solved, 0)
+
+    const totalSolved = displayUser?.stats?.accepted || 0
+    const totalPossible = statsData.reduce((acc, s) => acc + s.total, 0) || 100
+    const percentage = Math.min(100, Math.round((totalSolved / totalPossible) * 100))
+
+    // SVG circle math
+    const radius = 58
+    const circumference = 2 * Math.PI * radius
+    const offset = circumference - (percentage / 100) * circumference
 
     return (
-        <section className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
-            <h3 className="text-text-primary mb-6 text-lg font-semibold">Problem Stats</h3>
-
-            <div className="flex items-center gap-8">
-                {/* Left: Donut Chart */}
-                <div className="relative h-28 w-28 shrink-0">
-                    <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 36 36">
+        <section className="bg-bg-subtle border-border rounded-2xl border p-6 shadow-sm">
+            <h3 className="text-text-primary mb-6 text-lg font-bold">Problem Stats</h3>
+            <div className="flex flex-col items-center gap-8 sm:flex-row">
+                <div className="relative h-32 w-32 shrink-0">
+                    <svg className="h-full w-full -rotate-90">
                         <circle
-                            cx="18"
-                            cy="18"
-                            r="16"
+                            className="text-bg-muted"
+                            cx="64"
+                            cy="64"
                             fill="transparent"
-                            stroke="var(--color-bg-muted)"
-                            strokeWidth="3"
+                            r={radius}
+                            stroke="currentColor"
+                            strokeWidth="12"
                         />
                         <circle
-                            cx="18"
-                            cy="18"
-                            r="16"
+                            className="text-accent transition-all duration-1000 ease-in-out"
+                            cx="64"
+                            cy="64"
                             fill="transparent"
-                            stroke="var(--color-success)"
-                            strokeWidth="3"
-                            strokeDasharray="35 100"
-                        />
-                        <circle
-                            cx="18"
-                            cy="18"
-                            r="16"
-                            fill="transparent"
-                            stroke="var(--color-warning)"
-                            strokeWidth="3"
-                            strokeDasharray="45 100"
-                            strokeDashoffset="-35"
-                        />
-                        <circle
-                            cx="18"
-                            cy="18"
-                            r="16"
-                            fill="transparent"
-                            stroke="var(--color-error)"
-                            strokeWidth="3"
-                            strokeDasharray="20 100"
-                            strokeDashoffset="-80"
+                            r={radius}
+                            stroke="currentColor"
+                            strokeDasharray={circumference}
+                            style={{ strokeDashoffset: offset }}
+                            strokeWidth="12"
+                            strokeLinecap="round"
                         />
                     </svg>
-
-                    {/* Center Text */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-text-primary text-2xl leading-none font-bold">
-                            {totalSolved}
-                        </span>
-                        <span className="text-text-muted text-[10px] font-medium tracking-wide uppercase">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-text-primary text-2xl font-bold">{totalSolved}</span>
+                        <span className="text-text-muted text-[10px] font-bold tracking-tighter uppercase">
                             Solved
                         </span>
                     </div>
                 </div>
 
-                {/* Right: Progress Bars */}
-                <div className="flex-1 space-y-4">
-                    {statsData.map((item) => (
-                        <div key={item.label} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className={`font-medium ${item.text}`}>{item.label}</span>
-                                <span className="text-text-primary font-bold">{item.solved}</span>
+                <div className="w-full flex-1 space-y-3">
+                    {statsData.map((stat) => (
+                        <div key={stat.label} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className={`h-2 w-2 rounded-full ${stat.color}`} />
+                                <span className={`text-sm font-semibold ${stat.text}`}>
+                                    {stat.label}
+                                </span>
                             </div>
-                            <div className="bg-bg-muted h-1.5 w-full overflow-hidden rounded-full">
-                                <div
-                                    className={`h-full ${item.color} rounded-full transition-all duration-1000`}
-                                    style={{ width: `${(item.solved / item.total) * 100}%` }}
-                                />
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-text-primary text-sm font-bold">
+                                    {stat.solved}
+                                </span>
+                                <span className="text-text-muted text-[10px]">/ {stat.total}</span>
                             </div>
                         </div>
                     ))}
