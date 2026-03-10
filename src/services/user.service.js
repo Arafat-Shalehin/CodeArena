@@ -2,6 +2,7 @@ import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { signToken } from '@/lib/jwt'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Registers a new user.
@@ -121,12 +122,35 @@ export async function getAllUsers() {
  * @throws {Error} If user is not found.
  */
 export async function getUserById(id) {
+    const cacheKey = `user:${id}:profile`
+
+    try {
+        if (redisClient.isOpen) {
+            const cachedUser = await redisClient.get(cacheKey)
+            if (cachedUser) {
+                console.log(`[Cache Hit] User profile: ${id}`)
+                return JSON.parse(cachedUser)
+            }
+        }
+    } catch (err) {
+        console.error('Redis read error in getUserById:', err)
+    }
+
     const user = await User.findById(id).select('-password')
     if (!user) {
         const err = new Error('User not found')
         err.status = 404
         throw err
     }
+
+    try {
+        if (redisClient.isOpen) {
+            await redisClient.set(cacheKey, JSON.stringify(user), { EX: 3600 }) // 1 hour
+        }
+    } catch (err) {
+        console.error('Redis write error in getUserById:', err)
+    }
+
     return user
 }
 
@@ -143,6 +167,12 @@ export async function deleteUser(id) {
         err.status = 404
         throw err
     }
+
+    // Invalidate cache
+    if (redisClient.isOpen) {
+        await redisClient.del(`user:${id}:profile`).catch(console.error)
+    }
+
     return user
 }
 
@@ -178,6 +208,11 @@ export async function updateUser(id, updateData) {
         const err = new Error('User not found')
         err.status = 404
         throw err
+    }
+
+    // Invalidate cache
+    if (redisClient.isOpen) {
+        await redisClient.del(`user:${id}:profile`).catch(console.error)
     }
 
     console.log('Updated user:', user)

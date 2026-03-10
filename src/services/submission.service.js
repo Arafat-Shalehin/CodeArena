@@ -37,9 +37,19 @@ export async function createSubmission(data) {
             throw new Error('Problem not found.')
         }
 
-        // 3️⃣ Rate limit (basic DB-based throttle: 3 sec cooldown)
-        // Only apply rate limit for actual submissions, not runs
-        if (type === 'submit') {
+        // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
+        if (type === 'submit' && redisClient.isOpen) {
+            const rateLimitKey = `ratelimit:submit:${userId}`
+            const isThrottled = await redisClient.get(rateLimitKey)
+
+            if (isThrottled) {
+                throw new Error('Submission rate limit exceeded. Please wait.')
+            }
+
+            // Set throttle for 3 seconds
+            await redisClient.set(rateLimitKey, '1', { EX: 3 })
+        } else if (type === 'submit') {
+            // Fallback to basic DB check if Redis is down
             const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
                 .sort({ createdAt: -1 })
                 .session(session)
