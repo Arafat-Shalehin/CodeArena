@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Users, Trophy, FileText, AlertTriangle, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 const containerVariant = {
     hidden: { opacity: 0 },
@@ -74,10 +75,12 @@ export default function AdminDashboard() {
                         </h2>
 
                         <div className="flex flex-col gap-3 sm:flex-row md:gap-4">
-                            <Button className="flex w-full items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 sm:w-auto">
-                                <Plus className="h-4 w-4" />
-                                Add New Problem
-                            </Button>
+                            <Link href="/admin/problems/create" className="w-full sm:w-auto">
+                                <Button className="flex w-full items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600">
+                                    <Plus className="h-4 w-4" />
+                                    Add New Problem
+                                </Button>
+                            </Link>
                             <Button variant="outline" className="w-full sm:w-auto">
                                 Create Contest
                             </Button>
