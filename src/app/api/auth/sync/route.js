@@ -59,51 +59,8 @@ export async function POST(request) {
             }
         }
 
-        // --- CALC ACTIVITY CALENDAR (Heatmap) ---
-        // If the activityCalendar is empty or missing, compute it from recent submissions
+        // --- FETCH MINIMAL STATS (Optional) ---
         if (!user.stats) user.stats = {}
-
-        const submissionsLastYear = await Submission.find({
-            userId: user._id,
-            verdict: 'accepted',
-            createdAt: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) },
-        })
-            .select('createdAt')
-            .lean()
-
-        // Generate map of date -> count
-        const calendarMap = {}
-        submissionsLastYear.forEach((sub) => {
-            const dateStr = sub.createdAt.toISOString().split('T')[0]
-            calendarMap[dateStr] = (calendarMap[dateStr] || 0) + 1
-        })
-
-        // Merge computed map into stats for frontend (but don't necessarily persist to User model yet)
-        user.stats.activityCalendar = calendarMap
-
-        // --- FETCH RECENT SUBMISSIONS (List) ---
-        const recentSubmissions = await Submission.find({ userId: user._id })
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .populate('problemId', 'title')
-            .lean()
-
-        const mappedSubmissions = recentSubmissions.map((s) => ({
-            id: s._id,
-            title: s.problemId?.title || 'Unknown Problem',
-            status:
-                s.verdict === 'accepted'
-                    ? 'Accepted'
-                    : s.verdict === 'wrong_answer'
-                      ? 'Wrong Answer'
-                      : s.verdict
-                        ? s.verdict.toUpperCase().replace('_', ' ')
-                        : 'Failed',
-            time: new Date(s.createdAt).toLocaleDateString(),
-            lang: s.language === 'python' ? 'Python' : s.language?.toUpperCase() || 'Code',
-        }))
-
-        user.stats.recentSubmissions = mappedSubmissions
 
         // --- AUTH BRIDGE: Issue JWT for our protected APIs ---
         const token = signToken({ id: user._id, role: user.role, email: user.email })

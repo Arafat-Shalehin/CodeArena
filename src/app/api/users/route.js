@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic'
 
 export const POST = asyncHandler(async (req) => {
     await dbConnect()
+
+    const user = await protect(req)
+    req.user = user
+    await authorize(['admin'])(req)
+
     return createUser(req)
 })
 
