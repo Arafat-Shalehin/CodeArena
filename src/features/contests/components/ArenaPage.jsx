@@ -9,8 +9,10 @@ import ArenaTimer from '@/features/contests/components/ArenaTimer'
 import ArenaProblemTabs from '@/features/contests/components/ArenaProblemTabs'
 import ArenaLeaderboardPanel from '@/features/contests/components/ArenaLeaderboardPanel'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, LayoutPanelLeft, Trophy } from 'lucide-react'
+import { ChevronLeft, LayoutPanelLeft, Trophy, User as UserIcon } from 'lucide-react'
 import Link from 'next/link'
+import AreanaLogo from '@/shared/components/ui/AreanaLogo'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 /**
  * @component ArenaPage
@@ -88,8 +90,13 @@ export default function ArenaPage({ contestId }) {
             {/* Arena Top Nav */}
             <header className="border-border bg-bg-page/90 flex-shrink-0 border-b backdrop-blur-md">
                 <div className="flex h-14 items-center justify-between gap-4 px-4">
-                    {/* Left: back + title */}
+                    {/* Left: logo + back + title */}
                     <div className="flex min-w-0 items-center gap-3">
+                        <AreanaLogo
+                            href="/feed"
+                            className="mr-2 scale-90 transition-transform hover:scale-95"
+                        />
+                        <div className="bg-border mr-1 h-6 w-px" />
                         <Link
                             href={`/contests/${contestId}`}
                             className="text-text-muted hover:text-text-primary flex-shrink-0 transition-colors"
@@ -106,16 +113,37 @@ export default function ArenaPage({ contestId }) {
                         <ArenaTimer startTime={contest.startTime} endTime={contest.endTime} />
                     )}
 
-                    {/* Right: toggle leaderboard */}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-shrink-0 gap-2"
-                        onClick={() => setShowLeaderboard((v) => !v)}
-                    >
-                        <Trophy className="size-4" />
-                        <span className="hidden sm:inline">Standings</span>
-                    </Button>
+                    {/* Right: toggle leaderboard + profile */}
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-shrink-0 gap-2"
+                            onClick={() => setShowLeaderboard((v) => !v)}
+                        >
+                            <Trophy className="size-4" />
+                            <span className="hidden sm:inline">Standings</span>
+                        </Button>
+
+                        <div className="bg-border h-6 w-px" />
+
+                        {currentUser && (
+                            <Link
+                                href="/profile"
+                                className="group flex items-center transition-transform hover:scale-105"
+                            >
+                                <Avatar className="border-accent/20 group-hover:border-accent/40 size-8 border transition-colors">
+                                    <AvatarImage
+                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${currentUser.avatarSeed || currentUser.name || currentUser.email}`}
+                                        alt={currentUser.name}
+                                    />
+                                    <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
+                                        <UserIcon size={12} />
+                                    </AvatarFallback>
+                                </Avatar>
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {/* Problem Tabs */}

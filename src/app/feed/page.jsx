@@ -1,7 +1,6 @@
 'use client'
 
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 import DashboardHome from '@/features/home/components/DashboardHome'
 import { Loader2 } from 'lucide-react'
 
@@ -22,7 +21,7 @@ export default function FeedPage() {
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
-            router.replace('/login')
+            router.replace('/login?error=unauthorized')
         }
     }, [isLoading, isAuthenticated, router])
 
@@ -41,8 +40,6 @@ export default function FeedPage() {
                     </ErrorBoundary>
                 )}
             </main>
-
-            <Footer />
         </div>
     )
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 import ProblemsSidebar from '@/features/problems/components/ProblemsSidebar'
 import ProblemsToolbar from '@/features/problems/components/ProblemsToolbar'
 import ProblemsTable from '@/features/problems/components/ProblemsTable'
@@ -234,8 +233,6 @@ export default function ProblemsPage() {
                     </section>
                 </div>
             </main>
-
-            <Footer />
         </div>
     )
 }

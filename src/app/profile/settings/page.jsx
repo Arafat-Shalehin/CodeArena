@@ -21,7 +21,6 @@ import SocialProfilesForm from '@/features/profile/components/SocialProfilesForm
 import { Button } from '@/components/ui/button'
 import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 
 // Schema
 const editProfileSchema = z.object({
@@ -184,7 +183,6 @@ export default function SettingsPage() {
                 <main className="flex flex-grow items-center justify-center">
                     <Loader2 className="text-accent h-8 w-8 animate-spin" />
                 </main>
-                <Footer />
             </div>
         )
     }
@@ -266,7 +264,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </main>
-            <Footer />
         </div>
     )
 }

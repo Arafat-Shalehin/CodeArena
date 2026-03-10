@@ -3,6 +3,7 @@ services:
     mongodb:
         image: mongo:latest
         container_name: codearena-mongodb
+        init: true
         restart: always
         environment:
             MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
@@ -53,6 +54,7 @@ services:
                 - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
                 - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
                 - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+        init: true
         container_name: codearena-app
         restart: always
         depends_on:

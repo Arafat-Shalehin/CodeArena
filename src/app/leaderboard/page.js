@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 
 // Leaderboard Components
 import { LeaderboardHeader } from '@/features/leaderboard/components/LeaderboardHeader'
@@ -230,8 +229,6 @@ export default function LeaderboardPage() {
                     </div>
                 )}
             </main>
-
-            <Footer />
         </div>
     )
 }

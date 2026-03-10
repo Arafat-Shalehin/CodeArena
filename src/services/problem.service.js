@@ -1,6 +1,7 @@
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
 import mongoose from 'mongoose'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Fetch paginated list of problems with optional filtering.
@@ -17,6 +18,21 @@ export async function getAllProblems(query) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1)
     const limit = Math.min(parseInt(query.limit, 10) || 20, 50)
     const skip = (page - 1) * limit
+
+    // Simple cache key based on query parameters
+    const cacheKey = `problem:list:p:${page}:l:${limit}:d:${query.difficulty || 'all'}:s:${query.search || 'none'}:t:${query.tag || 'all'}:st:${query.status || 'all'}:u:${query.userId || 'none'}:sort:${query.sortBy || 'recent'}`
+
+    try {
+        if (redisClient.isOpen) {
+            const cached = await redisClient.get(cacheKey)
+            if (cached) {
+                console.log(`[Cache Hit] Problem list: ${cacheKey}`)
+                return JSON.parse(cached)
+            }
+        }
+    } catch (err) {
+        console.error('Redis read error in getAllProblems:', err)
+    }
 
     const filter = {}
 
@@ -129,7 +145,7 @@ export async function getAllProblems(query) {
         Problem.countDocuments(filter),
     ])
 
-    return {
+    const result = {
         problems: results,
         pagination: {
             total: totalCount,
@@ -138,6 +154,17 @@ export async function getAllProblems(query) {
             pages: Math.ceil(totalCount / limit),
         },
     }
+
+    try {
+        if (redisClient.isOpen) {
+            // Cache for 5 minutes
+            await redisClient.set(cacheKey, JSON.stringify(result), { EX: 300 })
+        }
+    } catch (err) {
+        console.error('Redis write error in getAllProblems:', err)
+    }
+
+    return result
 }
 
 /**
@@ -148,6 +175,23 @@ export async function getAllProblems(query) {
  * @param {Boolean} options.includeTestCases - Whether to include test cases
  */
 export async function getProblemById(id, { includeTestCases = false } = {}) {
+    // Only cache if we are NOT including test cases (public view)
+    const cacheKey = includeTestCases ? null : `problem:${id}:detail`
+
+    if (cacheKey) {
+        try {
+            if (redisClient.isOpen) {
+                const cached = await redisClient.get(cacheKey)
+                if (cached) {
+                    console.log(`[Cache Hit] Problem detail: ${id}`)
+                    return JSON.parse(cached)
+                }
+            }
+        } catch (err) {
+            console.error('Redis read error in getProblemById:', err)
+        }
+    }
+
     const problem = await Problem.findById(id)
 
     if (!problem) {
@@ -162,6 +206,17 @@ export async function getProblemById(id, { includeTestCases = false } = {}) {
         return {
             ...problem.toObject(),
             testCases,
+        }
+    }
+
+    if (cacheKey) {
+        try {
+            if (redisClient.isOpen) {
+                // Cache for 10 minutes
+                await redisClient.set(cacheKey, JSON.stringify(problem), { EX: 600 })
+            }
+        } catch (err) {
+            console.error('Redis write error in getProblemById:', err)
         }
     }
 
@@ -203,6 +258,17 @@ export async function createProblem(data) {
         }
 
         await session.commitTransaction()
+
+        // Invalidate caches
+        if (redisClient.isOpen) {
+            try {
+                const listKeys = await redisClient.keys(`problem:list:*`)
+                if (listKeys.length > 0) await redisClient.del(listKeys)
+            } catch (err) {
+                console.error('Redis invalidation error in createProblem:', err)
+            }
+        }
+
         return problem[0]
     } catch (error) {
         await session.abortTransaction()
@@ -261,6 +327,18 @@ export async function updateProblem(id, data) {
         }
 
         await session.commitTransaction()
+
+        // Invalidate caches
+        if (redisClient.isOpen) {
+            try {
+                const listKeys = await redisClient.keys(`problem:list:*`)
+                if (listKeys.length > 0) await redisClient.del(listKeys)
+                await redisClient.del(`problem:${id}:detail`)
+            } catch (err) {
+                console.error('Redis invalidation error in updateProblem:', err)
+            }
+        }
+
         return problem
     } catch (error) {
         await session.abortTransaction()
@@ -292,6 +370,18 @@ export async function deleteProblem(id) {
         await TestCase.deleteMany({ problemId: id }, { session })
 
         await session.commitTransaction()
+
+        // Invalidate caches
+        if (redisClient.isOpen) {
+            try {
+                const listKeys = await redisClient.keys(`problem:list:*`)
+                if (listKeys.length > 0) await redisClient.del(listKeys)
+                await redisClient.del(`problem:${id}:detail`)
+            } catch (err) {
+                console.error('Redis invalidation error in deleteProblem:', err)
+            }
+        }
+
         return problem
     } catch (error) {
         await session.abortTransaction()

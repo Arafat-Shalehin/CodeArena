@@ -373,6 +373,8 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         newSocket.on('connect', () => {
             console.log('[Socket] Connected to realtime server')
             newSocket.emit('join_room', userId)
+            // Join specific problem room for live reactions
+            newSocket.emit('join_room', `problem:${problemId}`)
         })
 
         newSocket.on('submission_update', (data) => {
@@ -397,6 +399,14 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                         toast.error(data.verdict.replace(/_/g, ' '))
                     }
                 }
+            }
+        })
+
+        newSocket.on('reaction_update', (data) => {
+            if (data.problemId === problemId) {
+                // We'll emit a custom event or store it in context if needed,
+                // but since ReactionSystem is inside this tree, we can use a simpler approach.
+                // For now, we'll just allow the component to listen directly to the socket.
             }
         })
 

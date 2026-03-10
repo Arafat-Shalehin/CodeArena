@@ -3,14 +3,21 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { analyzeSubmissionCode } from '@/lib/ai/groqClient'
+import { protect } from '@/middlewares/auth.middleware'
 
 /**
  * POST /api/evaluation/analyze
- * Analyze code using Groq AI — no authentication or DB required.
+ * Analyze code using Groq AI — requires authentication.
  * Accepts code, language, verdict, and optional stats directly.
  */
 export async function POST(request) {
     try {
+        // 1. Authenticate user
+        const user = await protect(request)
+        if (!user) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const { code, language, problemTitle, verdict, executionTime = 0, memoryUsed = 0 } = body
 

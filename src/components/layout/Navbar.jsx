@@ -13,6 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import SearchBar from '@/components/layout/SearchBar'
 import ProfileDropdown from '@/components/layout/ProfileDropdown'
 import MobileMenu from '@/components/layout/MobileMenu'
+import NotificationBell from '@/components/layout/NotificationBell'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -67,28 +68,30 @@ export default function Navbar() {
                     </Link>
 
                     <nav className="hidden items-center gap-1 md:flex">
-                        {NAV_LINKS.map((link) => {
-                            const isActive =
-                                pathname === link.href ||
-                                (link.href !== '/' && pathname?.startsWith(link.href + '/'))
-                            return (
-                                <Link
-                                    key={link.name}
-                                    href={link.href}
-                                    aria-current={isActive ? 'page' : undefined}
-                                    className={`group relative rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                                        isActive
-                                            ? 'text-text-primary bg-bg-subtle'
-                                            : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
-                                    }`}
-                                >
-                                    {link.name}
-                                    {isActive && (
-                                        <span className="bg-accent absolute right-3 bottom-1 left-3 h-0.5 rounded-full transition-all duration-300" />
-                                    )}
-                                </Link>
-                            )
-                        })}
+                        {NAV_LINKS.filter((link) => link.name !== 'Feed' || isAuthenticated).map(
+                            (link) => {
+                                const isActive =
+                                    pathname === link.href ||
+                                    (link.href !== '/' && pathname?.startsWith(link.href + '/'))
+                                return (
+                                    <Link
+                                        key={link.name}
+                                        href={link.href}
+                                        aria-current={isActive ? 'page' : undefined}
+                                        className={`group relative rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                                            isActive
+                                                ? 'text-text-primary bg-bg-subtle'
+                                                : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
+                                        }`}
+                                    >
+                                        {link.name}
+                                        {isActive && (
+                                            <span className="bg-accent absolute right-3 bottom-1 left-3 h-0.5 rounded-full transition-all duration-300" />
+                                        )}
+                                    </Link>
+                                )
+                            }
+                        )}
                     </nav>
                 </div>
 
@@ -98,7 +101,10 @@ export default function Navbar() {
                 {/* Desktop: Auth Buttons OR Profile Dropdown */}
                 <div className="hidden items-center gap-3 md:flex">
                     {isAuthenticated && user ? (
-                        <ProfileDropdown user={user} onLogout={handleLogout} />
+                        <>
+                            <NotificationBell />
+                            <ProfileDropdown user={user} onLogout={handleLogout} />
+                        </>
                     ) : (
                         <>
                             <Link

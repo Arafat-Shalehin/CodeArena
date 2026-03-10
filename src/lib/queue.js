@@ -1,18 +1,73 @@
+// import { Queue } from 'bullmq'
+
+// const connection = {
+//     host:
+//         process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
+//     port: parseInt(process.env.REDIS_PORT || '6379'),
+//     ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+// }
+
+// // Singleton for the queues
+// const queues = {}
+
+// /**
+//  * Get or create a BullMQ queue
+//  * @param {string} name - The name of the queue
+//  */
+// export function getQueue(name) {
+//     if (!queues[name]) {
+//         queues[name] = new Queue(name, {
+//             connection,
+//             defaultJobOptions: {
+//                 attempts: 3,
+//                 backoff: {
+//                     type: 'exponential',
+//                     delay: 1000,
+//                 },
+//                 removeOnComplete: true,
+//                 removeOnFail: false,
+//                 timeout: 30000,
+//             },
+//         })
+//     }
+//     return queues[name]
+// }
+
+// export function getSubmissionQueue() {
+//     return getQueue('submission-queue')
+// }
+
+// export function getAIAnalysisQueue() {
+//     return getQueue('ai-analysis-queue')
+// }
+
+// export function getStatsQueue() {
+//     return getQueue('stats-queue')
+// }
+
+// export { connection }
 import { Queue } from 'bullmq'
 
-const connection = {
-    host:
-        process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD,
-}
+const connection = process.env.REDIS_URL
+    ? { url: process.env.REDIS_URL }
+    : {
+          host:
+              process.env.REDIS_HOST ||
+              (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
+          port: parseInt(process.env.REDIS_PORT || '6379'),
+          ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+      }
 
-// Singleton for the submission queue
-let submissionQueue
+// Singleton for the queues
+const queues = {}
 
-export function getSubmissionQueue() {
-    if (!submissionQueue) {
-        submissionQueue = new Queue('submission-queue', {
+/**
+ * Get or create a BullMQ queue
+ * @param {string} name - The name of the queue
+ */
+export function getQueue(name) {
+    if (!queues[name]) {
+        queues[name] = new Queue(name, {
             connection,
             defaultJobOptions: {
                 attempts: 3,
@@ -22,11 +77,23 @@ export function getSubmissionQueue() {
                 },
                 removeOnComplete: true,
                 removeOnFail: false,
-                timeout: 30000, // 30 seconds to prevent hanging
+                timeout: 30000,
             },
         })
     }
-    return submissionQueue
+    return queues[name]
+}
+
+export function getSubmissionQueue() {
+    return getQueue('submission-queue')
+}
+
+export function getAIAnalysisQueue() {
+    return getQueue('ai-analysis-queue')
+}
+
+export function getStatsQueue() {
+    return getQueue('stats-queue')
 }
 
 export { connection }

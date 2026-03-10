@@ -1,6 +1,9 @@
 # Java Execution Environment
 FROM eclipse-temurin:17-jdk-jammy
 
+LABEL project="codearena"
+LABEL component="executor-java"
+
 # Install necessary tools
 RUN apt-get update && apt-get install -y \
     time \

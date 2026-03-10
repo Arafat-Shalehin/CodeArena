@@ -1,6 +1,9 @@
 # C++ Execution Environment
 FROM gcc:13.2-bookworm
 
+LABEL project="codearena"
+LABEL component="executor-cpp"
+
 # Install necessary tools and C++ specific Boost libraries
 # We avoid libboost-all-dev to bypass the broken gfortran dependency
 RUN apt-get update && apt-get install -y \
