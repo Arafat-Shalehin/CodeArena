@@ -1,8 +1,13 @@
 export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         const { initSubmissionWorker } = await import('@/services/submission.worker')
+        const { initStatsWorker } = await import('@/services/stats.worker')
+        const { initAIWorker } = await import('@/services/ai.worker')
+
         initSubmissionWorker()
-        console.log('>>> CodeArena Submission Worker Initialized')
+        initStatsWorker()
+        initAIWorker()
+        console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI)')
 
         // Start Reaction Sync Worker (runs every 5 minutes)
         const { default: syncReactions } = await import('@/scripts/reactionSyncWorker')

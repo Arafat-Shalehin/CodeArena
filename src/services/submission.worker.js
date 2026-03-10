@@ -1,14 +1,12 @@
 import { Worker } from 'bullmq'
-import { connection } from '@/lib/queue'
+import { connection, getAIAnalysisQueue, getStatsQueue } from '@/lib/queue'
 import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
 import { executeCode } from '@/lib/docker/executor'
 import { redisClient } from '@/lib/redis'
-import { syncUserStats } from '@/services/user.service'
 import { VERDICTS } from '@/lib/evaluation/verdicts'
-import { analyzeSubmissionCode } from '@/lib/ai/groqClient'
 
 /**
  * Worker to process code submissions
@@ -223,21 +221,11 @@ export function initSubmissionWorker() {
                         $inc: { totalSubmissions: 1 },
                     })
 
-                    // Synchronize all user stats (recalculate from DB — single source of truth)
-                    const oldUser = await User.findById(submission.userId).select(
-                        'stats.globalRank'
-                    )
-                    const updatedUser = await syncUserStats(submission.userId)
-
-                    // NEW: Rank Shift Notification
-                    if (oldUser && updatedUser && updatedUser.stats?.globalRank) {
-                        const { checkAndNotifyRankShift } =
-                            await import('@/services/notification.service')
-                        const oldRank = oldUser.stats?.globalRank || 999999
-                        const newRank = updatedUser.stats.globalRank
-                        if (newRank < oldRank) {
-                            await checkAndNotifyRankShift(submission.userId, oldRank, newRank)
-                        }
+                    // Extract heavy stats sync to background queue
+                    try {
+                        await getStatsQueue().add('sync-stats', { userId: submission.userId })
+                    } catch (err) {
+                        console.error('[WORKER] Failed to dispatch stats job:', err)
                     }
 
                     // Only increment problem's accepted count the FIRST time this user solves it
@@ -259,29 +247,22 @@ export function initSubmissionWorker() {
 
                     // 6. Invalidate Redis Caches to prevent stale data
                     if (redisClient.isOpen) {
-                        const keysToInvalidate = [
-                            'leaderboard:global',
-                            `user:stats:${submission.userId}`,
-                            `problem:stats:${submission.problemId}`,
-                        ]
+                        const keysToInvalidate = [`problem:stats:${submission.problemId}`]
                         await Promise.all(
                             keysToInvalidate.map((key) => redisClient.del(key).catch(() => {}))
                         )
                         console.log(
-                            `[WORKER] Invalidated Redis caches for user ${submission.userId}`
+                            `[WORKER] Invalidated problem caches for ${submission.problemId}`
                         )
                     }
 
-                    // 7. AI Analysis (Optional/Async-ish)
-                    // Trigger AI evaluation if enabled and it's a real submission
+                    // 7. AI Analysis (Decoupled to Background Queue)
                     if (process.env.ENABLE_AI_ANALYSIS === 'true') {
-                        console.log(
-                            `[WORKER] Triggering AI analysis for submission ${submissionId}`
-                        )
-                        // We run this AFTER the user sees the verdict to not block main result
-                        // But before job finishes to ensure it's tracked
                         try {
-                            const aiFeedback = await analyzeSubmissionCode({
+                            await getAIAnalysisQueue().add('analyze-code', {
+                                submissionId,
+                                userId: submission.userId,
+                                problemId: submission.problemId,
                                 code: submission.code,
                                 language: submission.language,
                                 problemTitle: problem.title,
@@ -289,25 +270,9 @@ export function initSubmissionWorker() {
                                 executionTime: maxTime,
                                 memoryUsed: maxMemory,
                             })
-
-                            if (aiFeedback) {
-                                await Submission.findByIdAndUpdate(submissionId, { aiFeedback })
-                                console.log(`[WORKER] AI feedback saved for ${submissionId}`)
-
-                                // NEW: AI Insight Notification
-                                const { sendNotification } =
-                                    await import('@/services/notification.service')
-                                await sendNotification({
-                                    recipientId: submission.userId,
-                                    type: 'ai_insight',
-                                    message: `AI Insights are ready for your solution to "${problem.title}"`,
-                                    link: `/problems/${submission.problemId}?tab=results&submission=${submissionId}`,
-                                    metadata: { submissionId, problemId: submission.problemId },
-                                })
-                            }
-                        } catch (aiErr) {
-                            console.error('[WORKER] AI Analysis failed:', aiErr.message)
-                            // We don't fail the job if AI analysis fails
+                            console.log(`[WORKER] Dispatched AI analysis job for ${submissionId}`)
+                        } catch (err) {
+                            console.error('[WORKER] Failed to dispatch AI analysis job:', err)
                         }
                     }
 
