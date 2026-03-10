@@ -27,7 +27,10 @@ export function initStatsWorker() {
                 }
 
                 if (redisClient.isOpen) {
-                    await redisClient.del('leaderboard:global').catch(() => {})
+                    const keys = await redisClient.keys('leaderboard:global:*')
+                    if (keys.length > 0) {
+                        await redisClient.del(keys).catch(() => {})
+                    }
                     await redisClient.del(`user:stats:${userId}`).catch(() => {})
                 }
 
