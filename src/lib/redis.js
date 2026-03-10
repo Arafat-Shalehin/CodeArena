@@ -39,6 +39,7 @@
 import { createClient } from 'redis'
 
 const globalForRedis = globalThis
+const redisUrl = process.env.REDIS_URL
 
 const redisOptions = process.env.REDIS_URL
     ? { url: process.env.REDIS_URL }
