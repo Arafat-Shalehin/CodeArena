@@ -1,6 +1,7 @@
 import { createClient } from 'redis'
 
 const globalForRedis = globalThis
+const redisUrl = process.env.REDIS_URL
 
 const REDIS_HOST =
     process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis')
@@ -9,11 +10,15 @@ const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379')
 export const redisClient =
     globalForRedis.redis ||
     createClient({
-        socket: {
-            host: REDIS_HOST,
-            port: REDIS_PORT,
-        },
-        ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+        ...(redisUrl
+            ? { url: redisUrl }
+            : {
+                  socket: {
+                      host: process.env.REDIS_HOST || 'localhost',
+                      port: parseInt(process.env.REDIS_PORT || '6379'),
+                  },
+                  password: process.env.REDIS_PASSWORD,
+              }),
     })
 
 if (!globalForRedis.redis) {
