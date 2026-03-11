@@ -97,3 +97,55 @@ Rules:
         return null
     }
 }
+/**
+ * Generates a streaming response for the live interview chat.
+ */
+export async function* generateInterviewChatResponse({
+    messages, // Array of { role, content }
+    problemTitle,
+    problemDescription,
+    currentCode,
+    language,
+    phase = 'coding',
+}) {
+    if (!process.env.GROQ_API_KEY) {
+        yield 'AI Interviewer is currently unavailable (API Key missing).'
+        return
+    }
+
+    const systemPrompt = `You are a Senior Software Engineer conducting a live technical interview on the problem "${problemTitle}".
+PROBLEM DESCRIPTION:
+${problemDescription}
+
+CURRENT CANDIDATE CODE (${language}):
+\`\`\`${language}
+${currentCode}
+\`\`\`
+
+YOUR ROLE:
+1. Conduct the interview professionally but in a friendly, conversational manner.
+2. If the user is stuck, provide a subtle HINT, not the solution.
+3. If they explain an approach, give brief feedback or ask a clarifying question about time/space complexity.
+4. Keep responses concise (1-3 sentences) to maintain a live chat feel.
+5. You are in the "${phase}" phase of the interview.
+
+DO NOT solve the problem for them. DO NOT give large code snippets.
+`
+
+    try {
+        const stream = await groq.chat.completions.create({
+            messages: [{ role: 'system', content: systemPrompt }, ...messages],
+            model: 'llama-3.3-70b-versatile',
+            temperature: 0.7,
+            stream: true,
+        })
+
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || ''
+            if (content) yield content
+        }
+    } catch (error) {
+        console.error('Groq Chat Error:', error)
+        yield 'I encountered an error while processing your request. Please try again.'
+    }
+}

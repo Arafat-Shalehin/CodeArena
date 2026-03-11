@@ -2,7 +2,10 @@ import { verifyWsToken } from '@/lib/auth/wsToken'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
+import { Problem } from '@/models/Problem.models'
 import dbConnect from '@/lib/mongodb'
+import { generateInterviewChatResponse } from '@/lib/ai/groqClient'
+import { executeCode } from '@/lib/docker/executor'
 
 export function registerInterviewNamespace(io) {
     const interviewNs = io.of('/interview')
@@ -66,16 +69,86 @@ export function registerInterviewNamespace(io) {
 
         // 3. Client attempts to run code
         socket.on('interview:run', async (payload) => {
-            // Trigger run evaluation pipeline here
-            // Placeholder for now. It should ideally call submission queue and emit back `interview:run_result`
-            console.log(`[Socket.IO /interview] Code run requested for session ${sessionId}`)
+            try {
+                await dbConnect()
+                const { code, language, problemId } = payload
+
+                const problem = await Problem.findById(problemId)
+                if (!problem) throw new Error('Problem not found')
+
+                const input = problem.sampleTestCases?.[0]?.input || ''
+                const expectedOutput = problem.sampleTestCases?.[0]?.output || ''
+
+                const result = await executeCode({
+                    code,
+                    language,
+                    input,
+                    expectedOutput,
+                    timeLimit: problem.timeLimit,
+                    memoryLimit: problem.memoryLimit,
+                })
+
+                socket.emit('interview:run_result', result)
+            } catch (error) {
+                console.error('[Socket.IO] Run Error:', error)
+                socket.emit('interview:run_result', {
+                    success: false,
+                    verdict: 'SYSTEM_ERROR',
+                    error: error.message,
+                })
+            }
         })
 
         // 4. Client attempts to submit code
         socket.on('interview:submit', async (payload) => {
-            // Trigger submission pipeline here
-            // Placeholder for now. It should ideally call submission queue and emit back `interview:submission_result`
-            console.log(`[Socket.IO /interview] Code submit requested for session ${sessionId}`)
+            try {
+                await dbConnect()
+                const { code, language, problemId } = payload
+
+                const problem = await Problem.findById(problemId)
+                if (!problem) throw new Error('Problem not found')
+
+                // For interview submissions, we evaluate against all test cases
+                // but for live feedback, we can return the result of the first failing or overall status.
+                const testCases = [...(problem.sampleTestCases || []), ...(problem.testCases || [])]
+
+                let overallResult = {
+                    success: true,
+                    verdict: 'SUCCESS',
+                    passedCount: 0,
+                    totalCount: testCases.length,
+                }
+
+                for (const tc of testCases) {
+                    const res = await executeCode({
+                        code,
+                        language,
+                        input: tc.input,
+                        expectedOutput: tc.output,
+                        timeLimit: problem.timeLimit,
+                        memoryLimit: problem.memoryLimit,
+                    })
+
+                    if (!res.success || res.verdict !== 'SUCCESS') {
+                        overallResult = {
+                            ...res,
+                            passedCount: overallResult.passedCount,
+                            totalCount: testCases.length,
+                        }
+                        break
+                    }
+                    overallResult.passedCount++
+                }
+
+                socket.emit('interview:submission_result', overallResult)
+            } catch (error) {
+                console.error('[Socket.IO] Submit Error:', error)
+                socket.emit('interview:submission_result', {
+                    success: false,
+                    verdict: 'SYSTEM_ERROR',
+                    error: error.message,
+                })
+            }
         })
 
         // 5. Client sends a chat message directly to AI
@@ -93,11 +166,48 @@ export function registerInterviewNamespace(io) {
                     ts: new Date(),
                 })
 
-                // 2. Trigger asynchronous AI task (e.g. BullMQ job)
-                // Placeholder: Here we would trigger the AI worker which would then stream back via `interview:ai_stream_chunk`
-                console.log(`[Socket.IO /interview] Chat message received for session ${sessionId}`)
+                // 2. Fetch context for AI
+                const [session, history, lastSnapshot] = await Promise.all([
+                    InterviewSession.findById(sessionId).populate('problemIds'),
+                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(10),
+                    InterviewSnapshot.findOne({ sessionId }).sort({ ts: -1 }),
+                ])
+
+                const problem = session?.problemIds?.[0]
+                if (!problem) return
+
+                // 3. Generate and stream AI response
+                const messages = history.map((m) => ({ role: m.role, content: m.content }))
+                const aiStream = generateInterviewChatResponse({
+                    messages,
+                    problemTitle: problem.title,
+                    problemDescription: problem.description,
+                    currentCode: lastSnapshot?.code || '',
+                    language: lastSnapshot?.language || 'python',
+                    phase: phase || 'coding',
+                })
+
+                let fullResponse = ''
+                for await (const chunk of aiStream) {
+                    fullResponse += chunk
+                    socket.emit('interview:ai_stream_chunk', { chunk, done: false })
+                }
+
+                // 4. Save final AI message and signify completion
+                await InterviewMessage.create({
+                    sessionId,
+                    role: 'ai',
+                    phase: phase || 'coding',
+                    content: fullResponse,
+                    ts: new Date(),
+                })
+                socket.emit('interview:ai_stream_chunk', { chunk: '', done: true })
             } catch (error) {
-                console.error('[Socket.IO] Failed to save chat message:', error)
+                console.error('[Socket.IO] AI Chat Error:', error)
+                socket.emit('interview:ai_stream_chunk', {
+                    chunk: 'Sorry, I hit a snag. Please try again.',
+                    done: true,
+                })
             }
         })
 
