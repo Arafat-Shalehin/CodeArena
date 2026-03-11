@@ -19,6 +19,10 @@ export async function initSocketServer() {
     const serverIo = global._io
     console.log(`[Socket.IO] Real-time server started on port ${port}`)
 
+    // Register Namespaces
+    const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
+    registerInterviewNamespace(serverIo)
+
     // Handle client connections
     serverIo.on('connection', (socket) => {
         socket.on('join_room', (roomId) => {
