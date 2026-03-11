@@ -380,48 +380,53 @@ export default function InterviewShell({
         }
     }, [wsToken, sessionId, onEnd])
 
+    // ── Code change & Auto-snapshots ─────────────────────────────────────────
+
+    const lastSavedCode = useRef(code)
+
+    // Helper to emit snapshot
+    const emitSnapshot = useCallback(
+        (type = 'auto', customCode = null) => {
+            const codeToSave = customCode !== null ? customCode : code
+            socketRef.current?.emit('interview:code_snapshot', {
+                problemId: problem?._id,
+                language,
+                code: codeToSave,
+                snapshotType: type,
+            })
+            lastSavedCode.current = codeToSave
+        },
+        [code, language, problem?._id]
+    )
+
+    // Manual change handler (just updates state)
+    const handleCodeChange = useCallback((newCode) => {
+        setCode(newCode)
+    }, [])
+
+    // 30s interval for auto-snapshots
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (code !== lastSavedCode.current) {
+                emitSnapshot('auto')
+            }
+        }, 30_000)
+        return () => clearInterval(timer)
+    }, [code, emitSnapshot])
+
     // ── Run ──────────────────────────────────────────────────────────────────
     const handleRun = useCallback(() => {
         setIsRunning(true)
         socketRef.current?.emit('interview:run', { code, language, problemId: problem?._id })
-        // Snapshot the code as well
-        socketRef.current?.emit('interview:code_snapshot', {
-            problemId: problem?._id,
-            language,
-            code,
-            snapshotType: 'run',
-        })
-    }, [code, language, problem])
+        emitSnapshot('run')
+    }, [code, language, problem?._id, emitSnapshot])
 
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = useCallback(() => {
         setIsSubmitting(true)
         socketRef.current?.emit('interview:submit', { code, language, problemId: problem?._id })
-        socketRef.current?.emit('interview:code_snapshot', {
-            problemId: problem?._id,
-            language,
-            code,
-            snapshotType: 'submit',
-        })
-    }, [code, language, problem])
-
-    // ── Code change (auto-snapshot every 60 s) ────────────────────────────────
-    const lastSnapshot = useRef(Date.now())
-    const handleCodeChange = useCallback(
-        (newCode) => {
-            setCode(newCode)
-            if (Date.now() - lastSnapshot.current > 60_000) {
-                lastSnapshot.current = Date.now()
-                socketRef.current?.emit('interview:code_snapshot', {
-                    problemId: problem?._id,
-                    language,
-                    code: newCode,
-                    snapshotType: 'auto',
-                })
-            }
-        },
-        [language, problem]
-    )
+        emitSnapshot('submit')
+    }, [code, language, problem?._id, emitSnapshot])
 
     // ── Send chat message ─────────────────────────────────────────────────────
     const handleSendMessage = useCallback((content) => {
