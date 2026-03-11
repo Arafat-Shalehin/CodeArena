@@ -116,17 +116,16 @@ export default function CodeEditorPreview({ className }) {
                 className="from-accent/20 absolute -inset-8 rounded-[3rem] bg-gradient-to-tr to-transparent blur-3xl"
             />
 
-            {/* Editor Container (The "Lid") */}
             <motion.div
                 initial={{ rotateX: 60, y: 100, opacity: 0 }}
                 animate={{ rotateX: 0, y: 0, opacity: 1 }}
                 transition={{
                     duration: 1.2,
                     delay: 0.6,
-                    ease: [0.22, 1, 0.36, 1], // Custom quintic ease-out
+                    ease: [0.22, 1, 0.36, 1],
                 }}
                 style={{ transformOrigin: 'bottom center' }}
-                className="matte-surface relative overflow-hidden rounded-2xl border-zinc-200/50 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] backdrop-blur-xl"
+                className="matte-surface border-border/50 bg-bg-subtle/30 relative overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-sm"
             >
                 {/* Editor Title Bar */}
                 <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/50 px-4 py-3">

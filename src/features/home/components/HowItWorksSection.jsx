@@ -14,14 +14,14 @@ export default function HowItWorksSection() {
     })
 
     return (
-        <section ref={containerRef} className="bg-bg-subtle/30 relative overflow-hidden py-24">
+        <section ref={containerRef} className="bg-bg-subtle/30 relative overflow-hidden py-12">
             <div className="mx-auto max-w-7xl px-4">
                 {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="mb-24 text-center"
+                    className="mb-16 text-center"
                 >
                     <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
                         The{' '}
@@ -49,8 +49,8 @@ export default function HowItWorksSection() {
                         <motion.path
                             d="M0 4L1000 4"
                             stroke="currentColor"
-                            strokeWidth="3"
-                            className="text-accent"
+                            strokeWidth="4"
+                            className="text-accent drop-shadow-[0_0_8px_rgba(2,186,76,0.6)]"
                             style={{ pathLength: reducedMotion ? 1 : scrollYProgress }}
                             strokeLinecap="round"
                         />
@@ -90,13 +90,22 @@ function StepCard({ step, index, progress, reducedMotion, isLast }) {
     )
     const iconOpacity = useTransform(progress, [activationPoint, activationPoint + 0.1], [0, 1])
 
+    // Spring physics for a more aggressive "pop" when activated
+    const scaleTransform = useTransform(
+        progress,
+        [activationPoint, activationPoint + 0.1],
+        [0.95, 1.05]
+    )
+    const popScale = Object.assign(scaleTransform, { stiffness: 300, damping: 15 })
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ scale: reducedMotion ? 1 : popScale }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1, duration: 0.5 }}
-            className="group relative transition-transform duration-300 hover:-translate-y-1"
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ delay: index * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="group relative transition-transform duration-300"
         >
             {/* Mobile vertical connector */}
             {!isLast && (
@@ -127,13 +136,13 @@ function StepCard({ step, index, progress, reducedMotion, isLast }) {
                 </motion.div>
 
                 <motion.div
-                    style={{ opacity: iconOpacity }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-accent absolute -top-4 -right-4 flex size-10 items-center justify-center rounded-xl text-white shadow-lg"
+                    style={{ opacity: iconOpacity, scale: iconOpacity }}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }}
+                    className="bg-accent ring-bg-page absolute -top-4 -right-4 flex size-12 items-center justify-center rounded-xl text-white shadow-[0_0_20px_rgba(2,186,76,0.4)] ring-2"
                 >
-                    <div className="[&_svg]:size-5">{step.icon}</div>
+                    <div className="[&_svg]:size-6">{step.icon}</div>
                 </motion.div>
             </div>
 

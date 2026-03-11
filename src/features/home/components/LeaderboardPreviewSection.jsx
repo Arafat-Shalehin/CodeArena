@@ -22,7 +22,7 @@ export default function LeaderboardPreviewSection() {
     if (isLoading || !leaderboardUsers || leaderboardUsers.length === 0) {
         // Show skeleton instead of nothing while loading
         return (
-            <section className="mx-auto max-w-7xl px-4 py-32">
+            <section className="mx-auto max-w-7xl px-4 py-16">
                 <div className="grid gap-16 lg:grid-cols-2">
                     <div className="space-y-8">
                         <div className="bg-bg-muted h-12 w-3/4 animate-pulse rounded-xl" />
@@ -36,7 +36,7 @@ export default function LeaderboardPreviewSection() {
     }
 
     return (
-        <section className="mx-auto max-w-7xl px-4 py-32">
+        <section className="mx-auto max-w-7xl px-4 py-16">
             <div className="grid gap-16 lg:grid-cols-2">
                 {/* Left: Content */}
                 <motion.div
