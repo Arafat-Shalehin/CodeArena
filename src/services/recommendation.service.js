@@ -77,43 +77,68 @@ export async function getRecommendedProblems(userId, limit = 6) {
     }
 
     // Attempt 1: Weak tags + target difficulty
-    let recommendations = await Problem.find({ ...query, difficulty: targetDifficulty })
+    let recommendations = []
+    const rawRecs1 = await Problem.find({ ...query, difficulty: targetDifficulty })
         .limit(limit)
-        .exec()
+        .lean()
+    recommendations = rawRecs1.map((p) => ({
+        ...p,
+        reason: targetTags.some((t) => p.tags.includes(t))
+            ? `Focus on your weak area: ${p.tags.find((t) => targetTags.includes(t))}`
+            : `Challenge yourself with a ${targetDifficulty} problem`,
+    }))
 
     // Attempt 2: Weak tags + any difficulty (if still room)
     if (recommendations.length < limit) {
         const remaining = limit - recommendations.length
-        const extra = await Problem.find({
+        const rawRecs2 = await Problem.find({
             ...query,
             _id: { $nin: [...solvedProblemIds, ...recommendations.map((p) => p._id)] },
         })
             .limit(remaining)
-            .exec()
-        recommendations = [...recommendations, ...extra]
+            .lean()
+        recommendations = [
+            ...recommendations,
+            ...rawRecs2.map((p) => ({
+                ...p,
+                reason: `Strengthen your skills in ${p.tags.find((t) => targetTags.includes(t)) || 'targeted topics'}`,
+            })),
+        ]
     }
 
     // Attempt 3: No weak tag restriction, just target difficulty (if still room)
     if (recommendations.length < limit) {
         const remaining = limit - recommendations.length
-        const fallback = await Problem.find({
+        const rawRecs3 = await Problem.find({
             _id: { $nin: [...solvedProblemIds, ...recommendations.map((p) => p._id)] },
             difficulty: targetDifficulty,
         })
             .limit(remaining)
-            .exec()
-        recommendations = [...recommendations, ...fallback]
+            .lean()
+        recommendations = [
+            ...recommendations,
+            ...rawRecs3.map((p) => ({
+                ...p,
+                reason: `Master ${targetDifficulty} level problems`,
+            })),
+        ]
     }
 
     // Attempt 4: Any unsolved problem (last resort)
     if (recommendations.length < limit) {
         const remaining = limit - recommendations.length
-        const lastResort = await Problem.find({
+        const rawRecs4 = await Problem.find({
             _id: { $nin: [...solvedProblemIds, ...recommendations.map((p) => p._id)] },
         })
             .limit(remaining)
-            .exec()
-        recommendations = [...recommendations, ...lastResort]
+            .lean()
+        recommendations = [
+            ...recommendations,
+            ...rawRecs4.map((p) => ({
+                ...p,
+                reason: 'Explore something new and expand your knowledge',
+            })),
+        ]
     }
 
     return {

@@ -21,6 +21,8 @@ import SubmissionResultTab from './SubmissionResultTab'
 import { useProblemSolve } from '@/context/ProblemSolveContext'
 import { formatAcceptanceRate } from '@/lib/utils'
 
+import ReactionSystem from '@/components/reactions/ReactionSystem'
+
 const DIFFICULTY_STYLES = {
     easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
     medium: 'text-[#ffc01e] bg-[#ffc01e]/10',
@@ -39,9 +41,12 @@ const TABS = [
 function ProblemDescription({ problem }) {
     return (
         <div className="animate-fade-up">
-            <h2 className="text-text-primary mb-3 text-2xl font-bold tracking-tight">
-                {problem.title}
-            </h2>
+            <div className="mb-3 flex items-start justify-between">
+                <h2 className="text-text-primary text-2xl font-bold tracking-tight">
+                    {problem.title}
+                </h2>
+                <ReactionSystem problemId={problem._id || problem.id} />
+            </div>
 
             <div className="mb-5 flex flex-wrap items-center gap-2">
                 <span

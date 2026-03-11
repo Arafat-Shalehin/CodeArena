@@ -48,17 +48,19 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
 
                 {/* Mobile Links */}
                 <nav className="grid gap-1">
-                    {NAV_LINKS.map((link) => (
-                        <Link
-                            key={link.name}
-                            href={link.href}
-                            onClick={onClose}
-                            className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
-                        >
-                            {link.name}
-                            <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
-                        </Link>
-                    ))}
+                    {NAV_LINKS.filter((link) => link.name !== 'Feed' || isAuthenticated).map(
+                        (link) => (
+                            <Link
+                                key={link.name}
+                                href={link.href}
+                                onClick={onClose}
+                                className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
+                            >
+                                {link.name}
+                                <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
+                            </Link>
+                        )
+                    )}
                 </nav>
 
                 {/* Mobile Auth Actions */}

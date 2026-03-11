@@ -1,24 +1,11 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:is(.dark *));
-
-/*
- * ============================================================
- * CodeArena Design Tokens
- * ============================================================
- * THIS IS THE SINGLE SOURCE OF TRUTH for all visual values.
- *
- * HOW TO USE:
- *   - Never hardcode a color like #02BA4C directly in a component.
- *   - Always use the Tailwind class that maps to these variables.
- *   - This way, if the brand color changes, you update it HERE,
- *     and it automatically updates everywhere on the site.
- *
- * NOTE: Variables use the --ca-* prefix ("CodeArena") to avoid
- * circular references with Tailwind v4's @theme block, which
- * writes its own --color-* vars to :root.
- * ============================================================
- */
+@theme {
+    /* Backgrounds */
+    --color-bg-page: var(--ca-bg-page);
+    --color-bg-subtle: var(--ca-bg-subtle);
+    --color-bg-muted: var(--ca-bg-muted);
+}
 
 :root {
     /* ----------------------------------------------------------
@@ -51,18 +38,22 @@
     /* Feedback — Success */
     --ca-success: #16a34a;
     --ca-success-light: #dcfce7;
+    --ca-success-text: #166534;
 
     /* Feedback — Error */
     --ca-error: #dc2626;
     --ca-error-light: #fee2e2;
+    --ca-error-text: #991b1b;
 
     /* Feedback — Warning */
     --ca-warning: #d97706;
     --ca-warning-light: #fef3c7;
+    --ca-warning-text: #92400e;
 
     /* Feedback — Info */
-    --ca-info: #2563eb;
+    --ca-info: #1d4ed8;
     --ca-info-light: #dbeafe;
+    --ca-info-text: #1e40af;
 
     /* Competitive ranking colors */
     --ca-rank-gold: #f59e0b;
@@ -154,9 +145,13 @@
     --ca-border-strong: #30363d;
 
     --ca-success-light: #0d2818;
+    --ca-success-text: #4ade80;
     --ca-error-light: #2d1117;
+    --ca-error-text: #fecaca;
     --ca-warning-light: #2d1b00;
+    --ca-warning-text: #fbbf24;
     --ca-info-light: #0d1f47;
+    --ca-info-text: #93c5fd;
 }
 
 /**
@@ -204,12 +199,16 @@
     /* ── FEEDBACK ───────────────────────────── */
     --color-success: var(--ca-success);
     --color-success-light: var(--ca-success-light);
+    --color-success-text: var(--ca-success-text);
     --color-error: var(--ca-error);
     --color-error-light: var(--ca-error-light);
+    --color-error-text: var(--ca-error-text);
     --color-warning: var(--ca-warning);
     --color-warning-light: var(--ca-warning-light);
+    --color-warning-text: var(--ca-warning-text);
     --color-info: var(--ca-info);
     --color-info-light: var(--ca-info-light);
+    --color-info-text: var(--ca-info-text);
 
     /* ── RANKING ────────────────────────────── */
     --color-rank-gold: var(--ca-rank-gold);

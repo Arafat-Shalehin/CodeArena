@@ -7,14 +7,6 @@ const groq = new Groq({
 
 /**
  * Analyzes executed code using Groq (Llama-3) and returns rich, structured feedback.
- * @param {Object} params
- * @param {string} params.code          The user's submitted source code
- * @param {string} params.language      The programming language used
- * @param {string} params.problemTitle  The title or description of the problem
- * @param {string} params.verdict       The execution verdict (e.g., 'ACCEPTED', 'WRONG_ANSWER')
- * @param {number} params.executionTime The time taken by the code to execute in ms
- * @param {number} params.memoryUsed    The memory used by the code in KB
- * @returns {Promise<Object|null>} Structured JSON response with feedback, or null on failure
  */
 export async function analyzeSubmissionCode({
     code,
@@ -34,48 +26,59 @@ export async function analyzeSubmissionCode({
             messages: [
                 {
                     role: 'system',
-                    content: `You are an elite competitive programming coach and senior software engineer. You analyze code submissions with surgical precision — identifying algorithmic patterns, complexity bottlenecks, and optimization opportunities. Your feedback is concise, actionable, and encouraging. You MUST respond ONLY with a valid JSON object. No markdown, no code blocks, no extra text.`,
+                    content: `You are a friendly, encouraging, and highly technical "Coding Mentor" for a programmer. 
+Your goal is to help the user grow by providing feedback that feels personal, insightful, and deeply connected to their specific code and the problem at hand.
+
+Guidelines:
+1. Tone: Warm, professional but conversational, and mentor-like. Use phrases like "I noticed you used...", "A great choice here was...", or "One thing you might find interesting is...".
+2. Specificity: Avoid generic statements like "Code is efficient." Instead, say "Your use of a Set here for O(1) lookups was a smart move for this problem."
+3. Encouragement: Always find something genuine to praise, even in failing code.
+4. Problem Context: Relate your analysis to the specific constraints and goals of "${problemTitle}".
+5. Language: Use the language of the programmer (e.g., if they use Python, talk about Pythonic ways).
+
+You MUST respond ONLY with a valid JSON object. No markdown, no code blocks, no extra text.`,
                 },
                 {
                     role: 'user',
-                    content: `Analyze the following ${language} code submitted for the problem "${problemTitle}".
+                    content: `Hey Mentor, I've just submitted my ${language} solution for "${problemTitle}". 
+Can you take a look at my code and tell me how I did?
 
-Verdict: ${verdict}
-Execution Time: ${executionTime}ms
-Memory Used: ${memoryUsed}KB
+My Results:
+- Verdict: ${verdict}
+- Time: ${executionTime}ms
+- Memory: ${memoryUsed}KB
 
-CODE:
+MY CODE:
 \`\`\`${language}
 ${code}
 \`\`\`
 
-Respond ONLY with a valid JSON object matching this exact schema:
+Analyze this specific implementation. Don't give me a generic lecture—tell me about MY code. 
+Respond ONLY with a valid JSON object matching this schema:
 {
-  "timeComplexity": "string — Big-O time complexity of the solution (e.g. O(N), O(N log N))",
-  "spaceComplexity": "string — Big-O space complexity (e.g. O(1), O(N))",
-  "algorithm": "string — Name the algorithm/technique used (e.g. 'XOR Bit Manipulation', 'Two Pointer', 'Dynamic Programming', 'Brute Force', 'Sorting + Binary Search'). Be specific.",
-  "rating": "number — overall score from 1 to 10 (10 = optimal, production-quality code)",
-  "verdict_explanation": "string — A 1-sentence explanation of why this verdict was given. If WRONG_ANSWER, hint at what might be wrong without giving the answer.",
-  "strengths": ["string — each strength is a single concise sentence (max 3 items)"],
-  "improvements": ["string — each improvement is a specific, actionable suggestion (max 3 items)"],
-  "optimal_approach": "string — Briefly describe the most optimal approach for this problem in 1-2 sentences. If the submitted solution IS optimal, say so.",
+  "timeComplexity": "O(...) - ONLY the Big-O notation, no extra words",
+  "spaceComplexity": "O(...) - ONLY the Big-O notation, no extra words",
+  "algorithm": "The specific technique name (e.g. 'Binary Search')",
+  "rating": number (1-10),
+  "verdict_explanation": "A friendly personal explanation of why this verdict happened (relate to their specific logic).",
+  "strengths": ["Personal strength 1", "Personal strength 2"],
+  "improvements": ["Specific actionable tip 1", "Specific actionable tip 2"],
+  "optimal_approach": "How to refine this specific code or the absolute best way to solve this specific problem.",
   "code_quality": {
-    "readability": "number — 1 to 5 (5 = crystal clear, well-named variables, clean structure)",
-    "efficiency": "number — 1 to 5 (5 = optimal time/space complexity for this problem)",
-    "correctness": "number — 1 to 5 (5 = handles all edge cases correctly)"
+    "readability": number (1-5),
+    "efficiency": number (1-5),
+    "correctness": number (1-5)
   }
 }
 
 Rules:
-- Be encouraging but honest. Highlight what was done well.
-- "improvements" should be ACTIONABLE (e.g., "Use XOR to solve in O(N) time and O(1) space" not "optimize the code").
-- "algorithm" should identify the specific technique, not a vague description.
-- If the code is already optimal, acknowledge it in "optimal_approach".
-- Keep everything concise and impactful.`,
+- Be a person, not a template. 
+- Talk about specific variable names or logic paths from the code if it helps clarity.
+- Ensure the JSON is perfectly valid.`,
                 },
             ],
             model: 'llama-3.3-70b-versatile',
-            temperature: 0.25,
+            temperature: 0.4,
             max_completion_tokens: 1024,
             response_format: { type: 'json_object' },
         })

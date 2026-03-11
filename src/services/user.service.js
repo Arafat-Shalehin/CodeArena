@@ -2,6 +2,7 @@ import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { signToken } from '@/lib/jwt'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Registers a new user.
@@ -121,12 +122,35 @@ export async function getAllUsers() {
  * @throws {Error} If user is not found.
  */
 export async function getUserById(id) {
+    const cacheKey = `user:${id}:profile`
+
+    try {
+        if (redisClient.isOpen) {
+            const cachedUser = await redisClient.get(cacheKey)
+            if (cachedUser) {
+                console.log(`[Cache Hit] User profile: ${id}`)
+                return JSON.parse(cachedUser)
+            }
+        }
+    } catch (err) {
+        console.error('Redis read error in getUserById:', err)
+    }
+
     const user = await User.findById(id).select('-password')
     if (!user) {
         const err = new Error('User not found')
         err.status = 404
         throw err
     }
+
+    try {
+        if (redisClient.isOpen) {
+            await redisClient.set(cacheKey, JSON.stringify(user), { EX: 3600 }) // 1 hour
+        }
+    } catch (err) {
+        console.error('Redis write error in getUserById:', err)
+    }
+
     return user
 }
 
@@ -143,6 +167,12 @@ export async function deleteUser(id) {
         err.status = 404
         throw err
     }
+
+    // Invalidate cache
+    if (redisClient.isOpen) {
+        await redisClient.del(`user:${id}:profile`).catch(console.error)
+    }
+
     return user
 }
 
@@ -178,6 +208,11 @@ export async function updateUser(id, updateData) {
         const err = new Error('User not found')
         err.status = 404
         throw err
+    }
+
+    // Invalidate cache
+    if (redisClient.isOpen) {
+        await redisClient.del(`user:${id}:profile`).catch(console.error)
     }
 
     console.log('Updated user:', user)
@@ -244,6 +279,17 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
+
+        // NEW: Follower Notification
+        const { sendNotification } = await import('@/services/notification.service')
+        await sendNotification({
+            recipientId: targetUserId,
+            senderId: currentUserId,
+            type: 'social',
+            message: `${currentUser.name} started following you! 👤`,
+            link: `/profile/${currentUserId}`,
+        })
+
         return {
             following: true,
             followersCount: updatedTargetUser.followers.length,
@@ -310,7 +356,6 @@ export async function syncUserStats(userId) {
             calculatedScore += pointsMap[diff] || 20
         })
     }
-
     // 4. Activity Calendar
     // Rule: Increment count for EVERY accepted submission on a given day (not just unique problems)
     const activityCalendar = new Map()
@@ -322,7 +367,62 @@ export async function syncUserStats(userId) {
         }
     })
 
-    // 5. Update User Record
+    // 5. Performance Stats Per Tag (Crucial for Recommendations)
+    const performanceStats = new Map()
+    const problemIdsForTags = Array.from(problemMap.keys())
+    const problemsWithTags = await Problem.find({ _id: { $in: problemIdsForTags } }).select('tags')
+    const problemTagMap = new Map(problemsWithTags.map((p) => [p._id.toString(), p.tags || []]))
+
+    // Sort submissions by date to calculate streaks and last attempt accurately
+    const sortedSubmissions = [...submissions].sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    )
+
+    sortedSubmissions.forEach((sub) => {
+        const pId = sub.problemId.toString()
+        const tags = problemTagMap.get(pId) || []
+        const verdict = (sub.verdict || '').toUpperCase()
+        const isAccepted = verdict === 'ACCEPTED'
+
+        tags.forEach((tag) => {
+            if (!performanceStats.has(tag)) {
+                performanceStats.set(tag, {
+                    attempted: 0,
+                    solved: 0,
+                    failed: 0,
+                    uniqueProblems: new Set(),
+                    lastAttemptDate: sub.createdAt,
+                    recentSolveStreak: 0,
+                })
+            }
+
+            const stats = performanceStats.get(tag)
+            stats.attempted++
+            if (isAccepted) {
+                stats.solved++
+                stats.recentSolveStreak++
+            } else {
+                stats.failed++
+                stats.recentSolveStreak = 0 // Reset streak on failure
+            }
+
+            stats.uniqueProblems.add(pId)
+            if (new Date(sub.createdAt) > new Date(stats.lastAttemptDate)) {
+                stats.lastAttemptDate = sub.createdAt
+            }
+        })
+    })
+
+    // Convert Set to count for storage
+    const finalPerformanceStats = new Map()
+    performanceStats.forEach((stats, tag) => {
+        finalPerformanceStats.set(tag, {
+            ...stats,
+            uniqueProblems: stats.uniqueProblems.size,
+        })
+    })
+
+    // 6. Update User Record
     const user = await User.findByIdAndUpdate(
         userId,
         {
@@ -334,6 +434,7 @@ export async function syncUserStats(userId) {
                 'stats.attemptedProblems': attemptedProblems,
                 'stats.solvedDistribution': solvedDistribution,
                 'stats.activityCalendar': Object.fromEntries(activityCalendar),
+                performanceStats: finalPerformanceStats,
             },
         },
         { new: true }

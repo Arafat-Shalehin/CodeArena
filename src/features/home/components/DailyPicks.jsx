@@ -2,28 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, ArrowRight, BrainCircuit } from 'lucide-react'
+import { Zap, ArrowRight, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export default function RecommendedProblems() {
-    const [recommendations, setRecommendations] = useState(null)
+export default function DailyPicks() {
+    const [picks, setPicks] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const fetchRecommendations = async () => {
+        const fetchPicks = async () => {
             try {
-                const res = await fetch('/api/recommendations')
+                const res = await fetch('/api/feed/picks')
                 const json = await res.json()
                 if (json.success) {
-                    setRecommendations(json.data)
+                    setPicks(json.data.picks)
                 }
             } catch (error) {
-                console.error('Failed to fetch recommendations:', error)
+                console.error('Failed to fetch daily picks:', error)
             } finally {
                 setLoading(false)
             }
         }
-        fetchRecommendations()
+        fetchPicks()
     }, [])
 
     const getDifficultyClass = (diff) => {
@@ -46,28 +46,26 @@ export default function RecommendedProblems() {
         )
     }
 
-    if (!recommendations || recommendations.recommendedProblems?.length === 0) {
+    if (!picks || picks.length === 0) {
         return null
     }
 
     return (
-        <div className="bg-bg-subtle border-border relative mb-6 overflow-hidden rounded-lg border p-6 shadow-sm">
+        <div className="bg-bg-subtle border-border relative mb-6 rounded-lg border p-6 shadow-sm">
             {/* Background Accent */}
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 opacity-10">
-                <BrainCircuit size={120} className="text-accent" />
+            <div className="absolute top-0 right-0 -mt-6 -mr-6 opacity-5">
+                <TrendingUp size={140} className="text-accent" />
             </div>
 
             <div className="relative z-10 mb-5 flex items-center justify-between">
                 <div>
                     <h3 className="text-text-primary flex items-center gap-2 text-lg font-bold">
-                        <Sparkles className="text-warning h-5 w-5" />
-                        Recommended For You
+                        <Zap className="text-warning fill-warning/20 h-5 w-5" />
+                        Daily Picks
                     </h3>
-                    {recommendations.weakTags?.length > 0 && (
-                        <p className="text-text-muted mt-1 text-xs">
-                            Focusing on: {recommendations.weakTags.slice(0, 3).join(', ')}
-                        </p>
-                    )}
+                    <p className="text-text-muted mt-1 text-xs">
+                        Trending challenges you haven&apos;t solved yet.
+                    </p>
                 </div>
                 <Link href="/problems">
                     <Button
@@ -81,7 +79,7 @@ export default function RecommendedProblems() {
             </div>
 
             <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2">
-                {recommendations.recommendedProblems.map((prob) => (
+                {picks.map((prob) => (
                     <Link
                         key={prob._id}
                         href={`/problems/${prob._id}`}
@@ -119,7 +117,7 @@ export default function RecommendedProblems() {
                         </div>
                         <div className="border-border/50 mt-auto flex items-center justify-between border-t pt-2">
                             <span className="text-text-secondary text-[10px]">
-                                {prob.acceptedSubmissions} Solved
+                                {prob.acceptedSubmissions?.toLocaleString() || 0} Solved
                             </span>
                             <span className="text-accent text-[11px] font-bold group-hover:underline">
                                 Solve Now

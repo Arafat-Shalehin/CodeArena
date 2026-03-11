@@ -1,12 +1,11 @@
 import { Worker } from 'bullmq'
-import { connection } from '@/lib/queue'
+import { connection, getAIAnalysisQueue, getStatsQueue } from '@/lib/queue'
 import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
 import { executeCode } from '@/lib/docker/executor'
 import { redisClient } from '@/lib/redis'
-import { syncUserStats } from '@/services/user.service'
 import { VERDICTS } from '@/lib/evaluation/verdicts'
 
 /**
@@ -17,6 +16,7 @@ export function initSubmissionWorker() {
         'submission-queue',
         async (job) => {
             const { submissionId } = job.data
+            // console.log(`[WORKER] Started processing submission: ${submissionId}`)
 
             try {
                 // 1. Fetch submission
@@ -101,6 +101,9 @@ export function initSubmissionWorker() {
                     firstError = 'No test cases found for this problem.'
                 } else {
                     // 🏁 'SUBMIT' Path: Run all test cases
+                    console.log(
+                        `[WORKER] Running ${totalCount} test case(s) for submission ${submissionId}`
+                    )
                     for (let i = 0; i < totalCount; i++) {
                         const testCase = testCases[i]
 
@@ -144,6 +147,9 @@ export function initSubmissionWorker() {
                         }
 
                         // 4. Update individual test case result
+                        console.log(
+                            `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
+                        )
                         const caseResult = {
                             testCaseId: testCase._id,
                             verdict: resultVerdict,
@@ -215,8 +221,12 @@ export function initSubmissionWorker() {
                         $inc: { totalSubmissions: 1 },
                     })
 
-                    // Synchronize all user stats (recalculate from DB — single source of truth)
-                    await syncUserStats(submission.userId)
+                    // Extract heavy stats sync to background queue
+                    try {
+                        await getStatsQueue().add('sync-stats', { userId: submission.userId })
+                    } catch (err) {
+                        console.error('[WORKER] Failed to dispatch stats job:', err)
+                    }
 
                     // Only increment problem's accepted count the FIRST time this user solves it
                     if (isAccepted) {
@@ -237,18 +247,48 @@ export function initSubmissionWorker() {
 
                     // 6. Invalidate Redis Caches to prevent stale data
                     if (redisClient.isOpen) {
-                        const keysToInvalidate = [
-                            'leaderboard:global',
-                            `user:stats:${submission.userId}`,
-                            `problem:stats:${submission.problemId}`,
-                        ]
+                        const keysToInvalidate = [`problem:stats:${submission.problemId}`]
                         await Promise.all(
                             keysToInvalidate.map((key) => redisClient.del(key).catch(() => {}))
                         )
                         console.log(
-                            `[WORKER] Invalidated Redis caches for user ${submission.userId}`
+                            `[WORKER] Invalidated problem caches for ${submission.problemId}`
                         )
                     }
+
+                    // 7. AI Analysis (Decoupled to Background Queue)
+                    if (process.env.ENABLE_AI_ANALYSIS === 'true') {
+                        try {
+                            await getAIAnalysisQueue().add('analyze-code', {
+                                submissionId,
+                                userId: submission.userId,
+                                problemId: submission.problemId,
+                                code: submission.code,
+                                language: submission.language,
+                                problemTitle: problem.title,
+                                verdict: finalVerdict,
+                                executionTime: maxTime,
+                                memoryUsed: maxMemory,
+                            })
+                            console.log(`[WORKER] Dispatched AI analysis job for ${submissionId}`)
+                        } catch (err) {
+                            console.error('[WORKER] Failed to dispatch AI analysis job:', err)
+                        }
+                    }
+
+                    // NEW: Judging Result Notification
+                    const { sendNotification } = await import('@/services/notification.service')
+                    await sendNotification({
+                        recipientId: submission.userId,
+                        type: 'judging',
+                        message: `Solution for "${problem.title}" ${finalVerdict === VERDICTS.ACCEPTED ? 'Accepted! 🚀' : 'evaluated: ' + finalVerdict}`,
+                        link: `/problems/${submission.problemId}?tab=results&submission=${submissionId}`,
+                        metadata: {
+                            submissionId,
+                            problemId: submission.problemId,
+                            verdict: finalVerdict,
+                        },
+                    })
                 }
 
                 return { verdict: finalVerdict, passedCount, totalCount }

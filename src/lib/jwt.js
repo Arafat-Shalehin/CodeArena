@@ -10,10 +10,10 @@ function checkSecret() {
 
 export function signToken(payload) {
     checkSecret()
-    return jwt.sign(payload, JWT_SECRET || 'dummy', { expiresIn: '7d' })
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
 }
 
 export function verifyToken(token) {
     checkSecret()
-    return jwt.verify(token, JWT_SECRET || 'dummy')
+    return jwt.verify(token, JWT_SECRET)
 }
