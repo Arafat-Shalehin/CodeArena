@@ -1,10 +1,20 @@
 import { Queue } from 'bullmq'
 
-const connection = {
-    host:
-        process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+// Support Railway's REDIS_URL format (primary) or individual env vars (fallback)
+let connection
+
+if (process.env.REDIS_URL) {
+    // Railway or other platforms provide complete REDIS_URL
+    connection = process.env.REDIS_URL
+} else {
+    // Fallback to individual host/port/password config
+    connection = {
+        host:
+            process.env.REDIS_HOST ||
+            (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+    }
 }
 
 // Singleton for the submission queue
