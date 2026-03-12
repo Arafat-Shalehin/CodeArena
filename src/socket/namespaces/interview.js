@@ -85,7 +85,12 @@ export function registerInterviewNamespace(io) {
             await subscriber.subscribe(interviewAIChannel(sessionId), (message) => {
                 try {
                     const parsed = JSON.parse(message)
-                    socket.emit('interview:ai_stream_chunk', parsed)
+                    // Support both streaming chunks and full analysis results
+                    if (parsed.analysis) {
+                        socket.emit('interview:ai_analysis', parsed)
+                    } else if (parsed.chunk !== undefined) {
+                        socket.emit('interview:ai_stream_chunk', parsed)
+                    }
                 } catch {
                     // Malformed message — ignore
                 }
@@ -190,7 +195,19 @@ export function registerInterviewNamespace(io) {
                     overallResult.passedCount++
                 }
 
+                // a. Emit raw verdict to client
                 socket.emit('interview:submission_result', overallResult)
+
+                // b. Enqueue AI analysis job
+                const queue = getInterviewAIQueue()
+                await queue.add('process-submission-analysis', {
+                    sessionId,
+                    userId: socket.userId,
+                    problemId,
+                    submissionVerdict: overallResult,
+                    code,
+                    language,
+                })
             } catch (error) {
                 console.error('[Socket.IO] Submit Error:', error)
                 socket.emit('interview:submission_result', {
