@@ -4,8 +4,9 @@ import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { Problem } from '@/models/Problem.models'
 import dbConnect from '@/lib/mongodb'
-import { generateInterviewChatResponse } from '@/lib/ai/groqClient'
+import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
 import { executeCode } from '@/lib/docker/executor'
+import { buildPrompt } from '@/services/aiConversation.service'
 
 export function registerInterviewNamespace(io) {
     const interviewNs = io.of('/interview')
@@ -169,22 +170,28 @@ export function registerInterviewNamespace(io) {
                 // 2. Fetch context for AI
                 const [session, history, lastSnapshot] = await Promise.all([
                     InterviewSession.findById(sessionId).populate('problemIds'),
-                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(10),
+                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(12),
                     InterviewSnapshot.findOne({ sessionId }).sort({ ts: -1 }),
                 ])
 
                 const problem = session?.problemIds?.[0]
                 if (!problem) return
 
-                // 3. Generate and stream AI response
-                const messages = history.map((m) => ({ role: m.role, content: m.content }))
-                const aiStream = generateInterviewChatResponse({
-                    messages,
+                // 3. Use AIConversationService to assemble a safe, phase-aware prompt
+                const { systemPrompt, messages } = buildPrompt({
                     problemTitle: problem.title,
                     problemDescription: problem.description,
                     currentCode: lastSnapshot?.code || '',
                     language: lastSnapshot?.language || 'python',
-                    phase: phase || 'coding',
+                    phase: session.currentPhase || phase || 'coding',
+                    userMessage: content,
+                    history: history.slice(0, -1), // exclude the just-saved turn
+                })
+
+                // 4. Stream response using the pre-assembled prompt
+                const aiStream = generateInterviewChatResponse({
+                    systemPrompt,
+                    messages,
                 })
 
                 let fullResponse = ''
@@ -193,11 +200,11 @@ export function registerInterviewNamespace(io) {
                     socket.emit('interview:ai_stream_chunk', { chunk, done: false })
                 }
 
-                // 4. Save final AI message and signify completion
+                // 5. Save final AI message and signify completion
                 await InterviewMessage.create({
                     sessionId,
                     role: 'ai',
-                    phase: phase || 'coding',
+                    phase: session.currentPhase || phase || 'coding',
                     content: fullResponse,
                     ts: new Date(),
                 })
