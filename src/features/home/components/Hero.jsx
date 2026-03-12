@@ -93,7 +93,7 @@ export default function Hero() {
                     className="mb-6 text-center"
                 >
                     {/* Headline */}
-                    <div className="mb-2 overflow-visible">
+                    <div className="mt-12 mb-2 overflow-visible">
                         <h1 className="text-text-primary pt-12 pb-2 font-sans text-6xl leading-[1.1] font-extrabold tracking-[-0.04em] sm:text-7xl lg:text-8xl">
                             <motion.span
                                 variants={{
