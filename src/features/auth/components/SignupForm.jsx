@@ -2,7 +2,7 @@
 
 // Next.js
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 // React
 import { useState } from 'react'
@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 // Firebase
 import { auth } from '@/lib/firebase/config'
@@ -44,11 +45,12 @@ import { useSocialLogin } from '@/features/auth/hooks/useSocialLogin'
  */
 export default function SignupForm() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectTo = searchParams.get('redirect') || '/feed'
     const { handleSocialLogin, isLoading: socialLoading, error: socialError } = useSocialLogin()
 
     // UI state
     const [showPassword, setShowPassword] = useState(false)
-    const [apiError, setApiError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
 
     // Form
@@ -108,7 +110,6 @@ export default function SignupForm() {
     }
 
     const onSubmit = async (data) => {
-        setApiError('')
         setIsLoading(true)
 
         try {
@@ -118,14 +119,15 @@ export default function SignupForm() {
                 data.password
             )
             await updateProfile(userCredential.user, { displayName: data.username })
-            router.push('/feed')
+            toast.success('Account created successfully! Welcome to CodeArena.')
+            router.replace(redirectTo)
         } catch (err) {
             if (err.code === 'auth/email-already-in-use') {
-                setApiError('An account with this email already exists.')
+                toast.error('An account with this email already exists.')
             } else if (err.code === 'auth/weak-password') {
-                setApiError('Password is too weak.')
+                toast.error('Password is too weak.')
             } else {
-                setApiError(err.message)
+                toast.error(err.message)
             }
         } finally {
             setIsLoading(false)
@@ -135,147 +137,104 @@ export default function SignupForm() {
     const anyLoading = isLoading || socialLoading
 
     return (
-        <div className="mx-auto w-full max-w-md space-y-4">
-            <div className="space-y-1 text-center">
-                <h1 className="text-2xl font-semibold tracking-tight">Create Account</h1>
+        <div className="mx-auto w-full max-w-md space-y-8 pb-12">
+            <div className="space-y-2">
+                <h1 className="text-text-primary text-3xl font-bold tracking-tight">
+                    Create <span className="text-accent">Account</span>
+                </h1>
                 <p className="text-text-muted text-sm">
-                    Start your coding journey with CodeArena today.
+                    Join the arena and start your coding journey today.
                 </p>
             </div>
 
-            {/* Error Message */}
-            {(apiError || socialError) && (
+            {/* Social Error Messages */}
+            {socialError && (
                 <div className="bg-error-light border-error/20 text-error rounded-lg border p-3 text-sm font-medium">
-                    {apiError || socialError}
+                    {socialError}
                 </div>
             )}
 
             {/* Form */}
             <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
                 {/* Username */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <div className="flex items-center gap-1.5">
-                        <Label htmlFor="username">Username</Label>
+                        <Label
+                            htmlFor="username"
+                            className="text-text-muted font-mono text-xs tracking-wider uppercase"
+                        >
+                            Username
+                        </Label>
                         <div className="group relative">
                             <AlertCircle className="text-text-muted hover:text-accent h-3.5 w-3.5 cursor-help" />
-                            <div className="bg-text-primary text-bg-page pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-48 -translate-x-1/2 rounded-md p-2 text-center text-xs opacity-0 shadow-lg transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                                Only letters, numbers, and underscores
-                                <div className="border-t-text-primary absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"></div>
-                            </div>
                         </div>
                     </div>
-                    <div className="relative">
-                        <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <span className="text-sm font-bold">@</span>
+                    <div className="group relative">
+                        <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
+                            <span className="font-mono text-sm font-bold">@</span>
                         </div>
                         <Input
                             id="username"
-                            placeholder="username"
-                            className="h-9 pl-9"
+                            placeholder="handle"
+                            className="bg-bg-surface/50 border-border group-focus-within:border-accent/50 h-11 pl-9 font-mono text-sm transition-all"
                             disabled={anyLoading}
                             {...register('username')}
                         />
                     </div>
                     {errors.username && (
-                        <p className="text-error text-xs font-medium">{errors.username.message}</p>
+                        <p className="text-error flex items-center gap-1 text-[10px] font-medium tracking-tight uppercase">
+                            <AlertCircle className="h-3 w-3" /> {errors.username.message}
+                        </p>
                     )}
                 </div>
 
                 {/* Email */}
-                <div className="space-y-1">
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="relative">
-                        <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <div className="space-y-2">
+                    <Label
+                        htmlFor="email"
+                        className="text-text-muted font-mono text-xs tracking-wider uppercase"
+                    >
+                        User Email
+                    </Label>
+                    <div className="group relative">
+                        <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
                             <Mail className="h-4 w-4" />
                         </div>
                         <Input
                             id="email"
                             type="email"
-                            placeholder="your.email@example.com"
-                            className="h-9 pl-9"
+                            placeholder="developer@codearena.com"
+                            className="bg-bg-surface/50 border-border group-focus-within:border-accent/50 h-11 pl-9 font-mono text-sm transition-all"
                             disabled={anyLoading}
                             {...register('email')}
                         />
                     </div>
                     {errors.email && (
-                        <p className="text-error text-xs font-medium">{errors.email.message}</p>
+                        <p className="text-error flex items-center gap-1 text-[10px] font-medium tracking-tight uppercase">
+                            <AlertCircle className="h-3 w-3" /> {errors.email.message}
+                        </p>
                     )}
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <div className="flex items-center gap-1.5">
-                        <Label htmlFor="password">Password</Label>
-                        <div className="group relative">
-                            <div
-                                className={cn(
-                                    'cursor-help transition-colors',
-                                    strength === 4
-                                        ? 'text-success'
-                                        : 'text-text-muted hover:text-warning'
-                                )}
-                            >
-                                <AlertCircle className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="bg-bg-page border-border pointer-events-none invisible absolute bottom-full left-0 z-50 mb-2 w-56 rounded-lg border p-3 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                                <p className="text-text-primary mb-2 text-xs font-semibold">
-                                    Password Requirements
-                                </p>
-                                <div className="space-y-1.5">
-                                    <div
-                                        className={cn(
-                                            'flex items-center gap-2 text-xs',
-                                            password.length >= 8
-                                                ? 'text-success'
-                                                : 'text-text-muted'
-                                        )}
-                                    >
-                                        <CheckCircle className="h-3 w-3 shrink-0" /> 8+ characters
-                                    </div>
-                                    <div
-                                        className={cn(
-                                            'flex items-center gap-2 text-xs',
-                                            /[A-Z]/.test(password)
-                                                ? 'text-success'
-                                                : 'text-text-muted'
-                                        )}
-                                    >
-                                        <CheckCircle className="h-3 w-3 shrink-0" /> One uppercase
-                                    </div>
-                                    <div
-                                        className={cn(
-                                            'flex items-center gap-2 text-xs',
-                                            /[0-9]/.test(password)
-                                                ? 'text-success'
-                                                : 'text-text-muted'
-                                        )}
-                                    >
-                                        <CheckCircle className="h-3 w-3 shrink-0" /> One number
-                                    </div>
-                                    <div
-                                        className={cn(
-                                            'flex items-center gap-2 text-xs',
-                                            /[^A-Za-z0-9]/.test(password)
-                                                ? 'text-success'
-                                                : 'text-text-muted'
-                                        )}
-                                    >
-                                        <CheckCircle className="h-3 w-3 shrink-0" /> Special char
-                                    </div>
-                                </div>
-                                <div className="border-t-bg-page absolute top-full left-1 border-4 border-transparent drop-shadow-sm"></div>
-                            </div>
-                        </div>
+                        <Label
+                            htmlFor="password"
+                            className="text-text-muted font-mono text-xs tracking-wider uppercase"
+                        >
+                            Master Key
+                        </Label>
                     </div>
-                    <div className="relative">
-                        <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <div className="group relative">
+                        <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
                             <Lock className="h-4 w-4" />
                         </div>
                         <Input
                             id="password"
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Create a strong password"
-                            className="h-9 pr-9 pl-9"
+                            placeholder="••••••••"
+                            className="bg-bg-surface/50 border-border group-focus-within:border-accent/50 h-11 pr-9 pl-9 font-mono text-sm transition-all"
                             disabled={anyLoading}
                             {...register('password')}
                         />
@@ -293,7 +252,9 @@ export default function SignupForm() {
                         </button>
                     </div>
                     {errors.password && (
-                        <p className="text-error text-xs font-medium">{errors.password.message}</p>
+                        <p className="text-error flex items-center gap-1 text-[10px] font-medium tracking-tight uppercase">
+                            <AlertCircle className="h-3 w-3" /> {errors.password.message}
+                        </p>
                     )}
 
                     {/* Password Strength Meter */}
@@ -323,24 +284,29 @@ export default function SignupForm() {
                 </div>
 
                 {/* Confirm Password */}
-                <div className="space-y-1">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <div className="relative">
-                        <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <div className="space-y-2">
+                    <Label
+                        htmlFor="confirm-password"
+                        className="text-text-muted font-mono text-xs tracking-wider uppercase"
+                    >
+                        Confirm Key
+                    </Label>
+                    <div className="group relative">
+                        <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
                             <LockKeyhole className="h-4 w-4" />
                         </div>
                         <Input
                             id="confirm-password"
                             type="password"
-                            placeholder="Confirm your password"
-                            className="h-9 pl-9"
+                            placeholder="••••••••"
+                            className="bg-bg-surface/50 border-border group-focus-within:border-accent/50 h-11 pl-9 font-mono text-sm transition-all"
                             disabled={anyLoading}
                             {...register('confirmPassword')}
                         />
                     </div>
                     {errors.confirmPassword && (
-                        <p className="text-error text-xs font-medium">
-                            {errors.confirmPassword.message}
+                        <p className="text-error flex items-center gap-1 text-[10px] font-medium tracking-tight uppercase">
+                            <AlertCircle className="h-3 w-3" /> {errors.confirmPassword.message}
                         </p>
                     )}
                 </div>
@@ -394,15 +360,15 @@ export default function SignupForm() {
                 {/* Submit Button */}
                 <Button
                     type="submit"
-                    className="shadow-accent/25 h-9 w-full shadow-lg"
+                    className="bg-accent hover:bg-accent/90 shadow-accent/20 h-11 w-full font-bold tracking-tight text-white shadow-lg transition-all"
                     disabled={anyLoading}
                 >
                     {isLoading ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> INITIALIZING...
                         </>
                     ) : (
-                        'Create Account'
+                        'INITIALIZE ACCOUNT'
                     )}
                 </Button>
             </form>

@@ -13,6 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import SearchBar from '@/components/layout/SearchBar'
 import ProfileDropdown from '@/components/layout/ProfileDropdown'
 import MobileMenu from '@/components/layout/MobileMenu'
+import NotificationBell from '@/components/layout/NotificationBell'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -100,7 +101,10 @@ export default function Navbar() {
                 {/* Desktop: Auth Buttons OR Profile Dropdown */}
                 <div className="hidden items-center gap-3 md:flex">
                     {isAuthenticated && user ? (
-                        <ProfileDropdown user={user} onLogout={handleLogout} />
+                        <>
+                            <NotificationBell />
+                            <ProfileDropdown user={user} onLogout={handleLogout} />
+                        </>
                     ) : (
                         <>
                             <Link

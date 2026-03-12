@@ -24,7 +24,7 @@ const PLATFORM_LINKS = [
     { name: 'API', href: '/api-docs' },
 ]
 const COMPANY_LINKS = [
-    { name: 'About', href: '#' },
+    { name: 'About', href: '/about' },
     { name: 'Careers', href: '#' },
     { name: 'Blog', href: '#' },
     { name: 'Contact', href: '#' },

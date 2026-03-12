@@ -15,12 +15,16 @@ import {
     Edit2,
     Check,
     X,
+    Flame,
+    Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatDistanceToNow, format } from 'date-fns'
-import RecommendedProblems from './RecommendedProblems'
+import DailyPicks from './DailyPicks'
+import FeedItem from './FeedItem'
 import { useAuth } from '@/context/AuthContext'
+import { cn } from '@/lib/utils'
 
 export default function DashboardHome({ user: initialUser }) {
     const { user: contextUser, updateProfile } = useAuth()
@@ -36,6 +40,9 @@ export default function DashboardHome({ user: initialUser }) {
         topContributors: [],
     })
     const [loading, setLoading] = useState(true)
+    const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+    const [postContent, setPostContent] = useState('')
+    const [isPosting, setIsPosting] = useState(false)
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -64,6 +71,42 @@ export default function DashboardHome({ user: initialUser }) {
         fetchDashboardData()
     }, [])
 
+    const handleCreatePost = async () => {
+        if (!postContent.trim() || isPosting) return
+        setIsPosting(true)
+        try {
+            const res = await fetch('/api/posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: postContent }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                // Add the new post to the top of the feed
+                // The API returns a populated post
+                const newPost = {
+                    ...data.data,
+                    type: 'post',
+                    id: data.data._id,
+                    user: {
+                        _id: data.data.userId._id,
+                        name: data.data.userId.name,
+                        avatarSeed: data.data.userId.avatarSeed,
+                    },
+                    likes: 0,
+                    hasLiked: false,
+                }
+                setFeed([newPost, ...feed])
+                setPostContent('')
+                setIsPostModalOpen(false)
+            }
+        } catch (error) {
+            console.error('Failed to create post:', error)
+        } finally {
+            setIsPosting(false)
+        }
+    }
+
     const handleUpdateGoal = async () => {
         updateProfile({ stats: { ...user.stats, weeklyGoal: parseInt(newGoal) } })
         setIsEditingGoal(false)
@@ -86,10 +129,15 @@ export default function DashboardHome({ user: initialUser }) {
     }
 
     return (
-        <div className="max-w-container mx-auto w-full px-4 py-8 md:px-6">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="max-w-container mx-auto w-full px-4 pb-8 md:px-6">
+            <div
+                className={cn(
+                    'grid grid-cols-1 gap-6 transition-all duration-300 lg:grid-cols-12',
+                    isPostModalOpen ? 'pointer-events-none opacity-60 blur-[2px]' : ''
+                )}
+            >
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="hidden flex-col gap-6 lg:col-span-3 lg:flex">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
                     {/* Quick Stats Card */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <p className="text-text-muted mb-4 text-xs font-bold tracking-wider uppercase">
@@ -188,8 +236,58 @@ export default function DashboardHome({ user: initialUser }) {
                 </aside>
 
                 {/* MAIN FEED (6 cols on desktop) */}
-                <section className="col-span-1 flex flex-col gap-6 lg:col-span-6">
-                    <RecommendedProblems />
+                <section className="no-scrollbar col-span-1 flex flex-col gap-6 px-1 pt-8 pb-8 lg:sticky lg:top-16 lg:col-span-6 lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
+                    {/* Mobile Only: Progress/Streak Banner */}
+                    <div className="from-accent/10 to-bg-subtle border-accent/20 rounded-lg border bg-gradient-to-r p-4 shadow-sm lg:hidden">
+                        <div className="mb-2 flex items-center justify-between">
+                            <span className="text-text-primary flex items-center gap-2 font-bold">
+                                <Flame className="text-error fill-error/20 h-4 w-4" />
+                                {user?.stats?.accepted || 0} / {user?.stats?.weeklyGoal || 10}{' '}
+                                Solved
+                            </span>
+                            <span className="text-text-muted bg-bg-page border-border rounded border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                                Weekly Goal
+                            </span>
+                        </div>
+                        <div className="bg-bg-page border-border/50 h-1.5 w-full overflow-hidden rounded-full border">
+                            <div
+                                className="bg-accent h-full rounded-full transition-all duration-500"
+                                style={{
+                                    width: `${Math.min(100, ((user?.stats?.accepted || 0) / (user?.stats?.weeklyGoal || 10)) * 100)}%`,
+                                }}
+                            ></div>
+                        </div>
+                        <p className="text-text-secondary mt-3 flex items-center gap-1.5 text-[11px] font-medium italic">
+                            <Zap className="text-warning fill-warning/20 h-3 w-3" />
+                            {(user?.stats?.accepted || 0) >= (user?.stats?.weeklyGoal || 10)
+                                ? 'Goal crushed! You are unstoppable! 🚀'
+                                : 'Keep up the momentum! You can do it.'}
+                        </p>
+                    </div>
+
+                    {/* What's on your mind? Box */}
+                    <div className="bg-bg-subtle border-border rounded-lg border p-5 shadow-sm">
+                        <div className="flex gap-4">
+                            <Avatar className="border-border h-10 w-10 border">
+                                <AvatarImage
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user?.avatarSeed || user?.name || 'User'}`}
+                                />
+                                <AvatarFallback className="bg-bg-muted text-accent text-xs font-bold">
+                                    {(user?.name || 'U').substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div
+                                onClick={() => setIsPostModalOpen(true)}
+                                className="bg-bg-page border-border hover:border-accent/40 flex flex-1 cursor-pointer items-center rounded-full border px-5 shadow-inner transition-colors"
+                            >
+                                <span className="text-text-muted text-sm font-medium">
+                                    Share your coding progress or ask for a hint...
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DailyPicks />
 
                     {loading ? (
                         <div className="bg-bg-subtle border-border rounded-lg border p-8 text-center shadow-sm">
@@ -200,81 +298,13 @@ export default function DashboardHome({ user: initialUser }) {
                             </div>
                         </div>
                     ) : feed?.length > 0 ? (
-                        feed.map((item) => {
-                            const diff = item.problem?.difficulty || 'easy'
-                            const diffClass = getDifficultyClass(diff)
-                            const formattedTime = formatDistanceToNow(new Date(item.createdAt), {
-                                addSuffix: true,
-                            })
-
-                            return (
-                                <div
-                                    key={item._id}
-                                    className="bg-bg-subtle border-border duration-normal rounded-lg border p-6 shadow-sm transition-shadow hover:shadow"
-                                >
-                                    <div className="mb-4 flex items-start justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Link href={`/profile/${item.user._id}`}>
-                                                <Avatar className="border-border hover:border-accent h-10 w-10 border transition-colors">
-                                                    <AvatarImage
-                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${item.user.avatarSeed || item.user.name}`}
-                                                    />
-                                                    <AvatarFallback className="bg-bg-muted text-text-primary text-xs font-bold">
-                                                        {(item.user.name || 'U')
-                                                            .substring(0, 2)
-                                                            .toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            </Link>
-                                            <div>
-                                                <p className="text-sm">
-                                                    <Link
-                                                        href={`/profile/${item.user._id}`}
-                                                        className="text-text-primary hover:text-accent font-bold transition-colors"
-                                                    >
-                                                        {item.user.name}
-                                                    </Link>
-                                                    <span className="text-text-secondary ml-1 font-normal">
-                                                        solved
-                                                    </span>
-                                                    <Link
-                                                        href={`/problems/${item.problem._id}`}
-                                                        className="text-accent ml-1 font-semibold hover:underline"
-                                                    >
-                                                        {item.problem.title}
-                                                    </Link>
-                                                </p>
-                                                <p className="text-text-muted mt-0.5 text-xs">
-                                                    {formattedTime}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <span
-                                            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${diffClass}`}
-                                        >
-                                            {diff}
-                                        </span>
-                                    </div>
-                                    <div className="mt-5 flex items-center gap-3">
-                                        <Button
-                                            variant="default"
-                                            size="sm"
-                                            className="h-8 text-xs font-semibold"
-                                        >
-                                            <span>Congratulate</span>
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="bg-bg-page border-border text-text-secondary hover:bg-bg-muted hover:text-text-primary h-8 text-xs font-semibold"
-                                        >
-                                            <MessageCircle className="mr-1.5 h-3 w-3" />
-                                            Discuss
-                                        </Button>
-                                    </div>
-                                </div>
-                            )
-                        })
+                        feed.map((item) => (
+                            <FeedItem
+                                key={item._id}
+                                item={item}
+                                getDifficultyClass={getDifficultyClass}
+                            />
+                        ))
                     ) : (
                         <div className="bg-bg-subtle border-border rounded-lg border p-12 text-center shadow-sm">
                             <Rss className="text-text-muted mx-auto mb-4 h-12 w-12 opacity-50" />
@@ -293,7 +323,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </section>
 
                 {/* RIGHT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="hidden flex-col gap-6 lg:col-span-3 lg:flex">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
                     {/* Trending Problems */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <h4 className="text-text-primary mb-4 flex items-center gap-2 font-semibold">
@@ -489,6 +519,60 @@ export default function DashboardHome({ user: initialUser }) {
                     </div>
                 </aside>
             </div>
+
+            {/* Post Creation Modal */}
+            {isPostModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setIsPostModalOpen(false)}
+                    ></div>
+                    <div className="bg-bg-subtle border-border relative w-full max-w-lg rounded-xl border shadow-2xl">
+                        <div className="border-border flex items-center justify-between border-b p-4">
+                            <h3 className="text-text-primary text-lg font-bold">Create Post</h3>
+                            <button
+                                onClick={() => setIsPostModalOpen(false)}
+                                className="text-text-muted hover:text-text-primary transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <div className="mb-4 flex items-center gap-3">
+                                <Avatar className="h-10 w-10 border">
+                                    <AvatarImage
+                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user?.avatarSeed || user?.name || 'User'}`}
+                                    />
+                                </Avatar>
+                                <div>
+                                    <p className="text-text-primary text-sm font-bold">
+                                        {user?.name}
+                                    </p>
+                                    <p className="text-text-muted text-[11px] font-medium">
+                                        Posting to Feed
+                                    </p>
+                                </div>
+                            </div>
+                            <textarea
+                                className="bg-bg-page border-border text-text-primary focus:border-accent focus:ring-accent min-h-[150px] w-full resize-none rounded-lg border p-3 text-sm outline-none focus:ring-1"
+                                placeholder="Share your coding progress or ask for a hint..."
+                                value={postContent}
+                                onChange={(e) => setPostContent(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="border-border flex items-center justify-end border-t p-4">
+                            <Button
+                                onClick={handleCreatePost}
+                                disabled={!postContent.trim() || isPosting}
+                                className="px-8 font-bold"
+                            >
+                                {isPosting ? 'Posting...' : 'Post'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

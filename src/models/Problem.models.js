@@ -51,6 +51,13 @@ const problemSchema = new mongoose.Schema(
         // Submission counters — incremented by the judge on each submission
         totalSubmissions: { type: Number, default: 0 },
         acceptedSubmissions: { type: Number, default: 0 },
+
+        // Reaction counts — synced from Redis periodically
+        reactionCounts: {
+            type: Map,
+            of: Number,
+            default: {},
+        },
     },
     {
         timestamps: true,
