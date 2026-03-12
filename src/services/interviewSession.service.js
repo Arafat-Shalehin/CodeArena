@@ -6,6 +6,7 @@ import {
     updateInterviewState,
     getInterviewState,
 } from '../lib/redis/interviewState.js'
+import { getInterviewAIQueue } from '../lib/queue.js'
 
 /**
  * Valid phases enforcing strict order transitions if necessary
@@ -106,6 +107,13 @@ export async function transitionPhase(sessionId, newPhase) {
         session.endedAt = new Date()
         await session.save()
         await deleteInterviewState(sessionId)
+
+        // Enqueue Scorecard generation
+        const queue = getInterviewAIQueue()
+        await queue.add('process-scorecard', {
+            sessionId: session._id,
+            userId: session.userId,
+        })
     } else {
         await session.save()
         await updateInterviewState(sessionId, { currentPhase: newPhase })
@@ -130,6 +138,13 @@ export async function terminateSession(sessionId) {
 
     if (session) {
         await deleteInterviewState(sessionId)
+
+        // Enqueue Scorecard generation
+        const queue = getInterviewAIQueue()
+        await queue.add('process-scorecard', {
+            sessionId: session._id,
+            userId: session.userId,
+        })
     }
 
     return session
@@ -153,6 +168,13 @@ export async function checkAndExpireSession(sessionId) {
 
         // Remove from active Redis tracking
         await deleteInterviewState(sessionId)
+
+        // Enqueue Scorecard generation
+        const queue = getInterviewAIQueue()
+        await queue.add('process-scorecard', {
+            sessionId: session._id,
+            userId: session.userId,
+        })
     }
 
     return session
