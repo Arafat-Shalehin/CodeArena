@@ -8,7 +8,7 @@ import { verifyToken } from '@/lib/jwt'
 
 export async function GET(req, { params }) {
     try {
-        const { sessionId } = await params
+        const { id: sessionId } = await params
 
         // 1. Authenticate user via custom JWT logic
         const token = getTokenFromCookies(req)
