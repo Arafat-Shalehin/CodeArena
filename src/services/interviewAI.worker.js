@@ -20,7 +20,8 @@ import dbConnect from '@/lib/mongodb'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
-import { buildPrompt } from '@/services/aiConversation.service'
+import { InterviewResult } from '@/models/InterviewResult.model'
+import { buildPrompt, buildScorecardPrompt } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
 
 // ── Redis publisher (separate client; cannot share the subscriber client) ──────
@@ -80,6 +81,68 @@ export function initInterviewAIWorker() {
 
             await dbConnect()
 
+            // ─── Case 1: Final Scorecard ──────────────────────────────────────
+            if (job.name === 'process-scorecard') {
+                const [session, history, snapshots] = await Promise.all([
+                    InterviewSession.findById(sessionId).populate('problemIds'),
+                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
+                    InterviewSnapshot.find({
+                        sessionId,
+                        snapshotType: { $in: ['run', 'submit'] },
+                    }).sort({ ts: 1 }),
+                ])
+
+                const problem = session?.problemIds?.[0]
+                if (!problem) throw new Error('Problem context lost')
+
+                // Build prompt
+                const { systemPrompt, messages } = buildScorecardPrompt({
+                    problemTitle: problem.title,
+                    problemDescription: problem.description,
+                    history,
+                    submissions: snapshots.map((s) => ({
+                        verdict: s.snapshotType === 'submit' ? 'SUBMITTED' : 'RUN',
+                        // Note: actual pass/fail details would need InterviewSnapshot mod or separate Verdict collection
+                        // for now we use what we have in metadata or just role-play
+                        passedCount: s.snapshotType === 'submit' ? '?' : '?',
+                        totalCount: '?',
+                    })),
+                })
+
+                // Get AI response (non-streaming)
+                const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+                let fullResponse = ''
+                for await (const chunk of aiStream) {
+                    fullResponse += chunk
+                }
+
+                try {
+                    const scorecardData = JSON.parse(fullResponse)
+                    const result = await InterviewResult.findOneAndUpdate(
+                        { sessionId },
+                        {
+                            sessionId,
+                            userId,
+                            ...scorecardData,
+                            createdAt: new Date(),
+                        },
+                        { upsify: true, new: true, upsert: true }
+                    )
+
+                    const pub = await getPublisher()
+                    await pub.publish(
+                        interviewAIChannel(sessionId),
+                        JSON.stringify({ scorecard: result })
+                    )
+
+                    return { success: true, type: 'scorecard' }
+                } catch (e) {
+                    console.error('[InterviewAI Worker] Scorecard Parse/Save failed:', e)
+                    throw e
+                }
+            }
+
+            // ─── Case 2: Chat / Submission Analysis (Streaming) ───────────────
             // 1. Fetch full context from DB
             const [session, history, lastSnapshot] = await Promise.all([
                 InterviewSession.findById(sessionId).populate('problemIds'),

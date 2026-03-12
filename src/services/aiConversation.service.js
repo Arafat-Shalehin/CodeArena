@@ -249,7 +249,82 @@ ${phaseBlock}
     return { systemPrompt, messages }
 }
 
+/**
+ * Assembles the prompt context for generating a final session scorecard.
+ *
+ * @param {Object} ctx
+ * @param {string} ctx.problemTitle
+ * @param {string} ctx.problemDescription
+ * @param {Array}  ctx.history      - Full transcript [{role, content}]
+ * @param {Array}  ctx.submissions  - List of submissions/verdicts
+ * @returns {{ systemPrompt: string, messages: Array }}
+ */
+export function buildScorecardPrompt({
+    problemTitle,
+    problemDescription,
+    history = [],
+    submissions = [],
+}) {
+    const transcript = history.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
+
+    const submissionSummary = submissions
+        .map(
+            (s, i) =>
+                `Submission ${i + 1}: Verdict=${s.verdict}, Passed=${s.passedCount}/${s.totalCount}`
+        )
+        .join('\n')
+
+    const systemPrompt = `
+You are the Technical Evaluating Committee at CodeArena.
+Your task is to generate a final Scorecard for a candidate who just completed a live AI interview.
+
+Evaluate based on:
+1. Communication (0-100): Did they explain their logic? Did they ask clarifying questions?
+2. Approach (0-100): Was the chosen algorithm optimal? Did they consider edge cases?
+3. Code Quality (0-100): Is the code clean, readable, and efficient?
+
+OUTPUT FORMAT (MANDATORY JSON):
+{
+  "communicationScore": number,
+  "approachScore": number,
+  "codeQualityScore": number,
+  "overallScore": number,
+  "aiSummary": "1-2 paragraph professional summary",
+  "strengths": ["string", "string"],
+  "areasToImprove": ["string", "string"]
+}
+
+Rules:
+- Be strictly objective.
+- If they failed test cases, reflect that in Code Quality/Approach.
+- If they were silent or didn't explain, reflect that in Communication.
+- Respond ONLY with the JSON block.
+`.trim()
+
+    const userContent = `
+PROBLEM: ${problemTitle}
+DESCRIPTION: ${problemDescription}
+
+TRANSCRIPT:
+${transcript}
+
+SUBMISSIONS:
+${submissionSummary}
+`.trim()
+
+    return {
+        systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Named exports for granular use in tests / socket handlers
 // ─────────────────────────────────────────────────────────────────────────────
-export { injectUserCode, injectSubmissionVerdict, injectUserMessage, getPhaseInstructions }
+export {
+    injectUserCode,
+    injectSubmissionVerdict,
+    injectUserMessage,
+    getPhaseInstructions,
+    buildScorecardPrompt,
+}

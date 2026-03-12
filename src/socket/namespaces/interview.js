@@ -88,6 +88,8 @@ export function registerInterviewNamespace(io) {
                     // Support both streaming chunks and full analysis results
                     if (parsed.analysis) {
                         socket.emit('interview:ai_analysis', parsed)
+                    } else if (parsed.scorecard) {
+                        socket.emit('interview:scorecard', parsed.scorecard)
                     } else if (parsed.chunk !== undefined) {
                         socket.emit('interview:ai_stream_chunk', parsed)
                     }
