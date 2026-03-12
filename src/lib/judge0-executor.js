@@ -5,21 +5,12 @@
  */
 
 // Language ID mapping for Judge0
+// Only support languages that are in the CodeArena system
 const LANGUAGE_MAP = {
-    python: 71,
-    javascript: 63,
-    nodejs: 63,
-    'c++': 54,
-    cpp: 54,
-    java: 62,
-    c: 50,
-    go: 60,
-    rust: 73,
-    ruby: 72,
-    php: 68,
-    swift: 83,
-    kotlin: 78,
-    typescript: 94,
+    cpp: 54, // C++
+    python: 71, // Python
+    java: 62, // Java
+    javascript: 63, // JavaScript/Node.js
 }
 
 /**
@@ -157,16 +148,9 @@ function parseJudge0Result(result) {
     // 4 = Wrong Answer
     // 5 = Time Limit Exceeded
     // 6 = Compilation Error
-    // 7 = Runtime Error (NZEC)
-    // 8 = Runtime Error (Other)
-    // 9 = Runtime Error (SIGABRT)
-    // 10 = Runtime Error (SIGSEGV)
-    // 11 = Runtime Error (SIGXFSZ)
-    // 12 = Runtime Error (SIGFPE)
-    // 13 = Runtime Error (SIGKILL) - likely TLE killed
-    // 14 = Exit Code 127
+    // 7-14 = Runtime Errors
 
-    let verdict = 'SYSTEM_ERROR'
+    let verdict = 'RUNTIME_ERROR'
     let error = statusDescription
 
     switch (statusId) {
