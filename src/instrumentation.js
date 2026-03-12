@@ -3,11 +3,13 @@ export async function register() {
         const { initSubmissionWorker } = await import('@/services/submission.worker')
         const { initStatsWorker } = await import('@/services/stats.worker')
         const { initAIWorker } = await import('@/services/ai.worker')
+        const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
 
         initSubmissionWorker()
         initStatsWorker()
         initAIWorker()
-        console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI)')
+        initInterviewAIWorker()
+        console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI, InterviewAI)')
 
         // Start Reaction Sync Worker (runs every 5 minutes)
         const { default: syncReactions } = await import('@/scripts/reactionSyncWorker')

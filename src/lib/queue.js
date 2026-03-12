@@ -45,6 +45,26 @@ export function getAIAnalysisQueue() {
     return getQueue('ai-analysis-queue')
 }
 
+/**
+ * Queue for processing live interview AI chat messages.
+ * Uses a shorter timeout since streaming must be real-time.
+ * Only 2 attempts — retrying stale AI turns would confuse the user.
+ */
+export function getInterviewAIQueue() {
+    if (!queues['interview-ai']) {
+        queues['interview-ai'] = new Queue('interview-ai', {
+            connection,
+            defaultJobOptions: {
+                attempts: 2,
+                removeOnComplete: true,
+                removeOnFail: false,
+                timeout: 60000,
+            },
+        })
+    }
+    return queues['interview-ai']
+}
+
 export function getStatsQueue() {
     return getQueue('stats-queue')
 }
