@@ -1,8 +1,16 @@
-const mongoose = require('mongoose')
-const Docker = require('dockerode')
-require('dotenv').config({ path: './.env.local' })
+import mongoose from 'mongoose'
+import Docker from 'dockerode'
+import dotenv from 'dotenv'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+dotenv.config({ path: './.env.local' })
 // Fallback to .env if .env.local didn't load everything (or for the script's sake)
-require('dotenv').config()
+dotenv.config()
 
 // --- Utility Functions for Styling ---
 const c = {
@@ -123,8 +131,6 @@ async function runDiagnostics() {
     }
 
     // Check exposed sensitive files in root
-    const fs = require('fs')
-    const path = require('path')
     const sensitiveFiles = ['.env', '.env.local', 'docker-compose.yml', 'package.json']
     const exposeDir = path.resolve(__dirname, '../public')
     if (fs.existsSync(exposeDir)) {

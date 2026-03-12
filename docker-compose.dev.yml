@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
     # MongoDB Database
     mongodb:
@@ -43,17 +45,9 @@ services:
             timeout: 5s
             retries: 5
 
-    # Main Application
+    # Main Application (Development Mode with Hot Reload)
     app:
-        build:
-            context: .
-            args:
-                - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
-                - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
-                - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
-                - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
-                - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
-                - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+        image: node:20-alpine
         init: true
         container_name: codearena-app
         restart: always
@@ -65,18 +59,29 @@ services:
         environment:
             - MONGODB_URI=${MONGODB_URI}
             - DOCKER_HOST=http://docker-proxy:2375
-            - NODE_ENV=${NODE_ENV:-production}
+            - NODE_ENV=development
             - JWT_SECRET=${JWT_SECRET}
             - REDIS_HOST=redis
             - REDIS_PORT=6379
             - REDIS_PASSWORD=${REDIS_PASSWORD}
+            - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
+            - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+            - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+            - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+            - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+            - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
         ports:
             - '3001:3000'
+            - '3002:3002'
+        volumes:
+            - .:/app
+            - /app/node_modules
+        working_dir: /app
         networks:
             - codearena-network
+        command: sh -c "npm install && npm run dev"
 
     # Docker API Proxy (Security Hardened)
-    # This service allows the 'app' to talk to Docker safely
     docker-proxy:
         image: tecnativa/docker-socket-proxy
         container_name: codearena-docker-proxy
@@ -90,21 +95,16 @@ services:
             - IMAGES=1
             - POST=1
             - EXEC=1
-            # DELETE and BUILD are disabled for extra security
             - DELETE=0
             - BUILD=0
         networks:
             - codearena-network
         restart: unless-stopped
 
+volumes:
+    mongodb_data:
+    redis_data:
+
 networks:
     codearena-network:
         driver: bridge
-
-volumes:
-    mongodb_data:
-        driver: local
-    executor-cache:
-        driver: local
-    redis_data:
-        driver: local
