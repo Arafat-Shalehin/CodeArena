@@ -58,6 +58,10 @@ const problemSchema = new mongoose.Schema(
             of: Number,
             default: {},
         },
+        isFlagged: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

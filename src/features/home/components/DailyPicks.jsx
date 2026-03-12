@@ -106,7 +106,10 @@ export default function DailyPicks() {
                                     </span>
                                 ))}
                                 {prob.tags?.length > 2 && (
-                                    <span className="text-text-muted self-center text-[10px]">
+                                    <span
+                                        key="more-tags"
+                                        className="text-text-muted self-center text-[10px]"
+                                    >
                                         +{prob.tags.length - 2}
                                     </span>
                                 )}

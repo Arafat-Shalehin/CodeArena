@@ -1,4 +1,5 @@
 import { Server } from 'socket.io'
+import { createAdapter } from '@socket.io/redis-adapter'
 import { redisClient } from '@/lib/redis'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
@@ -9,15 +10,25 @@ export async function initSocketServer() {
     if (global._io) return global._io
 
     const port = 3002
-    global._io = new Server(port, {
+    const serverIo = new Server(port, {
         cors: {
             origin: '*',
             methods: ['GET', 'POST'],
         },
     })
 
-    const serverIo = global._io
+    // Setup Redis Adapter for multi-node scaling
+    const pubClient = redisClient.duplicate()
+    const subClient = redisClient.duplicate()
+    await Promise.all([pubClient.connect(), subClient.connect()])
+    serverIo.adapter(createAdapter(pubClient, subClient))
+
+    global._io = serverIo
     console.log(`[Socket.IO] Real-time server started on port ${port}`)
+
+    // Register Namespaces
+    const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
+    registerInterviewNamespace(serverIo)
 
     // Handle client connections
     serverIo.on('connection', (socket) => {

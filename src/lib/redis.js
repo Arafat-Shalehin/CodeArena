@@ -2,19 +2,27 @@ import { createClient } from 'redis'
 
 const globalForRedis = globalThis
 
-const REDIS_HOST =
-    process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis')
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379')
+// Railway injects REDIS_URL. Locally we leave it blank so the HOST/PORT fallback kicks in.
+// An empty string is intentionally treated the same as "not set".
+const redisUrl = process.env.REDIS_URL || ''
 
-export const redisClient =
-    globalForRedis.redis ||
-    createClient({
-        socket: {
-            host: REDIS_HOST,
-            port: REDIS_PORT,
-        },
-        ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
-    })
+const connectionConfig = redisUrl
+    ? { url: redisUrl }
+    : {
+          socket: {
+              host: process.env.REDIS_HOST || 'localhost',
+              port: parseInt(process.env.REDIS_PORT || '6379'),
+          },
+          password: process.env.REDIS_PASSWORD || undefined,
+      }
+
+if (process.env.NODE_ENV !== 'test') {
+    console.log(
+        `[Redis] Connecting via ${redisUrl ? 'REDIS_URL' : `host ${connectionConfig.socket?.host}:${connectionConfig.socket?.port}`}`
+    )
+}
+
+export const redisClient = globalForRedis.redis || createClient(connectionConfig)
 
 if (!globalForRedis.redis) {
     globalForRedis.redis = redisClient
