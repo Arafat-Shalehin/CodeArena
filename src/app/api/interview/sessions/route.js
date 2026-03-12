@@ -68,3 +68,20 @@ export const POST = asyncHandler(async (req) => {
         )
     }
 })
+
+export const GET = asyncHandler(async (req) => {
+    await dbConnect()
+    const user = await protect(req)
+
+    const sessions = await InterviewSession.find({ userId: user.id })
+        .populate('problemIds')
+        .sort({ startedAt: -1 })
+
+    return NextResponse.json(
+        {
+            success: true,
+            data: sessions,
+        },
+        { status: 200 }
+    )
+})
