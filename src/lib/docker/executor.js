@@ -3,6 +3,7 @@ import { Readable, PassThrough } from 'stream'
 import path from 'path'
 import { getLanguageConfig } from './languages.js'
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
+import { executeCodeWithJudge0, checkJudge0Availability } from '../judge0-executor.js'
 
 const dockerOptions = {}
 
@@ -72,14 +73,69 @@ export async function executeCode({
 }) {
     try {
         // Check if Docker is available
-        if (!docker) {
+        if (docker) {
+            // Docker is available - use it
+            console.log('[EXECUTOR] Using Docker for code execution')
+            return await executeCodeWithDocker({
+                code,
+                files,
+                language,
+                input,
+                timeLimit,
+                memoryLimit,
+                outputLimit,
+                specialJudgeCode,
+                expectedOutput,
+            })
+        }
+
+        // Docker not available - fallback to Judge0
+        console.log('[EXECUTOR] Docker unavailable, falling back to Judge0')
+        const judge0Result = await executeCodeWithJudge0({
+            code,
+            language,
+            input,
+            timeLimit,
+            memoryLimit,
+        })
+
+        // Handle special judge results (not supported with Judge0)
+        if (specialJudgeCode && judge0Result.success) {
             return {
+                ...judge0Result,
                 success: false,
                 verdict: 'EXECUTOR_UNAVAILABLE',
-                error: 'Code execution service is not available in this environment.' + (dockerInitError ? ` (${dockerInitError.message})` : ''),
+                error: 'Special judge not supported in this execution environment',
             }
         }
 
+        return judge0Result
+    } catch (error) {
+        console.error('Code execution error:', error)
+        return {
+            success: false,
+            verdict: 'SYSTEM_ERROR',
+            error: error.message,
+        }
+    }
+}
+
+/**
+ * Execute code using Docker
+ * Internal function used when Docker is available
+ */
+async function executeCodeWithDocker({
+    code,
+    files,
+    language,
+    input = '',
+    timeLimit,
+    memoryLimit,
+    outputLimit,
+    specialJudgeCode,
+    expectedOutput,
+}) {
+    try {
         // Validate code security — check all files or single code
         const codeToValidate =
             files && files.length > 0 ? files.map((f) => f.content).join('\n') : code
