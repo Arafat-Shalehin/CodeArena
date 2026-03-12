@@ -30,9 +30,15 @@ if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDock
     delete process.env.DOCKER_HOST
 }
 
-let docker
+let docker = null
+let dockerInitError = null
+
 try {
     docker = new Docker(dockerOptions)
+} catch (err) {
+    // Docker unavailable (e.g., in Railway production without Docker socket)
+    dockerInitError = err
+    console.warn('⚠️  Docker not available for code execution:', err.message)
 } finally {
     // Restore it after initialization
     if (originalDockerHost) {
@@ -65,6 +71,15 @@ export async function executeCode({
     expectedOutput,
 }) {
     try {
+        // Check if Docker is available
+        if (!docker) {
+            return {
+                success: false,
+                verdict: 'EXECUTOR_UNAVAILABLE',
+                error: 'Code execution service is not available in this environment.' + (dockerInitError ? ` (${dockerInitError.message})` : ''),
+            }
+        }
+
         // Validate code security — check all files or single code
         const codeToValidate =
             files && files.length > 0 ? files.map((f) => f.content).join('\n') : code
