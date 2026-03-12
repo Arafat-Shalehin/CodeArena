@@ -293,6 +293,7 @@ export default function InterviewShell({
     const [language, setLanguage] = useState('python')
     const [isRunning, setIsRunning] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isRehydrating, setIsRehydrating] = useState(true)
 
     // ── Chat state ────────────────────────────────────────────────────────────
     const [messages, setMessages] = useState([])
@@ -308,8 +309,32 @@ export default function InterviewShell({
     // ── Socket.IO connection ─────────────────────────────────────────────────
     const socketRef = useRef(null)
 
+    // ── Rehydration ──────────────────────────────────────────────────────────
     useEffect(() => {
-        if (!wsToken || !sessionId) return
+        const rehydrate = async () => {
+            if (!sessionId) return
+            try {
+                const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
+                const json = await res.json()
+
+                if (json.success) {
+                    const { messages: history, latestCode, language: lastLang } = json.data
+                    if (history?.length > 0) setMessages(history)
+                    if (latestCode) setCode(latestCode)
+                    if (lastLang) setLanguage(lastLang)
+                }
+            } catch (error) {
+                console.error('[InterviewShell] Rehydration failed:', error)
+            } finally {
+                setIsRehydrating(false)
+            }
+        }
+
+        rehydrate()
+    }, [sessionId])
+
+    useEffect(() => {
+        if (!wsToken || !sessionId || isRehydrating) return
 
         const socket = io(
             `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
@@ -378,7 +403,7 @@ export default function InterviewShell({
         return () => {
             socket.disconnect()
         }
-    }, [wsToken, sessionId, onEnd])
+    }, [wsToken, sessionId, onEnd, isRehydrating])
 
     // ── Code change & Auto-snapshots ─────────────────────────────────────────
 
@@ -475,9 +500,17 @@ export default function InterviewShell({
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
         <div
-            className="bg-bg-page text-text-primary flex h-screen w-full flex-col overflow-hidden"
+            className="bg-bg-page text-text-primary relative flex h-screen w-full flex-col overflow-hidden"
             style={{ fontFamily: 'var(--font-sans)' }}
         >
+            {isRehydrating && (
+                <div className="bg-bg-page/80 absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+                    <Loader2 size={32} className="text-accent mb-4 animate-spin" />
+                    <p className="text-text-secondary text-sm font-medium">
+                        Restoring your session...
+                    </p>
+                </div>
+            )}
             {/* ═══ Top Navbar ════════════════════════════════════════════════ */}
             <nav className="border-border bg-bg-subtle flex h-[48px] flex-shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}

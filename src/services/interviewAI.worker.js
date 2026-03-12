@@ -64,9 +64,19 @@ export function initInterviewAIWorker() {
     const worker = new Worker(
         'interview-ai',
         async (job) => {
-            const { sessionId, userId, content, phase } = job.data
+            const {
+                sessionId,
+                userId,
+                content,
+                phase,
+                submissionVerdict,
+                code,
+                language: lang,
+            } = job.data
 
-            console.log(`[InterviewAI Worker] Processing job ${job.id} for session ${sessionId}`)
+            console.log(
+                `[InterviewAI Worker] Processing job ${job.id} (${job.name}) for session ${sessionId}`
+            )
 
             await dbConnect()
 
@@ -86,14 +96,20 @@ export function initInterviewAIWorker() {
             }
 
             // 2. Build a sanitised, phase-aware prompt
+            const currentPhase =
+                job.name === 'process-submission-analysis'
+                    ? 'submitted'
+                    : session.currentPhase || phase || 'coding'
+
             const { systemPrompt, messages } = buildPrompt({
                 problemTitle: problem.title,
                 problemDescription: problem.description,
-                currentCode: lastSnapshot?.code || '',
-                language: lastSnapshot?.language || 'python',
-                phase: session.currentPhase || phase || 'coding',
-                userMessage: content,
-                history: history.slice(0, -1), // exclude the just-saved user turn
+                currentCode: code || lastSnapshot?.code || '',
+                language: lang || lastSnapshot?.language || 'python',
+                phase: currentPhase,
+                submissionVerdict: submissionVerdict || null,
+                userMessage: content || '',
+                history: history.slice(0, -1), // exclude the just-saved user turn if it was a chat job
             })
 
             // 3. Stream AI response and publish each chunk to Redis
@@ -102,26 +118,44 @@ export function initInterviewAIWorker() {
             let fullResponse = ''
 
             const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+
+            // If it's a submission analysis, we might want to stream it or just send it at once.
+            // Following 'interview:ai_analysis' requirement, we'll stream internally and then emit final.
             for await (const chunk of aiStream) {
                 fullResponse += chunk
-                // Publish chunk payload as JSON so the subscriber can parse it
-                await pub.publish(channel, JSON.stringify({ chunk, done: false }))
+                // Only stream for chat messages; for analysis, we'll send the full object at the end
+                if (job.name === 'process-chat') {
+                    await pub.publish(channel, JSON.stringify({ chunk, done: false }))
+                }
             }
 
-            // 4. Publish done signal
-            await pub.publish(channel, JSON.stringify({ chunk: '', done: true }))
+            // 4. Finalise
+            if (job.name === 'process-chat') {
+                await pub.publish(channel, JSON.stringify({ chunk: '', done: true }))
+            } else {
+                // Emission for submission analysis
+                await pub.publish(channel, JSON.stringify({ analysis: fullResponse }))
+            }
 
             // 5. Persist the full response to DB
             await InterviewMessage.create({
                 sessionId,
                 role: 'ai',
-                phase: session.currentPhase || phase || 'coding',
+                phase: currentPhase,
                 content: fullResponse,
                 ts: new Date(),
             })
 
+            // 6. Update session phase if it was a submission
+            if (
+                job.name === 'process-submission-analysis' &&
+                session.currentPhase !== 'submitted'
+            ) {
+                await InterviewSession.findByIdAndUpdate(sessionId, { currentPhase: 'submitted' })
+            }
+
             console.log(
-                `[InterviewAI Worker] Job ${job.id} complete – ${fullResponse.length} chars streamed for session ${sessionId}`
+                `[InterviewAI Worker] Job ${job.id} complete – ${fullResponse.length} chars generated for session ${sessionId}`
             )
             return { success: true, length: fullResponse.length }
         },
