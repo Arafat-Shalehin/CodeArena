@@ -58,8 +58,11 @@ export default function InterviewSessionPage() {
 
     if (loading) {
         return (
-            <div className="bg-bg-page flex h-screen w-full items-center justify-center">
-                <Loader2 size={32} className="text-accent animate-spin" />
+            <div className="bg-bg-page flex h-screen w-full flex-col items-center justify-center">
+                <Loader2 size={32} className="text-accent mb-4 animate-spin" />
+                <p className="text-text-secondary animate-pulse text-sm font-medium">
+                    Restoring your session...
+                </p>
             </div>
         )
     }

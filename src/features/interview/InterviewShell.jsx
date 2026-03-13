@@ -13,7 +13,13 @@ import {
     GripVertical,
     ChevronLeft,
     ChevronRight,
+    AlertCircle,
+    WifiOff,
+    RefreshCw,
+    LogOut,
+    AlertTriangle,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { useAuth } from '@/context/AuthContext'
 import EditorPanel from './EditorPanel'
@@ -190,10 +196,18 @@ function AiChatPanel({ messages, onSend, isAiTyping }) {
                                 className={`max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed ${
                                     isUser
                                         ? 'bg-accent/15 text-text-primary rounded-tr-none'
-                                        : 'bg-bg-muted text-text-secondary rounded-tl-none'
+                                        : msg.isError
+                                          ? 'rounded-tl-none border border-red-500/50 bg-red-500/10 text-red-400'
+                                          : 'bg-bg-muted text-text-secondary rounded-tl-none'
                                 }`}
                             >
                                 {msg.content}
+                                {msg.isError && (
+                                    <div className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase opacity-70">
+                                        <AlertCircle size={10} />
+                                        System Error
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )
@@ -229,7 +243,7 @@ function AiChatPanel({ messages, onSend, isAiTyping }) {
                     />
                     <button
                         onClick={submit}
-                        disabled={!draft.trim()}
+                        disabled={!draft.trim() || isAiTyping}
                         className="text-accent hover:bg-accent/10 flex-shrink-0 rounded-lg p-1.5 transition-colors disabled:opacity-40"
                     >
                         <Send size={16} />
@@ -239,6 +253,80 @@ function AiChatPanel({ messages, onSend, isAiTyping }) {
                     Enter to send · Shift+Enter for newline
                 </p>
             </div>
+        </div>
+    )
+}
+
+// ─── Error Components ────────────────────────────────────────────────────────
+
+function ConnectionBanner({ status }) {
+    if (status === 'connected') return null
+
+    const config = {
+        disconnected: {
+            icon: <WifiOff size={14} />,
+            text: 'Disconnected from server. Attempting to reconnect...',
+            bg: 'bg-red-500/10 text-red-500',
+        },
+        reconnecting: {
+            icon: <RefreshCw size={14} className="animate-spin" />,
+            text: 'Reconnecting to interview session...',
+            bg: 'bg-yellow-500/10 text-yellow-500',
+        },
+        failed: {
+            icon: <AlertCircle size={14} />,
+            text: 'Connection failed. Please check your network.',
+            bg: 'bg-red-600 text-white',
+        },
+    }
+
+    const { icon, text, bg } = config[status] || config.disconnected
+
+    return (
+        <div
+            className={`flex items-center justify-center gap-2 px-4 py-1.5 text-[11px] font-bold tracking-tight transition-all duration-300 ${bg}`}
+        >
+            {icon}
+            {text}
+        </div>
+    )
+}
+
+function ErrorOverlay({ error, onRetry, onExit }) {
+    if (!error) return null
+
+    return (
+        <div className="bg-bg-page/95 animate-in fade-in absolute inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-500">
+                <AlertTriangle size={36} />
+            </div>
+            <h2 className="text-text-primary mb-2 text-2xl font-bold">Something went wrong</h2>
+            <p className="text-text-secondary mb-8 max-w-sm text-sm leading-relaxed">
+                {error.message || 'An unexpected error occurred during your interview session.'}
+            </p>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                    onClick={onRetry}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-2.5 text-sm font-bold text-black transition-transform hover:scale-105 active:scale-95"
+                >
+                    <RefreshCw size={16} />
+                    Retry Operation
+                </button>
+                <button
+                    onClick={onExit}
+                    className="border-border text-text-primary flex items-center justify-center gap-2 rounded-xl border px-6 py-2.5 text-sm font-bold transition-transform hover:scale-105 hover:bg-white/5 active:scale-95"
+                >
+                    <LogOut size={16} />
+                    Exit Session
+                </button>
+            </div>
+
+            {error.type && (
+                <span className="text-text-muted mt-12 font-mono text-[10px] uppercase opacity-50">
+                    Error Code: {error.type}
+                </span>
+            )}
         </div>
     )
 }
@@ -299,6 +387,10 @@ export default function InterviewShell({
     const [messages, setMessages] = useState([])
     const [isAiTyping, setIsAiTyping] = useState(false)
 
+    // ── Error & Connection state ──────────────────────────────────────────────
+    const [error, setError] = useState(null)
+    const [connectionStatus, setConnectionStatus] = useState('connected') // connected, disconnected, reconnecting, failed
+
     // ── Layout: left-panel width ratio ───────────────────────────────────────
     const [leftPct, setLeftPct] = useState(30) // % for problem description
     const [rightPct, setRightPct] = useState(30) // % for AI chat
@@ -315,6 +407,8 @@ export default function InterviewShell({
             if (!sessionId) return
             try {
                 const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
+                if (!res.ok) throw new Error(`Server responded with ${res.status}`)
+
                 const json = await res.json()
 
                 if (json.success) {
@@ -322,9 +416,18 @@ export default function InterviewShell({
                     if (history?.length > 0) setMessages(history)
                     if (latestCode) setCode(latestCode)
                     if (lastLang) setLanguage(lastLang)
+                    setError(null)
+                } else {
+                    throw new Error(json.error || 'Failed to restore session data')
                 }
-            } catch (error) {
-                console.error('[InterviewShell] Rehydration failed:', error)
+            } catch (err) {
+                console.error('[InterviewShell] Rehydration failed:', err)
+                setError({
+                    type: 'REHYDRATION_ERROR',
+                    message:
+                        "We couldn't restore your session state. This might be due to a lost connection.",
+                    fatal: true,
+                })
             } finally {
                 setIsRehydrating(false)
             }
@@ -346,7 +449,38 @@ export default function InterviewShell({
         socketRef.current = socket
 
         socket.on('connect', () => {
+            setConnectionStatus('connected')
             socket.emit('interview:join')
+            toast.success('Connected to interview session')
+        })
+
+        socket.on('disconnect', (reason) => {
+            console.warn('[Socket] Disconnected:', reason)
+            if (reason === 'io server disconnect') {
+                // transport-level disconnect
+                setConnectionStatus('failed')
+            } else {
+                setConnectionStatus('disconnected')
+            }
+        })
+
+        socket.on('connect_error', (err) => {
+            console.error('[Socket] Connection Error:', err)
+            setConnectionStatus('reconnecting')
+        })
+
+        socket.on('reconnect_attempt', (attempt) => {
+            console.log('[Socket] Reconnecting...', attempt)
+            setConnectionStatus('reconnecting')
+        })
+
+        socket.on('reconnect_failed', () => {
+            setConnectionStatus('failed')
+            setError({
+                type: 'CONNECTION_FAILED',
+                message: 'Lost connection to the interview server. Please check your internet.',
+                fatal: true,
+            })
         })
 
         // ── Server-to-client events ──────────────────────────────────────────
@@ -360,7 +494,11 @@ export default function InterviewShell({
                     if (last && last.role === 'ai' && last.streaming) {
                         return [...prev.slice(0, -1), { ...last, content: last.content + chunk }]
                     }
-                    return [...prev, { role: 'ai', content: chunk, streaming: true }]
+                    const isErr = chunk.includes('Sorry, I')
+                    return [
+                        ...prev,
+                        { role: 'ai', content: chunk, streaming: true, isError: isErr },
+                    ]
                 })
             } else {
                 setIsAiTyping(false)
@@ -376,13 +514,22 @@ export default function InterviewShell({
         // Run result
         socket.on('interview:run_result', (result) => {
             setIsRunning(false)
-            // TODO: surface result UI (console panel)
+            if (!result.success) {
+                toast.error(`Execution Failed: ${result.error || result.verdict}`)
+            } else {
+                toast.success('Code executed successfully')
+            }
             console.log('[InterviewShell] run_result', result)
         })
 
         // Submission result
         socket.on('interview:submission_result', (result) => {
             setIsSubmitting(false)
+            if (!result.success || result.verdict !== 'SUCCESS') {
+                toast.error(`Submission Refused: ${result.verdict}`)
+            } else {
+                toast.success('Solution accepted!')
+            }
             console.log('[InterviewShell] submission_result', result)
         })
 
@@ -401,6 +548,17 @@ export default function InterviewShell({
         })
 
         return () => {
+            socket.off('connect')
+            socket.off('disconnect')
+            socket.off('connect_error')
+            socket.off('reconnect_attempt')
+            socket.off('reconnect_failed')
+            socket.off('interview:ai_stream_chunk')
+            socket.off('interview:run_result')
+            socket.off('interview:submission_result')
+            socket.off('interview:ai_analysis')
+            socket.off('interview:scorecard')
+            socket.off('interview:ended')
             socket.disconnect()
         }
     }, [wsToken, sessionId, onEnd, isRehydrating])
@@ -454,11 +612,18 @@ export default function InterviewShell({
     }, [code, language, problem?._id, emitSnapshot])
 
     // ── Send chat message ─────────────────────────────────────────────────────
-    const handleSendMessage = useCallback((content) => {
-        setMessages((prev) => [...prev, { role: 'user', content }])
-        setIsAiTyping(true)
-        socketRef.current?.emit('interview:chat_message', { content, phase: 'coding' })
-    }, [])
+    const handleSendMessage = useCallback(
+        (content) => {
+            if (connectionStatus !== 'connected') {
+                toast.error('Cannot send message while disconnected')
+                return
+            }
+            setMessages((prev) => [...prev, { role: 'user', content }])
+            setIsAiTyping(true)
+            socketRef.current?.emit('interview:chat_message', { content, phase: 'coding' })
+        },
+        [connectionStatus]
+    )
 
     // ── Panel resize ──────────────────────────────────────────────────────────
     const startDragLeft = (e) => {
@@ -503,14 +668,41 @@ export default function InterviewShell({
             className="bg-bg-page text-text-primary relative flex h-screen w-full flex-col overflow-hidden"
             style={{ fontFamily: 'var(--font-sans)' }}
         >
+            <ErrorOverlay
+                error={error}
+                onRetry={() => window.location.reload()}
+                onExit={() => (window.location.href = '/interview/history')}
+            />
+
+            <ConnectionBanner status={connectionStatus} />
+
             {isRehydrating && (
-                <div className="bg-bg-page/80 absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
-                    <Loader2 size={32} className="text-accent mb-4 animate-spin" />
-                    <p className="text-text-secondary text-sm font-medium">
+                <div
+                    className="bg-bg-page/90 animate-in fade-in absolute inset-0 z-[110] flex flex-col items-center justify-center backdrop-blur-md"
+                    // Higher z-index than ErrorOverlay to avoid overlap issues during init
+                >
+                    <Loader2 size={40} className="text-accent mb-4 animate-spin" />
+                    <p className="text-text-primary animate-pulse text-base font-bold tracking-tight">
                         Restoring your session...
                     </p>
+                    <span className="text-text-muted mt-2 text-xs opacity-60">
+                        Fetching chat history and latest code
+                    </span>
                 </div>
             )}
+
+            {connectionStatus === 'reconnecting' && (
+                <div className="bg-bg-page/80 animate-in fade-in absolute inset-0 z-[110] flex flex-col items-center justify-center backdrop-blur-sm">
+                    <RefreshCw size={40} className="mb-4 animate-spin text-yellow-500" />
+                    <p className="text-text-primary animate-pulse text-base font-bold tracking-tight">
+                        Connection lost. Resuming session...
+                    </p>
+                    <span className="text-text-muted mt-2 text-xs opacity-60">
+                        Attempting to reconnect to the interview server
+                    </span>
+                </div>
+            )}
+
             {/* ═══ Top Navbar ════════════════════════════════════════════════ */}
             <nav className="border-border bg-bg-subtle flex h-[48px] flex-shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}
