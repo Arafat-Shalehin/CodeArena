@@ -3,12 +3,15 @@ import { Submission } from '@/models/Submission.models'
 import { User } from '@/models/User.models'
 import { Problem } from '@/models/Problem.models'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
+import { Contest } from '@/models/Contest.models'
+import { getSubmissionQueue } from '@/lib/queue'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Create a new submission
  */
 export async function createSubmission(data) {
-    const { userId, problemId, code, language, contestId } = data
+    const { userId, problemId, code, language, contestId, type = 'submit', customInput } = data
 
     if (!userId || !problemId) {
         throw new Error('User and problem are required.')
@@ -34,19 +37,34 @@ export async function createSubmission(data) {
             throw new Error('Problem not found.')
         }
 
-        // 3️⃣ Rate limit (basic DB-based throttle: 3 sec cooldown)
-        // Here i will use redis for rate limit later
-        const lastSubmission = await Submission.findOne({ userId })
-            .sort({ createdAt: -1 })
-            .session(session)
+        // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
+        if (type === 'submit' && redisClient.isOpen) {
+            const rateLimitKey = `ratelimit:submit:${userId}`
+            const isThrottled = await redisClient.get(rateLimitKey)
 
-        if (lastSubmission && Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000) {
-            throw new Error('Submission rate limit exceeded. Please wait.')
+            if (isThrottled) {
+                throw new Error('Submission rate limit exceeded. Please wait.')
+            }
+
+            // Set throttle for 3 seconds
+            await redisClient.set(rateLimitKey, '1', { EX: 3 })
+        } else if (type === 'submit') {
+            // Fallback to basic DB check if Redis is down
+            const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
+                .sort({ createdAt: -1 })
+                .session(session)
+
+            if (
+                lastSubmission &&
+                Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000
+            ) {
+                throw new Error('Submission rate limit exceeded. Please wait.')
+            }
         }
 
         // 4️⃣ Contest validation (if provided)
-        if (contestId) {
-            const contest = await ContestParticipant.findById(contestId).session(session)
+        if (contestId && type === 'submit') {
+            const contest = await Contest.findById(contestId).session(session)
             if (!contest) {
                 throw new Error('Contest not found.')
             }
@@ -72,6 +90,15 @@ export async function createSubmission(data) {
             }
         }
 
+        // Check for code size limit
+        const codeSizeKB = Buffer.byteLength(code, 'utf8') / 1024
+        if (codeSizeKB > problem.codeSizeLimit) {
+            return {
+                status: 400,
+                message: `Code size (${codeSizeKB.toFixed(1)} KB) exceeds the limit (${problem.codeSizeLimit} KB)`,
+            }
+        }
+
         // 5️⃣ Create submission
         const submission = await Submission.create(
             [
@@ -79,7 +106,9 @@ export async function createSubmission(data) {
                     userId,
                     problemId,
                     contestId,
+                    type,
                     code,
+                    customInput,
                     language,
                     status: 'queued',
                 },
@@ -87,12 +116,33 @@ export async function createSubmission(data) {
             { session }
         )
 
-        // 6️⃣ Increment user stats atomically
-        await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } }, { session })
-
         await session.commitTransaction()
         session.endSession()
-        // Here i will push the submissionId to a Message Queue using BullMQ
+
+        // 7️⃣ Push to Message Queue (BullMQ)
+        try {
+            const queue = getSubmissionQueue()
+            await queue.add('process-submission', {
+                submissionId: submission[0]._id,
+            })
+
+            // 8️⃣ Publish event for real-time updates
+            if (redisClient.isOpen) {
+                redisClient
+                    .publish(
+                        'submission_updates',
+                        JSON.stringify({
+                            type: 'submission_queued',
+                            userId,
+                            submissionId: submission[0]._id,
+                            problemId,
+                        })
+                    )
+                    .catch(console.error)
+            }
+        } catch (queueError) {
+            console.error('Failed to add submission to queue:', queueError)
+        }
 
         return submission[0]
     } catch (error) {
@@ -107,8 +157,8 @@ export async function createSubmission(data) {
  */
 export async function getAllSubmissions(query) {
     const page = Math.max(parseInt(query.page) || 1, 1)
-    const limit = Math.min(parseInt(query.limit) || 10, 50)
-    const skip = (page - 1) * limit
+    const limit = Math.min(parseInt(query.limit) || 10, 100)
+    const skip = query.offset != null ? parseInt(query.offset) : (page - 1) * limit
 
     const filter = {}
 

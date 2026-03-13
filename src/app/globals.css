@@ -1,24 +1,11 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:is(.dark *));
-
-/*
- * ============================================================
- * CodeArena Design Tokens
- * ============================================================
- * THIS IS THE SINGLE SOURCE OF TRUTH for all visual values.
- *
- * HOW TO USE:
- *   - Never hardcode a color like #02BA4C directly in a component.
- *   - Always use the Tailwind class that maps to these variables.
- *   - This way, if the brand color changes, you update it HERE,
- *     and it automatically updates everywhere on the site.
- *
- * NOTE: Variables use the --ca-* prefix ("CodeArena") to avoid
- * circular references with Tailwind v4's @theme block, which
- * writes its own --color-* vars to :root.
- * ============================================================
- */
+@theme {
+    /* Backgrounds */
+    --color-bg-page: var(--ca-bg-page);
+    --color-bg-subtle: var(--ca-bg-subtle);
+    --color-bg-muted: var(--ca-bg-muted);
+}
 
 :root {
     /* ----------------------------------------------------------
@@ -29,6 +16,8 @@
     --ca-bg-page: #ffffff;
     --ca-bg-subtle: #f7f8fa;
     --ca-bg-muted: #edeef0;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.08);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.05);
 
     /* Text */
     --ca-text-primary: #111827;
@@ -49,18 +38,22 @@
     /* Feedback — Success */
     --ca-success: #16a34a;
     --ca-success-light: #dcfce7;
+    --ca-success-text: #166534;
 
     /* Feedback — Error */
     --ca-error: #dc2626;
     --ca-error-light: #fee2e2;
+    --ca-error-text: #991b1b;
 
     /* Feedback — Warning */
     --ca-warning: #d97706;
     --ca-warning-light: #fef3c7;
+    --ca-warning-text: #92400e;
 
     /* Feedback — Info */
-    --ca-info: #2563eb;
+    --ca-info: #1d4ed8;
     --ca-info-light: #dbeafe;
+    --ca-info-text: #1e40af;
 
     /* Competitive ranking colors */
     --ca-rank-gold: #f59e0b;
@@ -118,6 +111,9 @@
 
     /* Border Radius */
     --radius: 0.5rem;
+
+    /* Interactive Tiles */
+    --tile: var(--ca-accent);
 }
 
 /* ----------------------------------------------------------
@@ -132,6 +128,8 @@
     --ca-bg-page: #0f1117;
     --ca-bg-subtle: #161b22;
     --ca-bg-muted: #21262d;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.16);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.1);
 
     --ca-text-primary: #f0f6fc;
     --ca-text-secondary: #8b949e;
@@ -147,9 +145,13 @@
     --ca-border-strong: #30363d;
 
     --ca-success-light: #0d2818;
+    --ca-success-text: #4ade80;
     --ca-error-light: #2d1117;
+    --ca-error-text: #fecaca;
     --ca-warning-light: #2d1b00;
+    --ca-warning-text: #fbbf24;
     --ca-info-light: #0d1f47;
+    --ca-info-text: #93c5fd;
 }
 
 /**
@@ -197,12 +199,16 @@
     /* ── FEEDBACK ───────────────────────────── */
     --color-success: var(--ca-success);
     --color-success-light: var(--ca-success-light);
+    --color-success-text: var(--ca-success-text);
     --color-error: var(--ca-error);
     --color-error-light: var(--ca-error-light);
+    --color-error-text: var(--ca-error-text);
     --color-warning: var(--ca-warning);
     --color-warning-light: var(--ca-warning-light);
+    --color-warning-text: var(--ca-warning-text);
     --color-info: var(--ca-info);
     --color-info-light: var(--ca-info-light);
+    --color-info-text: var(--ca-info-text);
 
     /* ── RANKING ────────────────────────────── */
     --color-rank-gold: var(--ca-rank-gold);
@@ -533,6 +539,14 @@
             radial-gradient(circle at 85% 30%, rgba(2, 186, 76, 0.05) 0%, transparent 25%);
     }
 
+    /* Shared page gradient for synchronized backgrounds across routes */
+    .site-gradient {
+        background-image:
+            radial-gradient(circle at 15% 50%, var(--ca-site-grad-1) 0%, transparent 25%),
+            radial-gradient(circle at 85% 30%, var(--ca-site-grad-2) 0%, transparent 25%);
+        background-repeat: no-repeat;
+    }
+
     /* ── Leaderboard-specific utilities ── */
     .podium-gradient-1 {
         background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0) 100%);
@@ -604,6 +618,26 @@
         animation: soft-pulse 2.5s ease-in-out infinite;
     }
 
+    /* ── Advanced Background Patterns ── */
+    .bg-dot-matrix {
+        background-color: var(--ca-bg-page);
+        background-image: radial-gradient(var(--ca-border) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .dark .bg-dot-matrix {
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+
+    /* ── Modern Glow Effects ── */
+    .glow-accent {
+        box-shadow: 0 0 20px rgba(2, 186, 76, 0.15);
+    }
+
+    .glow-accent-strong {
+        box-shadow: 0 0 40px rgba(2, 186, 76, 0.25);
+    }
+
     /* ── Auth Vector Animations ── */
     @keyframes float {
         0%,
@@ -641,4 +675,120 @@
     .animate-spin-slow {
         animation: spin-slow 20s linear infinite;
     }
+
+    /* ── Markdown / Prose Styling ── */
+    .prose-markdown {
+        color: var(--ca-text-secondary);
+        font-family: var(--font-sans);
+        line-height: 1.75;
+    }
+
+    .prose-markdown h1,
+    .prose-markdown h2,
+    .prose-markdown h3 {
+        color: var(--ca-text-primary);
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .prose-markdown h1 {
+        font-size: 1.875rem;
+    }
+    .prose-markdown h2 {
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--ca-border);
+        padding-bottom: 0.5rem;
+    }
+    .prose-markdown h3 {
+        font-size: 1.25rem;
+    }
+
+    .prose-markdown p {
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown ul,
+    .prose-markdown ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+    }
+
+    .prose-markdown ul {
+        list-style-type: disc;
+    }
+
+    .prose-markdown ol {
+        list-style-type: decimal;
+    }
+
+    .prose-markdown li {
+        margin-bottom: 0.5rem;
+    }
+
+    .prose-markdown code {
+        background-color: var(--ca-bg-muted);
+        color: var(--ca-accent-text);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+    }
+
+    .prose-markdown pre {
+        background-color: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown pre code {
+        background-color: transparent;
+        color: var(--ca-text-primary);
+        padding: 0;
+        font-size: 0.9em;
+    }
+
+    .prose-markdown blockquote {
+        border-left: 4px solid var(--ca-accent);
+        padding-left: 1rem;
+        font-style: italic;
+        color: var(--ca-text-muted);
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown th,
+    .prose-markdown td {
+        border: 1px solid var(--ca-border);
+        padding: 0.75rem;
+        text-align: left;
+    }
+
+    .prose-markdown th {
+        background-color: var(--ca-bg-subtle);
+        font-weight: 600;
+        color: var(--ca-text-primary);
+    }
+
+    /* KaTeX overrides to match theme */
+    .katex {
+        font-size: 1.1em;
+    }
+
+    .katex-display {
+        margin: 1.5rem 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
 }
+
+/* Import KaTeX CSS */
+@import 'katex/dist/katex.min.css';

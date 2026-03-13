@@ -14,7 +14,7 @@ export async function submitCode(req, user) {
         const body = await req.json()
 
         // Whitelist allowed fields
-        const { problemId, code, language, contestId } = body
+        const { problemId, code, language, contestId, type, customInput } = body
 
         if (!problemId || !code || !language) {
             return Response.json(
@@ -36,6 +36,8 @@ export async function submitCode(req, user) {
             code,
             language,
             contestId,
+            type,
+            customInput,
         })
 
         return Response.json({ success: true, data: submission }, { status: 201 })
@@ -62,12 +64,15 @@ export async function fetchSubmissions(req, user) {
             contestId: searchParams.get('contestId'),
             verdict: searchParams.get('verdict'),
             status: searchParams.get('status'),
+            offset: searchParams.get('offset'),
         }
 
-        // Enforce tenant isolation
-        if (user.role !== 'admin') {
+        // Enforce tenant isolation for private data, but allow viewing recent history
+        if (!query.userId && user.role !== 'admin') {
             query.userId = user.id
         }
+        // If query.userId is provided, we allow it (for public profiles)
+        // Submissions don't contain sensitive data like test case details in the list view
 
         const result = await getAllSubmissions(query)
 

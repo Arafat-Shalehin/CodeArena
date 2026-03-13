@@ -1,75 +1,158 @@
-import { Card, CardContent } from '@/components/ui/card'
+'use client'
 
-// Data
+import { useRef } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { stepsData } from '../data/steps.data'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
-/**
- * @component HowItWorksSection
- * @description Visualizes the user journey steps from joining to competing.
- * Uses a horizontal dashed line connector on desktop to indicate flow.
- *
- * @returns {JSX.Element} The rendered How It Works section.
- */
 export default function HowItWorksSection() {
+    const containerRef = useRef(null)
+    const reducedMotion = useSafeReducedMotion()
+    const { scrollYProgress } = useScroll({
+        target: containerRef,
+        offset: ['start center', 'end center'],
+    })
+
     return (
-        <section className="bg-bg-subtle overflow-hidden py-12">
+        <section ref={containerRef} className="bg-bg-subtle/30 relative overflow-hidden py-12">
             <div className="mx-auto max-w-7xl px-4">
-                {/* Section Header */}
-                <h2 className="font-display text-text-primary mb-12 text-center text-4xl font-extrabold italic">
-                    How It <span className="text-accent italic">Works.</span>
-                </h2>
+                {/* Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-16 text-center"
+                >
+                    <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
+                        The{' '}
+                        <span className="text-accent italic drop-shadow-[0_0_10px_rgba(2,186,76,0.2)]">
+                            Path
+                        </span>{' '}
+                        to Mastery
+                    </h2>
+                    <p className="text-text-muted mx-auto max-w-2xl leading-relaxed md:text-lg">
+                        Our platform is designed to take you from a curious coder to an algorithm
+                        expert through a structured, rewarding process.
+                    </p>
+                </motion.div>
 
-                {/* Steps Flow */}
-                <div className="relative">
-                    {/* Connecting Line (Desktop Only) */}
-                    <div className="bg-border border-border-strong absolute top-8 left-0 hidden h-[1px] w-full border-b border-dashed md:block"></div>
+                {/* Connector Line (Desktop only) */}
+                <div className="absolute top-20 left-0 z-[-1] hidden w-full px-24 lg:block">
+                    <svg className="h-2 w-full" fill="none" viewBox="0 0 1000 8">
+                        <path
+                            d="M0 4L1000 4"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-border"
+                            strokeDasharray="8 8"
+                        />
+                        <motion.path
+                            d="M0 4L1000 4"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            className="text-accent drop-shadow-[0_0_8px_rgba(2,186,76,0.6)]"
+                            style={{ pathLength: reducedMotion ? 1 : scrollYProgress }}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                </div>
 
-                    {/* Mobile Vertical Flow (lg:hidden) */}
-                    <div className="relative space-y-8 text-left lg:hidden">
-                        {/* Vertical Connector Line */}
-                        <div className="bg-border absolute top-0 bottom-0 left-6 w-0.5"></div>
-
-                        {stepsData.map((item, idx) => (
-                            <div key={idx} className="relative pl-16">
-                                <div className="bg-bg-page border-border font-display text-text-primary absolute left-0 z-10 flex size-12 items-center justify-center rounded-full border-2 text-lg font-bold shadow-sm">
-                                    {item.step}
-                                </div>
-                                <Card className="border-none bg-transparent shadow-none">
-                                    <h4 className="font-display text-text-primary mb-1 text-lg font-extrabold">
-                                        {item.title}
-                                    </h4>
-                                    <p className="text-text-muted text-sm leading-relaxed">
-                                        {item.desc}
-                                    </p>
-                                </Card>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Desktop Horizontal Flow (hidden lg:grid) */}
-                    <div className="hidden gap-12 md:grid-cols-4 lg:grid">
-                        {stepsData.map((item, idx) => (
-                            <div
-                                key={idx}
-                                className="group relative z-10 flex flex-col items-center text-center"
-                            >
-                                {/* Step Number Circle */}
-                                <div className="bg-bg-page border-border font-display text-text-primary group-hover:border-accent/50 mb-8 flex size-16 items-center justify-center rounded-2xl border text-xl font-black shadow-sm transition-colors">
-                                    {item.step}
-                                </div>
-
-                                {/* Step Details */}
-                                <h4 className="font-display text-text-primary mb-3 text-lg font-extrabold">
-                                    {item.title}
-                                </h4>
-                                <p className="text-text-muted max-w-[180px] text-xs leading-relaxed">
-                                    {item.desc}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
+                {/* Steps Grid */}
+                <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+                    {stepsData.map((step, idx) => (
+                        <StepCard
+                            key={idx}
+                            step={step}
+                            index={idx}
+                            progress={scrollYProgress}
+                            reducedMotion={reducedMotion}
+                            isLast={idx === stepsData.length - 1}
+                        />
+                    ))}
                 </div>
             </div>
         </section>
+    )
+}
+
+function StepCard({ step, index, progress, reducedMotion, isLast }) {
+    const activationPoint = index * 0.25
+
+    const bgTransform = useTransform(
+        progress,
+        [activationPoint, activationPoint + 0.1],
+        ['#ffffff', '#00C853']
+    )
+    const colorTransform = useTransform(
+        progress,
+        [activationPoint, activationPoint + 0.1],
+        ['#a1a1aa', '#ffffff']
+    )
+    const iconOpacity = useTransform(progress, [activationPoint, activationPoint + 0.1], [0, 1])
+
+    // Spring physics for a more aggressive "pop" when activated
+    const scaleTransform = useTransform(
+        progress,
+        [activationPoint, activationPoint + 0.1],
+        [0.95, 1.05]
+    )
+    const popScale = Object.assign(scaleTransform, { stiffness: 300, damping: 15 })
+
+    return (
+        <motion.div
+            style={{ scale: reducedMotion ? 1 : popScale }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ delay: index * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="group relative transition-transform duration-300"
+        >
+            {/* Mobile vertical connector */}
+            {!isLast && (
+                <div className="absolute top-20 left-1/2 flex -translate-x-1/2 flex-col items-center sm:hidden">
+                    <div className="bg-border mt-2 h-full min-h-[48px] w-px" />
+                    <svg
+                        width="10"
+                        height="6"
+                        className="text-border"
+                        viewBox="0 0 10 6"
+                        fill="none"
+                    >
+                        <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                </div>
+            )}
+
+            {/* Badge + Icon */}
+            <div className="relative mx-auto mb-8 flex min-h-[96px] w-fit flex-col items-center">
+                <motion.div
+                    style={{
+                        backgroundColor: reducedMotion ? '#00C853' : bgTransform,
+                        color: reducedMotion ? '#ffffff' : colorTransform,
+                    }}
+                    className="border-border group-hover:shadow-accent-glow flex size-16 items-center justify-center rounded-2xl border font-mono text-2xl font-black shadow-sm transition-shadow duration-500"
+                >
+                    {step.step < 10 ? `0${step.step}` : step.step}
+                </motion.div>
+
+                <motion.div
+                    style={{ opacity: iconOpacity, scale: iconOpacity }}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }}
+                    className="bg-accent ring-bg-page absolute -top-4 -right-4 flex size-12 items-center justify-center rounded-xl text-white shadow-[0_0_20px_rgba(2,186,76,0.4)] ring-2"
+                >
+                    <div className="[&_svg]:size-6">{step.icon}</div>
+                </motion.div>
+            </div>
+
+            {/* Text Content */}
+            <div className="text-center lg:text-left">
+                <h3 className="text-text-primary mb-3 text-xl font-extrabold tracking-tight">
+                    {step.title}
+                </h3>
+                <p className="text-text-muted text-sm leading-relaxed">{step.desc}</p>
+            </div>
+        </motion.div>
     )
 }

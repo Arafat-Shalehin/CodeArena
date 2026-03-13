@@ -44,15 +44,15 @@ export default function ProfileDropdown({ user, onLogout }) {
             >
                 <Avatar className="border-accent/30 size-9 border-2 shadow-sm">
                     <AvatarImage
-                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
-                        alt={user.username}
+                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                        alt={user.name || 'User'}
                     />
                     <AvatarFallback className="bg-accent/10 text-accent text-xs font-bold">
-                        {user.username.substring(0, 2).toUpperCase()}
+                        {(user.name || user.email || 'U').substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
                 <span className="text-text-primary max-w-[120px] truncate text-sm font-semibold">
-                    {user.username}
+                    {user.name}
                 </span>
                 <ChevronDown
                     size={14}

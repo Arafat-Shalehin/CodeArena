@@ -8,6 +8,7 @@ OUTPUT_FILE="/workspace/output.txt"
 ERROR_FILE="/workspace/error.txt"
 TIME_LIMIT=${TIME_LIMIT:-5}
 MEMORY_LIMIT=${MEMORY_LIMIT:-512000}
+OUTPUT_LIMIT=${OUTPUT_LIMIT:-10485760} # Default 10MB
 
 # Check if source file exists
 if [ ! -f "$SOURCE_FILE" ]; then
@@ -21,9 +22,9 @@ START_TIME=$(date +%s%N)
 EXIT_CODE=0
 
 if [ -f "$INPUT_FILE" ]; then
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" python3 "$SOURCE_FILE" < "$INPUT_FILE" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    ( /usr/bin/time -f "%M" timeout ${TIME_LIMIT}s python3 "$SOURCE_FILE" < "$INPUT_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" ) 2>>"$ERROR_FILE" || EXIT_CODE=$?
 else
-    timeout ${TIME_LIMIT}s /usr/bin/time -f "%M" python3 "$SOURCE_FILE" > "$OUTPUT_FILE" 2>"$ERROR_FILE" || EXIT_CODE=$?
+    ( /usr/bin/time -f "%M" timeout ${TIME_LIMIT}s python3 "$SOURCE_FILE" | head -c "$OUTPUT_LIMIT" > "$OUTPUT_FILE" ) 2>>"$ERROR_FILE" || EXIT_CODE=$?
 fi
 
 END_TIME=$(date +%s%N)
@@ -41,8 +42,8 @@ elif [ $EXIT_CODE -ne 0 ]; then
 fi
 
 # Check memory usage
-MEMORY_USED=$(tail -1 "$ERROR_FILE")
-if [ "$MEMORY_USED" -gt "$MEMORY_LIMIT" ]; then
+MEMORY_USED=$(tail -1 "$ERROR_FILE" | tr -dc '0-9')
+if [[ -n "$MEMORY_USED" ]] && [ "$MEMORY_USED" -gt "$MEMORY_LIMIT" ]; then
     echo "MEMORY_LIMIT_EXCEEDED"
     echo "Memory used: ${MEMORY_USED}KB"
     exit 1
@@ -50,5 +51,5 @@ fi
 
 echo "SUCCESS"
 echo "Execution time: ${EXECUTION_TIME}ms"
-echo "Memory used: ${MEMORY_USED}KB"
+echo "Memory used: ${MEMORY_USED:-0}KB"
 cat "$OUTPUT_FILE"

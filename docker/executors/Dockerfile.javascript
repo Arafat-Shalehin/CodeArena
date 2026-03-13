@@ -1,6 +1,9 @@
 # JavaScript (Node.js) Execution Environment
 FROM node:20-slim
 
+LABEL project="codearena"
+LABEL component="executor-javascript"
+
 # Install necessary tools
 RUN apt-get update && apt-get install -y \
     time \
@@ -17,12 +20,13 @@ RUN chown -R coderunner:coderunner /workspace
 
 # Copy execution script
 COPY scripts/javascript-runner.sh /usr/local/bin/runner.sh
-RUN chmod +x /usr/local/bin/runner.sh
+RUN sed -i 's/\r$//' /usr/local/bin/runner.sh && chmod +x /usr/local/bin/runner.sh
 
 # Set resource limits
 RUN echo "coderunner hard cpu 1" >> /etc/security/limits.conf && \
-    echo "coderunner hard nproc 50" >> /etc/security/limits.conf && \
-    echo "coderunner hard fsize 10240" >> /etc/security/limits.conf
+    echo "coderunner hard nproc 64" >> /etc/security/limits.conf && \
+    echo "coderunner hard fsize 10240" >> /etc/security/limits.conf && \
+    echo "coderunner hard nofile 256" >> /etc/security/limits.conf
 
 # Switch to non-root user
 USER coderunner

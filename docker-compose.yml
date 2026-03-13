@@ -3,6 +3,7 @@ services:
     mongodb:
         image: mongo:latest
         container_name: codearena-mongodb
+        init: true
         restart: always
         environment:
             MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
@@ -24,10 +25,12 @@ services:
         image: redis:7
         container_name: codearena-redis
         restart: unless-stopped
+        ports:
+            - '6379:6379'
         command: >
             sh -c "redis-server
             --appendonly yes
-            --requirepass ${REDIS_PASSWORD}
+            --requirepass $${REDIS_PASSWORD:-SuperStrongRedisPassword}
             --maxmemory 256mb
             --maxmemory-policy allkeys-lru"
         volumes:
@@ -35,7 +38,7 @@ services:
         networks:
             - codearena-network
         healthcheck:
-            test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+            test: ["CMD", "redis-cli", "-a", "$${REDIS_PASSWORD:-SuperStrongRedisPassword}", "ping"]
             interval: 10s
             timeout: 5s
             retries: 5
@@ -51,6 +54,7 @@ services:
                 - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
                 - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
                 - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+        init: true
         container_name: codearena-app
         restart: always
         depends_on:

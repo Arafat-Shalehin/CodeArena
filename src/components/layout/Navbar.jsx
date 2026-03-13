@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
@@ -13,16 +13,17 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import SearchBar from '@/components/layout/SearchBar'
 import ProfileDropdown from '@/components/layout/ProfileDropdown'
 import MobileMenu from '@/components/layout/MobileMenu'
+import NotificationBell from '@/components/layout/NotificationBell'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
 
 // Navigation Data
 const NAV_LINKS = [
+    { name: 'Feed', href: '/feed' },
     { name: 'Problems', href: '/problems' },
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
-    { name: 'Practice', href: '/practice' },
 ]
 
 /**
@@ -36,6 +37,7 @@ const NAV_LINKS = [
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const router = useRouter()
+    const pathname = usePathname()
     const { user, isAuthenticated, logout } = useAuth()
 
     /** Handle logout action */
@@ -66,15 +68,30 @@ export default function Navbar() {
                     </Link>
 
                     <nav className="hidden items-center gap-1 md:flex">
-                        {NAV_LINKS.map((link) => (
-                            <Link
-                                key={link.name}
-                                href={link.href}
-                                className="text-text-muted hover:text-text-primary hover:bg-bg-subtle rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                            >
-                                {link.name}
-                            </Link>
-                        ))}
+                        {NAV_LINKS.filter((link) => link.name !== 'Feed' || isAuthenticated).map(
+                            (link) => {
+                                const isActive =
+                                    pathname === link.href ||
+                                    (link.href !== '/' && pathname?.startsWith(link.href + '/'))
+                                return (
+                                    <Link
+                                        key={link.name}
+                                        href={link.href}
+                                        aria-current={isActive ? 'page' : undefined}
+                                        className={`group relative rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                                            isActive
+                                                ? 'text-text-primary bg-bg-subtle'
+                                                : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
+                                        }`}
+                                    >
+                                        {link.name}
+                                        {isActive && (
+                                            <span className="bg-accent absolute right-3 bottom-1 left-3 h-0.5 rounded-full transition-all duration-300" />
+                                        )}
+                                    </Link>
+                                )
+                            }
+                        )}
                     </nav>
                 </div>
 
@@ -84,7 +101,10 @@ export default function Navbar() {
                 {/* Desktop: Auth Buttons OR Profile Dropdown */}
                 <div className="hidden items-center gap-3 md:flex">
                     {isAuthenticated && user ? (
-                        <ProfileDropdown user={user} onLogout={handleLogout} />
+                        <>
+                            <NotificationBell />
+                            <ProfileDropdown user={user} onLogout={handleLogout} />
+                        </>
                     ) : (
                         <>
                             <Link
@@ -108,11 +128,11 @@ export default function Navbar() {
                         <Link href="/profile" className="mr-1">
                             <Avatar className="border-accent/30 size-8 border-2">
                                 <AvatarImage
-                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
-                                    alt={user.username}
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                                    alt={user.name || 'User'}
                                 />
                                 <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
-                                    {user.username.substring(0, 2).toUpperCase()}
+                                    {(user.name || user.email || 'U').substring(0, 2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
                         </Link>

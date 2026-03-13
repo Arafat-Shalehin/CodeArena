@@ -1,6 +1,9 @@
 # Python Execution Environment
 FROM python:3.11-slim-bookworm
 
+LABEL project="codearena"
+LABEL component="executor-python"
+
 # Install necessary tools
 RUN apt-get update && apt-get install -y \
     time \
@@ -17,19 +20,22 @@ RUN chown -R coderunner:coderunner /workspace
 
 # Copy execution script
 COPY scripts/python-runner.sh /usr/local/bin/runner.sh
-RUN chmod +x /usr/local/bin/runner.sh
+RUN sed -i 's/\r$//' /usr/local/bin/runner.sh && chmod +x /usr/local/bin/runner.sh
 
-# Install commonly used Python libraries
+# Install commonly used competitive programming libraries
 RUN pip install --no-cache-dir \
     numpy==1.24.3 \
     scipy==1.10.1 \
     pandas==2.0.2 \
-    sympy==1.12
+    sympy==1.12 \
+    sortedcontainers==2.4.0 \
+    networkx==3.2.1
 
 # Set resource limits
 RUN echo "coderunner hard cpu 1" >> /etc/security/limits.conf && \
-    echo "coderunner hard nproc 50" >> /etc/security/limits.conf && \
-    echo "coderunner hard fsize 10240" >> /etc/security/limits.conf
+    echo "coderunner hard nproc 64" >> /etc/security/limits.conf && \
+    echo "coderunner hard fsize 10240" >> /etc/security/limits.conf && \
+    echo "coderunner hard nofile 256" >> /etc/security/limits.conf
 
 # Switch to non-root user
 USER coderunner

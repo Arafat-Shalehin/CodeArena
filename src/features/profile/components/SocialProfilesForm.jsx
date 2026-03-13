@@ -4,41 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Github, Linkedin, Twitter } from 'lucide-react'
 
-/**
- * SocialProfilesForm Component
- * * A form section dedicated to managing a user's social media handles.
- * This component handles nested state updates for social media fields
- * (GitHub, LinkedIn, Twitter) and renders them in a responsive grid.
- * * @component
- * @param {Object} props - The component props.
- * @param {Object} props.socials - An object containing the current social media handles.
- * @param {string} [props.socials.github] - The user's GitHub username.
- * @param {string} [props.socials.linkedin] - The user's LinkedIn profile ID.
- * @param {string} [props.socials.twitter] - The user's Twitter/X handle.
- * @param {Function} props.onChange - A callback function to update the parent state.
- * Expected to handle an event-like object containing the updated 'socials' object.
- * * @returns {React.JSX.Element} The rendered social profiles form card.
- */
-export default function SocialProfilesForm({ socials, onChange }) {
-    /**
-     * Intercepts local input changes and packages them into a format
-     * compatible with the parent's centralized `handleChange` logic.
-     * * @param {React.ChangeEvent<HTMLInputElement>} e - The input change event.
-     * @returns {void}
-     */
-    const handleChange = (e) => {
-        const { name, value } = e.target
-        onChange({
-            target: {
-                name: 'socials',
-                value: {
-                    ...socials,
-                    [name]: value,
-                },
-            },
-        })
-    }
-
+export default function SocialProfilesForm({ register, errors }) {
     return (
         <Card className="p-6">
             <h3 className="text-text-primary mb-6 text-lg font-semibold">Social Profiles</h3>
@@ -58,13 +24,16 @@ export default function SocialProfilesForm({ socials, onChange }) {
                         />
                         <Input
                             id="github"
-                            name="github"
-                            value={socials.github}
-                            onChange={handleChange}
+                            {...register('socials.github')}
                             className="pl-10"
                             placeholder="username"
                         />
                     </div>
+                    {errors.socials?.github && (
+                        <p className="text-error text-xs font-medium">
+                            {errors.socials.github.message}
+                        </p>
+                    )}
                 </div>
 
                 {/* LinkedIn Input */}
@@ -82,13 +51,16 @@ export default function SocialProfilesForm({ socials, onChange }) {
                         />
                         <Input
                             id="linkedin"
-                            name="linkedin"
-                            value={socials.linkedin}
-                            onChange={handleChange}
+                            {...register('socials.linkedin')}
                             className="pl-10"
                             placeholder="profile-id"
                         />
                     </div>
+                    {errors.socials?.linkedin && (
+                        <p className="text-error text-xs font-medium">
+                            {errors.socials.linkedin.message}
+                        </p>
+                    )}
                 </div>
 
                 {/* Twitter Input */}
@@ -106,13 +78,16 @@ export default function SocialProfilesForm({ socials, onChange }) {
                         />
                         <Input
                             id="twitter"
-                            name="twitter"
-                            value={socials.twitter}
-                            onChange={handleChange}
+                            {...register('socials.twitter')}
                             className="pl-10"
                             placeholder="@handle"
                         />
                     </div>
+                    {errors.socials?.twitter && (
+                        <p className="text-error text-xs font-medium">
+                            {errors.socials.twitter.message}
+                        </p>
+                    )}
                 </div>
             </div>
         </Card>

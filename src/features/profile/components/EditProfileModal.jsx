@@ -19,13 +19,9 @@ import { User, AtSign, FileText, X, Loader2 } from 'lucide-react'
 const editProfileSchema = z.object({
     name: z
         .string()
-        .min(2, 'Display name must be at least 2 characters')
-        .max(50, 'Display name must be at most 50 characters'),
-    username: z
-        .string()
         .min(3, 'Username must be at least 3 characters')
-        .max(20, 'Username must be at most 20 characters')
-        .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores'),
+        .max(25, 'Username must be at most 25 characters')
+        .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
     bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
 })
 
@@ -71,18 +67,16 @@ export default function EditProfileModal({ user, onSave, onClose }) {
         resolver: zodResolver(editProfileSchema),
         defaultValues: {
             name: user?.name || '',
-            username: user?.username || '',
             bio: user?.bio || '',
         },
     })
 
-    // Controlled avatar seed (not part of Zod schema — it's always valid)
-    const avatarSeed =
-        watch('avatarSeed') ?? (user?.avatarSeed || user?.username || PREDEFINED_AVATARS[0])
+    // Controlled avatar seed
+    const avatarSeed = watch('avatarSeed') ?? (user?.avatarSeed || user?.name || PREDEFINED_AVATARS[0])
 
-    // Set initial avatarSeed into the form so we can watch it
+    // Set initial avatarSeed into the form
     useEffect(() => {
-        setValue('avatarSeed', user?.avatarSeed || user?.username || PREDEFINED_AVATARS[0])
+        setValue('avatarSeed', user?.avatarSeed || user?.name || PREDEFINED_AVATARS[0])
     }, [user, setValue])
 
     // Escape key + scroll lock
@@ -101,7 +95,7 @@ export default function EditProfileModal({ user, onSave, onClose }) {
     const bioValue = watch('bio') || ''
 
     const onSubmit = async (data) => {
-        // Sync displayName to Firebase Auth so it survives page reloads
+        // Sync displayName to Firebase Auth
         if (auth.currentUser) {
             try {
                 await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
@@ -109,7 +103,7 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                 console.error('Firebase profile sync failed:', e)
             }
         }
-        onSave({ name: data.name, username: data.username, bio: data.bio || '', avatarSeed })
+        onSave({ name: data.name, bio: data.bio || '', avatarSeed })
         onClose()
     }
 
@@ -135,19 +129,22 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                 {/* Scrollable form body + sticky footer all inside one <form> */}
                 <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
                     <div className="flex-1 space-y-5 overflow-y-auto p-6">
-                        {/* Display Name */}
+                        {/* Unique Handle (mapped to backend 'name') */}
                         <div className="space-y-1.5">
-                            <Label htmlFor="name" className="text-text-primary text-sm font-medium">
-                                Display Name
+                            <Label
+                                htmlFor="name"
+                                className="text-text-primary text-sm font-medium"
+                            >
+                                Username / Handle
                             </Label>
                             <div className="relative">
                                 <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <User size={16} />
+                                    <AtSign size={16} />
                                 </div>
                                 <Input
                                     id="name"
                                     className="h-11 pl-10"
-                                    placeholder="Your display name"
+                                    placeholder="your_unique_handle"
                                     disabled={isSubmitting}
                                     {...register('name')}
                                 />
@@ -157,35 +154,8 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                                     {errors.name.message}
                                 </p>
                             )}
-                        </div>
-
-                        {/* Username */}
-                        <div className="space-y-1.5">
-                            <Label
-                                htmlFor="username"
-                                className="text-text-primary text-sm font-medium"
-                            >
-                                Username
-                            </Label>
-                            <div className="relative">
-                                <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <AtSign size={16} />
-                                </div>
-                                <Input
-                                    id="username"
-                                    className="h-11 pl-10"
-                                    placeholder="your_username"
-                                    disabled={isSubmitting}
-                                    {...register('username')}
-                                />
-                            </div>
-                            {errors.username && (
-                                <p className="text-error text-xs font-medium">
-                                    {errors.username.message}
-                                </p>
-                            )}
                             <p className="text-text-muted text-xs">
-                                Used everywhere on the platform to identify you.
+                                Unique name used to identify you and for your profile URL.
                             </p>
                         </div>
 
@@ -235,11 +205,10 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                                             key={seed}
                                             type="button"
                                             onClick={() => setValue('avatarSeed', seed)}
-                                            className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
-                                                isSelected
-                                                    ? 'border-accent ring-accent/20 bg-accent/5 ring-2'
-                                                    : 'border-border hover:border-text-muted/50 hover:bg-bg-subtle bg-bg-page'
-                                            }`}
+                                            className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${isSelected
+                                                ? 'border-accent ring-accent/20 bg-accent/5 ring-2'
+                                                : 'border-border hover:border-text-muted/50 hover:bg-bg-subtle bg-bg-page'
+                                                }`}
                                         >
                                             <img
                                                 src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${seed}`}

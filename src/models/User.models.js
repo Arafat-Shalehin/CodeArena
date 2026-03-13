@@ -36,10 +36,82 @@ const userSchema = new mongoose.Schema(
             enum: ['user', 'admin', 'contestant'],
             default: 'user',
         },
+        avatarSeed: {
+            type: String,
+            default: '',
+        },
+        bio: {
+            type: String,
+            default: '',
+        },
+        location: {
+            type: String,
+            default: '',
+        },
+        website: {
+            type: String,
+            default: '',
+        },
+        socials: {
+            github: { type: String, default: '' },
+            linkedin: { type: String, default: '' },
+            twitter: { type: String, default: '' },
+        },
         stats: {
             totalSubmissions: { type: Number, default: 0 },
-            accepted: { type: Number, default: 0 },
+            accepted: { type: Number, default: 0 }, // Unique problems solved
             score: { type: Number, default: 0 },
+            weeklyGoal: { type: Number, default: 10 },
+            solvedProblems: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Problem',
+                },
+            ],
+            attemptedProblems: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Problem',
+                },
+            ],
+            solvedDistribution: {
+                easy: { type: Number, default: 0 },
+                medium: { type: Number, default: 0 },
+                hard: { type: Number, default: 0 },
+            },
+            activityCalendar: {
+                type: Map,
+                of: Number,
+                default: {},
+            },
+            contestsParticipated: { type: Number, default: 0 },
+        },
+        followers: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
+        following: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
+        performanceStats: {
+            type: Map,
+            of: new mongoose.Schema(
+                {
+                    attempted: { type: Number, default: 0 },
+                    solved: { type: Number, default: 0 },
+                    failed: { type: Number, default: 0 },
+                    uniqueProblems: { type: Number, default: 0 },
+                    lastAttemptDate: { type: Date, default: null },
+                    recentSolveStreak: { type: Number, default: 0 },
+                },
+                { _id: false }
+            ),
+            default: {},
         },
         loginAttempts: {
             type: Number,

@@ -7,7 +7,8 @@ import mongoose from 'mongoose'
 import { protect } from '@/middlewares/auth.middleware'
 
 export const GET = asyncHandler(async (req, context) => {
-    const { id } = context.params
+    const params = await context.params
+    const { id } = params
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
         const error = new Error('Invalid problem ID.')
@@ -16,25 +17,27 @@ export const GET = asyncHandler(async (req, context) => {
     }
 
     await dbConnect()
-    return fetchProblemById(req, context)
+    return fetchProblemById(req, { params })
 })
 
 export const PUT = asyncHandler(async (req, context) => {
+    const params = await context.params
     await dbConnect()
 
     const user = await protect(req)
     req.user = user
 
-    await authorize(['admin'])(req, context)
-    return update(req, context)
+    await authorize(['admin'])(req, { params })
+    return update(req, { params })
 })
 
 export const DELETE = asyncHandler(async (req, context) => {
+    const params = await context.params
     await dbConnect()
 
     const user = await protect(req)
     req.user = user
 
-    await authorize(['admin'])(req, context)
-    return remove(req, context)
+    await authorize(['admin'])(req, { params })
+    return remove(req, { params })
 })

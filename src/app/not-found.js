@@ -5,7 +5,7 @@ import Footer from '@/components/layout/Footer'
 
 export default function NotFound() {
     return (
-        <div className="bg-bg-page flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
             <main className="flex flex-grow flex-col items-center justify-center p-4 text-center">
                 <h2 className="font-display text-text-primary mb-4 text-4xl font-bold">

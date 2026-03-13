@@ -26,7 +26,7 @@ export function useSocialLogin() {
                 providerName === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider()
 
             await signInWithPopup(auth, provider)
-            router.push('/profile')
+            router.push('/feed')
         } catch (err) {
             if (err.code === 'auth/account-exists-with-different-credential') {
                 setError(
