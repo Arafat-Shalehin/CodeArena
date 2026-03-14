@@ -52,6 +52,7 @@ const submissionSchema = new mongoose.Schema(
             // Standardized uppercase verdicts
             enum: [
                 'ACCEPTED',
+                'EXECUTED',
                 'WRONG_ANSWER',
                 'TIME_LIMIT_EXCEEDED',
                 'MEMORY_LIMIT_EXCEEDED',

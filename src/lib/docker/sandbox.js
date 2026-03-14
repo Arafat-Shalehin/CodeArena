@@ -60,8 +60,8 @@ export const SANDBOX_CONFIG = {
 
     // Ulimits for inside the container
     ulimits: {
-        nofile: { Name: 'nofile', Soft: 256, Hard: 256 },
-        nproc: { Name: 'nproc', Soft: 64, Hard: 64 },
+        nofile: { Name: 'nofile', Soft: 1024, Hard: 1024 }, // Increased from 256 - Python needs more FDs during startup
+        nproc: { Name: 'nproc', Soft: 128, Hard: 128 }, // Increased from 64 - Python threading and subprocess use
         fsize: { Name: 'fsize', Soft: 10485760, Hard: 10485760 }, // 10 MB file size limit
     },
 

@@ -86,7 +86,7 @@ export function initSubmissionWorker() {
                 let firstError = null
 
                 if (submission.type === 'run') {
-                    // 🚀 'RUN' Path: Execute once with custom input
+                    // 🚀 'RUN' Path: Execute once with custom input (Playground - NO JUDGING)
                     console.log(
                         `[WORKER] RUN TYPE: Executing with custom input for submission ${submissionId}`
                     )
@@ -101,6 +101,7 @@ export function initSubmissionWorker() {
                         input: submission.customInput || '',
                         timeLimit: problem.timeLimit,
                         memoryLimit: problem.memoryLimit,
+                        isPlayground: true, // Don't judge, just execute
                     })
 
                     console.log(`[WORKER] Execution result:`, {
@@ -122,21 +123,21 @@ export function initSubmissionWorker() {
                         actualOutput: result.output,
                     })
 
-                    // 🔴 Real-time update for run type via Redis pub/sub
+                    // 🎮 Socket event for Run result (stdout/stderr only)
                     if (redisClient.isOpen) {
                         console.log(
-                            `[WORKER] Publishing execution_completed event for submission ${submissionId}`
+                            `[WORKER] Publishing run_result event for submission ${submissionId}`
                         )
                         redisClient
                             .publish(
                                 'submission_updates',
                                 JSON.stringify({
-                                    type: 'execution_completed',
+                                    type: 'run_result',
                                     submissionId,
                                     userId: submission.userId,
-                                    verdict: finalVerdict,
                                     output: result.output,
-                                    error: firstError,
+                                    error: result.error,
+                                    verdict: finalVerdict,
                                     executionTime: maxTime,
                                     memoryUsed: maxMemory,
                                 })
@@ -173,6 +174,7 @@ export function initSubmissionWorker() {
                             specialJudgeCode:
                                 problem.judgeType === 'special' ? problem.specialJudgeCode : null,
                             expectedOutput: testCase.expectedOutput,
+                            isPlayground: false, // Don't convert ACCEPTED to EXECUTED for submit
                         })
 
                         maxTime = Math.max(maxTime, result.executionTime || 0)
@@ -205,6 +207,7 @@ export function initSubmissionWorker() {
                             `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
                         )
                         const caseResult = {
+                            caseNumber: i + 1,
                             testCaseId: testCase._id,
                             verdict: resultVerdict,
                             time: result.executionTime || 0,
@@ -220,7 +223,7 @@ export function initSubmissionWorker() {
 
                         testCaseResults.push(caseResult)
 
-                        // 🔴 Real-time update via Redis pub/sub (for socket.io to broadcast)
+                        // 📊 Real-time progress update via Redis pub/sub
                         if (redisClient.isOpen) {
                             redisClient
                                 .publish(
@@ -229,9 +232,9 @@ export function initSubmissionWorker() {
                                         type: 'test_case_completed',
                                         submissionId,
                                         userId: submission.userId,
-                                        testCaseIndex: i + 1,
+                                        caseNumber: i + 1,
                                         totalTestCases: totalCount,
-                                        testCaseResult: caseResult,
+                                        verdict: resultVerdict,
                                         progress: Math.round(((i + 1) / totalCount) * 100),
                                     })
                                 )
@@ -243,9 +246,12 @@ export function initSubmissionWorker() {
                             // or the special judge (inside Docker)
                             passedCount++
                         } else {
-                            // First failure determines final verdict
+                            // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
                             finalVerdict = resultVerdict
                             firstError = result.error
+                            console.log(
+                                `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
+                            )
                             break
                         }
                     }
@@ -266,20 +272,34 @@ export function initSubmissionWorker() {
                 )
 
                 if (redisClient.isOpen && updatedSubmission) {
+                    const eventType = submission.type === 'run' ? 'run_result' : 'submit_result'
+                    const eventData = {
+                        type: eventType,
+                        userId: submission.userId,
+                        submissionId,
+                        problemId: submission.problemId,
+                        status: 'completed',
+                        verdict: finalVerdict,
+                        executionTime: maxTime,
+                        memoryUsed: maxMemory,
+                    }
+
+                    // For submit type, include all test case results
+                    if (submission.type === 'submit') {
+                        eventData.testResults = testCaseResults.map((tc) => ({
+                            caseNumber: tc.caseNumber,
+                            verdict: tc.verdict,
+                            time: tc.time,
+                            memory: tc.memory,
+                            isSample: tc.isSample,
+                            error: tc.error,
+                        }))
+                        eventData.passedCount = passedCount
+                        eventData.totalCount = totalCount
+                    }
+
                     redisClient
-                        .publish(
-                            'submission_updates',
-                            JSON.stringify({
-                                type: 'submission_evaluated',
-                                userId: submission.userId,
-                                submissionId,
-                                problemId: submission.problemId,
-                                status: 'completed',
-                                verdict: finalVerdict,
-                                executionTime: maxTime,
-                                memoryUsed: maxMemory,
-                            })
-                        )
+                        .publish('submission_updates', JSON.stringify(eventData))
                         .catch(console.error)
                 }
 
@@ -382,12 +402,13 @@ export function initSubmissionWorker() {
                 )
 
                 if (redisClient.isOpen && erSubmission) {
-                    console.log(`[WORKER] Publishing submission_evaluated error event`)
+                    console.log(`[WORKER] Publishing error event`)
+                    const eventType = erSubmission.type === 'run' ? 'run_result' : 'submit_result'
                     redisClient
                         .publish(
                             'submission_updates',
                             JSON.stringify({
-                                type: 'submission_evaluated',
+                                type: eventType,
                                 userId: erSubmission.userId,
                                 submissionId,
                                 problemId: erSubmission.problemId,
