@@ -25,6 +25,15 @@ export async function sendNotification(data) {
 
         // 2. Publish to Redis for Socket.IO instances to pick up
         if (redisClient.isOpen) {
+            // Invalidate notification cache
+            const cachePattern = `notifications:${data.recipientId}:*`
+            try {
+                const keys = await redisClient.keys(cachePattern)
+                if (keys.length > 0) await redisClient.del(keys)
+            } catch (err) {
+                console.error('Failed to invalidate notification cache:', err)
+            }
+
             await redisClient.publish(
                 'notifications',
                 JSON.stringify({
@@ -46,22 +55,62 @@ export async function sendNotification(data) {
 }
 
 export async function getUserNotifications(userId, limit = 20) {
-    return await Notification.find({ recipientId: userId })
+    const cacheKey = `notifications:${userId}:limit:${limit}`
+
+    try {
+        if (redisClient.isOpen) {
+            const cached = await redisClient.get(cacheKey)
+            if (cached) {
+                return JSON.parse(cached)
+            }
+        }
+    } catch (err) {
+        console.error('Redis read error in getUserNotifications:', err)
+    }
+
+    const notifications = await Notification.find({ recipientId: userId })
         .sort({ createdAt: -1 })
         .limit(limit)
         .populate('senderId', 'name avatarSeed')
+
+    try {
+        if (redisClient.isOpen) {
+            await redisClient.set(cacheKey, JSON.stringify(notifications), { EX: 300 }) // 5 mins
+        }
+    } catch (err) {
+        console.error('Redis write error in getUserNotifications:', err)
+    }
+
+    return notifications
 }
 
 export async function markAsRead(notificationId, userId) {
-    return await Notification.findOneAndUpdate(
+    const result = await Notification.findOneAndUpdate(
         { _id: notificationId, recipientId: userId },
         { isRead: true },
         { new: true }
     )
+
+    if (redisClient.isOpen) {
+        const keys = await redisClient.keys(`notifications:${userId}:*`)
+        if (keys.length > 0) await redisClient.del(keys).catch(() => {})
+    }
+
+    return result
 }
 
 export async function markAllAsRead(userId) {
-    return await Notification.updateMany({ recipientId: userId, isRead: false }, { isRead: true })
+    const result = await Notification.updateMany(
+        { recipientId: userId, isRead: false },
+        { isRead: true }
+    )
+
+    if (redisClient.isOpen) {
+        const keys = await redisClient.keys(`notifications:${userId}:*`)
+        if (keys.length > 0) await redisClient.del(keys).catch(() => {})
+    }
+
+    return result
 }
 
 export async function getUnreadCount(userId) {

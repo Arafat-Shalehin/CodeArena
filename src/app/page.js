@@ -5,6 +5,7 @@ import FeaturesSection from '@/features/home/components/FeaturesSection'
 import HowItWorksSection from '@/features/home/components/HowItWorksSection'
 import RecentProblemsSection from '@/features/home/components/RecentProblemsSection'
 import LeaderboardPreviewSection from '@/features/home/components/LeaderboardPreviewSection'
+import TrustedBySection from '@/features/home/components/TrustedBySection'
 
 import ErrorBoundary from '@/components/ui/error-boundary'
 
@@ -29,6 +30,10 @@ export default function Home() {
             <main className="flex-grow">
                 <ErrorBoundary>
                     <Hero />
+                </ErrorBoundary>
+
+                <ErrorBoundary>
+                    <TrustedBySection />
                 </ErrorBoundary>
 
                 <ErrorBoundary>

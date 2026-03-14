@@ -1,0 +1,51 @@
+config:
+  target: 'http://localhost:3002' # Targeted at the Socket.IO port directly
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 20
+      name: Warm up phase
+    - duration: 120
+      arrivalRate: 20
+      name: Sustained load
+  socketio:
+    transports: ["websocket"]
+
+scenarios:
+  - name: "Active Interview Session"
+    engine: socketio
+    flow:
+      # 1. Connect and join session
+      - emit:
+          channel: "interview:join"
+          data:
+            sessionId: "load-test-session-{{ $uuid }}"
+      
+      # 2. Simulate conversation
+      - loop:
+          - emit:
+              channel: "interview:message"
+              data:
+                content: "Explain the time complexity of this approach."
+          - think: 2
+          - emit:
+              channel: "interview:snapshot"
+              data:
+                code: "def solve(n):\n    return n * n"
+                language: "python"
+                type: "auto"
+          - think: 5
+        count: 5
+
+      # 3. Simulate code execution
+      - emit:
+          channel: "interview:snapshot"
+          data:
+            code: "def solve(n):\n    return n * n\n\nprint(solve(10))"
+            language: "python"
+            type: "run"
+      - think: 3
+
+      # 4. End session
+      - emit:
+          channel: "interview:terminate"

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
 import { initSocketServer } from '@/lib/socket-server'
+import { redisClient } from '@/lib/redis'
 
 if (process.env.NODE_ENV !== 'production') {
     initSocketServer().catch(console.error)
@@ -57,6 +58,20 @@ export async function GET(request) {
                 // If user has no location, maybe show global or empty
                 query.location = '__NON_EXISTENT__'
             }
+        }
+
+        const cacheKey = `leaderboard:global:p:${page}:l:${limit}:s:${search}:league:${league}:t:${timeframe}:u:${currentUserId || 'none'}`
+
+        try {
+            if (redisClient.isOpen) {
+                const cached = await redisClient.get(cacheKey)
+                if (cached) {
+                    console.log(`[Cache Hit] Global leaderboard: ${cacheKey}`)
+                    return NextResponse.json(JSON.parse(cached))
+                }
+            }
+        } catch (err) {
+            console.error('Redis read error in global leaderboard:', err)
         }
 
         let users = []
@@ -140,7 +155,7 @@ export async function GET(request) {
             ])
         }
 
-        return NextResponse.json({
+        const responsePayload = {
             success: true,
             data: users,
             pagination: {
@@ -150,7 +165,18 @@ export async function GET(request) {
                 pages: Math.ceil(total / limit),
             },
             livePort: 3002,
-        })
+        }
+
+        try {
+            if (redisClient.isOpen) {
+                // Cache for 60 seconds
+                await redisClient.set(cacheKey, JSON.stringify(responsePayload), { EX: 60 })
+            }
+        } catch (err) {
+            console.error('Redis write error in global leaderboard:', err)
+        }
+
+        return NextResponse.json(responsePayload)
     } catch (error) {
         console.error('[LeaderboardAPI] Execution Error:', error)
         return NextResponse.json(

@@ -7,6 +7,10 @@ const groq = new Groq({
 
 /**
  * Analyzes executed code using Groq (Llama-3) and returns rich, structured feedback.
+ * Used exclusively by the AI Feedback feature (ai.worker.js → post-submission pipeline).
+ *
+ * NOTE: Interview AI is handled separately in `src/lib/ai/interviewGroqClient.js`
+ *       to keep the two features fully decoupled.
  */
 export async function analyzeSubmissionCode({
     code,

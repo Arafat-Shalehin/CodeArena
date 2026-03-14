@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatDistanceToNow, format } from 'date-fns'
 import DailyPicks from './DailyPicks'
+import RecommendedProblems from '@/features/profile/components/RecommendedProblems'
 import FeedItem from './FeedItem'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
@@ -287,10 +288,15 @@ export default function DashboardHome({ user: initialUser }) {
                         </div>
                     </div>
 
+                    <RecommendedProblems key="rec-problems" />
+
                     <DailyPicks />
 
                     {loading ? (
-                        <div className="bg-bg-subtle border-border rounded-lg border p-8 text-center shadow-sm">
+                        <div
+                            key="feed-loading"
+                            className="bg-bg-subtle border-border rounded-lg border p-8 text-center shadow-sm"
+                        >
                             <div className="animate-pulse space-y-4">
                                 <div className="bg-bg-muted mx-auto h-10 w-10 rounded-full"></div>
                                 <div className="bg-bg-muted mx-auto h-4 w-32 rounded"></div>
@@ -306,7 +312,10 @@ export default function DashboardHome({ user: initialUser }) {
                             />
                         ))
                     ) : (
-                        <div className="bg-bg-subtle border-border rounded-lg border p-12 text-center shadow-sm">
+                        <div
+                            key="feed-empty"
+                            className="bg-bg-subtle border-border rounded-lg border p-12 text-center shadow-sm"
+                        >
                             <Rss className="text-text-muted mx-auto mb-4 h-12 w-12 opacity-50" />
                             <h3 className="text-text-primary mb-2 text-lg font-semibold">
                                 Your feed is quiet

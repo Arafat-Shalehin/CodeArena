@@ -2,10 +2,10 @@
 
 // Next.js
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 // React
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // Form
 import { useForm } from 'react-hook-form'
@@ -13,11 +13,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, emailOnlySchema } from '@/features/auth/schemas/auth.schemas'
 
 // UI
-import { Eye, EyeOff, Lock, Mail, Loader2, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, Loader2, ArrowLeft, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { toast } from 'sonner'
 
 // Firebase
 import { auth } from '@/lib/firebase/config'
@@ -39,12 +40,22 @@ import { useSocialLogin } from '@/features/auth/hooks/useSocialLogin'
  */
 export default function LoginForm() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectTo = searchParams.get('redirect') || '/feed'
     const { handleSocialLogin, isLoading: socialLoading, error: socialError } = useSocialLogin()
+    const urlError = searchParams.get('error')
+    const hasShownUrlError = useRef(false)
+
+    // Handle URL-based errors (e.g., redirect from protected route)
+    useEffect(() => {
+        if (urlError === 'unauthorized' && !hasShownUrlError.current) {
+            toast.error('Session expired or unauthorized. Please log in again.')
+            hasShownUrlError.current = true
+        }
+    }, [urlError])
 
     // UI state
     const [view, setView] = useState('email') // "email" | "forgot-password" | "magic-link"
-    const [apiError, setApiError] = useState('')
-    const [message, setMessage] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
@@ -72,10 +83,11 @@ export default function LoginForm() {
                 signInWithEmailLink(auth, emailForSignIn, window.location.href)
                     .then(() => {
                         window.localStorage.removeItem('emailForSignIn')
-                        router.push('/feed')
+                        toast.success('Successfully signed in with magic link!')
+                        router.replace('/feed')
                     })
                     .catch((err) => {
-                        setApiError(err.message.replace('Firebase: ', ''))
+                        toast.error(err.message.replace('Firebase: ', ''))
                         setIsLoading(false)
                     })
             }
@@ -83,36 +95,32 @@ export default function LoginForm() {
     }, [router])
 
     const onLoginSubmit = async (data) => {
-        setApiError('')
-        setMessage('')
         setIsLoading(true)
         try {
             await signInWithEmailAndPassword(auth, data.email, data.password)
-            router.push('/feed')
+            toast.success('Authentication successful')
+            router.replace(redirectTo)
         } catch (err) {
-            setApiError(err.message.replace('Firebase: ', ''))
+            toast.error(err.message.replace('Firebase: ', ''))
         } finally {
             setIsLoading(false)
         }
     }
 
     const onForgotPasswordSubmit = async (data) => {
-        setApiError('')
-        setMessage('')
         setIsLoading(true)
         try {
             await sendPasswordResetEmail(auth, data.email)
-            setMessage('Password reset email sent! Check your inbox.')
+            toast.success('Password reset email sent! Check your inbox.')
+            switchView('email')
         } catch (err) {
-            setApiError(err.message.replace('Firebase: ', ''))
+            toast.error(err.message.replace('Firebase: ', ''))
         } finally {
             setIsLoading(false)
         }
     }
 
     const onMagicLinkSubmit = async (data) => {
-        setApiError('')
-        setMessage('')
         setIsLoading(true)
         try {
             await sendSignInLinkToEmail(auth, data.email, {
@@ -120,9 +128,10 @@ export default function LoginForm() {
                 handleCodeInApp: true,
             })
             window.localStorage.setItem('emailForSignIn', data.email)
-            setMessage('Magic link sent! Check your inbox to sign in.')
+            toast.success('Magic link sent! Check your inbox to sign in.')
+            switchView('email')
         } catch (err) {
-            setApiError(err.message.replace('Firebase: ', ''))
+            toast.error(err.message.replace('Firebase: ', ''))
         } finally {
             setIsLoading(false)
         }
@@ -131,8 +140,6 @@ export default function LoginForm() {
     /** Switch to a sub-view, clearing errors */
     const switchView = (newView) => {
         setView(newView)
-        setApiError('')
-        setMessage('')
         emailForm.reset()
     }
 
@@ -140,27 +147,45 @@ export default function LoginForm() {
         switch (view) {
             case 'forgot-password':
                 return (
-                    <div className="space-y-2 text-center">
-                        <h1 className="text-2xl font-semibold tracking-tight">Reset Password</h1>
-                        <p className="text-text-muted text-sm">
-                            We&apos;ll email you instructions to reset your password.
-                        </p>
+                    <div className="space-y-4">
+                        <div className="bg-accent/10 text-accent mb-2 inline-flex h-12 w-12 items-center justify-center rounded-xl">
+                            <Lock className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1">
+                            <h1 className="text-text-primary text-2xl font-bold tracking-tight">
+                                Reset Password
+                            </h1>
+                            <p className="text-text-muted text-sm">
+                                We&apos;ll email you instructions to reset your password.
+                            </p>
+                        </div>
                     </div>
                 )
             case 'magic-link':
                 return (
-                    <div className="space-y-2 text-center">
-                        <h1 className="text-2xl font-semibold tracking-tight">Email Magic Link</h1>
-                        <p className="text-text-muted text-sm">
-                            We&apos;ll email you a secure link to sign in instantly.
-                        </p>
+                    <div className="space-y-4">
+                        <div className="bg-accent/10 text-accent mb-2 inline-flex h-12 w-12 items-center justify-center rounded-xl">
+                            <Mail className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1">
+                            <h1 className="text-text-primary text-2xl font-bold tracking-tight">
+                                Email Magic Link
+                            </h1>
+                            <p className="text-text-muted text-sm">
+                                We&apos;ll email you a secure link to sign in instantly.
+                            </p>
+                        </div>
                     </div>
                 )
             default:
                 return (
-                    <div className="space-y-2 text-center">
-                        <h1 className="text-2xl font-semibold tracking-tight">Welcome Back</h1>
-                        <p className="text-text-muted text-sm">Sign in to continue your journey</p>
+                    <div className="space-y-1">
+                        <h1 className="text-text-primary text-3xl font-bold tracking-tight">
+                            Welcome <span className="text-accent">Back</span>
+                        </h1>
+                        <p className="text-text-muted text-sm">
+                            Enter your credentials to access your dashboard
+                        </p>
                     </div>
                 )
         }
@@ -182,16 +207,10 @@ export default function LoginForm() {
 
             {renderHeader()}
 
-            {/* API / Social errors */}
-            {(apiError || socialError) && (
+            {/* Social errors */}
+            {socialError && (
                 <div className="bg-error-light border-error/20 text-error rounded-lg border p-3 text-sm font-medium">
-                    {apiError || socialError}
-                </div>
-            )}
-
-            {message && (
-                <div className="bg-success/10 border-success/20 text-success rounded-lg border p-3 text-sm font-medium">
-                    {message}
+                    {socialError}
                 </div>
             )}
 
@@ -199,22 +218,28 @@ export default function LoginForm() {
             {view === 'email' && (
                 <form className="space-y-6" onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
                     <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <div className="relative">
-                            <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <Label
+                            htmlFor="email"
+                            className="text-text-muted font-mono text-xs tracking-wider uppercase"
+                        >
+                            User Email
+                        </Label>
+                        <div className="group relative">
+                            <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
                                 <Mail className="h-5 w-5" />
                             </div>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="name@company.com"
-                                className="pl-10"
+                                placeholder="developer@codearena.com"
+                                className="bg-bg-surface/50 border-border group-focus-within:border-accent/50 h-11 pl-10 font-mono text-sm transition-all"
                                 disabled={anyLoading}
                                 {...loginForm.register('email')}
                             />
                         </div>
                         {loginForm.formState.errors.email && (
-                            <p className="text-error text-xs font-medium">
+                            <p className="text-error flex items-center gap-1 text-xs font-medium">
+                                <AlertCircle className="h-3 w-3" />{' '}
                                 {loginForm.formState.errors.email.message}
                             </p>
                         )}
@@ -222,24 +247,29 @@ export default function LoginForm() {
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label htmlFor="password">Password</Label>
+                            <Label
+                                htmlFor="password"
+                                className="text-text-muted font-mono text-xs tracking-wider uppercase"
+                            >
+                                Access Key
+                            </Label>
                             <button
                                 type="button"
                                 onClick={() => switchView('forgot-password')}
-                                className="text-accent hover:text-accent-hover text-sm font-medium transition-colors"
+                                className="text-accent hover:text-accent-hover text-xs font-medium transition-colors"
                             >
-                                Forgot password?
+                                Forgot?
                             </button>
                         </div>
-                        <div className="relative">
-                            <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <div className="group relative">
+                            <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
                                 <Lock className="h-5 w-5" />
                             </div>
                             <Input
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
                                 placeholder="••••••••"
-                                className="pr-10 pl-10"
+                                className="bg-bg-surface/50 border-border group-focus-within:border-accent/50 h-11 pr-10 pl-10 font-mono text-sm transition-all"
                                 disabled={anyLoading}
                                 {...loginForm.register('password')}
                             />
@@ -257,14 +287,23 @@ export default function LoginForm() {
                             </button>
                         </div>
                         {loginForm.formState.errors.password && (
-                            <p className="text-error text-xs font-medium">
+                            <p className="text-error flex items-center gap-1 text-xs font-medium">
+                                <AlertCircle className="h-3 w-3" />{' '}
                                 {loginForm.formState.errors.password.message}
                             </p>
                         )}
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={anyLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
+                    <Button
+                        type="submit"
+                        className="shadow-accent/20 h-11 w-full shadow-lg"
+                        disabled={anyLoading}
+                    >
+                        {isLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            'Authenticate'
+                        )}
                     </Button>
                 </form>
             )}

@@ -1,28 +1,26 @@
 import { Queue } from 'bullmq'
 
-// Support Railway's REDIS_URL format (primary) or individual env vars (fallback)
-let connection
+// Same env strategy as redis.js — Railway injects REDIS_URL; locally we leave it blank.
+const redisUrl = process.env.REDIS_URL || ''
 
-if (process.env.REDIS_URL) {
-    // Railway or other platforms provide complete REDIS_URL
-    connection = process.env.REDIS_URL
-} else {
-    // Fallback to individual host/port/password config
-    connection = {
-        host:
-            process.env.REDIS_HOST ||
-            (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
-    }
-}
+const connection = redisUrl
+    ? { url: redisUrl }
+    : {
+          host: process.env.REDIS_HOST || 'localhost',
+          port: parseInt(process.env.REDIS_PORT || '6379'),
+          ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+      }
 
-// Singleton for the submission queue
-let submissionQueue
+// Singleton for the queues
+const queues = {}
 
-export function getSubmissionQueue() {
-    if (!submissionQueue) {
-        submissionQueue = new Queue('submission-queue', {
+/**
+ * Get or create a BullMQ queue
+ * @param {string} name - The name of the queue
+ */
+export function getQueue(name) {
+    if (!queues[name]) {
+        queues[name] = new Queue(name, {
             connection,
             defaultJobOptions: {
                 attempts: 3,
@@ -32,11 +30,43 @@ export function getSubmissionQueue() {
                 },
                 removeOnComplete: true,
                 removeOnFail: false,
-                timeout: 30000, // 30 seconds to prevent hanging
+                timeout: 30000,
             },
         })
     }
-    return submissionQueue
+    return queues[name]
+}
+
+export function getSubmissionQueue() {
+    return getQueue('submission-queue')
+}
+
+export function getAIAnalysisQueue() {
+    return getQueue('ai-analysis-queue')
+}
+
+/**
+ * Queue for processing live interview AI chat messages.
+ * Uses a shorter timeout since streaming must be real-time.
+ * Only 2 attempts — retrying stale AI turns would confuse the user.
+ */
+export function getInterviewAIQueue() {
+    if (!queues['interview-ai']) {
+        queues['interview-ai'] = new Queue('interview-ai', {
+            connection,
+            defaultJobOptions: {
+                attempts: 2,
+                removeOnComplete: true,
+                removeOnFail: false,
+                timeout: 60000,
+            },
+        })
+    }
+    return queues['interview-ai']
+}
+
+export function getStatsQueue() {
+    return getQueue('stats-queue')
 }
 
 export { connection }

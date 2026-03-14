@@ -21,7 +21,7 @@ export default function FeedPage() {
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
-            router.replace('/login')
+            router.replace('/login?error=unauthorized')
         }
     }, [isLoading, isAuthenticated, router])
 

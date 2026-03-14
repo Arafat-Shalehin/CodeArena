@@ -67,6 +67,7 @@ services:
             - DOCKER_HOST=http://docker-proxy:2375
             - NODE_ENV=${NODE_ENV:-production}
             - JWT_SECRET=${JWT_SECRET}
+            - REDIS_URL=${REDIS_URL}
             - REDIS_HOST=redis
             - REDIS_PORT=6379
             - REDIS_PASSWORD=${REDIS_PASSWORD}

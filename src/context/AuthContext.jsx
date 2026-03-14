@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { auth } from '@/lib/firebase/config'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { toast } from 'sonner'
 
 /**
  * @typedef {Object} AuthContextValue
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
     // Hydrate user profile changes (like avatarSeed) from localStorage to overlay on top of DB user
     const [localPreferences, setLocalPreferences] = useState({})
 
+    // 1. Initial hydration of preferences from localStorage
     useEffect(() => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY)
@@ -31,11 +33,14 @@ export function AuthProvider({ children }) {
         } catch {}
     }, [])
 
+    // 2. Core Firebase state listener (Runs once on mount)
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
+                // IMPORTANT: Prevent premature redirects by keeping isLoading true until sync finishes
+                setIsLoading(true)
                 try {
-                    // 1. Sync Firebase User with our Backend (and set httpOnly cookie)
+                    // Sync Firebase User with our Backend (and set httpOnly cookie)
                     const syncRes = await fetch('/api/auth/sync', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -51,47 +56,60 @@ export function AuthProvider({ children }) {
                     const syncData = await syncRes.json()
 
                     if (syncData.success) {
-                        // 2. Set the combined user object (MongoDB data + UI preferences)
-                        const dbUser = syncData.data?.user || syncData.user // flexible for API response shape
+                        const dbUser = syncData.data?.user || syncData.user
                         const userId = dbUser._id?.toString()
-                        setUser({
+
+                        setUser((prev) => ({
                             ...dbUser,
                             id: userId,
                             _id: userId,
                             firebaseUid: firebaseUser.uid,
-                            ...localPreferences,
-                        })
+                            // Ensure local preferences are applied if already loaded
+                            ...prev?.localPreferences,
+                        }))
                     } else {
-                        console.error('Backend sync failed:', syncData.error)
-                        // Fallback to minimal user object if sync fails but Firebase is okay
                         setUser({
                             firebaseUid: firebaseUser.uid,
                             email: firebaseUser.email,
                             name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-                            ...localPreferences,
                         })
                     }
                 } catch (error) {
                     console.error('Error during auth init/sync:', error)
+                    toast.error('Session sync failed. Please try logging in again.')
+                } finally {
+                    setIsLoading(false)
                 }
             } else {
                 setUser(null)
+                setIsLoading(false)
             }
-            setIsLoading(false)
         })
 
         return () => unsubscribe()
+    }, [])
+
+    // 3. Merging Preferences when they change (Independent of Auth listener)
+    useEffect(() => {
+        if (user && Object.keys(localPreferences).length > 0) {
+            setUser((prev) => ({ ...prev, ...localPreferences }))
+        }
     }, [localPreferences])
 
     const logout = useCallback(async () => {
         setIsLoading(true)
         try {
+            // Logout API endpoint to clear httpOnly cookie
+            await fetch('/api/auth/logout', { method: 'POST' })
+
             await signOut(auth)
             setUser(null)
             setLocalPreferences({})
             localStorage.removeItem(STORAGE_KEY)
+            toast.success('Logged out successfully')
         } catch (error) {
             console.error('Error logging out:', error)
+            toast.error('Failed to logout. Please try again.')
         } finally {
             setIsLoading(false)
         }
@@ -118,6 +136,7 @@ export function AuthProvider({ children }) {
 
     const syncUser = useCallback(async () => {
         try {
+            setIsLoading(true)
             const res = await fetch('/api/auth/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -138,6 +157,8 @@ export function AuthProvider({ children }) {
             }
         } catch (error) {
             console.error('Failed to sync user:', error)
+        } finally {
+            setIsLoading(false)
         }
     }, [localPreferences])
 

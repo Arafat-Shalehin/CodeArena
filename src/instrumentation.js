@@ -2,10 +2,17 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         try {
             const { initSubmissionWorker } = await import('@/services/submission.worker')
+            const { initStatsWorker } = await import('@/services/stats.worker')
+            const { initAIWorker } = await import('@/services/ai.worker')
+            const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
+
             initSubmissionWorker()
-            console.log('>>> CodeArena Submission Worker Initialized')
+            initStatsWorker()
+            initAIWorker()
+            initInterviewAIWorker()
+            console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI, InterviewAI)')
         } catch (err) {
-            console.error('[CRITICAL] Failed to initialize Submission Worker:', err.message)
+            console.error('[CRITICAL] Failed to initialize Workers:', err.message)
         }
 
         // Start Reaction Sync Worker (runs every 5 minutes)
