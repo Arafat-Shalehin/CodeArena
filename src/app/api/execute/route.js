@@ -54,7 +54,9 @@ export async function POST(req) {
         console.log('[EXECUTE API] Problem found:', problem.title)
         console.log('[EXECUTE API] Executing code...')
 
-        // Execute the code directly
+        // Execute the code with custom input (Playground/Run mode - NO JUDGING)
+        // This is just to test the code, not for actual evaluation
+        // isPlayground=true means verdict will be EXECUTED, not ACCEPTED (no judging)
         const result = await executeCode({
             code,
             files: files && files.length > 1 ? files : undefined,
@@ -62,6 +64,7 @@ export async function POST(req) {
             input: customInput || '',
             timeLimit: problem.timeLimit,
             memoryLimit: problem.memoryLimit,
+            isPlayground: true, // This converts ACCEPTED to EXECUTED
         })
 
         console.log('[EXECUTE API] Execution result:', {
@@ -70,7 +73,7 @@ export async function POST(req) {
             executionTime: result.executionTime,
         })
 
-        // Return result directly (no submission record created)
+        // Return result directly (no submission record created, no judging against test cases)
         return new Response(
             JSON.stringify({
                 success: true,

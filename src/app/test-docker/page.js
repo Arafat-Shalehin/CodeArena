@@ -965,7 +965,7 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
         )
     }
 
-    const isAccepted = result.verdict === 'ACCEPTED'
+    const isAccepted = result.verdict === 'ACCEPTED' || result.verdict === 'EXECUTED'
     const verdictColor = isAccepted ? 'text-[#2cbb5d]' : 'text-[#ff375f]'
     const verdictLabel = result.verdict?.replace(/_/g, ' ')
 

@@ -98,7 +98,7 @@ export default function SubmissionResultTab() {
 
     if (!result) return null
 
-    const isAccepted = result.verdict === 'ACCEPTED'
+    const isAccepted = result.verdict === 'ACCEPTED' || result.verdict === 'EXECUTED'
     const verdictColor = isAccepted ? 'text-success' : 'text-error'
     const verdictLabel = (result.verdict || 'UNKNOWN').replace(/_/g, ' ')
 

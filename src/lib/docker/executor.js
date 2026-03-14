@@ -63,6 +63,7 @@ try {
  * @param {number} outputLimit - Output limit in KB
  * @param {string} specialJudgeCode - Code for special judge (JavaScript)
  * @param {string} expectedOutput - Expected output for special judge
+ * @param {boolean} isPlayground - Set to true for playground/run mode (don't return ACCEPTED verdict)
  * @returns {Promise<Object>} - Execution result
  */
 export async function executeCode({
@@ -75,35 +76,64 @@ export async function executeCode({
     outputLimit,
     specialJudgeCode,
     expectedOutput,
+    isPlayground = false,
 }) {
     try {
-        console.log(`[EXECUTOR] executeCode called: language=${language}, codeLength=${code.length}, inputLength=${input.length}`)
+        console.log(`[EXECUTOR] executeCode called: language=${language}, codeLength=${code.length}, inputLength=${input.length}, isPlayground=${isPlayground}`)
 
         // Check if Docker is available
         if (docker) {
-            // Docker is available - try to use it
+            // Docker is available - try to use it with retry logic
             console.log('[EXECUTOR] Using Docker for code execution')
-            const result = await executeCodeWithDocker({
-                code,
-                files,
-                language,
-                input,
-                timeLimit,
-                memoryLimit,
-                outputLimit,
-                specialJudgeCode,
-                expectedOutput,
-            })
+            let lastError = null
+            const maxRetries = 2
+            
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const result = await executeCodeWithDocker({
+                        code,
+                        files,
+                        language,
+                        input,
+                        timeLimit,
+                        memoryLimit,
+                        outputLimit,
+                        specialJudgeCode,
+                        expectedOutput,
+                    })
 
-            console.log(`[EXECUTOR] Docker result: verdict=${result.verdict}, success=${result.success}, error=${result.error?.substring(0, 50)}`)
+                    console.log(`[EXECUTOR] Docker result (attempt ${attempt}): verdict=${result.verdict}, success=${result.success}, error=${result.error?.substring(0, 50)}`)
 
-            // If Docker succeeded or had a non-system error, return the result
-            if (result.success || (result.verdict !== 'SYSTEM_ERROR' && result.verdict !== 'EXECUTOR_UNAVAILABLE')) {
-                return result
+                    // If in playground mode, convert ACCEPTED to EXECUTED (no judging)
+                    if (isPlayground && result.verdict === 'ACCEPTED') {
+                        result.verdict = 'EXECUTED'
+                    }
+
+                    // If Docker succeeded or had a non-system error, return the result
+                    if (result.success || (result.verdict !== 'SYSTEM_ERROR' && result.verdict !== 'EXECUTOR_UNAVAILABLE')) {
+                        return result
+                    }
+
+                    // Store error for potential retry
+                    lastError = result.error
+                    
+                    if (attempt < maxRetries) {
+                        console.log(`[EXECUTOR] Docker error on attempt ${attempt}, retrying...`)
+                        // Wait before retry
+                        await new Promise(resolve => setTimeout(resolve, 500))
+                    }
+                } catch (error) {
+                    console.error(`[EXECUTOR] Docker error on attempt ${attempt}:`, error.message)
+                    lastError = error.message
+                    
+                    if (attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 500))
+                    }
+                }
             }
 
-            // Docker failed with SYSTEM_ERROR - log and fall back to Judge0
-            console.error('[EXECUTOR] Docker execution failed with SYSTEM_ERROR:', result.error)
+            // Docker failed after retries - log and fall back to Judge0
+            console.error('[EXECUTOR] Docker execution failed after retries:', lastError)
             console.log('[EXECUTOR] Falling back to Judge0 API')
         } else {
             console.log('[EXECUTOR] Docker not available, using Judge0 directly')
@@ -120,6 +150,11 @@ export async function executeCode({
         })
 
         console.log(`[EXECUTOR] Judge0 result: verdict=${judge0Result.verdict}, success=${judge0Result.success}`)
+
+        // If in playground mode, convert ACCEPTED to EXECUTED (no judging)
+        if (isPlayground && judge0Result.verdict === 'ACCEPTED') {
+            judge0Result.verdict = 'EXECUTED'
+        }
 
         // Handle special judge results (not supported with Judge0)
         if (specialJudgeCode && judge0Result.success) {
@@ -234,6 +269,39 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
 
     // Determine if this is a multi-file submission
     const isMultiFile = files && files.length > 0
+    
+    // Check if Docker image exists
+    console.log(`[EXECUTOR] Checking for Docker image: ${langConfig.image}`)
+    try {
+        const image = docker.getImage(langConfig.image)
+        await image.inspect()
+        console.log(`[EXECUTOR] ✅ Docker image exists: ${langConfig.image}`)
+    } catch (imgError) {
+        console.error(`[EXECUTOR] ❌ Docker image not found: ${langConfig.image}`)
+        console.error(`[EXECUTOR] Error: ${imgError.message}`)
+        
+        // List available images for debugging
+        try {
+            const images = await docker.listImages()
+            const relevantImages = images.filter(img => 
+                img.RepoTags?.some(tag => 
+                    tag.includes('executor') || tag.includes('codearena')
+                )
+            )
+            if (relevantImages.length > 0) {
+                console.error('[EXECUTOR] Available executor images:')
+                relevantImages.forEach(img => {
+                    console.error(`  - ${img.RepoTags?.[0] || 'untagged'} (${(img.Size / 1024 / 1024).toFixed(1)}MB)`)
+                })
+            } else {
+                console.error('[EXECUTOR] No executor images found. Build them with: docker/scripts/build-images.sh')
+            }
+        } catch (listError) {
+            console.error('[EXECUTOR] Could not list Docker images:', listError.message)
+        }
+        
+        throw new Error(`Docker image ${langConfig.image} not found. Build it using: docker/scripts/build-images.sh`)
+    }
 
     // Create container with tail command to keep it running (override ENTRYPOINT)
     // For multi-file Java, detect the main class name
@@ -260,8 +328,53 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
     // Start container first
     await container.start()
 
+    // Verify container is actually running with better diagnostics
+    let startupAttempts = 0
+    let containerInfo = null
+    while (startupAttempts < 10) {
+        try {
+            containerInfo = await container.inspect()
+            console.log(`[EXECUTOR] Startup attempt ${startupAttempts + 1}: Running=${containerInfo.State.Running}, Status=${containerInfo.State.Status}`)
+            
+            if (containerInfo.State.Running) {
+                console.log('[EXECUTOR] ✅ Container is running, ID:', container.id.substring(0, 12))
+                break
+            }
+        } catch (e) {
+            console.log(`[EXECUTOR] Startup attempt ${startupAttempts + 1}: Inspect failed - ${e.message}`)
+        }
+        startupAttempts++
+        if (startupAttempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+        }
+    }
+
+    if (!containerInfo?.State.Running) {
+        console.error('[EXECUTOR] ❌ Container failed to start or stopped unexpectedly')
+        console.error('[EXECUTOR] Final container state:', containerInfo?.State)
+        
+        // Get container logs to see what went wrong
+        try {
+            const logs = await container.logs({
+                stdout: true,
+                stderr: true,
+                follow: false,
+            })
+            console.error('[EXECUTOR] Container logs:', logs.toString('utf8'))
+        } catch (logError) {
+            console.error('[EXECUTOR] Could not retrieve container logs:', logError.message)
+        }
+        
+        try {
+            await container.remove({ force: true })
+        } catch (e) {
+            // Ignore cleanup errors
+        }
+        throw new Error(`Container startup failed with ExitCode ${containerInfo?.State.ExitCode}. State: ${containerInfo?.State.Status || 'unknown'}`)
+    }
+
     // Wait a moment to make sure container is fully started
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Write files using exec
     try {
@@ -314,7 +427,17 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         // Ensure workspace is fully writable by everyone (including coderunner)
         await runExec('chmod 777 /workspace && chmod 666 /workspace/* 2>/dev/null || true', 'root')
     } catch (error) {
-        console.error('Error writing files to container:', error)
+        console.error('[EXECUTOR] ❌ Error writing files to container:', error.message)
+        console.error('[EXECUTOR] Error details:', error)
+        
+        // Try to inspect container state for debugging
+        try {
+            const finalState = await container.inspect()
+            console.error('[EXECUTOR] Container state at failure:', finalState.State)
+        } catch (e) {
+            console.error('[EXECUTOR] Could not inspect container at failure')
+        }
+        
         try {
             await container.stop()
         } catch (stopError) {

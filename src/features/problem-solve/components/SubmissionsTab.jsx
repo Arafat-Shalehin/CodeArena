@@ -47,13 +47,17 @@ export default function SubmissionsTab() {
             setSubmissions((prev) =>
                 prev.map((s) => (s._id === event.submissionId ? { ...s, status: 'running' } : s))
             )
-        } else if (event.type === 'submission_evaluated') {
+        } else if (
+            event.type === 'submission_evaluated' ||
+            event.type === 'submit_result' ||
+            event.type === 'run_result'
+        ) {
             setSubmissions((prev) =>
                 prev.map((s) =>
                     s._id === event.submissionId
                         ? {
                               ...s,
-                              status: event.status,
+                              status: event.status || 'completed',
                               verdict: event.verdict,
                               executionTime: event.executionTime,
                               memoryUsed: event.memoryUsed,
