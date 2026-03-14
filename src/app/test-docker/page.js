@@ -1121,7 +1121,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                         className="absolute inset-0 animate-ping rounded-full bg-purple-500/20"
                         style={{ animationDuration: '1.5s' }}
                     />
-                    <div className="relative rounded-full bg-gradient-to-br from-purple-500 to-violet-600 p-3">
+                    <div className="relative rounded-full bg-linear-to-br from-purple-500 to-violet-600 p-3">
                         <Brain size={22} className="animate-pulse text-white" />
                     </div>
                 </div>
@@ -1153,7 +1153,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                 </div>
                 <button
                     onClick={onRetry}
-                    className="mt-1 flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-violet-600 px-5 py-2 text-xs font-medium text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] hover:shadow-purple-500/40"
+                    className="mt-1 flex items-center gap-2 rounded-lg bg-linear-to-r from-purple-600 to-violet-600 px-5 py-2 text-xs font-medium text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] hover:shadow-purple-500/40"
                 >
                     <Sparkles size={14} /> Analyze with AI
                 </button>

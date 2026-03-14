@@ -2,6 +2,7 @@
 export const VERDICTS = {
     // Success
     ACCEPTED: 'ACCEPTED',
+    EXECUTED: 'EXECUTED', // Playground mode - code ran successfully without errors
     WRONG_ANSWER: 'WRONG_ANSWER',
     TIME_LIMIT_EXCEEDED: 'TIME_LIMIT_EXCEEDED',
     MEMORY_LIMIT_EXCEEDED: 'MEMORY_LIMIT_EXCEEDED',
@@ -21,6 +22,13 @@ export const VERDICT_META = {
         description: 'Solution is correct',
         color: 'green',
         score: 100,
+    },
+    [VERDICTS.EXECUTED]: {
+        code: 'EX',
+        name: 'Executed',
+        description: 'Code ran successfully (playground mode)',
+        color: 'cyan', // Positive/neutral color
+        score: 0, // No score for playground
     },
     [VERDICTS.WRONG_ANSWER]: {
         code: 'WA',

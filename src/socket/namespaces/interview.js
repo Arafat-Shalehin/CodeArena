@@ -1,11 +1,48 @@
+/**
+ * Interview Socket Namespace — /interview
+ *
+ * Architecture:
+ *  - Auth: JWT wsToken verification via middleware
+ *  - AI Chat: offloaded to `interview-ai` BullMQ queue (interviewAI.worker.js),
+ *             results streamed back to this socket via Redis Pub/Sub
+ *  - Code Run/Submit: direct Docker executor call (latency is bounded)
+ *  - Snapshots: direct DB write
+ */
+
 import { verifyWsToken } from '@/lib/auth/wsToken'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { Problem } from '@/models/Problem.models'
 import dbConnect from '@/lib/mongodb'
-import { generateInterviewChatResponse } from '@/lib/ai/groqClient'
 import { executeCode } from '@/lib/docker/executor'
+import { getInterviewAIQueue } from '@/lib/queue'
+import { interviewAIChannel } from '@/services/interviewAI.worker'
+import { createClient } from 'redis'
+
+// ── Dedicated subscriber factory ───────────────────────────────────────────────
+// Each connected socket gets its own subscriber client so it can subscribe to
+// its session channel without interfering with other connections.
+
+const redisUrl = process.env.REDIS_URL || ''
+const redisConfig = redisUrl
+    ? { url: redisUrl }
+    : {
+          socket: {
+              host: process.env.REDIS_HOST || 'localhost',
+              port: parseInt(process.env.REDIS_PORT || '6379'),
+          },
+          password: process.env.REDIS_PASSWORD || undefined,
+      }
+
+async function createSubscriber() {
+    const client = createClient(redisConfig)
+    client.on('error', (err) => console.error('[Interview NS] Redis sub error:', err))
+    await client.connect()
+    return client
+}
+
+// ── Namespace ──────────────────────────────────────────────────────────────────
 
 export function registerInterviewNamespace(io) {
     const interviewNs = io.of('/interview')
@@ -23,9 +60,6 @@ export function registerInterviewNamespace(io) {
                 return next(new Error('Authentication error: Invalid token'))
             }
 
-            // Optional: Connect to DB and verify active session here if needed
-            // For performance, the token implies active if within 15 mins.
-
             socket.userId = decoded.userId
             socket.sessionId = decoded.sessionId
             next()
@@ -34,13 +68,38 @@ export function registerInterviewNamespace(io) {
         }
     })
 
-    interviewNs.on('connection', (socket) => {
+    interviewNs.on('connection', async (socket) => {
         const sessionId = socket.sessionId
         const roomName = `interview:${sessionId}`
 
         console.log(
             `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
         )
+
+        // ── Redis subscriber for this socket ───────────────────────────────────
+        // Creates one Redis subscriber per socket connection that listens on the
+        // session's AI pub/sub channel and forwards chunks to the client.
+        let subscriber = null
+        try {
+            subscriber = await createSubscriber()
+            await subscriber.subscribe(interviewAIChannel(sessionId), (message) => {
+                try {
+                    const parsed = JSON.parse(message)
+                    // Support both streaming chunks and full analysis results
+                    if (parsed.analysis) {
+                        socket.emit('interview:ai_analysis', parsed)
+                    } else if (parsed.scorecard) {
+                        socket.emit('interview:scorecard', parsed.scorecard)
+                    } else if (parsed.chunk !== undefined) {
+                        socket.emit('interview:ai_stream_chunk', parsed)
+                    }
+                } catch {
+                    // Malformed message — ignore
+                }
+            })
+        } catch (err) {
+            console.error(`[Interview NS] Failed to subscribe for session ${sessionId}:`, err)
+        }
 
         // 1. Client joins their dedicated session room
         socket.on('interview:join', async () => {
@@ -108,8 +167,6 @@ export function registerInterviewNamespace(io) {
                 const problem = await Problem.findById(problemId)
                 if (!problem) throw new Error('Problem not found')
 
-                // For interview submissions, we evaluate against all test cases
-                // but for live feedback, we can return the result of the first failing or overall status.
                 const testCases = [...(problem.sampleTestCases || []), ...(problem.testCases || [])]
 
                 let overallResult = {
@@ -140,7 +197,19 @@ export function registerInterviewNamespace(io) {
                     overallResult.passedCount++
                 }
 
+                // a. Emit raw verdict to client
                 socket.emit('interview:submission_result', overallResult)
+
+                // b. Enqueue AI analysis job
+                const queue = getInterviewAIQueue()
+                await queue.add('process-submission-analysis', {
+                    sessionId,
+                    userId: socket.userId,
+                    problemId,
+                    submissionVerdict: overallResult,
+                    code,
+                    language,
+                })
             } catch (error) {
                 console.error('[Socket.IO] Submit Error:', error)
                 socket.emit('interview:submission_result', {
@@ -151,13 +220,13 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        // 5. Client sends a chat message directly to AI
+        // 5. Client sends a chat message → enqueue AI job
         socket.on('interview:chat_message', async (payload) => {
             try {
                 await dbConnect()
                 const { content, phase } = payload
 
-                // 1. Save user message to DB
+                // a. Persist the user turn immediately so the worker sees it
                 await InterviewMessage.create({
                     sessionId,
                     role: 'user',
@@ -166,44 +235,18 @@ export function registerInterviewNamespace(io) {
                     ts: new Date(),
                 })
 
-                // 2. Fetch context for AI
-                const [session, history, lastSnapshot] = await Promise.all([
-                    InterviewSession.findById(sessionId).populate('problemIds'),
-                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(10),
-                    InterviewSnapshot.findOne({ sessionId }).sort({ ts: -1 }),
-                ])
-
-                const problem = session?.problemIds?.[0]
-                if (!problem) return
-
-                // 3. Generate and stream AI response
-                const messages = history.map((m) => ({ role: m.role, content: m.content }))
-                const aiStream = generateInterviewChatResponse({
-                    messages,
-                    problemTitle: problem.title,
-                    problemDescription: problem.description,
-                    currentCode: lastSnapshot?.code || '',
-                    language: lastSnapshot?.language || 'python',
-                    phase: phase || 'coding',
-                })
-
-                let fullResponse = ''
-                for await (const chunk of aiStream) {
-                    fullResponse += chunk
-                    socket.emit('interview:ai_stream_chunk', { chunk, done: false })
-                }
-
-                // 4. Save final AI message and signify completion
-                await InterviewMessage.create({
+                // b. Enqueue the AI processing job
+                //    The worker will publish chunks to the Redis channel this
+                //    socket is already subscribed to → client gets the stream.
+                const queue = getInterviewAIQueue()
+                await queue.add('process-chat', {
                     sessionId,
-                    role: 'ai',
+                    userId: socket.userId,
+                    content,
                     phase: phase || 'coding',
-                    content: fullResponse,
-                    ts: new Date(),
                 })
-                socket.emit('interview:ai_stream_chunk', { chunk: '', done: true })
             } catch (error) {
-                console.error('[Socket.IO] AI Chat Error:', error)
+                console.error('[Socket.IO] Chat enqueue error:', error)
                 socket.emit('interview:ai_stream_chunk', {
                     chunk: 'Sorry, I hit a snag. Please try again.',
                     done: true,
@@ -211,10 +254,19 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        socket.on('disconnect', () => {
+        // Clean up subscriber on disconnect
+        socket.on('disconnect', async () => {
             console.log(
                 `[Socket.IO /interview] User ${socket.userId} disconnected from session ${sessionId}`
             )
+            if (subscriber) {
+                try {
+                    await subscriber.unsubscribe(interviewAIChannel(sessionId))
+                    await subscriber.quit()
+                } catch {
+                    // Ignore cleanup errors
+                }
+            }
         })
     })
 

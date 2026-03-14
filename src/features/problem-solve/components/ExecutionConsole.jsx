@@ -32,7 +32,11 @@ import AiFeedbackTab from './AiFeedbackTab'
 function TestCaseTab() {
     const { problem, testInput, setTestInput, activeTestCase, setActiveTestCase } =
         useProblemSolve()
+
     if (!problem) return null
+
+    // Ensure testInput is a string to avoid uncontrolled component warnings
+    const inputValue = testInput ?? ''
 
     return (
         <div className="p-5">
@@ -43,7 +47,9 @@ function TestCaseTab() {
                             key={i}
                             onClick={() => {
                                 setActiveTestCase(i)
-                                setTestInput(problem.sampleTestCases[i].input || '')
+                                // Ensure input is properly synced when changing test case
+                                const caseInput = problem.sampleTestCases[i]?.input ?? ''
+                                setTestInput(caseInput)
                             }}
                             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                                 activeTestCase === i
@@ -64,9 +70,13 @@ function TestCaseTab() {
                     Input
                 </div>
                 <textarea
-                    value={testInput}
-                    onChange={(e) => setTestInput(e.target.value)}
-                    className="bg-bg-muted text-text-primary border-border focus:border-accent/40 focus:ring-accent/20 w-full resize-none rounded-xl border p-4 font-mono text-[13px] transition-all outline-none focus:ring-1"
+                    value={inputValue}
+                    onChange={(e) => {
+                        const newValue = e.target.value
+                        setTestInput(newValue)
+                    }}
+                    placeholder="Enter test input here..."
+                    className="bg-bg-muted text-text-primary border-border focus:border-accent/40 focus:ring-accent/20 placeholder:text-text-muted/50 w-full resize-none rounded-xl border p-4 font-mono text-[13px] transition-all outline-none focus:ring-1"
                     rows={4}
                     spellCheck="false"
                 />
@@ -105,10 +115,27 @@ function TestResultTab() {
         )
     }
     if (result.status === 'running') {
+        const passedCount = result.results?.length || 0
+        const totalCount = result.totalCount || '?'
+        const progress = result.progress || 0
+
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-gray-400">
-                <Loader2 size={20} className="animate-spin" />
-                <span className="text-sm">Judging...</span>
+            <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-gray-400">
+                <Loader2 size={24} className="animate-spin text-blue-500" />
+                <div className="flex flex-col items-center gap-2">
+                    <span className="text-sm font-semibold">Judging in progress...</span>
+                    <div className="text-xs text-gray-500">
+                        {passedCount} / {totalCount} test cases
+                    </div>
+                </div>
+                {/* Progress Bar */}
+                <div className="h-2 w-48 overflow-hidden rounded-full bg-gray-700">
+                    <div
+                        className="h-full bg-blue-500 transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+                {progress > 0 && <div className="text-xs text-gray-400">{progress}% complete</div>}
             </div>
         )
     }
@@ -124,7 +151,7 @@ function TestResultTab() {
         )
     }
 
-    const isAccepted = result.verdict === 'ACCEPTED'
+    const isAccepted = result.verdict === 'ACCEPTED' || result.verdict === 'EXECUTED'
     const verdictColor = isAccepted ? 'text-success' : 'text-error'
     const caseResults = result.results || []
     const testCases = problem?.sampleTestCases || []
@@ -258,7 +285,7 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
     return (
         <>
             {/* Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-2">
+            <div className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-2">
                 <div className="flex items-center gap-0.5">
                     <button
                         onClick={() => setConsoleTab('testcase')}

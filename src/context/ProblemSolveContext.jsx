@@ -3,297 +3,299 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { io } from 'socket.io-client'
 import { useAuth } from '@/context/AuthContext'
+import {
+    CodeEditorProvider,
+    useCodeEditor,
+    STARTER_CODES,
+    LANG_LABELS,
+} from '@/context/CodeEditorContext'
+import { ExecutionProvider, useExecution } from '@/context/ExecutionContext'
+import { RealtimeProvider, useRealtime } from '@/context/RealtimeContext'
+import { CacheProvider, useCache } from '@/context/CacheContext'
 import { toast } from 'sonner'
 
 const ProblemSolveContext = createContext()
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const STARTER_CODES = {
-    python: `# Write your solution here
-import sys
-input = sys.stdin.readline
-
-`,
-    cpp: `#include <iostream>
-using namespace std;
-
-int main() {
-    
-    return 0;
-}
-`,
-    java: `import java.util.Scanner;
-
-public class Solution {
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        
-        sc.close();
-    }
-}
-`,
-    javascript: `const readline = require('readline');
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-const lines = [];
-rl.on('line', (line) => lines.push(line));
-rl.on('close', () => {
-    
-});
-`,
-}
-
-const LANG_LABELS = {
-    python: 'Python 3',
-    cpp: 'C++',
-    java: 'Java',
-    javascript: 'JavaScript',
-}
-
+// Re-export for backward compatibility
 export { STARTER_CODES, LANG_LABELS }
 
-export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
+// Inner component that uses all sub-contexts
+function ProblemSolveProviderInner({ children, problemId, initialCode, problem, contestId }) {
     const { user, syncUser } = useAuth()
-    // Core code state
-    const [code, setCode] = useState(initialCode || '')
-    const [language, setLanguage] = useState('python')
 
-    // Multi-file state
-    const [files, setFiles] = useState([
-        { filename: 'solution.py', content: initialCode || '', isMain: true },
-    ])
-    const [activeFileIndex, setActiveFileIndex] = useState(0)
+    // Get sub-contexts
+    const codeEditor = useCodeEditor()
+    const execution = useExecution()
+    const realtime = useRealtime()
+    const cache = useCache()
 
-    // Execution state
-    const [isRunning, setIsRunning] = useState(false)
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [consoleTab, setConsoleTab] = useState('testcase') // testcase, result, ai
-    const [testInput, setTestInput] = useState('')
-    const [testResult, setTestResult] = useState(null)
-    const [activeTestCase, setActiveTestCase] = useState(0)
-
-    // AI state
-    const [aiFeedback, setAiFeedback] = useState(null)
-    const [isAiLoading, setIsAiLoading] = useState(false)
-
-    // Console visibility
+    // Local UI state
     const [isConsoleOpen, setIsConsoleOpen] = useState(true)
-
-    // Left panel tab + submission result
     const [leftTab, setLeftTab] = useState('description')
-    const [submissionResult, setSubmissionResult] = useState(null)
 
-    // Socket state
-    const [socket, setSocket] = useState(null)
-    const [latestSubmissionEvent, setLatestSubmissionEvent] = useState(null)
-
-    // Persist code to localStorage
+    // Reset all states when problem changes
     useEffect(() => {
-        const savedCode = localStorage.getItem(`codearena_code_${problemId}_${language}`)
-        if (savedCode) {
-            setCode(savedCode)
-        } else {
-            setCode(STARTER_CODES[language] || '')
-        }
-    }, [problemId, language])
+        execution.setIsRunning(false)
+        execution.setIsSubmitting(false)
+        execution.setTestResult(null)
+        execution.setTestInput('')
+        execution.setActiveTestCase(0)
+        execution.setConsoleTab('output')
+        execution.setTestResultData(null)
+        cache.clearCache()
+        setIsConsoleOpen(true)
+        setLeftTab('description')
+    }, [problemId])
 
-    // Set initial test input from problem
+    // Initialize test input from problem
     useEffect(() => {
         if (problem?.sampleTestCases?.length > 0) {
-            setTestInput(problem.sampleTestCases[0].input || '')
+            execution.setTestInput(problem.sampleTestCases[0].input || '')
         }
-    }, [problem])
+    }, [problem, execution])
 
-    const updateCode = (newCode) => {
-        setCode(newCode)
-        localStorage.setItem(`codearena_code_${problemId}_${language}`, newCode)
-        // Sync active file content
-        setFiles((prev) => {
-            const updated = [...prev]
-            if (updated[activeFileIndex]) {
-                updated[activeFileIndex] = { ...updated[activeFileIndex], content: newCode }
-            }
-            return updated
-        })
-    }
-
-    // ─── Multi-file helpers ───────────────────────────────────────────────────
-
-    const LANG_EXTENSIONS = { python: '.py', cpp: '.cpp', java: '.java', javascript: '.js' }
-
-    const addFile = (filename) => {
-        if (!filename) return
-        if (files.some((f) => f.filename === filename)) return
-        const newFile = { filename, content: '', isMain: false }
-        setFiles((prev) => [...prev, newFile])
-        setActiveFileIndex(files.length)
-        setCode('')
-    }
-
-    const removeFile = (index) => {
-        if (files[index]?.isMain) return // Cannot remove main file
-        setFiles((prev) => prev.filter((_, i) => i !== index))
-        if (activeFileIndex >= index && activeFileIndex > 0) {
-            setActiveFileIndex(activeFileIndex - 1)
-        }
-        // Update code to reflect new active file
-        const newIdx = activeFileIndex >= index ? Math.max(0, activeFileIndex - 1) : activeFileIndex
-        setCode(files[newIdx]?.content || '')
-    }
-
-    const renameFile = (index, newName) => {
-        if (!newName || files[index]?.isMain) return
-        setFiles((prev) => {
-            const updated = [...prev]
-            updated[index] = { ...updated[index], filename: newName }
-            return updated
-        })
-    }
-
-    const switchToFile = (index) => {
-        setActiveFileIndex(index)
-        setCode(files[index]?.content || '')
-    }
-
-    const handleLanguageChange = (lang) => {
-        setLanguage(lang)
-        const ext = LANG_EXTENSIONS[lang] || '.txt'
-        const defaultFileName = lang === 'java' ? 'Solution' + ext : 'solution' + ext
-        // Reset to single main file for new language
-        const savedCode = localStorage.getItem(`codearena_code_${problemId}_${lang}`)
-        const newCode = savedCode || STARTER_CODES[lang] || ''
-        setFiles([{ filename: defaultFileName, content: newCode, isMain: true }])
-        setActiveFileIndex(0)
-        if (!savedCode) {
-            setCode(STARTER_CODES[lang] || '')
-        }
-    }
-
-    const resetCode = () => {
-        const ext = LANG_EXTENSIONS[language] || '.txt'
-        const defaultFileName = language === 'java' ? 'Solution' + ext : 'solution' + ext
-        const starterCode = STARTER_CODES[language] || ''
-        setCode(starterCode)
-        setFiles([{ filename: defaultFileName, content: starterCode, isMain: true }])
-        setActiveFileIndex(0)
-        localStorage.removeItem(`codearena_code_${problemId}_${language}`)
-    }
-
-    // ─── Run Code (Asynchronous via BullMQ) ──────────────────────────────────
+    // ─── Run Code (Direct Execution - No Submission Record) ───────────────────
     const runCode = useCallback(async () => {
         if (!problem) return
-        setIsRunning(true)
-        setConsoleTab('result')
+        console.log('[FRONTEND] RUN CODE BUTTON CLICKED')
+        console.log('[FRONTEND] Problem ID:', problem._id)
+        console.log('[FRONTEND] Code length:', codeEditor.code.length)
+        console.log('[FRONTEND] Language:', codeEditor.language)
+        console.log('[FRONTEND] Custom input:', execution.testInput)
+
+        execution.setIsRunning(true)
+        execution.setConsoleTab('result')
         setIsConsoleOpen(true)
-        setTestResult({ status: 'running' })
+        execution.setTestResult({
+            status: 'running',
+            totalCount: 1,
+            results: [],
+        })
 
         try {
-            const res = await fetch('/api/submissions', {
+            console.log('[FRONTEND] Sending POST /api/execute (direct execution, no submission)')
+            const res = await fetch('/api/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     problemId: problem._id,
-                    code,
-                    files: files.length > 1 ? files : undefined,
-                    language,
-                    type: 'run',
-                    customInput: testInput, // Custom input for 'run' type
+                    code: codeEditor.code,
+                    files: codeEditor.files.length > 1 ? codeEditor.files : undefined,
+                    language: codeEditor.language,
+                    customInput: execution.testInput,
                 }),
             })
             const data = await res.json()
 
+            console.log('[FRONTEND] Execution Response:', data)
+
             if (!data.success) {
-                setTestResult({ status: 'error', error: data.message })
-                setIsRunning(false)
+                console.error('[FRONTEND] Execution failed:', data.message)
+                execution.setTestResult({
+                    status: 'error',
+                    error: data.message || 'Execution failed',
+                    verdict: data.verdict || 'RUNTIME_ERROR',
+                })
+                execution.setIsRunning(false)
+            } else {
+                const result = {
+                    status: 'done',
+                    verdict: data.result?.verdict || 'SUCCESS',
+                    time: data.result?.executionTime || 0,
+                    memory: data.result?.memoryUsed || 0,
+                    output: data.result?.output || '',
+                    error: data.result?.error || '',
+                    totalCount: 1,
+                }
+                execution.setTestResult(result)
+                execution.setIsRunning(false)
+
+                // 🚀 CACHE THE RESULT for Submit optimization
+                cache.setCachedExecution(codeEditor.code, result)
+                console.log('[FRONTEND] Code execution completed (not saved as submission)')
             }
-            // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
-            setTestResult({ status: 'error', error: err.message })
-            setIsRunning(false)
+            console.error('[FRONTEND] RUN CODE ERROR:', err)
+            execution.setTestResult({ status: 'error', error: err.message })
+            execution.setIsRunning(false)
         }
-    }, [code, language, testInput, problem, files])
+    }, [problem?._id, codeEditor.code, codeEditor.language, codeEditor.files, execution.testInput])
 
-    // ─── Submit Code (Full Judge via Docker) ─────────────────────────────────
-
-    // ─── Submit Code (Asynchronous via BullMQ) ───────────────────────────────
+    // ─── Submit Code (Full Judge via BullMQ) ───────────────────────────────
     const submitCode = useCallback(async () => {
         if (!problem) return
-        setIsSubmitting(true)
-        setConsoleTab('result')
+        console.log('[FRONTEND] SUBMIT CODE BUTTON CLICKED')
+        console.log('[FRONTEND] Problem ID:', problem._id)
+        console.log('[FRONTEND] Problem testCaseCount:', problem.testCaseCount)
+        console.log('[FRONTEND] Code length:', codeEditor.code.length)
+        console.log('[FRONTEND] Language:', codeEditor.language)
+
+        execution.setIsSubmitting(true)
+        execution.setConsoleTab('result')
         setIsConsoleOpen(true)
-        setTestResult({ status: 'running' })
-        setAiFeedback(null)
+
+        const totalTestCases = problem.testCaseCount || 0
+        console.log('[FRONTEND] Total test cases:', totalTestCases)
+
+        execution.setTestResult({
+            status: 'running',
+            totalCount: totalTestCases,
+            results: [],
+        })
 
         try {
+            // 🚀 CHECK CACHE: If code hasn't changed since last Run, use cached result
+            const currentCodeHash = cache.generateCodeHash(codeEditor.code)
+            console.log('[FRONTEND] Current code hash:', currentCodeHash)
+            console.log('[FRONTEND] Cached code hash:', cache.cachedCodeHash)
+            console.log('[FRONTEND] Cache exists?', !!cache.cachedResult)
+
+            if (cache.cachedCodeHash === currentCodeHash && cache.cachedResult) {
+                console.log('[FRONTEND] 🚀 CACHE HIT! Using cached execution result')
+
+                execution.setTestResult({
+                    ...cache.cachedResult,
+                    totalCount: totalTestCases,
+                })
+
+                const res = await fetch('/api/submissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        problemId: problem._id,
+                        code: codeEditor.code,
+                        files: codeEditor.files.length > 1 ? codeEditor.files : undefined,
+                        language: codeEditor.language,
+                        type: 'submit',
+                        contestId: contestId,
+                        cachedResult: {
+                            verdict: cache.cachedResult.verdict,
+                            executionTime: cache.cachedResult.time || 0,
+                            memoryUsed: cache.cachedResult.memory || 0,
+                            output: cache.cachedResult.output || '',
+                            error: cache.cachedResult.error || '',
+                        },
+                    }),
+                })
+                const data = await res.json()
+
+                console.log('[FRONTEND] API Response (cached):', {
+                    success: data.success,
+                    submissionId: data.data?._id,
+                })
+
+                if (!data.success) {
+                    console.error('[FRONTEND] Submission failed:', data.message)
+                    toast.error(data.message || 'Submission failed')
+                    execution.setTestResult({ status: 'error', error: data.message })
+                    execution.setIsSubmitting(false)
+                } else {
+                    const submissionId = data.data._id || data.data.id
+                    console.log(
+                        '[FRONTEND] Submission created (from cache), joining room:',
+                        `submission_${submissionId}`
+                    )
+                    toast.success('Submission created!')
+                    if (realtime.socket) {
+                        realtime.socket.emit('join_room', `submission_${submissionId}`)
+                    }
+                    execution.setIsSubmitting(false)
+                }
+                return
+            }
+
+            // CACHE MISS: Execute fresh submission
+            console.log('[FRONTEND] 🔄 CACHE MISS! Code has changed, executing fresh submission')
             const res = await fetch('/api/submissions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     problemId: problem._id,
-                    code,
-                    files: files.length > 1 ? files : undefined,
-                    language,
+                    code: codeEditor.code,
+                    files: codeEditor.files.length > 1 ? codeEditor.files : undefined,
+                    language: codeEditor.language,
                     type: 'submit',
                     contestId: contestId,
                 }),
             })
             const data = await res.json()
 
+            console.log('[FRONTEND] API Response:', {
+                success: data.success,
+                submissionId: data.data?._id,
+            })
+
             if (!data.success) {
-                setTestResult({ status: 'error', error: data.message })
-                setIsSubmitting(false)
+                console.error('[FRONTEND] Submission failed:', data.message)
+                toast.error(data.message || 'Submission failed')
+                execution.setTestResult({ status: 'error', error: data.message })
+                execution.setIsSubmitting(false)
+            } else {
+                const submissionId = data.data._id || data.data.id
+                console.log(
+                    '[FRONTEND] Submission created, joining room:',
+                    `submission_${submissionId}`
+                )
+                toast.success('Submission created!')
+                if (realtime.socket) {
+                    realtime.socket.emit('join_room', `submission_${submissionId}`)
+                }
             }
-            // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
-            setTestResult({ status: 'error', error: err.message })
-            setIsSubmitting(false)
+            console.error('[FRONTEND] SUBMIT CODE ERROR:', err)
+            execution.setTestResult({ status: 'error', error: err.message })
+            execution.setIsSubmitting(false)
         }
-    }, [code, language, problem, files, contestId])
+    }, [
+        codeEditor.code,
+        codeEditor.language,
+        codeEditor.files,
+        problem?._id,
+        problemId,
+        problem?.testCaseCount,
+        contestId,
+    ])
 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
-
     const fetchAiFeedback = useCallback(
         async (options = { switchTab: true }) => {
-            setIsAiLoading(true)
-            if (options.switchTab) {
-                setConsoleTab('ai')
-                setIsConsoleOpen(true)
-            }
             try {
                 const res = await fetch('/api/evaluation/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        code,
-                        language,
+                        code: codeEditor.code,
+                        language: codeEditor.language,
                         problemTitle: problem?.title || 'Code Challenge',
-                        verdict: testResult?.verdict || 'UNKNOWN',
-                        executionTime: testResult?.time || 0,
-                        memoryUsed: testResult?.memory || 0,
+                        verdict: execution.testResult?.verdict || 'UNKNOWN',
+                        executionTime: execution.testResult?.time || 0,
+                        memoryUsed: execution.testResult?.memory || 0,
                     }),
                 })
                 const data = await res.json()
                 if (data.success) {
-                    setAiFeedback(data.feedback)
-                    // Also update submissionResult if it exists
-                    setSubmissionResult((prev) =>
-                        prev ? { ...prev, aiFeedback: data.feedback } : null
-                    )
+                    execution.setTestResultData({ aiFeedback: data.feedback })
+                    if (options.switchTab) {
+                        execution.setConsoleTab('ai')
+                    }
                 } else {
-                    setAiFeedback({ error: data.error || 'AI analysis failed' })
+                    execution.setTestResultData({
+                        aiFeedback: { error: data.error || 'AI analysis failed' },
+                    })
                 }
             } catch (err) {
                 console.error('AI feedback error:', err)
-                setAiFeedback({ error: err.message })
-            } finally {
-                setIsAiLoading(false)
+                execution.setTestResultData({ aiFeedback: { error: err.message } })
             }
         },
-        [code, language, problem, testResult]
+        [
+            codeEditor.code,
+            codeEditor.language,
+            problem?.title,
+            execution.testResult?.verdict,
+            execution.testResult?.time,
+            execution.testResult?.memory,
+        ]
     )
 
     // ─── View Past Submission Details ──────────────────────────────────────
@@ -304,18 +306,16 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                 const data = await res.json()
                 if (data.success) {
                     const s = data.data
-                    const isRun = s.type === 'run'
                     const verdict = (s.verdict || '').toUpperCase()
                     const isAccepted = verdict === 'ACCEPTED'
 
-                    // 1. Update Test Result (Used for the console panel)
                     const mappedTestResults = (s.testCaseResults || []).map((tr) => ({
                         passed: tr.verdict === 'ACCEPTED',
                         actual: tr.actualOutput ?? '',
-                        expected: '(Hidden)', // Backend doesn't return expected for all
+                        expected: '(Hidden)',
                     }))
 
-                    setTestResult({
+                    execution.setTestResult({
                         status: 'done',
                         verdict: verdict,
                         passed: isAccepted,
@@ -328,9 +328,8 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                         error: s.error,
                     })
 
-                    // 2. If it's a 'submit', also update the submission result and switch tab
                     if (s.type === 'submit') {
-                        setSubmissionResult({
+                        realtime.setSubmissionResult({
                             id: s._id,
                             verdict: verdict,
                             passed: isAccepted,
@@ -347,7 +346,6 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                         })
                         setLeftTab('submission-result')
 
-                        // Sync user stats on successful submission
                         if (isAccepted) {
                             syncUser()
                         }
@@ -356,8 +354,8 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             } catch (err) {
                 console.error('Failed to fetch submission details:', err)
             } finally {
-                setIsSubmitting(false)
-                setIsRunning(false)
+                execution.setIsSubmitting(false)
+                execution.setIsRunning(false)
             }
         },
         [syncUser]
@@ -373,30 +371,91 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         newSocket.on('connect', () => {
             console.log('[Socket] Connected to realtime server')
             newSocket.emit('join_room', userId)
-            // Join specific problem room for live reactions
             newSocket.emit('join_room', `problem:${problemId}`)
+        })
+
+        newSocket.on('test_case_completed', (data) => {
+            console.log('[Socket] Test case completed:', data)
+            if (data.submissionId) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'running',
+                    totalCount: data.totalTestCases || prev?.totalCount,
+                    progress: data.progress,
+                    results: prev?.results
+                        ? [...prev.results, data.testCaseResult]
+                        : [data.testCaseResult],
+                }))
+            }
+        })
+
+        newSocket.on('execution_completed', (data) => {
+            console.log('[Socket] Execution completed:', data)
+            if (data.submissionId) {
+                execution.setTestResult({
+                    status: 'done',
+                    verdict: data.verdict,
+                    passed: data.verdict === 'ACCEPTED',
+                    time: data.executionTime,
+                    memory: data.memoryUsed,
+                    results: [{ actual: data.output, error: data.error }],
+                    error: data.error,
+                })
+                execution.setIsRunning(false)
+            }
         })
 
         newSocket.on('submission_update', (data) => {
             console.log('[Socket] Submission update:', data)
-            setLatestSubmissionEvent(data)
+            realtime.setLatestSubmissionEvent(data)
 
-            // Only handle active notifications if the problem matches
             if (data.problemId === problemId) {
-                // Determine if we should clear running/submitting states
-                if (data.type === 'submission_evaluated' || data.type === 'submission_error') {
-                    // Fetch full details to update the UI
-                    viewSubmissionDetails(data.submissionId)
+                // Handle new event types: 'run_result', 'submit_result'
+                const isRunResult = data.type === 'run_result'
+                const isSubmitResult = data.type === 'submit_result'
+                const isEvaluated =
+                    data.type === 'submission_evaluated' || isRunResult || isSubmitResult
 
-                    // Show notifications
-                    if (data.verdict?.toUpperCase() === 'ACCEPTED') {
-                        toast.success('Accepted!')
+                if (isEvaluated) {
+                    // For submit_result, fetch full details
+                    if (isSubmitResult) {
+                        viewSubmissionDetails(data.submissionId)
+                    }
+
+                    if (
+                        data.verdict?.toUpperCase() === 'ACCEPTED' ||
+                        data.verdict?.toUpperCase() === 'EXECUTED'
+                    ) {
+                        if (isSubmitResult) {
+                            toast.success('Accepted!')
+                        } else if (isRunResult) {
+                            toast.success('Executed!')
+                        }
+                        execution.setIsSubmitting(false)
+                        execution.setIsRunning(false)
                     } else if (data.status === 'error' || data.type === 'submission_error') {
                         toast.error(data.error || 'Evaluation Error')
-                        setIsSubmitting(false)
-                        setIsRunning(false)
-                    } else if (data.verdict) {
+                        execution.setIsSubmitting(false)
+                        execution.setIsRunning(false)
+                    } else if (data.verdict && !isRunResult) {
                         toast.error(data.verdict.replace(/_/g, ' '))
+                        execution.setIsSubmitting(false)
+                        execution.setIsRunning(false)
+                    }
+
+                    // Update execution result for both run and submit
+                    if (isRunResult || isSubmitResult) {
+                        execution.setTestResult({
+                            status: 'done',
+                            verdict: data.verdict,
+                            passed: data.verdict === 'ACCEPTED' || data.verdict === 'EXECUTED',
+                            time: data.executionTime,
+                            memory: data.memoryUsed,
+                            results: data.testResults || [],
+                            totalCount: data.totalCount,
+                            passedCount: data.passedCount,
+                            error: data.error,
+                        })
                     }
                 }
             }
@@ -404,72 +463,88 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
 
         newSocket.on('reaction_update', (data) => {
             if (data.problemId === problemId) {
-                // We'll emit a custom event or store it in context if needed,
-                // but since ReactionSystem is inside this tree, we can use a simpler approach.
-                // For now, we'll just allow the component to listen directly to the socket.
+                // Reaction system component can listen directly
             }
         })
 
-        setSocket(newSocket)
+        realtime.setSocket(newSocket)
         return () => newSocket.disconnect()
-    }, [user, problemId, viewSubmissionDetails])
+    }, [user, problemId, viewSubmissionDetails, execution])
 
     const value = {
-        // Code
-        code,
-        updateCode,
-        language,
-        setLanguage: handleLanguageChange,
-        resetCode,
+        // From CodeEditor context
+        code: codeEditor.code,
+        updateCode: codeEditor.updateCode,
+        language: codeEditor.language,
+        setLanguage: codeEditor.setLanguage,
+        resetCode: codeEditor.resetCode,
+        files: codeEditor.files,
+        activeFileIndex: codeEditor.activeFileIndex,
+        addFile: codeEditor.addFile,
+        removeFile: codeEditor.removeFile,
+        renameFile: codeEditor.renameFile,
+        switchToFile: codeEditor.switchToFile,
 
-        // Multi-file
-        files,
-        activeFileIndex,
-        addFile,
-        removeFile,
-        renameFile,
-        switchToFile,
-
-        // Problem
-        problem,
-        problemId,
-
-        // Execution
-        isRunning,
-        isSubmitting,
+        // From Execution context
+        isRunning: execution.isRunning,
+        isSubmitting: execution.isSubmitting,
         runCode,
         submitCode,
-
-        // Console
-        consoleTab,
-        setConsoleTab,
-        testInput,
-        setTestInput,
-        testResult,
-        setTestResult,
-        activeTestCase,
-        setActiveTestCase,
-        isConsoleOpen,
-        setIsConsoleOpen,
-
-        // AI
-        aiFeedback,
-        isAiLoading,
+        consoleTab: execution.consoleTab,
+        setConsoleTab: execution.setConsoleTab,
+        testInput: execution.testInput,
+        setTestInput: execution.setTestInput,
+        testResult: execution.testResult,
+        setTestResult: execution.setTestResult,
+        activeTestCase: execution.activeTestCase,
+        setActiveTestCase: execution.setActiveTestCase,
+        testResultData: execution.testResultData,
         fetchAiFeedback,
 
-        // Left panel
-        leftTab,
-        setLeftTab,
-        submissionResult,
-        setSubmissionResult,
+        // From Realtime context
+        socket: realtime.socket,
+        latestSubmissionEvent: realtime.latestSubmissionEvent,
+        submissionResult: realtime.submissionResult,
         viewSubmissionDetails,
 
-        // Realtime
-        socket,
-        latestSubmissionEvent,
+        // From Cache context
+        cachedCodeHash: cache.cachedCodeHash,
+        cachedResult: cache.cachedResult,
+
+        // Local UI state
+        isConsoleOpen,
+        setIsConsoleOpen,
+        leftTab,
+        setLeftTab,
+
+        // Problem context
+        problem,
+        problemId,
     }
 
     return <ProblemSolveContext.Provider value={value}>{children}</ProblemSolveContext.Provider>
+}
+
+// Main provider that wraps all sub-providers
+export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
+    return (
+        <CodeEditorProvider initialCode={initialCode} problemId={problemId}>
+            <ExecutionProvider>
+                <RealtimeProvider>
+                    <CacheProvider>
+                        <ProblemSolveProviderInner
+                            problemId={problemId}
+                            initialCode={initialCode}
+                            problem={problem}
+                            contestId={contestId}
+                        >
+                            {children}
+                        </ProblemSolveProviderInner>
+                    </CacheProvider>
+                </RealtimeProvider>
+            </ExecutionProvider>
+        </CodeEditorProvider>
+    )
 }
 
 export function useProblemSolve() {

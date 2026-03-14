@@ -32,11 +32,11 @@ COPY scripts/cpp-runner.sh /usr/local/bin/runner.sh
 RUN sed -i 's/\r$//' /usr/local/bin/runner.sh && chmod +x /usr/local/bin/runner.sh
 
 # Set resource limits (Sandbox Hardening)
-# These limits (nofile: 256, nproc: 64, fsize: 10MB) match your sandbox security goals 
+# These limits (nofile: 1024, nproc: 128, fsize: 10MB) balance security with runtime requirements
 RUN echo "coderunner hard cpu 1" >> /etc/security/limits.conf && \
-    echo "coderunner hard nproc 64" >> /etc/security/limits.conf && \
+    echo "coderunner hard nproc 128" >> /etc/security/limits.conf && \
     echo "coderunner hard fsize 10240" >> /etc/security/limits.conf && \
-    echo "coderunner hard nofile 256" >> /etc/security/limits.conf
+    echo "coderunner hard nofile 1024" >> /etc/security/limits.conf
 
 # Switch to non-root user for security
 USER coderunner
