@@ -51,32 +51,58 @@ const LANG_LABELS = {
 
 export { STARTER_CODES, LANG_LABELS }
 
-export function CodeEditorProvider({ children, problemId, initialCode }) {
-    const [code, setCode] = useState(initialCode || '')
-    const [language, setLanguage] = useState('python')
-    const [files, setFiles] = useState([
-        { filename: 'solution.py', content: initialCode || '', isMain: true },
-    ])
+export function CodeEditorProvider({ children, problemId = 'preview', initialCode }) {
+    // Initialize synchronously with a fallback to avoid flashes
+    const getInitialState = useCallback(
+        (type) => {
+            if (typeof window === 'undefined') {
+                return type === 'code' ? initialCode || STARTER_CODES.python : 'python'
+            }
+
+            const savedLang = localStorage.getItem(`codearena_lang_${problemId}`) || 'python'
+            if (type === 'language') return savedLang
+
+            const savedCode = localStorage.getItem(`codearena_code_${problemId}_${savedLang}`)
+            return savedCode || initialCode || STARTER_CODES[savedLang]
+        },
+        [problemId, initialCode]
+    )
+
+    const [language, setLanguage] = useState(() => getInitialState('language'))
+    const [code, setCode] = useState(() => getInitialState('code'))
+    const [files, setFiles] = useState(() => {
+        const initialLang = getInitialState('language')
+        const initialContent = getInitialState('code')
+        const ext =
+            initialLang === 'java'
+                ? '.java'
+                : initialLang === 'python'
+                  ? '.py'
+                  : initialLang === 'cpp'
+                    ? '.cpp'
+                    : '.js'
+        const defaultFileName = initialLang === 'java' ? 'Solution' + ext : 'solution' + ext
+        return [{ filename: defaultFileName, content: initialContent, isMain: true }]
+    })
+
     const [activeFileIndex, setActiveFileIndex] = useState(0)
+    const [isLoaded, setIsLoaded] = useState(true)
 
     const LANG_EXTENSIONS = { python: '.py', cpp: '.cpp', java: '.java', javascript: '.js' }
 
-    // Reset files and language when problem changes
+    // Synchronize with props if they change after mount (e.g. navigation)
     useEffect(() => {
-        setLanguage('python')
-        setActiveFileIndex(0)
-        setFiles([{ filename: 'solution.py', content: '', isMain: true }])
-    }, [problemId])
+        const lang = localStorage.getItem(`codearena_lang_${problemId}`) || 'python'
+        const savedCode = localStorage.getItem(`codearena_code_${problemId}_${lang}`)
+        const finalCode = savedCode || initialCode || STARTER_CODES[lang]
 
-    // Persist code to localStorage
-    useEffect(() => {
-        const savedCode = localStorage.getItem(`codearena_code_${problemId}_${language}`)
-        if (savedCode) {
-            setCode(savedCode)
-        } else {
-            setCode(STARTER_CODES[language] || '')
-        }
-    }, [problemId, language])
+        setLanguage(lang)
+        setCode(finalCode)
+        const ext = LANG_EXTENSIONS[lang] || '.py'
+        const name = lang === 'java' ? 'Solution' + ext : 'solution' + ext
+        setFiles([{ filename: name, content: finalCode, isMain: true }])
+        setActiveFileIndex(0)
+    }, [problemId])
 
     const updateCode = useCallback(
         (newCode) => {
@@ -178,6 +204,7 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
         removeFile,
         renameFile,
         switchToFile,
+        isLoaded,
     }
 
     return <CodeEditorContext.Provider value={value}>{children}</CodeEditorContext.Provider>

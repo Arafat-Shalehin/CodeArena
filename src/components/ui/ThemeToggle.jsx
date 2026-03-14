@@ -1,12 +1,14 @@
 'use client'
 
 import * as React from 'react'
-import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { Button } from '@/components/ui/button'
-import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
+/**
+ * @component ThemeToggle
+ * @description A premium theme switch with clouds, stars, and smooth transitions.
+ * Uses the View Transition API for a circular reveal effect where supported.
+ */
 export function ThemeToggle() {
     const { theme, setTheme, systemTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
@@ -16,43 +18,63 @@ export function ThemeToggle() {
     }, [])
 
     if (!mounted) {
-        return <div className="relative h-9 w-9 rounded-full" /> // Placeholder to prevent layout shift
+        return <div className="h-8 w-14" /> // Prevent layout shift
     }
 
     const currentTheme = theme === 'system' ? systemTheme : theme
+    const isDark = currentTheme === 'dark'
+
+    const handleToggle = (event) => {
+        const nextTheme = isDark ? 'light' : 'dark'
+
+        // Cinematic View Transition (Circular Reveal)
+        if (!document.startViewTransition) {
+            setTheme(nextTheme)
+            return
+        }
+
+        // Get the click position or button center for the reveal
+        const rect = event.currentTarget.getBoundingClientRect()
+        const x = event.clientX ?? rect.left + rect.width / 2
+        const y = event.clientY ?? rect.top + rect.height / 2
+
+        const endRadius = Math.hypot(
+            Math.max(x, window.innerWidth - x),
+            Math.max(y, window.innerHeight - y)
+        )
+
+        const transition = document.startViewTransition(() => {
+            setTheme(nextTheme)
+        })
+
+        transition.ready.then(() => {
+            document.documentElement.animate(
+                {
+                    clipPath: [
+                        `circle(0 at ${x}px ${y}px)`,
+                        `circle(${endRadius}px at ${x}px ${y}px)`,
+                    ],
+                },
+                {
+                    duration: 650,
+                    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    pseudoElement: '::view-transition-new(root)',
+                }
+            )
+        })
+    }
 
     return (
-        <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(currentTheme === 'dark' ? 'light' : 'dark')}
-            className="bg-bg-subtle hover:bg-bg-muted border-border relative h-9 w-9 rounded-full border transition-colors"
-            aria-label="Toggle theme"
-        >
-            <motion.div
-                initial={false}
-                animate={{
-                    scale: currentTheme === 'dark' ? 0 : 1,
-                    opacity: currentTheme === 'dark' ? 0 : 1,
-                    rotate: currentTheme === 'dark' ? -90 : 0,
-                }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="absolute inset-0 flex items-center justify-center text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+        <div className="flex items-center justify-center">
+            <button
+                onClick={handleToggle}
+                className="theme-switch relative inline-block h-[2em] w-[3.5em] cursor-pointer border-none bg-transparent p-0 text-[17px] transition-transform outline-none active:scale-90"
+                aria-label="Toggle Theme"
             >
-                <Sun className="h-[1.2rem] w-[1.2rem]" />
-            </motion.div>
-            <motion.div
-                initial={false}
-                animate={{
-                    scale: currentTheme === 'dark' ? 1 : 0,
-                    opacity: currentTheme === 'dark' ? 1 : 0,
-                    rotate: currentTheme === 'dark' ? 0 : 90,
-                }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="absolute inset-0 flex items-center justify-center text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)]"
-            >
-                <Moon className="h-[1.2rem] w-[1.2rem]" />
-            </motion.div>
-        </Button>
+                <input type="checkbox" checked={isDark} readOnly className="h-0 w-0 opacity-0" />
+                <span className="slider absolute inset-0 rounded-[30px] transition-all duration-400" />
+                <span className="clouds_stars absolute bottom-[50%] left-[70%] h-2.5 w-2.5 rounded-full transition-all duration-300" />
+            </button>
+        </div>
     )
 }
