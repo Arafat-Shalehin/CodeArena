@@ -91,6 +91,21 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     const [socket, setSocket] = useState(null)
     const [latestSubmissionEvent, setLatestSubmissionEvent] = useState(null)
 
+    // Cache state for Run → Submit optimization
+    const [cachedCodeHash, setCachedCodeHash] = useState(null)
+    const [cachedResult, setCachedResult] = useState(null)
+
+    // Hash function to generate code fingerprint
+    const generateCodeHash = (codeStr) => {
+        let hash = 0
+        for (let i = 0; i < codeStr.length; i++) {
+            const char = codeStr.charCodeAt(i)
+            hash = (hash << 5) - hash + char
+            hash = hash & hash // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(36)
+    }
+
     // Persist code to localStorage
     useEffect(() => {
         const savedCode = localStorage.getItem(`codearena_code_${problemId}_${language}`)
@@ -119,6 +134,9 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             }
             return updated
         })
+        // 🚀 CLEAR CACHE when code changes
+        setCachedCodeHash(null)
+        setCachedResult(null)
     }
 
     // ─── Multi-file helpers ───────────────────────────────────────────────────
@@ -171,6 +189,9 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         if (!savedCode) {
             setCode(STARTER_CODES[lang] || '')
         }
+        // 🚀 CLEAR CACHE when language changes
+        setCachedCodeHash(null)
+        setCachedResult(null)
     }
 
     const resetCode = () => {
@@ -181,9 +202,12 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         setFiles([{ filename: defaultFileName, content: starterCode, isMain: true }])
         setActiveFileIndex(0)
         localStorage.removeItem(`codearena_code_${problemId}_${language}`)
+        // 🚀 CLEAR CACHE when code is reset
+        setCachedCodeHash(null)
+        setCachedResult(null)
     }
 
-    // ─── Run Code (Asynchronous via BullMQ) ──────────────────────────────────
+    // ─── Run Code (Direct Execution - No Submission Record) ───────────────────
     const runCode = useCallback(async () => {
         if (!problem) return
         console.log('[FRONTEND] RUN CODE BUTTON CLICKED')
@@ -202,8 +226,8 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         })
 
         try {
-            console.log('[FRONTEND] Sending POST /api/submissions with type=run')
-            const res = await fetch('/api/submissions', {
+            console.log('[FRONTEND] Sending POST /api/execute (direct execution, no submission)')
+            const res = await fetch('/api/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -211,39 +235,48 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                     code,
                     files: files.length > 1 ? files : undefined,
                     language,
-                    type: 'run',
-                    customInput: testInput, // Custom input for 'run' type
+                    customInput: testInput,
                 }),
             })
             const data = await res.json()
 
-            console.log('[FRONTEND] API Response:', {
-                success: data.success,
-                submissionId: data.data?._id,
-            })
+            console.log('[FRONTEND] Execution Response:', data)
 
             if (!data.success) {
-                console.error('[FRONTEND] Submission failed:', data.message)
-                setTestResult({ status: 'error', error: data.message })
+                console.error('[FRONTEND] Execution failed:', data.message)
+                setTestResult({
+                    status: 'error',
+                    error: data.message || 'Execution failed',
+                    verdict: data.verdict || 'RUNTIME_ERROR',
+                })
                 setIsRunning(false)
             } else {
-                // Join the submission room for real-time updates
-                const submissionId = data.data._id || data.data.id
-                console.log(
-                    '[FRONTEND] Submission created, joining room:',
-                    `submission_${submissionId}`
-                )
-                if (socket) {
-                    socket.emit('join_room', `submission_${submissionId}`)
+                // Display results directly (no submission record created)
+                const result = {
+                    status: 'done',
+                    verdict: data.result?.verdict || 'SUCCESS',
+                    time: data.result?.executionTime || 0,
+                    memory: data.result?.memoryUsed || 0,
+                    output: data.result?.output || '',
+                    error: data.result?.error || '',
+                    totalCount: 1,
                 }
+                setTestResult(result)
+                setIsRunning(false)
+
+                // 🚀 CACHE THE RESULT for Submit optimization
+                const codeHash = generateCodeHash(code)
+                setCachedCodeHash(codeHash)
+                setCachedResult(result)
+                console.log('[FRONTEND] Code execution cached with hash:', codeHash)
+                console.log('[FRONTEND] Code execution completed (not saved as submission)')
             }
-            // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
             console.error('[FRONTEND] RUN CODE ERROR:', err)
             setTestResult({ status: 'error', error: err.message })
             setIsRunning(false)
         }
-    }, [code, language, testInput, problem, files, socket])
+    }, [code, language, testInput, problem, files])
 
     // ─── Submit Code (Full Judge via Docker) ─────────────────────────────────
 
@@ -272,6 +305,71 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
         setAiFeedback(null)
 
         try {
+            // 🚀 CHECK CACHE: If code hasn't changed since last Run, use cached result
+            const currentCodeHash = generateCodeHash(code)
+            console.log('[FRONTEND] Current code hash:', currentCodeHash)
+            console.log('[FRONTEND] Cached code hash:', cachedCodeHash)
+            console.log('[FRONTEND] Cache exists?', !!cachedResult)
+
+            if (cachedCodeHash === currentCodeHash && cachedResult) {
+                console.log('[FRONTEND] 🚀 CACHE HIT! Using cached execution result')
+                console.log(
+                    '[FRONTEND] Skipping code execution, submitting directly with cached result'
+                )
+
+                // Show the cached result
+                setTestResult({
+                    ...cachedResult,
+                    totalCount: totalTestCases,
+                })
+
+                // Now submit without executing (using cached result)
+                const res = await fetch('/api/submissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        problemId: problem._id,
+                        code,
+                        files: files.length > 1 ? files : undefined,
+                        language,
+                        type: 'submit',
+                        contestId: contestId, // 🚀 Pass cached result to skip worker execution
+                        cachedResult: {
+                            verdict: cachedResult.verdict,
+                            executionTime: cachedResult.time || 0,
+                            memoryUsed: cachedResult.memory || 0,
+                            output: cachedResult.output || '',
+                            error: cachedResult.error || '',
+                        },
+                    }),
+                })
+                const data = await res.json()
+
+                console.log('[FRONTEND] API Response (cached):', {
+                    success: data.success,
+                    submissionId: data.data?._id,
+                })
+
+                if (!data.success) {
+                    console.error('[FRONTEND] Submission failed:', data.message)
+                    setTestResult({ status: 'error', error: data.message })
+                    setIsSubmitting(false)
+                } else {
+                    const submissionId = data.data._id || data.data.id
+                    console.log(
+                        '[FRONTEND] Submission created (from cache), joining room:',
+                        `submission_${submissionId}`
+                    )
+                    if (socket) {
+                        socket.emit('join_room', `submission_${submissionId}`)
+                    }
+                    setIsSubmitting(false)
+                }
+                return
+            }
+
+            // CACHE MISS: Execute fresh submission
+            console.log('[FRONTEND] 🔄 CACHE MISS! Code has changed, executing fresh submission')
             console.log('[FRONTEND] Sending POST /api/submissions with type=submit')
             const res = await fetch('/api/submissions', {
                 method: 'POST',
@@ -313,7 +411,7 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             setTestResult({ status: 'error', error: err.message })
             setIsSubmitting(false)
         }
-    }, [code, language, problem, files, contestId, socket])
+    }, [code, language, problem, files, contestId, socket, cachedCodeHash, cachedResult])
 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
 

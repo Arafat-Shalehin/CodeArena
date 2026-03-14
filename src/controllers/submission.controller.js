@@ -14,10 +14,13 @@ export async function submitCode(req, user) {
         const body = await req.json()
 
         // Whitelist allowed fields
-        const { problemId, code, language, contestId, type, customInput } = body
+        const { problemId, code, language, contestId, type, customInput, cachedResult } = body
 
         console.log('[API] POST /api/submissions called')
         console.log('[API] User ID:', userId)
+        console.log('[API] Request body keys:', Object.keys(body))
+        console.log('[API] Code received?', !!code)
+        console.log('[API] Cached result provided?', !!cachedResult)
         console.log('[API] Request body:', { problemId, type, codeLength: code?.length, language })
 
         if (!problemId || !code || !language) {
@@ -45,6 +48,7 @@ export async function submitCode(req, user) {
             contestId,
             type,
             customInput,
+            cachedResult,
         })
 
         console.log('[API] Submission created successfully:', submission._id)
