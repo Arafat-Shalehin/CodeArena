@@ -3,6 +3,7 @@ import { Readable, PassThrough } from 'stream'
 import path from 'path'
 import { getLanguageConfig } from './languages.js'
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
+import { executeCodeWithJudge0, checkJudge0Availability } from '../judge0-executor.js'
 
 const dockerOptions = {}
 
@@ -11,11 +12,16 @@ const dockerTarget = process.env.DOCKER_TARGET || process.env.DOCKER_HOST
 
 if (dockerTarget) {
     if (dockerTarget.startsWith('http') || dockerTarget.startsWith('tcp')) {
-        const sanitizedTarget = dockerTarget.replace('tcp://', 'http://')
+        const sanitizedTarget = dockerTarget.replace('tcp://', 'http://').replace('https://', 'http://')
         const url = new URL(sanitizedTarget)
         dockerOptions.host = url.hostname
         dockerOptions.port = url.port || 2375
-        dockerOptions.protocol = url.protocol.replace(':', '')
+        // Disable TLS for localhost connections
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+            dockerOptions.protocol = 'http'
+        } else {
+            dockerOptions.protocol = url.protocol.replace(':', '')
+        }
     } else {
         dockerOptions.socketPath = dockerTarget
     }
@@ -30,9 +36,15 @@ if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDock
     delete process.env.DOCKER_HOST
 }
 
-let docker
+let docker = null
+let dockerInitError = null
+
 try {
     docker = new Docker(dockerOptions)
+} catch (err) {
+    // Docker unavailable (e.g., in Railway production without Docker socket)
+    dockerInitError = err
+    console.warn('⚠️  Docker not available for code execution:', err.message)
 } finally {
     // Restore it after initialization
     if (originalDockerHost) {
@@ -54,6 +66,87 @@ try {
  * @returns {Promise<Object>} - Execution result
  */
 export async function executeCode({
+    code,
+    files,
+    language,
+    input = '',
+    timeLimit,
+    memoryLimit,
+    outputLimit,
+    specialJudgeCode,
+    expectedOutput,
+}) {
+    try {
+        console.log(`[EXECUTOR] executeCode called: language=${language}, codeLength=${code.length}, inputLength=${input.length}`)
+
+        // Check if Docker is available
+        if (docker) {
+            // Docker is available - try to use it
+            console.log('[EXECUTOR] Using Docker for code execution')
+            const result = await executeCodeWithDocker({
+                code,
+                files,
+                language,
+                input,
+                timeLimit,
+                memoryLimit,
+                outputLimit,
+                specialJudgeCode,
+                expectedOutput,
+            })
+
+            console.log(`[EXECUTOR] Docker result: verdict=${result.verdict}, success=${result.success}, error=${result.error?.substring(0, 50)}`)
+
+            // If Docker succeeded or had a non-system error, return the result
+            if (result.success || (result.verdict !== 'SYSTEM_ERROR' && result.verdict !== 'EXECUTOR_UNAVAILABLE')) {
+                return result
+            }
+
+            // Docker failed with SYSTEM_ERROR - log and fall back to Judge0
+            console.error('[EXECUTOR] Docker execution failed with SYSTEM_ERROR:', result.error)
+            console.log('[EXECUTOR] Falling back to Judge0 API')
+        } else {
+            console.log('[EXECUTOR] Docker not available, using Judge0 directly')
+        }
+
+        // Docker not available or failed - fallback to Judge0
+        console.log('[EXECUTOR] Using Judge0 API for code execution')
+        const judge0Result = await executeCodeWithJudge0({
+            code,
+            language,
+            input,
+            timeLimit,
+            memoryLimit,
+        })
+
+        console.log(`[EXECUTOR] Judge0 result: verdict=${judge0Result.verdict}, success=${judge0Result.success}`)
+
+        // Handle special judge results (not supported with Judge0)
+        if (specialJudgeCode && judge0Result.success) {
+            return {
+                ...judge0Result,
+                success: false,
+                verdict: 'EXECUTOR_UNAVAILABLE',
+                error: 'Special judge not supported in this execution environment',
+            }
+        }
+
+        return judge0Result
+    } catch (error) {
+        console.error('[EXECUTOR] Code execution error:', error.message)
+        return {
+            success: false,
+            verdict: 'SYSTEM_ERROR',
+            error: error.message,
+        }
+    }
+}
+
+/**
+ * Execute code using Docker
+ * Internal function used when Docker is available
+ */
+async function executeCodeWithDocker({
     code,
     files,
     language,
@@ -365,11 +458,11 @@ function parseExecutionOutput(output, statusCode, executionTime) {
         }
     }
 
-    // Success case
+    // Success case - use 'ACCEPTED' per VERDICTS constants
     if (output.includes('SUCCESS')) {
         return {
             success: true,
-            verdict: 'SUCCESS',
+            verdict: 'ACCEPTED',
             output: extractOutput(output),
             executionTime: extractExecutionTime(output) || executionTime,
             memoryUsed: extractMemory(output) || 0,

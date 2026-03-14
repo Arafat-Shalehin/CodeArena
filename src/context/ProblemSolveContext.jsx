@@ -186,12 +186,23 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
     // ─── Run Code (Asynchronous via BullMQ) ──────────────────────────────────
     const runCode = useCallback(async () => {
         if (!problem) return
+        console.log('[FRONTEND] RUN CODE BUTTON CLICKED')
+        console.log('[FRONTEND] Problem ID:', problem._id)
+        console.log('[FRONTEND] Code length:', code.length)
+        console.log('[FRONTEND] Language:', language)
+        console.log('[FRONTEND] Custom input:', testInput)
+
         setIsRunning(true)
         setConsoleTab('result')
         setIsConsoleOpen(true)
-        setTestResult({ status: 'running' })
+        setTestResult({
+            status: 'running',
+            totalCount: 1, // 'run' type has 1 execution
+            results: [],
+        })
 
         try {
+            console.log('[FRONTEND] Sending POST /api/submissions with type=run')
             const res = await fetch('/api/submissions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -206,29 +217,62 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             })
             const data = await res.json()
 
+            console.log('[FRONTEND] API Response:', {
+                success: data.success,
+                submissionId: data.data?._id,
+            })
+
             if (!data.success) {
+                console.error('[FRONTEND] Submission failed:', data.message)
                 setTestResult({ status: 'error', error: data.message })
                 setIsRunning(false)
+            } else {
+                // Join the submission room for real-time updates
+                const submissionId = data.data._id || data.data.id
+                console.log(
+                    '[FRONTEND] Submission created, joining room:',
+                    `submission_${submissionId}`
+                )
+                if (socket) {
+                    socket.emit('join_room', `submission_${submissionId}`)
+                }
             }
             // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
+            console.error('[FRONTEND] RUN CODE ERROR:', err)
             setTestResult({ status: 'error', error: err.message })
             setIsRunning(false)
         }
-    }, [code, language, testInput, problem, files])
+    }, [code, language, testInput, problem, files, socket])
 
     // ─── Submit Code (Full Judge via Docker) ─────────────────────────────────
 
     // ─── Submit Code (Asynchronous via BullMQ) ───────────────────────────────
     const submitCode = useCallback(async () => {
         if (!problem) return
+        console.log('[FRONTEND] SUBMIT CODE BUTTON CLICKED')
+        console.log('[FRONTEND] Problem ID:', problem._id)
+        console.log('[FRONTEND] Problem testCaseCount:', problem.testCaseCount)
+        console.log('[FRONTEND] Code length:', code.length)
+        console.log('[FRONTEND] Language:', language)
+
         setIsSubmitting(true)
         setConsoleTab('result')
         setIsConsoleOpen(true)
-        setTestResult({ status: 'running' })
+
+        // Get test case count for totalCount display
+        const totalTestCases = problem.testCaseCount || 0
+        console.log('[FRONTEND] Total test cases:', totalTestCases)
+
+        setTestResult({
+            status: 'running',
+            totalCount: totalTestCases,
+            results: [],
+        })
         setAiFeedback(null)
 
         try {
+            console.log('[FRONTEND] Sending POST /api/submissions with type=submit')
             const res = await fetch('/api/submissions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -243,16 +287,33 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             })
             const data = await res.json()
 
+            console.log('[FRONTEND] API Response:', {
+                success: data.success,
+                submissionId: data.data?._id,
+            })
+
             if (!data.success) {
+                console.error('[FRONTEND] Submission failed:', data.message)
                 setTestResult({ status: 'error', error: data.message })
                 setIsSubmitting(false)
+            } else {
+                // Join the submission room for real-time updates
+                const submissionId = data.data._id || data.data.id
+                console.log(
+                    '[FRONTEND] Submission created, joining room:',
+                    `submission_${submissionId}`
+                )
+                if (socket) {
+                    socket.emit('join_room', `submission_${submissionId}`)
+                }
             }
             // Success response means it's queued. Socket.io will handle the rest.
         } catch (err) {
+            console.error('[FRONTEND] SUBMIT CODE ERROR:', err)
             setTestResult({ status: 'error', error: err.message })
             setIsSubmitting(false)
         }
-    }, [code, language, problem, files, contestId])
+    }, [code, language, problem, files, contestId, socket])
 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
 
@@ -375,6 +436,41 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
             newSocket.emit('join_room', userId)
             // Join specific problem room for live reactions
             newSocket.emit('join_room', `problem:${problemId}`)
+        })
+
+        // Real-time test case completion updates
+        newSocket.on('test_case_completed', (data) => {
+            console.log('[Socket] Test case completed:', data)
+            if (data.submissionId) {
+                // Update testResult with progress
+                setTestResult((prev) => ({
+                    ...prev,
+                    status: 'running',
+                    totalCount: data.totalTestCases || prev?.totalCount,
+                    progress: data.progress,
+                    results: prev?.results
+                        ? [...prev.results, data.testCaseResult]
+                        : [data.testCaseResult],
+                }))
+            }
+        })
+
+        // Real-time execution completion (for 'run' type)
+        newSocket.on('execution_completed', (data) => {
+            console.log('[Socket] Execution completed:', data)
+            if (data.submissionId) {
+                // Update testResult for run type
+                setTestResult({
+                    status: 'done',
+                    verdict: data.verdict,
+                    passed: data.verdict === 'ACCEPTED',
+                    time: data.executionTime,
+                    memory: data.memoryUsed,
+                    results: [{ actual: data.output, error: data.error }],
+                    error: data.error,
+                })
+                setIsRunning(false)
+            }
         })
 
         newSocket.on('submission_update', (data) => {

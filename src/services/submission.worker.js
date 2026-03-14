@@ -1,4 +1,5 @@
 import { Worker } from 'bullmq'
+import dbConnect from '@/lib/mongodb'
 import { connection, getAIAnalysisQueue, getStatsQueue } from '@/lib/queue'
 import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
@@ -12,13 +13,24 @@ import { VERDICTS } from '@/lib/evaluation/verdicts'
  * Worker to process code submissions
  */
 export function initSubmissionWorker() {
+    console.log('[WORKER INIT] Starting submission worker initialization...')
+    console.log('[WORKER INIT] Queue name: submission-queue')
+    console.log('[WORKER INIT] Connection:', {
+        host: connection.host,
+        port: connection.port,
+        url: connection.url,
+    })
+
     const worker = new Worker(
         'submission-queue',
         async (job) => {
             const { submissionId } = job.data
-            // console.log(`[WORKER] Started processing submission: ${submissionId}`)
+            console.log(`[WORKER] Started processing submission: ${submissionId}`)
 
             try {
+                // Connect to MongoDB
+                await dbConnect()
+
                 // 1. Fetch submission
                 const submission = await Submission.findById(submissionId)
                 if (!submission) {
@@ -75,6 +87,13 @@ export function initSubmissionWorker() {
 
                 if (submission.type === 'run') {
                     // 🚀 'RUN' Path: Execute once with custom input
+                    console.log(
+                        `[WORKER] RUN TYPE: Executing with custom input for submission ${submissionId}`
+                    )
+                    console.log(
+                        `[WORKER] Code length: ${submission.code.length}, Language: ${submission.language}`
+                    )
+
                     const result = await executeCode({
                         code: submission.code,
                         files: submission.files || [],
@@ -82,6 +101,12 @@ export function initSubmissionWorker() {
                         input: submission.customInput || '',
                         timeLimit: problem.timeLimit,
                         memoryLimit: problem.memoryLimit,
+                    })
+
+                    console.log(`[WORKER] Execution result:`, {
+                        verdict: result.verdict,
+                        time: result.executionTime,
+                        error: result.error,
                     })
 
                     maxTime = result.executionTime || 0
@@ -96,16 +121,45 @@ export function initSubmissionWorker() {
                         error: firstError,
                         actualOutput: result.output,
                     })
+
+                    // 🔴 Real-time update for run type via Redis pub/sub
+                    if (redisClient.isOpen) {
+                        console.log(
+                            `[WORKER] Publishing execution_completed event for submission ${submissionId}`
+                        )
+                        redisClient
+                            .publish(
+                                'submission_updates',
+                                JSON.stringify({
+                                    type: 'execution_completed',
+                                    submissionId,
+                                    userId: submission.userId,
+                                    verdict: finalVerdict,
+                                    output: result.output,
+                                    error: firstError,
+                                    executionTime: maxTime,
+                                    memoryUsed: maxMemory,
+                                })
+                            )
+                            .catch(console.error)
+                    }
                 } else if (totalCount === 0) {
+                    console.log(
+                        `[WORKER] SUBMIT TYPE but no test cases found for submission ${submissionId}`
+                    )
                     finalVerdict = VERDICTS.SYSTEM_ERROR
                     firstError = 'No test cases found for this problem.'
                 } else {
                     // 🏁 'SUBMIT' Path: Run all test cases
                     console.log(
-                        `[WORKER] Running ${totalCount} test case(s) for submission ${submissionId}`
+                        `[WORKER] SUBMIT TYPE: Running ${totalCount} test case(s) for submission ${submissionId}`
                     )
+
                     for (let i = 0; i < totalCount; i++) {
                         const testCase = testCases[i]
+                        console.log(
+                            `[WORKER] Processing test case ${i + 1}/${totalCount} with input length: ${testCase.input?.length || 0}`
+                        )
 
                         // Execute code (including special judge if enabled)
                         const result = await executeCode({
@@ -165,6 +219,24 @@ export function initSubmissionWorker() {
                         }
 
                         testCaseResults.push(caseResult)
+
+                        // 🔴 Real-time update via Redis pub/sub (for socket.io to broadcast)
+                        if (redisClient.isOpen) {
+                            redisClient
+                                .publish(
+                                    'submission_updates',
+                                    JSON.stringify({
+                                        type: 'test_case_completed',
+                                        submissionId,
+                                        userId: submission.userId,
+                                        testCaseIndex: i + 1,
+                                        totalTestCases: totalCount,
+                                        testCaseResult: caseResult,
+                                        progress: Math.round(((i + 1) / totalCount) * 100),
+                                    })
+                                )
+                                .catch(console.error)
+                        }
 
                         if (resultVerdict === 'SUCCESS' || resultVerdict === VERDICTS.ACCEPTED) {
                             // If it's a success, it means it passed either exact match (default)
@@ -293,9 +365,12 @@ export function initSubmissionWorker() {
 
                 return { verdict: finalVerdict, passedCount, totalCount }
             } catch (error) {
-                console.error(`CRITICAL: Error processing submission ${submissionId}: `, error)
+                console.error(`[WORKER] CRITICAL ERROR processing submission ${submissionId}:`)
+                console.error(`[WORKER] Error message: ${error.message}`)
+                console.error(`[WORKER] Error stack:`, error.stack)
                 const errorMessage = error.message || 'Unknown system error'
 
+                console.log(`[WORKER] Updating submission ${submissionId} status to error`)
                 const erSubmission = await Submission.findByIdAndUpdate(
                     submissionId,
                     {
@@ -307,6 +382,7 @@ export function initSubmissionWorker() {
                 )
 
                 if (redisClient.isOpen && erSubmission) {
+                    console.log(`[WORKER] Publishing submission_evaluated error event`)
                     redisClient
                         .publish(
                             'submission_updates',
@@ -331,12 +407,31 @@ export function initSubmissionWorker() {
         }
     )
 
+    console.log('[WORKER] Submission worker initialized with concurrency: 2')
+    console.log('[WORKER] Worker ready to process jobs from submission-queue')
+
+    worker.on('active', (job) => {
+        console.log(`[WORKER] Job ${job.id} is now processing submission ${job.data.submissionId}`)
+    })
+
+    worker.on('progress', (job, progress) => {
+        console.log(`[WORKER] Job ${job.id} progress: ${progress}%`)
+    })
+
     worker.on('completed', (job) => {
-        console.log(`Submission ${job.data.submissionId} completed successfully`)
+        console.log(`[WORKER] Submission ${job.data.submissionId} completed successfully`)
     })
 
     worker.on('failed', (job, err) => {
-        console.error(`Submission ${job.data.submissionId} failed: `, err)
+        console.error(`[WORKER] Submission ${job.data.submissionId} failed:`, err.message)
+    })
+
+    worker.on('error', (err) => {
+        console.error(`[WORKER] Worker error:`, err.message)
+    })
+
+    worker.on('stalled', (jobId) => {
+        console.warn(`[WORKER] Job ${jobId} stalled`)
     })
 
     return worker
