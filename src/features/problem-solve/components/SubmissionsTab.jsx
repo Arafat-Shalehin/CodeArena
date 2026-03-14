@@ -110,7 +110,7 @@ export default function SubmissionsTab() {
                             <div className="bg-bg-page flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl shadow-inner">
                                 {sub.status === 'queued' || sub.status === 'running' ? (
                                     <Clock className="text-warning animate-pulse" size={20} />
-                                ) : sub.verdict === 'accepted' ? (
+                                ) : (sub.verdict || '').toUpperCase() === 'ACCEPTED' ? (
                                     <CheckCircle2 className="text-success" size={20} />
                                 ) : (
                                     <XCircle className="text-error" size={20} />
@@ -121,7 +121,7 @@ export default function SubmissionsTab() {
                                     className={`text-[15px] font-black tracking-tight capitalize ${
                                         sub.status === 'queued' || sub.status === 'running'
                                             ? 'text-warning'
-                                            : sub.verdict === 'accepted'
+                                            : (sub.verdict || '').toUpperCase() === 'ACCEPTED'
                                               ? 'text-success'
                                               : 'text-error'
                                     }`}

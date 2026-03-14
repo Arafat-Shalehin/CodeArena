@@ -105,10 +105,27 @@ function TestResultTab() {
         )
     }
     if (result.status === 'running') {
+        const passedCount = result.results?.length || 0
+        const totalCount = result.totalCount || '?'
+        const progress = result.progress || 0
+
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-gray-400">
-                <Loader2 size={20} className="animate-spin" />
-                <span className="text-sm">Judging...</span>
+            <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-gray-400">
+                <Loader2 size={24} className="animate-spin text-blue-500" />
+                <div className="flex flex-col items-center gap-2">
+                    <span className="text-sm font-semibold">Judging in progress...</span>
+                    <div className="text-xs text-gray-500">
+                        {passedCount} / {totalCount} test cases
+                    </div>
+                </div>
+                {/* Progress Bar */}
+                <div className="h-2 w-48 overflow-hidden rounded-full bg-gray-700">
+                    <div
+                        className="h-full bg-blue-500 transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+                {progress > 0 && <div className="text-xs text-gray-400">{progress}% complete</div>}
             </div>
         )
     }
@@ -258,7 +275,7 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
     return (
         <>
             {/* Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-2">
+            <div className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-2">
                 <div className="flex items-center gap-0.5">
                     <button
                         onClick={() => setConsoleTab('testcase')}

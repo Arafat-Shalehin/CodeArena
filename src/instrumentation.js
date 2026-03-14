@@ -1,18 +1,36 @@
+// Store workers globally to prevent garbage collection
+let globalWorkers = {
+    submission: null,
+    stats: null,
+    ai: null,
+    interviewAI: null,
+}
+
 export async function register() {
+    console.log('[INSTRUMENTATION] register() called')
+    console.log('[INSTRUMENTATION] NEXT_RUNTIME:', process.env.NEXT_RUNTIME)
+
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+        console.log('[INSTRUMENTATION] Running in Node.js runtime, initializing workers...')
         try {
+            console.log('[INSTRUMENTATION] Importing submission worker...')
             const { initSubmissionWorker } = await import('@/services/submission.worker')
             const { initStatsWorker } = await import('@/services/stats.worker')
             const { initAIWorker } = await import('@/services/ai.worker')
             const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
 
-            initSubmissionWorker()
-            initStatsWorker()
-            initAIWorker()
-            initInterviewAIWorker()
+            console.log('[INSTRUMENTATION] Calling initSubmissionWorker...')
+            globalWorkers.submission = initSubmissionWorker()
+            console.log('[INSTRUMENTATION] Calling initStatsWorker...')
+            globalWorkers.stats = initStatsWorker()
+            console.log('[INSTRUMENTATION] Calling initAIWorker...')
+            globalWorkers.ai = initAIWorker()
+            console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
+            globalWorkers.interviewAI = initInterviewAIWorker()
             console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI, InterviewAI)')
         } catch (err) {
             console.error('[CRITICAL] Failed to initialize Workers:', err.message)
+            console.error('[CRITICAL] Error stack:', err.stack)
         }
 
         // Start Reaction Sync Worker (runs every 5 minutes)

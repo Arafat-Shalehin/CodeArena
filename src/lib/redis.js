@@ -3,28 +3,19 @@ import { createClient } from 'redis'
 const globalForRedis = globalThis
 
 // Support Railway's REDIS_URL format (primary) or individual env vars (fallback)
-let redisConfig
+const redisUrl = process.env.REDIS_URL || ''
 
-if (process.env.REDIS_URL) {
-    // Railway or other platforms provide complete REDIS_URL
-    redisConfig = process.env.REDIS_URL
-} else {
-    // Fallback to individual host/port/password config
-    const REDIS_HOST =
-        process.env.REDIS_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis')
-    const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379')
-    const REDIS_PASSWORD = process.env.REDIS_PASSWORD
+const redisConfig = redisUrl
+    ? { url: redisUrl }
+    : {
+          host:
+              process.env.REDIS_HOST ||
+              (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
+          port: parseInt(process.env.REDIS_PORT || '6379'),
+          ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
+      }
 
-    // Build connection URL
-    const auth = REDIS_PASSWORD ? `${REDIS_PASSWORD}@` : ''
-    redisConfig = `redis://${auth}${REDIS_HOST}:${REDIS_PORT}`
-}
-
-export const redisClient =
-    globalForRedis.redis ||
-    createClient({
-        url: redisConfig,
-    })
+export const redisClient = globalForRedis.redis || createClient(redisConfig)
 
 if (!globalForRedis.redis) {
     globalForRedis.redis = redisClient

@@ -1,3 +1,5 @@
+import dbConnect from '@/lib/mongodb'
+import { TestCase } from '@/models/TestCase.models'
 import {
     getAllProblems,
     getProblemById,
@@ -37,11 +39,19 @@ export async function fetchProblems(req) {
  */
 export async function fetchProblemById(req, { params }) {
     const { id } = params
+    await dbConnect()
     const problem = await getProblemById(id)
 
+    // Get test case count for frontend to display progress
+    const testCaseCount = await TestCase.countDocuments({ problemId: id })
+
+    const response = problem.toObject ? problem.toObject() : problem
     return Response.json({
         success: true,
-        data: problem,
+        data: {
+            ...response,
+            testCaseCount: testCaseCount,
+        },
     })
 }
 

@@ -273,7 +273,7 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
             </div>
 
             {/* Monaco Editor */}
-            <div className="relative min-h-[300px] flex-1">
+            <div className="relative min-h-75 flex-1">
                 <Editor
                     height="100%"
                     language={language === 'cpp' ? 'cpp' : language}

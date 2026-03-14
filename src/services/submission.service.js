@@ -13,6 +13,13 @@ import { redisClient } from '@/lib/redis'
 export async function createSubmission(data) {
     const { userId, problemId, code, language, contestId, type = 'submit', customInput } = data
 
+    console.log('[SERVICE] createSubmission called:', {
+        userId,
+        problemId,
+        type,
+        codeLength: code?.length,
+    })
+
     if (!userId || !problemId) {
         throw new Error('User and problem are required.')
     }
@@ -25,17 +32,20 @@ export async function createSubmission(data) {
     session.startTransaction()
 
     try {
+        console.log('[SERVICE] Starting transaction...')
         // 1️⃣ Validate user
         const user = await User.findById(userId).session(session)
         if (!user) {
             throw new Error('User not found.')
         }
+        console.log('[SERVICE] User validated:', userId)
 
         // 2️⃣ Validate problem
         const problem = await Problem.findById(problemId).session(session)
         if (!problem) {
             throw new Error('Problem not found.')
         }
+        console.log('[SERVICE] Problem validated:', problemId)
 
         // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
         if (type === 'submit' && redisClient.isOpen) {
@@ -118,16 +128,20 @@ export async function createSubmission(data) {
 
         await session.commitTransaction()
         session.endSession()
+        console.log('[SERVICE] Submission saved to DB:', submission[0]._id)
 
         // 7️⃣ Push to Message Queue (BullMQ)
         try {
             const queue = getSubmissionQueue()
+            console.log('[SERVICE] Adding job to submission-queue...')
             await queue.add('process-submission', {
                 submissionId: submission[0]._id,
             })
+            console.log('[SERVICE] Job added to queue successfully')
 
             // 8️⃣ Publish event for real-time updates
             if (redisClient.isOpen) {
+                console.log('[SERVICE] Publishing submission_queued event...')
                 redisClient
                     .publish(
                         'submission_updates',
@@ -141,9 +155,10 @@ export async function createSubmission(data) {
                     .catch(console.error)
             }
         } catch (queueError) {
-            console.error('Failed to add submission to queue:', queueError)
+            console.error('[SERVICE] Failed to add submission to queue:', queueError)
         }
 
+        console.log('[SERVICE] Returning submission:', submission[0]._id)
         return submission[0]
     } catch (error) {
         await session.abortTransaction()
