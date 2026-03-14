@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
@@ -8,9 +7,11 @@ import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
+import PropTypes from 'prop-types'
+import { useRecentProblems } from '@/hooks/useRecentProblems'
 
 // Feature Components
-import ProblemCard from '@/features/problems/components/ProblemCard'
+import ProblemCard from '@/shared/components/ProblemCard'
 
 // Data
 import { normalizeDifficulty } from '@/features/problems/data/problems.data'
@@ -22,26 +23,15 @@ import { formatAcceptanceRate } from '@/lib/utils'
  */
 export default function RecentProblemsSection() {
     const shouldReduceMotion = useSafeReducedMotion()
-    const [problems, setProblems] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
+    const { problems, isLoading, error } = useRecentProblems(3)
 
-    useEffect(() => {
-        async function fetchRecentProblems() {
-            try {
-                const response = await fetch('/api/problems?limit=3')
-                const json = await response.json()
-                if (json.success) {
-                    setProblems(json.data)
-                }
-            } catch (error) {
-                console.error('Failed to fetch recent problems:', error)
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
-        fetchRecentProblems()
-    }, [])
+    if (error) {
+        return (
+            <div className="text-error py-12 text-center">
+                Failed to load recent problems. Please try again later.
+            </div>
+        )
+    }
 
     return (
         <section className="mx-auto max-w-7xl px-4 py-12">
@@ -83,11 +73,11 @@ export default function RecentProblemsSection() {
                             transition={{ delay: shouldReduceMotion ? 0 : idx * 0.1 }}
                         >
                             <ProblemCard
-                                title={problem.title}
-                                difficulty={normalizeDifficulty(problem.difficulty)}
-                                solvedCount={problem.acceptedSubmissions || 0}
-                                tags={problem.tags || []}
-                                successRate={formatAcceptanceRate(problem.acceptanceRate)}
+                                problem={{
+                                    ...problem,
+                                    difficulty: normalizeDifficulty(problem.difficulty),
+                                }}
+                                variant="detailed"
                             />
                         </motion.div>
                     ))

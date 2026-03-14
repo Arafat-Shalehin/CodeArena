@@ -1,6 +1,7 @@
 import { Inter, Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
+import { CodeEditorProvider } from '@/context/CodeEditorContext'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
@@ -40,7 +41,9 @@ export default function RootLayout({ children }) {
                 className="bg-bg-page site-gradient text-text-primary font-sans antialiased transition-colors duration-300"
             >
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-                    <AuthProvider>{children}</AuthProvider>
+                    <AuthProvider>
+                        <CodeEditorProvider>{children}</CodeEditorProvider>
+                    </AuthProvider>
                     <Toaster position="top-center" />
                 </ThemeProvider>
             </body>

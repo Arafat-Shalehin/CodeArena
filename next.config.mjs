@@ -10,6 +10,8 @@ const nextConfig = {
         'bcryptjs',
         'jsonwebtoken',
         'tar-stream',
+        'socket.io',
+        '@socket.io/redis-adapter',
     ],
 }
 
