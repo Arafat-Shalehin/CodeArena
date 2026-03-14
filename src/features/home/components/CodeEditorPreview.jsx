@@ -27,15 +27,15 @@ export default function CodeEditorPreview({ className }) {
         },
         {
             text: '    # Apply optimized binary search',
-            tokens: [{ text: '    # Apply optimized binary search', color: 'text-zinc-400' }],
+            tokens: [{ text: '    # Apply optimized binary search', color: 'text-text-muted' }],
         },
         {
             text: '    left, right = 0, len(data)',
             tokens: [
                 { text: '    left, right = ', color: '' },
-                { text: '0', color: 'text-emerald-600' },
+                { text: '0', color: 'text-emerald-500 dark:text-emerald-400' },
                 { text: ', ', color: '' },
-                { text: 'len', color: 'text-emerald-600' },
+                { text: 'len', color: 'text-emerald-500 dark:text-emerald-400' },
                 { text: '(data)', color: '' },
             ],
         },
@@ -51,7 +51,7 @@ export default function CodeEditorPreview({ className }) {
             text: '        mid = (left + right) // 2',
             tokens: [
                 { text: '        mid = (left + right) // ', color: '' },
-                { text: '2', color: 'text-emerald-600' },
+                { text: '2', color: 'text-emerald-500 dark:text-emerald-400' },
             ],
         },
     ]
@@ -113,7 +113,7 @@ export default function CodeEditorPreview({ className }) {
                     repeat: Infinity,
                     ease: 'easeInOut',
                 }}
-                className="from-accent/20 absolute -inset-8 rounded-[3rem] bg-gradient-to-tr to-transparent blur-3xl"
+                className="from-accent/15 dark:from-accent/10 absolute -inset-8 rounded-[3rem] bg-gradient-to-tr to-transparent blur-3xl"
             />
 
             <motion.div
@@ -128,26 +128,26 @@ export default function CodeEditorPreview({ className }) {
                 className="matte-surface border-border/50 bg-bg-subtle/30 relative overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-sm"
             >
                 {/* Editor Title Bar */}
-                <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/50 px-4 py-3">
+                <div className="border-border bg-bg-muted/50 flex items-center justify-between border-b px-4 py-3">
                     <div className="flex gap-1.5">
-                        <div className="size-2.5 rounded-full bg-red-400/50" />
-                        <div className="size-2.5 rounded-full bg-amber-400/50" />
-                        <div className="size-2.5 rounded-full bg-emerald-400/50" />
+                        <div className="size-2.5 rounded-full bg-red-400/60 dark:bg-red-500/40" />
+                        <div className="size-2.5 rounded-full bg-amber-400/60 dark:bg-amber-500/40" />
+                        <div className="size-2.5 rounded-full bg-emerald-400/60 dark:bg-emerald-500/40" />
                     </div>
-                    <div className="font-mono text-[10px] tracking-tight text-zinc-400 uppercase">
+                    <div className="text-text-muted font-mono text-[10px] tracking-tight uppercase">
                         solution.py — CodeArena
                     </div>
                     <div className="flex gap-3">
-                        <Terminal className="size-4 text-zinc-400" />
+                        <Terminal className="text-text-muted size-4" />
                     </div>
                 </div>
 
                 {/* Editor Content */}
-                <div className="bg-bg-page/50 text-text-secondary p-8 font-mono text-[13px] leading-relaxed">
+                <div className="bg-bg-page/50 text-text-secondary dark:bg-bg-page/20 p-8 font-mono text-[13px] leading-relaxed">
                     <div className="space-y-1">
                         {codeLines.map((_, idx) => (
                             <div key={idx} className="flex gap-4">
-                                <span className="w-4 text-right text-zinc-300 select-none">
+                                <span className="text-text-muted/60 w-4 text-right select-none">
                                     {idx + 1}
                                 </span>
                                 <div className="min-h-[1.5em]">
@@ -169,13 +169,13 @@ export default function CodeEditorPreview({ className }) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 3 }}
-                        className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-6"
+                        className="border-border mt-8 flex items-center justify-between border-t pt-6"
                     >
                         <div className="flex items-center gap-4">
-                            <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                            <span className="bg-success-light text-success-text rounded px-2 py-0.5 text-[10px] font-bold">
                                 PASS 24/24
                             </span>
-                            <span className="text-[10px] text-zinc-400">1.2ms latency</span>
+                            <span className="text-text-muted text-[10px]">1.2ms latency</span>
                         </div>
                         <button className="bg-accent shadow-accent-glow min-h-11 cursor-pointer rounded px-4 py-2 text-[10px] font-bold text-white transition-all hover:scale-105 active:scale-95">
                             Submit Draft

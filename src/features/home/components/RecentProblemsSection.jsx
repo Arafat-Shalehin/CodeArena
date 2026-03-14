@@ -92,7 +92,7 @@ export default function RecentProblemsSection() {
                         </motion.div>
                     ))
                 ) : (
-                    <div className="col-span-full py-12 text-center text-zinc-400">
+                    <div className="text-text-muted col-span-full py-12 text-center">
                         No problems found.
                     </div>
                 )}
@@ -110,7 +110,7 @@ export default function RecentProblemsSection() {
                     <Button
                         variant="outline"
                         size="lg"
-                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group h-14 min-w-[200px] rounded-full border-zinc-200 transition-all duration-300 hover:bg-emerald-50"
+                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-14 min-w-[200px] rounded-full transition-all duration-300"
                     >
                         Explore Study Plans
                         <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

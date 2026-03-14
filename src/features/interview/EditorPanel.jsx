@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
+import { useTheme } from 'next-themes'
 import {
     Play,
     CheckCircle2,
@@ -54,6 +55,7 @@ export default function EditorPanel({
     onMaximize,
     isMaximized = false,
 }) {
+    const { resolvedTheme } = useTheme()
     const editorRef = useRef(null)
     const [cursor, setCursor] = useState({ ln: 1, col: 1 })
     const [copied, setCopied] = useState(false)
@@ -166,7 +168,7 @@ export default function EditorPanel({
                         onClick={onRun}
                         disabled={isRunning || isSubmitting}
                         title="Run sample tests"
-                        className="flex items-center gap-1.5 rounded-md bg-[#333] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#444] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="bg-bg-muted text-text-primary hover:bg-bg-muted/80 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isRunning ? (
                             <Loader2 size={13} className="animate-spin" />
@@ -181,7 +183,7 @@ export default function EditorPanel({
                         onClick={onSubmit}
                         disabled={isRunning || isSubmitting}
                         title="Submit solution"
-                        className="flex items-center gap-1.5 rounded-md bg-[#2cbb5d] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="bg-accent hover:bg-accent-hover flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <Loader2 size={13} className="animate-spin" />
@@ -211,7 +213,7 @@ export default function EditorPanel({
                     height="100%"
                     language={language === 'cpp' ? 'cpp' : language}
                     value={code}
-                    theme="vs-dark"
+                    theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
                     onChange={(v) => onChange?.(v ?? '')}
                     onMount={handleMount}
                     options={{
