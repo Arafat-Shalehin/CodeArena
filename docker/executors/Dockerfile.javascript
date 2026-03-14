@@ -24,9 +24,9 @@ RUN sed -i 's/\r$//' /usr/local/bin/runner.sh && chmod +x /usr/local/bin/runner.
 
 # Set resource limits
 RUN echo "coderunner hard cpu 1" >> /etc/security/limits.conf && \
-    echo "coderunner hard nproc 64" >> /etc/security/limits.conf && \
+    echo "coderunner hard nproc 128" >> /etc/security/limits.conf && \
     echo "coderunner hard fsize 10240" >> /etc/security/limits.conf && \
-    echo "coderunner hard nofile 256" >> /etc/security/limits.conf
+    echo "coderunner hard nofile 1024" >> /etc/security/limits.conf
 
 # Switch to non-root user
 USER coderunner

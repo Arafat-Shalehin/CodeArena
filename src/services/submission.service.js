@@ -11,7 +11,24 @@ import { redisClient } from '@/lib/redis'
  * Create a new submission
  */
 export async function createSubmission(data) {
-    const { userId, problemId, code, language, contestId, type = 'submit', customInput } = data
+    const {
+        userId,
+        problemId,
+        code,
+        language,
+        contestId,
+        type = 'submit',
+        customInput,
+        cachedResult,
+    } = data
+
+    console.log('[SERVICE] createSubmission called:', {
+        userId,
+        problemId,
+        type,
+        codeLength: code?.length,
+        cachedResult: !!cachedResult,
+    })
 
     if (!userId || !problemId) {
         throw new Error('User and problem are required.')
@@ -25,17 +42,20 @@ export async function createSubmission(data) {
     session.startTransaction()
 
     try {
+        console.log('[SERVICE] Starting transaction...')
         // 1️⃣ Validate user
         const user = await User.findById(userId).session(session)
         if (!user) {
             throw new Error('User not found.')
         }
+        console.log('[SERVICE] User validated:', userId)
 
         // 2️⃣ Validate problem
         const problem = await Problem.findById(problemId).session(session)
         if (!problem) {
             throw new Error('Problem not found.')
         }
+        console.log('[SERVICE] Problem validated:', problemId)
 
         // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
         if (type === 'submit' && redisClient.isOpen) {
@@ -100,50 +120,86 @@ export async function createSubmission(data) {
         }
 
         // 5️⃣ Create submission
-        const submission = await Submission.create(
-            [
-                {
-                    userId,
-                    problemId,
-                    contestId,
-                    type,
-                    code,
-                    customInput,
-                    language,
-                    status: 'queued',
-                },
-            ],
-            { session }
-        )
+        // If cachedResult is provided, use it directly (skip queue)
+        const submissionData = {
+            userId,
+            problemId,
+            contestId,
+            type,
+            code,
+            customInput,
+            language,
+        }
+
+        if (cachedResult) {
+            console.log('[SERVICE] 🚀 Using cached result, skipping queue processing...')
+            submissionData.status = 'completed'
+            submissionData.verdict = cachedResult.verdict
+            submissionData.executionTime = cachedResult.executionTime || 0
+            submissionData.memoryUsed = cachedResult.memoryUsed || 0
+            submissionData.error = cachedResult.error || ''
+        } else {
+            submissionData.status = 'queued'
+        }
+
+        const submission = await Submission.create([submissionData], { session })
 
         await session.commitTransaction()
         session.endSession()
+        console.log('[SERVICE] Submission saved to DB:', submission[0]._id)
 
-        // 7️⃣ Push to Message Queue (BullMQ)
-        try {
-            const queue = getSubmissionQueue()
-            await queue.add('process-submission', {
-                submissionId: submission[0]._id,
-            })
+        // 7️⃣ Push to Message Queue (BullMQ) - ONLY if not using cached result
+        if (!cachedResult) {
+            try {
+                const queue = getSubmissionQueue()
+                console.log('[SERVICE] Adding job to submission-queue...')
+                await queue.add('process-submission', {
+                    submissionId: submission[0]._id,
+                })
+                console.log('[SERVICE] Job added to queue successfully')
 
-            // 8️⃣ Publish event for real-time updates
+                // 8️⃣ Publish event for real-time updates
+                if (redisClient.isOpen) {
+                    console.log('[SERVICE] Publishing submission_queued event...')
+                    redisClient
+                        .publish(
+                            'submission_updates',
+                            JSON.stringify({
+                                type: 'submission_queued',
+                                userId,
+                                submissionId: submission[0]._id,
+                                problemId,
+                            })
+                        )
+                        .catch(console.error)
+                }
+            } catch (queueError) {
+                console.error('[SERVICE] Failed to add submission to queue:', queueError)
+            }
+        } else {
+            // 🚀 CACHED RESULT: Publish submission_evaluated event immediately
+            console.log('[SERVICE] 🚀 Publishing submission_evaluated event (cached result)...')
             if (redisClient.isOpen) {
                 redisClient
                     .publish(
                         'submission_updates',
                         JSON.stringify({
-                            type: 'submission_queued',
+                            type: 'submission_evaluated',
                             userId,
                             submissionId: submission[0]._id,
                             problemId,
+                            status: 'completed',
+                            verdict: cachedResult.verdict,
+                            executionTime: cachedResult.executionTime || 0,
+                            memoryUsed: cachedResult.memoryUsed || 0,
+                            error: cachedResult.error || '',
                         })
                     )
                     .catch(console.error)
             }
-        } catch (queueError) {
-            console.error('Failed to add submission to queue:', queueError)
         }
 
+        console.log('[SERVICE] Returning submission:', submission[0]._id)
         return submission[0]
     } catch (error) {
         await session.abortTransaction()

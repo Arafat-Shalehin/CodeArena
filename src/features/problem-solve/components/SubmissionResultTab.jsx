@@ -30,7 +30,7 @@ function DistributionChart({ userValue, label, unit }) {
 
     return (
         <div className="mt-4">
-            <div className="relative flex h-[120px] items-end gap-[4px] px-2 shadow-inner">
+            <div className="relative flex h-30 items-end gap-1 px-2 shadow-inner">
                 <div className="text-text-muted absolute top-0 left-0 flex h-full flex-col justify-between text-[9px] font-bold opacity-40">
                     <span>100%</span>
                     <span>50%</span>
@@ -98,7 +98,7 @@ export default function SubmissionResultTab() {
 
     if (!result) return null
 
-    const isAccepted = result.verdict === 'ACCEPTED'
+    const isAccepted = result.verdict === 'ACCEPTED' || result.verdict === 'EXECUTED'
     const verdictColor = isAccepted ? 'text-success' : 'text-error'
     const verdictLabel = (result.verdict || 'UNKNOWN').replace(/_/g, ' ')
 
@@ -206,7 +206,7 @@ export default function SubmissionResultTab() {
 
             {/* Distribution */}
             <div className="border-border bg-bg-muted/50 rounded-2xl border p-6">
-                <div className="text-text-muted mb-2 text-[10px] font-black tracking-widest text-gray-500 uppercase">
+                <div className="mb-2 text-xs font-black tracking-widest text-gray-500 uppercase">
                     Network Distribution
                 </div>
                 <DistributionChart userValue={result.time} label="Runtime" unit="ms" />
@@ -225,7 +225,7 @@ export default function SubmissionResultTab() {
                         </span>
                     </div>
                 </div>
-                <div className="border-border bg-bg-page relative max-h-[400px] overflow-hidden rounded-2xl border shadow-2xl">
+                <div className="border-border bg-bg-page relative max-h-100 overflow-hidden rounded-2xl border shadow-2xl">
                     <div className="bg-accent/20 absolute top-0 left-0 h-full w-1.5" />
                     <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent overflow-y-auto p-6">
                         <pre className="text-text-secondary font-mono text-[13px] leading-relaxed select-all">

@@ -54,6 +54,7 @@ export const SUBMISSION_STATUS = {
     PENDING: { name: 'Pending', color: 'gray' },
     JUDGING: { name: 'Judging', color: 'blue' },
     ACCEPTED: { name: 'Accepted', color: 'green' },
+    EXECUTED: { name: 'Executed', color: 'cyan' },
     WRONG_ANSWER: { name: 'Wrong Answer', color: 'red' },
     TIME_LIMIT_EXCEEDED: { name: 'Time Limit Exceeded', color: 'orange' },
     MEMORY_LIMIT_EXCEEDED: { name: 'Memory Limit Exceeded', color: 'orange' },
