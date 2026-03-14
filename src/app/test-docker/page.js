@@ -88,9 +88,9 @@ const LANG_LABELS = {
 }
 
 const DIFFICULTY_STYLES = {
-    easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
-    medium: 'text-[#ffc01e] bg-[#ffc01e]/10',
-    hard: 'text-[#ff375f] bg-[#ff375f]/10',
+    easy: 'difficulty-easy',
+    medium: 'difficulty-medium',
+    hard: 'difficulty-hard',
 }
 
 // ─── Resizable Panel Hook ─────────────────────────────────────────────────────
@@ -399,7 +399,7 @@ export default function DockerIDEPage() {
 
     return (
         <div
-            className="flex h-screen w-full flex-col overflow-hidden bg-[#1a1a1a]"
+            className="bg-bg-page flex h-screen w-full flex-col overflow-hidden"
             style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
         >
             {/* ═══ Problem List Sidebar ═══ */}
@@ -414,32 +414,32 @@ export default function DockerIDEPage() {
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <nav className="flex h-[44px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
+            <nav className="border-border bg-bg-subtle flex h-[44px] flex-shrink-0 items-center justify-between border-b px-3">
                 {/* Left: Problem List + Nav */}
                 <div className="flex items-center gap-1">
                     <button
                         onClick={() => setShowProblemList(true)}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-gray-300 hover:bg-[#3a3a3a]"
+                        className="text-text-secondary hover:bg-bg-muted flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                     >
                         <List size={14} />
                         <span className="font-medium">Problem List</span>
                     </button>
-                    <div className="mx-1 h-4 w-px bg-[#444]" />
+                    <div className="bg-border mx-1 h-4 w-px" />
                     <button
                         onClick={() => navigateProblem(-1)}
-                        className="rounded p-1 text-gray-400 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                     >
                         <ChevronLeft size={18} />
                     </button>
                     <button
                         onClick={() => navigateProblem(1)}
-                        className="rounded p-1 text-gray-400 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                     >
                         <ChevronRight size={18} />
                     </button>
                     <button
                         onClick={randomProblem}
-                        className="rounded p-1 text-gray-400 hover:bg-[#3a3a3a] hover:text-white"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                     >
                         <Shuffle size={16} />
                     </button>
@@ -450,7 +450,7 @@ export default function DockerIDEPage() {
                     <button
                         onClick={runCode}
                         disabled={isRunning || isSubmitting}
-                        className="flex items-center gap-1.5 rounded-md bg-[#333] px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#444] disabled:opacity-50"
+                        className="bg-bg-muted text-text-primary hover:bg-bg-muted/80 flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
                     >
                         {isRunning ? (
                             <Loader2 size={14} className="animate-spin" />
@@ -462,7 +462,7 @@ export default function DockerIDEPage() {
                     <button
                         onClick={submitCode}
                         disabled={isRunning || isSubmitting || !selectedProblem}
-                        className="flex items-center gap-1.5 rounded-md bg-[#2cbb5d] px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50"
+                        className="bg-accent hover:bg-accent-hover flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <Loader2 size={14} className="animate-spin" />
@@ -474,19 +474,19 @@ export default function DockerIDEPage() {
                 </div>
 
                 {/* Right: Misc icons */}
-                <div className="flex items-center gap-2 text-gray-400">
+                <div className="text-text-muted flex items-center gap-2">
                     {submissionId && (
                         <button
                             onClick={() => {
                                 setConsoleTab('result')
                                 fetchAiFeedback()
                             }}
-                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-purple-400 hover:bg-purple-500/10"
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-purple-600 hover:bg-purple-500/10 dark:text-purple-400"
                         >
                             <Sparkles size={14} /> AI Analysis
                         </button>
                     )}
-                    <button className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white">
+                    <button className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors">
                         <Settings2 size={18} />
                     </button>
                 </div>
@@ -497,10 +497,10 @@ export default function DockerIDEPage() {
                 {/* ─── Left Panel: Problem Description ─── */}
                 <div
                     style={{ width: `${hSplit.ratio * 100}%` }}
-                    className="flex flex-col overflow-hidden border-r border-[#333]"
+                    className="border-border flex flex-col overflow-hidden border-r"
                 >
                     {/* Left Tabs */}
-                    <div className="flex h-[38px] flex-shrink-0 items-center gap-1 border-b border-[#333] bg-[#282828] px-3">
+                    <div className="border-border bg-bg-subtle flex h-[38px] flex-shrink-0 items-center gap-1 border-b px-3">
                         {[
                             { key: 'description', label: 'Description', icon: '📄' },
                             { key: 'editorial', label: 'Editorial', icon: '📘' },
@@ -512,8 +512,8 @@ export default function DockerIDEPage() {
                                 onClick={() => setLeftTab(tab.key)}
                                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                                     leftTab === tab.key
-                                        ? 'bg-[#3a3a3a] text-white'
-                                        : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                        ? 'bg-bg-muted text-text-primary'
+                                        : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                                 }`}
                             >
                                 <span>{tab.icon}</span> {tab.label}
@@ -525,7 +525,7 @@ export default function DockerIDEPage() {
                     <div className="flex-1 overflow-y-auto p-5">
                         {loadingProblems ? (
                             <div className="flex items-center justify-center py-20">
-                                <Loader2 size={24} className="animate-spin text-gray-500" />
+                                <Loader2 size={24} className="text-text-muted animate-spin" />
                             </div>
                         ) : selectedProblem ? (
                             leftTab === 'description' ? (
@@ -533,7 +533,7 @@ export default function DockerIDEPage() {
                             ) : leftTab === 'submissions' && submissionId && aiFeedback ? (
                                 <AiFeedbackPanel feedback={aiFeedback} />
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-gray-600">
+                                <div className="text-text-muted flex flex-col items-center justify-center py-20">
                                     <span className="mb-3 text-4xl">🚧</span>
                                     <p className="text-sm">Coming soon</p>
                                 </div>
@@ -543,7 +543,7 @@ export default function DockerIDEPage() {
 
                     {/* Left Footer */}
                     {selectedProblem && (
-                        <div className="flex h-[36px] flex-shrink-0 items-center justify-between border-t border-[#333] bg-[#282828] px-4 text-xs text-gray-500">
+                        <div className="border-border bg-bg-subtle text-text-muted flex h-[36px] flex-shrink-0 items-center justify-between border-t px-4 text-xs">
                             <div className="flex items-center gap-4">
                                 <span className="flex items-center gap-1">
                                     <ThumbsUp size={12} /> {selectedProblem.totalSubmissions || 0}
@@ -553,10 +553,13 @@ export default function DockerIDEPage() {
                                 </span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Star size={12} className="cursor-pointer hover:text-yellow-400" />
+                                <Star
+                                    size={12}
+                                    className="hover:text-rank-gold cursor-pointer transition-colors"
+                                />
                                 <ExternalLink
                                     size={12}
-                                    className="cursor-pointer hover:text-white"
+                                    className="hover:text-text-primary cursor-pointer transition-colors"
                                 />
                             </div>
                         </div>
@@ -566,9 +569,9 @@ export default function DockerIDEPage() {
                 {/* ─── Horizontal Drag Handle ─── */}
                 <div
                     onMouseDown={hSplit.onMouseDown}
-                    className="flex w-[6px] cursor-col-resize items-center justify-center bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
+                    className="bg-bg-page hover:bg-accent flex w-[6px] cursor-col-resize items-center justify-center transition-colors"
                 >
-                    <GripVertical size={10} className="text-gray-600" />
+                    <GripVertical size={10} className="text-text-muted" />
                 </div>
 
                 {/* ─── Right Panel: Editor + Console ─── */}
@@ -583,26 +586,26 @@ export default function DockerIDEPage() {
                             className="flex flex-col overflow-hidden"
                         >
                             {/* Editor Header */}
-                            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
+                            <div className="border-border bg-bg-subtle flex h-[38px] flex-shrink-0 items-center justify-between border-b px-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-gray-300">
+                                    <span className="text-text-secondary text-xs font-semibold">
                                         {'</>'} Code
                                     </span>
                                     <div className="relative">
                                         <button
                                             onClick={() => setShowLangDropdown(!showLangDropdown)}
-                                            className="flex items-center gap-1 rounded-md bg-[#3a3a3a] px-2.5 py-1 text-xs font-medium text-gray-300 hover:bg-[#444]"
+                                            className="bg-bg-muted text-text-secondary hover:bg-bg-muted/80 flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
                                         >
                                             {LANG_LABELS[language]}
                                             <ChevronDown size={12} />
                                         </button>
                                         {showLangDropdown && (
-                                            <div className="absolute top-full left-0 z-50 mt-1 w-40 rounded-md border border-[#444] bg-[#2a2a2a] py-1 shadow-xl">
+                                            <div className="border-border bg-bg-subtle absolute top-full left-0 z-50 mt-1 w-40 rounded-md border py-1 shadow-xl">
                                                 {Object.entries(LANG_LABELS).map(([key, label]) => (
                                                     <button
                                                         key={key}
                                                         onClick={() => handleLanguageChange(key)}
-                                                        className={`w-full px-3 py-1.5 text-left text-xs hover:bg-[#3a3a3a] ${language === key ? 'bg-[#3a3a3a] text-white' : 'text-gray-400'}`}
+                                                        className={`text-text-secondary hover:bg-bg-muted w-full px-3 py-1.5 text-left text-xs transition-colors ${language === key ? 'bg-bg-muted text-text-primary font-bold' : ''}`}
                                                     >
                                                         {label}
                                                     </button>
@@ -610,30 +613,30 @@ export default function DockerIDEPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <span className="text-[10px] text-gray-600">| Auto</span>
+                                    <span className="text-text-muted text-[10px]">| Auto</span>
                                 </div>
-                                <div className="flex items-center gap-1 text-gray-500">
+                                <div className="text-text-muted flex items-center gap-1">
                                     <button
                                         onClick={() => setCode(STARTER_CODES[language])}
-                                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                                         title="Reset Code"
                                     >
                                         <RotateCcw size={14} />
                                     </button>
                                     <button
-                                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                                         title="Copy"
                                     >
                                         <Copy size={14} />
                                     </button>
                                     <button
-                                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                                         title="Settings"
                                     >
                                         <Settings2 size={14} />
                                     </button>
                                     <button
-                                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                                         title="Fullscreen"
                                     >
                                         <Maximize2 size={14} />
@@ -647,7 +650,7 @@ export default function DockerIDEPage() {
                                     height="100%"
                                     language={language === 'cpp' ? 'cpp' : language}
                                     value={code}
-                                    theme="vs-dark"
+                                    theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
                                     onChange={(value) => setCode(value || '')}
                                     options={{
                                         minimap: { enabled: false },
@@ -667,7 +670,7 @@ export default function DockerIDEPage() {
                             </div>
 
                             {/* Editor Footer */}
-                            <div className="flex h-[24px] flex-shrink-0 items-center justify-end border-t border-[#333] bg-[#282828] px-3 text-[10px] text-gray-600">
+                            <div className="border-border bg-bg-subtle text-text-muted flex h-[24px] flex-shrink-0 items-center justify-end border-t px-3 text-[10px]">
                                 <span>Saved</span>
                                 <span className="mx-4">Ln 1, Col 1</span>
                             </div>
@@ -676,36 +679,35 @@ export default function DockerIDEPage() {
                         {/* ─── Vertical Drag Handle ─── */}
                         <div
                             onMouseDown={vSplit.onMouseDown}
-                            className="flex h-[6px] cursor-row-resize items-center justify-center bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
+                            className="bg-bg-page hover:bg-accent flex h-[6px] cursor-row-resize items-center justify-center transition-colors"
                         >
-                            <GripHorizontal size={10} className="text-gray-600" />
+                            <GripHorizontal size={10} className="text-text-muted" />
                         </div>
 
                         {/* ─── Bottom Right: Console / Test Cases ─── */}
                         <div
                             style={{ height: `${(1 - vSplit.ratio) * 100}%` }}
-                            className="flex flex-col overflow-hidden bg-[#1a1a1a]"
+                            className="bg-bg-page flex flex-col overflow-hidden"
                         >
                             {/* Console Header (Tabs + Actions) */}
-                            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-4">
+                            <div className="border-border bg-bg-subtle flex h-[38px] flex-shrink-0 items-center justify-between border-b px-4">
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => setConsoleTab('testcase')}
                                         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                                             consoleTab === 'testcase'
-                                                ? 'bg-[#3a3a3a] text-white'
-                                                : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                                ? 'bg-bg-muted text-text-primary'
+                                                : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                                         }`}
                                     >
-                                        <CheckCircle2 size={13} className="text-[#2cbb5d]" />{' '}
-                                        Testcase
+                                        <CheckCircle2 size={13} className="text-success" /> Testcase
                                     </button>
                                     <button
                                         onClick={() => setConsoleTab('result')}
                                         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                                             consoleTab === 'result'
-                                                ? 'bg-[#3a3a3a] text-white'
-                                                : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                                ? 'bg-bg-muted text-text-primary'
+                                                : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                                         }`}
                                     >
                                         <Terminal size={13} /> Test Result
@@ -718,23 +720,23 @@ export default function DockerIDEPage() {
                                             }}
                                             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                                                 consoleTab === 'ai'
-                                                    ? 'bg-purple-500/15 text-purple-400'
-                                                    : 'text-gray-500 hover:bg-[#333] hover:text-purple-300'
+                                                    ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
+                                                    : 'text-text-muted hover:bg-bg-muted/50 hover:text-purple-600 dark:hover:text-purple-300'
                                             }`}
                                         >
                                             <Sparkles size={13} /> AI Analysis
                                         </button>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-1 text-gray-500">
+                                <div className="text-text-muted flex items-center gap-1">
                                     <button
-                                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                                         title="Maximize"
                                     >
                                         <Maximize2 size={14} />
                                     </button>
                                     <button
-                                        className="rounded p-1 hover:bg-[#3a3a3a] hover:text-white"
+                                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
                                         title="Collapse"
                                     >
                                         <ChevronDown size={14} className="rotate-180" />
@@ -762,13 +764,13 @@ export default function DockerIDEPage() {
                                                         }}
                                                         className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                                                             activeTestCase === i
-                                                                ? 'bg-[#3a3a3a] text-white'
-                                                                : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                                                ? 'bg-bg-muted text-text-primary'
+                                                                : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                                                         }`}
                                                     >
                                                         <CheckCircle2
                                                             size={12}
-                                                            className="text-[#2cbb5d]"
+                                                            className="text-success"
                                                         />
                                                         Case {i + 1}
                                                     </button>
@@ -778,13 +780,13 @@ export default function DockerIDEPage() {
 
                                         {/* Input block */}
                                         <div className="mb-4">
-                                            <div className="mb-2 text-xs font-medium text-gray-500">
+                                            <div className="text-text-muted mb-2 text-xs font-medium">
                                                 Input
                                             </div>
                                             <textarea
                                                 value={testInput}
                                                 onChange={(e) => setTestInput(e.target.value)}
-                                                className="w-full resize-none rounded-lg border-none bg-[#262626] p-4 font-mono text-sm text-white outline-none focus:ring-1 focus:ring-[#444]"
+                                                className="bg-bg-subtle border-border text-text-primary focus:border-accent w-full resize-none rounded-lg border p-4 font-mono text-sm transition-colors outline-none"
                                                 rows={4}
                                                 spellCheck="false"
                                             />
@@ -794,10 +796,10 @@ export default function DockerIDEPage() {
                                         {selectedProblem.sampleTestCases?.[activeTestCase]
                                             ?.output && (
                                             <div>
-                                                <div className="mb-2 text-xs font-medium text-gray-500">
+                                                <div className="text-text-muted mb-2 text-xs font-medium">
                                                     Expected Output
                                                 </div>
-                                                <div className="rounded-lg bg-[#262626] p-4 font-mono text-sm text-white">
+                                                <div className="bg-bg-subtle border-border text-text-primary rounded-lg border p-4 font-mono text-sm transition-colors">
                                                     {
                                                         selectedProblem.sampleTestCases[
                                                             activeTestCase
@@ -808,7 +810,7 @@ export default function DockerIDEPage() {
                                         )}
 
                                         {/* Contribute footer */}
-                                        <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-gray-600">
+                                        <div className="text-text-muted hover:text-text-secondary mt-6 flex items-center justify-center gap-1.5 text-xs transition-colors">
                                             <Heart size={12} /> Contribute a testcase
                                         </div>
                                     </div>
@@ -849,7 +851,7 @@ function ProblemDescription({ problem }) {
     return (
         <div>
             {/* Title */}
-            <h2 className="mb-2 text-xl font-bold text-white">{problem.title}</h2>
+            <h2 className="text-text-primary mb-2 text-xl font-bold">{problem.title}</h2>
 
             {/* Badges */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -861,7 +863,7 @@ function ProblemDescription({ problem }) {
                 {problem.tags?.map((tag) => (
                     <span
                         key={tag}
-                        className="flex items-center gap-1 rounded-full bg-[#333] px-2.5 py-0.5 text-[10px] text-gray-400"
+                        className="bg-bg-muted text-text-muted flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] transition-colors"
                     >
                         <Tag size={10} /> {tag}
                     </span>
@@ -869,7 +871,7 @@ function ProblemDescription({ problem }) {
             </div>
 
             {/* Stats bar */}
-            <div className="mb-5 flex items-center gap-4 text-xs text-gray-500">
+            <div className="text-text-muted mb-5 flex items-center gap-4 text-xs">
                 <span className="flex items-center gap-1">
                     <Clock size={12} /> {problem.timeLimit}ms
                 </span>
@@ -880,7 +882,7 @@ function ProblemDescription({ problem }) {
             </div>
 
             {/* Description */}
-            <div className="mb-6 text-[14px] leading-7 whitespace-pre-wrap text-gray-300">
+            <div className="text-text-secondary mb-6 text-[14px] leading-7 whitespace-pre-wrap">
                 {problem.description}
             </div>
 
@@ -889,22 +891,24 @@ function ProblemDescription({ problem }) {
                 <div>
                     {problem.sampleTestCases.map((tc, i) => (
                         <div key={i} className="mb-5">
-                            <h4 className="mb-2 text-sm font-bold text-white">Example {i + 1}:</h4>
-                            <div className="rounded-lg bg-[#262626] p-4 font-mono text-sm">
+                            <h4 className="text-text-primary mb-2 text-sm font-bold">
+                                Example {i + 1}:
+                            </h4>
+                            <div className="bg-bg-subtle border-border rounded-lg border p-4 font-mono text-sm transition-colors">
                                 <div className="mb-1">
-                                    <span className="font-bold text-gray-400">Input: </span>
-                                    <span className="text-gray-300">{tc.input}</span>
+                                    <span className="text-text-muted font-bold">Input: </span>
+                                    <span className="text-text-primary">{tc.input}</span>
                                 </div>
                                 <div className="mb-1">
-                                    <span className="font-bold text-gray-400">Output: </span>
-                                    <span className="text-gray-300">{tc.output}</span>
+                                    <span className="text-text-muted font-bold">Output: </span>
+                                    <span className="text-text-primary">{tc.output}</span>
                                 </div>
                                 {tc.explanation && (
                                     <div>
-                                        <span className="font-bold text-gray-400">
+                                        <span className="text-text-muted font-bold">
                                             Explanation:{' '}
                                         </span>
-                                        <span className="text-gray-300">{tc.explanation}</span>
+                                        <span className="text-text-primary">{tc.explanation}</span>
                                     </div>
                                 )}
                             </div>
@@ -914,9 +918,9 @@ function ProblemDescription({ problem }) {
             )}
 
             {/* Constraints */}
-            <div className="mt-4 rounded-lg bg-[#262626] p-4 text-sm">
-                <h4 className="mb-2 font-bold text-white">Constraints:</h4>
-                <ul className="space-y-1 font-mono text-xs text-gray-400">
+            <div className="bg-bg-subtle border-border mt-4 rounded-lg border p-4 text-sm transition-colors">
+                <h4 className="text-text-primary mb-2 font-bold">Constraints:</h4>
+                <ul className="text-text-muted space-y-1 font-mono text-xs">
                     <li>• Time Limit: {problem.timeLimit}ms</li>
                     <li>• Memory Limit: {(problem.memoryLimit / 1024).toFixed(0)}MB</li>
                     {problem.codeSizeLimit && <li>• Code Size Limit: {problem.codeSizeLimit}KB</li>}
@@ -931,7 +935,7 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
 
     if (!result) {
         return (
-            <div className="flex h-full flex-col items-center justify-center py-12 text-gray-600">
+            <div className="text-text-muted flex h-full flex-col items-center justify-center py-12">
                 <Terminal size={28} className="mb-2 opacity-30" />
                 <p className="text-xs">Run or Submit your code to see results</p>
             </div>
@@ -940,7 +944,7 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
 
     if (result.status === 'running') {
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-gray-400">
+            <div className="text-text-muted flex h-full flex-col items-center justify-center gap-3 py-12">
                 <Loader2 size={20} className="animate-spin" />
                 <span className="text-sm">Judging...</span>
             </div>
@@ -950,15 +954,15 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
     if (result.status === 'error') {
         return (
             <div className="p-5">
-                <div className="mb-1 text-xl font-bold text-[#ff375f]">Runtime Error</div>
-                <div className="mb-5 text-xs text-gray-500">
+                <div className="text-error mb-1 text-xl font-bold">Runtime Error</div>
+                <div className="text-text-muted mb-5 text-xs">
                     Something went wrong during execution
                 </div>
-                <div className="rounded-lg bg-[#262626] p-4 font-mono text-sm text-[#ff375f]">
+                <div className="bg-error/5 text-error rounded-lg p-4 font-mono text-sm">
                     {result.error}
-                    {result.message && <div className="mt-2 text-gray-500">{result.message}</div>}
+                    {result.message && <div className="text-text-muted mt-2">{result.message}</div>}
                 </div>
-                <div className="mt-8 flex items-center justify-center gap-1.5 text-xs text-gray-600">
+                <div className="text-text-muted hover:text-text-secondary mt-8 flex items-center justify-center gap-1.5 text-xs transition-colors">
                     <Heart size={12} /> Contribute a testcase
                 </div>
             </div>
@@ -966,7 +970,7 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
     }
 
     const isAccepted = result.verdict === 'ACCEPTED'
-    const verdictColor = isAccepted ? 'text-[#2cbb5d]' : 'text-[#ff375f]'
+    const verdictColor = isAccepted ? 'text-success' : 'text-error'
     const verdictLabel = result.verdict?.replace(/_/g, ' ')
 
     // Build per-case data for display
@@ -981,19 +985,19 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
             <div className="mb-1 flex items-baseline gap-3">
                 <span className={`text-xl font-bold ${verdictColor}`}>{verdictLabel}</span>
                 {result.time !== undefined && (
-                    <span className="text-sm text-gray-500">
-                        Runtime: <span className="text-gray-300">{result.time} ms</span>
+                    <span className="text-text-muted text-sm">
+                        Runtime: <span className="text-text-primary">{result.time} ms</span>
                     </span>
                 )}
             </div>
             {result.passedCount !== undefined && (
-                <div className="mb-4 text-xs text-gray-500">
+                <div className="text-text-muted mb-4 text-xs">
                     {result.passedCount}/{result.totalCount} testcases passed
                 </div>
             )}
             {result.memory !== undefined && !result.passedCount && (
-                <div className="mb-4 text-xs text-gray-500">
-                    Memory: <span className="text-gray-300">{result.memory} KB</span>
+                <div className="text-text-muted mb-4 text-xs">
+                    Memory: <span className="text-text-primary">{result.memory} KB</span>
                 </div>
             )}
 
@@ -1009,15 +1013,15 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
                                 onClick={() => setViewingCase(i)}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                                     isActiveCase
-                                        ? 'bg-[#3a3a3a] text-white'
-                                        : 'text-gray-500 hover:bg-[#333] hover:text-gray-300'
+                                        ? 'bg-bg-muted text-text-primary'
+                                        : 'text-text-muted hover:bg-bg-muted/50 hover:text-text-secondary'
                                 }`}
                             >
                                 {passed !== undefined &&
                                     (passed ? (
-                                        <CheckCircle2 size={12} className="text-[#2cbb5d]" />
+                                        <CheckCircle2 size={12} className="text-success" />
                                     ) : (
-                                        <XCircle size={12} className="text-[#ff375f]" />
+                                        <XCircle size={12} className="text-error" />
                                     ))}
                                 Case {i + 1}
                             </button>
@@ -1031,9 +1035,9 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
                 {/* Input */}
                 {currentTestCase?.input && (
                     <div>
-                        <div className="mb-2 text-xs font-medium text-gray-500">Input</div>
-                        <div className="rounded-lg bg-[#262626] p-4">
-                            <pre className="font-mono text-sm font-bold whitespace-pre-wrap text-white">
+                        <div className="text-text-muted mb-2 text-xs font-medium">Input</div>
+                        <div className="bg-bg-subtle border-border rounded-lg border p-4 transition-colors">
+                            <pre className="text-text-primary font-mono text-sm font-bold whitespace-pre-wrap">
                                 {currentTestCase.input}
                             </pre>
                         </div>
@@ -1043,9 +1047,9 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
                 {/* Output */}
                 {(currentCaseResult?.actual !== undefined || result.output !== undefined) && (
                     <div>
-                        <div className="mb-2 text-xs font-medium text-gray-500">Output</div>
-                        <div className="rounded-lg bg-[#262626] p-4">
-                            <pre className="font-mono text-sm font-bold whitespace-pre-wrap text-white">
+                        <div className="text-text-muted mb-2 text-xs font-medium">Output</div>
+                        <div className="bg-bg-subtle border-border rounded-lg border p-4 transition-colors">
+                            <pre className="text-text-primary font-mono text-sm font-bold whitespace-pre-wrap">
                                 {currentCaseResult?.actual ?? result.output ?? ''}
                             </pre>
                         </div>
@@ -1057,9 +1061,9 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
                     result.expected !== undefined ||
                     currentTestCase?.output) && (
                     <div>
-                        <div className="mb-2 text-xs font-medium text-gray-500">Expected</div>
-                        <div className="rounded-lg bg-[#262626] p-4">
-                            <pre className="font-mono text-sm font-bold whitespace-pre-wrap text-white">
+                        <div className="text-text-muted mb-2 text-xs font-medium">Expected</div>
+                        <div className="bg-bg-subtle border-border rounded-lg border p-4 transition-colors">
+                            <pre className="text-text-primary font-mono text-sm font-bold whitespace-pre-wrap">
                                 {currentCaseResult?.expected ??
                                     result.expected ??
                                     currentTestCase?.output ??
@@ -1072,9 +1076,9 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
                 {/* Error */}
                 {result.error && (
                     <div>
-                        <div className="mb-2 text-xs font-medium text-[#ff375f]">Error</div>
-                        <div className="rounded-lg bg-[#ff375f]/5 p-4">
-                            <pre className="font-mono text-xs whitespace-pre-wrap text-[#ff375f]">
+                        <div className="text-error mb-2 text-xs font-medium">Error</div>
+                        <div className="bg-error/5 rounded-lg p-4 transition-colors">
+                            <pre className="text-error font-mono text-xs whitespace-pre-wrap">
                                 {result.error}
                             </pre>
                         </div>
@@ -1083,7 +1087,7 @@ function TestResultPanel({ result, selectedProblem, activeTestCase, setActiveTes
             </div>
 
             {/* ── Footer ── */}
-            <div className="mt-8 flex cursor-pointer items-center justify-center gap-1.5 text-xs text-gray-600 transition-colors hover:text-gray-400">
+            <div className="text-text-muted hover:text-text-secondary mt-8 flex cursor-pointer items-center justify-center gap-1.5 text-xs transition-colors">
                 <Heart size={12} /> Contribute a testcase
             </div>
         </div>
@@ -1094,14 +1098,14 @@ function QualityBar({ label, value, maxValue = 5, color }) {
     const percentage = (value / maxValue) * 100
     return (
         <div className="flex items-center gap-3">
-            <span className="w-[72px] text-[11px] text-gray-500">{label}</span>
-            <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#1a1a1a]">
+            <span className="text-text-muted w-[72px] text-[11px]">{label}</span>
+            <div className="bg-bg-page h-[6px] flex-1 overflow-hidden rounded-full transition-colors">
                 <div
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${percentage}%`, background: color }}
                 />
             </div>
-            <span className="w-7 text-right font-mono text-[11px] text-gray-400">
+            <span className="text-text-muted w-7 text-right font-mono text-[11px]">
                 {value}/{maxValue}
             </span>
         </div>
@@ -1122,10 +1126,10 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                     </div>
                 </div>
                 <div className="text-center">
-                    <div className="text-sm font-medium text-purple-300">
+                    <div className="text-sm font-medium text-purple-600 dark:text-purple-300">
                         AI Analyzing Your Code
                     </div>
-                    <div className="mt-1 text-[11px] text-gray-500">
+                    <div className="text-text-muted mt-1 text-[11px]">
                         Powered by Groq · Llama 3.3 70B
                     </div>
                 </div>
@@ -1135,15 +1139,15 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
 
     if (!feedback) {
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-gray-500">
+            <div className="text-text-muted flex h-full flex-col items-center justify-center gap-4 py-12">
                 <div className="rounded-full bg-gradient-to-br from-purple-500/10 to-violet-600/10 p-4">
                     <Sparkles size={28} className="text-purple-400/50" />
                 </div>
                 <div className="text-center">
-                    <div className="text-sm text-gray-400">
+                    <div className="text-text-muted hover:text-text-secondary text-sm transition-colors">
                         Get instant AI feedback on your code
                     </div>
-                    <div className="mt-1 text-[11px] text-gray-600">
+                    <div className="text-text-muted hover:text-text-secondary mt-1 text-[11px] transition-colors">
                         Complexity analysis · Code quality · Optimization tips
                     </div>
                 </div>
@@ -1160,11 +1164,11 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
     if (feedback.error) {
         return (
             <div className="flex flex-col items-center gap-3 py-8">
-                <XCircle size={24} className="text-red-400/60" />
-                <div className="text-sm text-red-400">{feedback.error}</div>
+                <XCircle size={24} className="text-error/60" />
+                <div className="text-error text-sm">{feedback.error}</div>
                 <button
                     onClick={onRetry}
-                    className="mt-1 flex items-center gap-1.5 rounded-md border border-purple-500/30 px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-500/10"
+                    className="text-text-muted hover:bg-bg-muted hover:text-text-primary mt-1 flex items-center gap-1.5 rounded-md border border-purple-500/30 px-3 py-1.5 text-xs transition-all"
                 >
                     <RotateCcw size={12} /> Retry
                 </button>
@@ -1173,7 +1177,8 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
     }
 
     const rating = feedback.rating || 0
-    const ratingColor = rating >= 8 ? '#2cbb5d' : rating >= 5 ? '#ffc01e' : '#ff375f'
+    const ratingColor =
+        rating >= 8 ? 'var(--ca-success)' : rating >= 5 ? 'var(--ca-warning)' : 'var(--ca-error)'
     const cq = feedback.code_quality || {}
 
     return (
@@ -1181,7 +1186,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
             {/* ── Top: Rating + Complexity + Algorithm ── */}
             <div className="flex gap-3">
                 {/* Rating Circle */}
-                <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl border border-[#333] bg-[#222] p-4">
+                <div className="bg-bg-subtle border-border flex min-w-[100px] flex-col items-center justify-center rounded-xl border p-4 transition-colors">
                     <div className="relative flex items-center justify-center">
                         <svg width="56" height="56" viewBox="0 0 56 56">
                             <circle
@@ -1189,7 +1194,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                                 cy="28"
                                 r="24"
                                 fill="none"
-                                stroke="#333"
+                                stroke="var(--ca-border)"
                                 strokeWidth="4"
                             />
                             <circle
@@ -1212,44 +1217,44 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                             {rating}
                         </span>
                     </div>
-                    <div className="mt-1 text-[10px] font-medium text-gray-500 uppercase">
+                    <div className="text-text-muted mt-1 text-[10px] font-medium uppercase">
                         Score
                     </div>
                 </div>
 
                 {/* Complexity Cards */}
                 <div className="grid flex-1 grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-[#333] bg-[#222] p-3">
+                    <div className="bg-bg-subtle border-border rounded-xl border p-3 transition-colors">
                         <div className="mb-1 flex items-center gap-1.5">
-                            <Zap size={12} className="text-purple-400" />
-                            <span className="text-[10px] font-bold text-gray-500 uppercase">
+                            <Zap size={12} className="text-purple-600 dark:text-purple-400" />
+                            <span className="text-text-muted text-[10px] font-bold uppercase">
                                 Time
                             </span>
                         </div>
-                        <div className="font-mono text-sm font-bold text-purple-300">
+                        <div className="font-mono text-sm font-bold text-purple-700 dark:text-purple-300">
                             {feedback.timeComplexity || '—'}
                         </div>
                     </div>
-                    <div className="rounded-xl border border-[#333] bg-[#222] p-3">
+                    <div className="bg-bg-subtle border-border rounded-xl border p-3 transition-colors">
                         <div className="mb-1 flex items-center gap-1.5">
-                            <HardDrive size={12} className="text-blue-400" />
-                            <span className="text-[10px] font-bold text-gray-500 uppercase">
+                            <HardDrive size={12} className="text-blue-600 dark:text-blue-400" />
+                            <span className="text-text-muted text-[10px] font-bold uppercase">
                                 Space
                             </span>
                         </div>
-                        <div className="font-mono text-sm font-bold text-blue-300">
+                        <div className="font-mono text-sm font-bold text-blue-700 dark:text-blue-300">
                             {feedback.spaceComplexity || '—'}
                         </div>
                     </div>
                     {/* Algorithm badge */}
-                    <div className="col-span-2 rounded-xl border border-[#333] bg-[#222] p-3">
+                    <div className="bg-bg-subtle border-border col-span-2 rounded-xl border p-3 transition-colors">
                         <div className="mb-1 flex items-center gap-1.5">
-                            <Brain size={12} className="text-violet-400" />
-                            <span className="text-[10px] font-bold text-gray-500 uppercase">
+                            <Brain size={12} className="text-violet-600 dark:text-violet-400" />
+                            <span className="text-text-muted text-[10px] font-bold uppercase">
                                 Algorithm
                             </span>
                         </div>
-                        <div className="text-sm font-medium text-violet-300">
+                        <div className="text-sm font-medium text-violet-700 dark:text-violet-300">
                             {feedback.algorithm || '—'}
                         </div>
                     </div>
@@ -1258,10 +1263,10 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
 
             {/* ── Verdict Explanation ── */}
             {feedback.verdict_explanation && (
-                <div className="rounded-xl border border-[#333] bg-[#222] p-3">
+                <div className="bg-bg-subtle border-border rounded-xl border p-3 transition-colors">
                     <div className="flex items-start gap-2">
-                        <Target size={14} className="mt-0.5 flex-shrink-0 text-gray-400" />
-                        <p className="text-xs leading-relaxed text-gray-300">
+                        <Target size={14} className="text-text-muted mt-0.5 flex-shrink-0" />
+                        <p className="text-text-secondary text-xs leading-relaxed">
                             {feedback.verdict_explanation}
                         </p>
                     </div>
@@ -1270,10 +1275,10 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
 
             {/* ── Code Quality Bars ── */}
             {(cq.readability || cq.efficiency || cq.correctness) && (
-                <div className="rounded-xl border border-[#333] bg-[#222] p-4">
+                <div className="bg-bg-subtle border-border rounded-xl border p-4 transition-colors">
                     <div className="mb-3 flex items-center gap-1.5">
-                        <BarChart3 size={13} className="text-gray-400" />
-                        <span className="text-[10px] font-bold text-gray-500 uppercase">
+                        <BarChart3 size={13} className="text-text-muted" />
+                        <span className="text-text-muted text-[10px] font-bold uppercase">
                             Code Quality
                         </span>
                     </div>
@@ -1282,17 +1287,21 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                             <QualityBar
                                 label="Readability"
                                 value={cq.readability}
-                                color="#a78bfa"
+                                color="var(--ca-accent)"
                             />
                         )}
                         {cq.efficiency && (
-                            <QualityBar label="Efficiency" value={cq.efficiency} color="#60a5fa" />
+                            <QualityBar
+                                label="Efficiency"
+                                value={cq.efficiency}
+                                color="var(--ca-info)"
+                            />
                         )}
                         {cq.correctness && (
                             <QualityBar
                                 label="Correctness"
                                 value={cq.correctness}
-                                color="#2cbb5d"
+                                color="var(--ca-success)"
                             />
                         )}
                     </div>
@@ -1301,10 +1310,10 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
 
             {/* ── Strengths ── */}
             {feedback.strengths?.length > 0 && (
-                <div className="rounded-xl border border-[#2cbb5d]/20 bg-[#2cbb5d]/5 p-4">
+                <div className="bg-success/5 border-success/20 rounded-xl border p-4 transition-colors">
                     <div className="mb-2.5 flex items-center gap-1.5">
-                        <ThumbsUp size={13} className="text-[#2cbb5d]" />
-                        <span className="text-[10px] font-bold text-[#2cbb5d] uppercase">
+                        <ThumbsUp size={13} className="text-success" />
+                        <span className="text-success text-[10px] font-bold uppercase">
                             Strengths
                         </span>
                     </div>
@@ -1312,11 +1321,11 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                         {feedback.strengths.map((s, i) => (
                             <li
                                 key={i}
-                                className="flex items-start gap-2 text-xs leading-relaxed text-gray-300"
+                                className="text-text-secondary flex items-start gap-2 text-xs leading-relaxed"
                             >
                                 <CheckCircle2
                                     size={13}
-                                    className="mt-0.5 flex-shrink-0 text-[#2cbb5d]/60"
+                                    className="text-success/60 mt-0.5 flex-shrink-0"
                                 />
                                 {s}
                             </li>
@@ -1327,10 +1336,10 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
 
             {/* ── Improvements ── */}
             {feedback.improvements?.length > 0 && (
-                <div className="rounded-xl border border-[#ffc01e]/20 bg-[#ffc01e]/5 p-4">
+                <div className="bg-warning/5 border-warning/20 rounded-xl border p-4 transition-colors">
                     <div className="mb-2.5 flex items-center gap-1.5">
-                        <Lightbulb size={13} className="text-[#ffc01e]" />
-                        <span className="text-[10px] font-bold text-[#ffc01e] uppercase">
+                        <Lightbulb size={13} className="text-warning" />
+                        <span className="text-warning text-[10px] font-bold uppercase">
                             Improvements
                         </span>
                     </div>
@@ -1338,11 +1347,11 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                         {feedback.improvements.map((s, i) => (
                             <li
                                 key={i}
-                                className="flex items-start gap-2 text-xs leading-relaxed text-gray-300"
+                                className="text-text-secondary flex items-start gap-2 text-xs leading-relaxed"
                             >
                                 <ArrowRight
                                     size={13}
-                                    className="mt-0.5 flex-shrink-0 text-[#ffc01e]/60"
+                                    className="text-warning/60 mt-0.5 flex-shrink-0"
                                 />
                                 {s}
                             </li>
@@ -1353,14 +1362,14 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
 
             {/* ── Optimal Approach ── */}
             {feedback.optimal_approach && (
-                <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                <div className="bg-info/5 border-info/20 rounded-xl border p-4 transition-colors">
                     <div className="mb-2 flex items-center gap-1.5">
-                        <Award size={13} className="text-violet-400" />
-                        <span className="text-[10px] font-bold text-violet-400 uppercase">
+                        <Award size={13} className="text-info" />
+                        <span className="text-info text-[10px] font-bold uppercase">
                             Optimal Approach
                         </span>
                     </div>
-                    <p className="text-xs leading-relaxed text-gray-300">
+                    <p className="text-text-secondary text-xs leading-relaxed">
                         {feedback.optimal_approach}
                     </p>
                 </div>
@@ -1370,7 +1379,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
             <div className="flex justify-center pt-1">
                 <button
                     onClick={onRetry}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#333] px-3 py-1.5 text-[11px] text-gray-500 transition-colors hover:border-purple-500/30 hover:text-purple-400"
+                    className="border-border text-text-muted hover:border-accent hover:text-accent flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] transition-colors"
                 >
                     <RotateCcw size={11} /> Re-analyze
                 </button>

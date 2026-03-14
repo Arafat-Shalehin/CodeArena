@@ -88,12 +88,12 @@ export default function LeaderboardPreviewSection() {
                     className="relative"
                 >
                     {/* Background Glow */}
-                    <div className="absolute -inset-4 bg-gradient-to-tr from-emerald-500/10 to-transparent blur-3xl" />
+                    <div className="from-accent/10 dark:from-accent/5 absolute -inset-4 bg-gradient-to-tr to-transparent blur-3xl" />
 
-                    <Card className="matte-surface relative overflow-hidden rounded-[2rem] border-zinc-200/50 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] backdrop-blur-xl">
+                    <Card className="matte-surface border-border/50 relative overflow-hidden rounded-[2rem] shadow-2xl backdrop-blur-xl">
                         <div className="border-border bg-bg-subtle/50 border-b px-8 py-6">
                             <h3 className="text-text-primary flex items-center gap-2 text-xs font-bold tracking-tight uppercase">
-                                <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                                <span className="bg-accent flex h-2 w-2 animate-pulse rounded-full" />
                                 Global Leaderboard - Live
                             </h3>
                         </div>
@@ -113,7 +113,7 @@ export default function LeaderboardPreviewSection() {
                             <Link href="/leaderboard">
                                 <Button
                                     variant="ghost"
-                                    className="text-accent text-xs font-bold transition-all hover:scale-105 hover:bg-emerald-50 active:scale-95"
+                                    className="text-accent hover:bg-bg-muted text-xs font-bold transition-all hover:scale-105 active:scale-95"
                                 >
                                     View Full Leaderboard
                                     <ArrowUpRight className="ml-2 h-4 w-4" />
@@ -139,7 +139,7 @@ function LeaderboardRow({ user, rank, index }) {
             transition={{ delay: shouldReduceMotion ? 0 : index * 0.1 }}
             className={cn(
                 'group relative flex items-center justify-between rounded-2xl p-5 transition-all duration-300',
-                isFirst ? 'bg-emerald-50/60 shadow-sm' : 'hover:bg-zinc-50/50'
+                isFirst ? 'bg-accent/10 dark:bg-accent/[0.07] shadow-sm' : 'hover:bg-bg-muted/50'
             )}
         >
             <div className="flex items-center gap-5">
@@ -191,7 +191,7 @@ function LeaderboardRow({ user, rank, index }) {
                 <div className="text-text-primary font-mono text-lg font-black tracking-tight">
                     {user.score.toLocaleString()}
                 </div>
-                <div className="text-[10px] font-extrabold tracking-tighter text-emerald-600 uppercase">
+                <div className="text-success text-[10px] font-extrabold tracking-tighter uppercase">
                     {user.submissions} Solved
                 </div>
             </div>
@@ -208,7 +208,7 @@ function LeaderboardRow({ user, rank, index }) {
                             repeat: Infinity,
                             ease: 'linear',
                         }}
-                        className="absolute h-full w-1/2 skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                        className="absolute h-full w-1/2 skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/10"
                     />
                 </div>
             )}

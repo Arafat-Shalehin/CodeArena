@@ -24,9 +24,9 @@ import { formatAcceptanceRate } from '@/lib/utils'
 import ReactionSystem from '@/components/reactions/ReactionSystem'
 
 const DIFFICULTY_STYLES = {
-    easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
-    medium: 'text-[#ffc01e] bg-[#ffc01e]/10',
-    hard: 'text-[#ff375f] bg-[#ff375f]/10',
+    easy: 'difficulty-easy',
+    medium: 'difficulty-medium',
+    hard: 'difficulty-hard',
 }
 
 const TABS = [
@@ -243,26 +243,32 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                 ) : leftTab === 'submission-result' ? (
                     <SubmissionResultTab />
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-600">
+                    <div className="text-text-muted flex flex-col items-center justify-center py-20 transition-colors">
                         <span className="mb-3 text-4xl">🚧</span>
-                        <p className="text-sm">Coming soon</p>
+                        <p className="text-sm font-medium">Coming soon</p>
                     </div>
                 )}
             </div>
 
             {/* Footer */}
-            <div className="flex h-[36px] flex-shrink-0 items-center justify-between border-t border-[#333] px-4 text-xs text-gray-500">
+            <div className="border-border bg-bg-subtle text-text-muted flex h-[36px] flex-shrink-0 items-center justify-between border-t px-4 text-xs transition-colors">
                 <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
+                    <span className="hover:text-text-primary flex items-center gap-1 transition-colors">
                         <ThumbsUp size={12} /> {problem.totalSubmissions || 0}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="hover:text-text-primary flex items-center gap-1 transition-colors">
                         <MessageSquare size={12} /> {problem.testCaseCount || 0}
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Star size={12} className="cursor-pointer hover:text-yellow-400" />
-                    <ExternalLink size={12} className="cursor-pointer hover:text-white" />
+                    <Star
+                        size={12}
+                        className="hover:text-rank-gold cursor-pointer transition-colors"
+                    />
+                    <ExternalLink
+                        size={12}
+                        className="hover:text-text-primary cursor-pointer transition-colors"
+                    />
                 </div>
             </div>
         </>

@@ -10,23 +10,23 @@ const DIFFICULTY_CONFIG = {
     Easy: {
         variant: 'success',
         icon: Zap,
-        color: 'text-emerald-500',
-        bg: 'bg-emerald-50',
-        border: 'border-emerald-200',
+        color: 'text-success',
+        bg: 'bg-success-light',
+        border: 'border-success/30',
     },
     Medium: {
         variant: 'warning',
         icon: Activity,
-        color: 'text-amber-500',
-        bg: 'bg-amber-50',
-        border: 'border-amber-200',
+        color: 'text-warning',
+        bg: 'bg-warning-light',
+        border: 'border-warning/30',
     },
     Hard: {
         variant: 'destructive',
         icon: Flame,
-        color: 'text-rose-500',
-        bg: 'bg-rose-50',
-        border: 'border-rose-200',
+        color: 'text-error',
+        bg: 'bg-error-light',
+        border: 'border-error/30',
     },
 }
 
@@ -46,7 +46,7 @@ export default function ProblemCard({ title, difficulty, solvedCount, tags, succ
                         <Icon className="h-3 w-3" strokeWidth={3} />
                         {difficulty}
                     </Badge>
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+                    <div className="text-text-muted flex items-center gap-1.5 text-xs font-medium">
                         <CheckCircle className="h-3.5 w-3.5" />
                         {solvedCount}
                     </div>
@@ -62,7 +62,7 @@ export default function ProblemCard({ title, difficulty, solvedCount, tags, succ
                     {tags.map((tag, i) => (
                         <span
                             key={i}
-                            className="rounded bg-zinc-100 px-2 py-1 text-[10px] font-medium text-zinc-500 transition-colors hover:bg-zinc-200"
+                            className="bg-bg-muted text-text-secondary hover:bg-border rounded px-2 py-1 text-[10px] font-medium transition-colors"
                         >
                             {tag}
                         </span>
@@ -70,11 +70,11 @@ export default function ProblemCard({ title, difficulty, solvedCount, tags, succ
                 </div>
 
                 {/* Footer: Success Rate & Action */}
-                <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4">
-                    <span className="text-xs font-medium text-zinc-400">
-                        <span className="font-bold text-zinc-600">{successRate}</span> Success
+                <div className="border-border mt-auto flex items-center justify-between border-t pt-4">
+                    <span className="text-text-muted text-xs font-medium">
+                        <span className="text-text-primary font-bold">{successRate}</span> Success
                     </span>
-                    <ArrowRight className="group-hover:text-accent h-4 w-4 text-zinc-300 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="group-hover:text-accent text-text-muted/60 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
             </CardContent>
         </Card>

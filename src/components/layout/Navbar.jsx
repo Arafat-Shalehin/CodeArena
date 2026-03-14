@@ -14,6 +14,7 @@ import SearchBar from '@/components/layout/SearchBar'
 import ProfileDropdown from '@/components/layout/ProfileDropdown'
 import MobileMenu from '@/components/layout/MobileMenu'
 import NotificationBell from '@/components/layout/NotificationBell'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -100,6 +101,7 @@ export default function Navbar() {
 
                 {/* Desktop: Auth Buttons OR Profile Dropdown */}
                 <div className="hidden items-center gap-3 md:flex">
+                    <ThemeToggle />
                     {isAuthenticated && user ? (
                         <>
                             <NotificationBell />
@@ -124,6 +126,7 @@ export default function Navbar() {
 
                 {/* Mobile Menu Toggle */}
                 <div className="flex items-center gap-2 md:hidden">
+                    <ThemeToggle />
                     {isAuthenticated && user && (
                         <Link href="/profile" className="mr-1">
                             <Avatar className="border-accent/30 size-8 border-2">
