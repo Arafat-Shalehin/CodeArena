@@ -87,7 +87,7 @@ export async function executeCode({
             console.log('[EXECUTOR] Using Docker for code execution')
             let lastError = null
             const maxRetries = 2
-            
+
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
                     const result = await executeCodeWithDocker({
@@ -116,7 +116,7 @@ export async function executeCode({
 
                     // Store error for potential retry
                     lastError = result.error
-                    
+
                     if (attempt < maxRetries) {
                         console.log(`[EXECUTOR] Docker error on attempt ${attempt}, retrying...`)
                         // Wait before retry
@@ -125,7 +125,7 @@ export async function executeCode({
                 } catch (error) {
                     console.error(`[EXECUTOR] Docker error on attempt ${attempt}:`, error.message)
                     lastError = error.message
-                    
+
                     if (attempt < maxRetries) {
                         await new Promise(resolve => setTimeout(resolve, 500))
                     }
@@ -269,7 +269,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
 
     // Determine if this is a multi-file submission
     const isMultiFile = files && files.length > 0
-    
+
     // Check if Docker image exists
     console.log(`[EXECUTOR] Checking for Docker image: ${langConfig.image}`)
     try {
@@ -279,12 +279,12 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
     } catch (imgError) {
         console.error(`[EXECUTOR] ❌ Docker image not found: ${langConfig.image}`)
         console.error(`[EXECUTOR] Error: ${imgError.message}`)
-        
+
         // List available images for debugging
         try {
             const images = await docker.listImages()
-            const relevantImages = images.filter(img => 
-                img.RepoTags?.some(tag => 
+            const relevantImages = images.filter(img =>
+                img.RepoTags?.some(tag =>
                     tag.includes('executor') || tag.includes('codearena')
                 )
             )
@@ -299,7 +299,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         } catch (listError) {
             console.error('[EXECUTOR] Could not list Docker images:', listError.message)
         }
-        
+
         throw new Error(`Docker image ${langConfig.image} not found. Build it using: docker/scripts/build-images.sh`)
     }
 
@@ -335,7 +335,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         try {
             containerInfo = await container.inspect()
             console.log(`[EXECUTOR] Startup attempt ${startupAttempts + 1}: Running=${containerInfo.State.Running}, Status=${containerInfo.State.Status}`)
-            
+
             if (containerInfo.State.Running) {
                 console.log('[EXECUTOR] ✅ Container is running, ID:', container.id.substring(0, 12))
                 break
@@ -352,7 +352,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
     if (!containerInfo?.State.Running) {
         console.error('[EXECUTOR] ❌ Container failed to start or stopped unexpectedly')
         console.error('[EXECUTOR] Final container state:', containerInfo?.State)
-        
+
         // Get container logs to see what went wrong
         try {
             const logs = await container.logs({
@@ -364,7 +364,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         } catch (logError) {
             console.error('[EXECUTOR] Could not retrieve container logs:', logError.message)
         }
-        
+
         try {
             await container.remove({ force: true })
         } catch (e) {
@@ -429,7 +429,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
     } catch (error) {
         console.error('[EXECUTOR] ❌ Error writing files to container:', error.message)
         console.error('[EXECUTOR] Error details:', error)
-        
+
         // Try to inspect container state for debugging
         try {
             const finalState = await container.inspect()
@@ -437,7 +437,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         } catch (e) {
             console.error('[EXECUTOR] Could not inspect container at failure')
         }
-        
+
         try {
             await container.stop()
         } catch (stopError) {

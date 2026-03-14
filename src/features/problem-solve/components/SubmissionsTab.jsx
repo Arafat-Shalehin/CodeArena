@@ -91,7 +91,7 @@ export default function SubmissionsTab() {
                 <h3 className="text-text-primary text-xl font-bold tracking-tight">
                     No submissions yet
                 </h3>
-                <p className="text-text-muted mt-3 max-w-[280px] text-[13px] leading-relaxed font-medium">
+                <p className="text-text-muted mt-3 max-w-70 text-[13px] leading-relaxed font-medium">
                     Once you submit your code, your history and detailed results will appear here.
                 </p>
             </div>
@@ -111,7 +111,7 @@ export default function SubmissionsTab() {
                         className="group border-border bg-bg-muted/50 hover:bg-bg-muted hover:border-accent/30 flex cursor-pointer items-center justify-between overflow-hidden rounded-xl border p-4 transition-all duration-300 hover:shadow-lg"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="bg-bg-page flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl shadow-inner">
+                            <div className="bg-bg-page flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-inner">
                                 {sub.status === 'queued' || sub.status === 'running' ? (
                                     <Clock className="text-warning animate-pulse" size={20} />
                                 ) : (sub.verdict || '').toUpperCase() === 'ACCEPTED' ? (

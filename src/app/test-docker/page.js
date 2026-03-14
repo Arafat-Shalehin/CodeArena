@@ -414,7 +414,7 @@ export default function DockerIDEPage() {
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <nav className="flex h-[44px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
+            <nav className="flex h-11 shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
                 {/* Left: Problem List + Nav */}
                 <div className="flex items-center gap-1">
                     <button
@@ -500,7 +500,7 @@ export default function DockerIDEPage() {
                     className="flex flex-col overflow-hidden border-r border-[#333]"
                 >
                     {/* Left Tabs */}
-                    <div className="flex h-[38px] flex-shrink-0 items-center gap-1 border-b border-[#333] bg-[#282828] px-3">
+                    <div className="flex h-9.5 shrink-0 items-center gap-1 border-b border-[#333] bg-[#282828] px-3">
                         {[
                             { key: 'description', label: 'Description', icon: '📄' },
                             { key: 'editorial', label: 'Editorial', icon: '📘' },
@@ -543,7 +543,7 @@ export default function DockerIDEPage() {
 
                     {/* Left Footer */}
                     {selectedProblem && (
-                        <div className="flex h-[36px] flex-shrink-0 items-center justify-between border-t border-[#333] bg-[#282828] px-4 text-xs text-gray-500">
+                        <div className="flex h-9 shrink-0 items-center justify-between border-t border-[#333] bg-[#282828] px-4 text-xs text-gray-500">
                             <div className="flex items-center gap-4">
                                 <span className="flex items-center gap-1">
                                     <ThumbsUp size={12} /> {selectedProblem.totalSubmissions || 0}
@@ -566,7 +566,7 @@ export default function DockerIDEPage() {
                 {/* ─── Horizontal Drag Handle ─── */}
                 <div
                     onMouseDown={hSplit.onMouseDown}
-                    className="flex w-[6px] cursor-col-resize items-center justify-center bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
+                    className="flex w-1.5 cursor-col-resize items-center justify-center bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
                 >
                     <GripVertical size={10} className="text-gray-600" />
                 </div>
@@ -583,7 +583,7 @@ export default function DockerIDEPage() {
                             className="flex flex-col overflow-hidden"
                         >
                             {/* Editor Header */}
-                            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
+                            <div className="flex h-9.5 shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-3">
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-semibold text-gray-300">
                                         {'</>'} Code
@@ -667,7 +667,7 @@ export default function DockerIDEPage() {
                             </div>
 
                             {/* Editor Footer */}
-                            <div className="flex h-[24px] flex-shrink-0 items-center justify-end border-t border-[#333] bg-[#282828] px-3 text-[10px] text-gray-600">
+                            <div className="flex h-6 shrink-0 items-center justify-end border-t border-[#333] bg-[#282828] px-3 text-[10px] text-gray-600">
                                 <span>Saved</span>
                                 <span className="mx-4">Ln 1, Col 1</span>
                             </div>
@@ -676,7 +676,7 @@ export default function DockerIDEPage() {
                         {/* ─── Vertical Drag Handle ─── */}
                         <div
                             onMouseDown={vSplit.onMouseDown}
-                            className="flex h-[6px] cursor-row-resize items-center justify-center bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
+                            className="flex h-1.5 cursor-row-resize items-center justify-center bg-[#1a1a1a] transition-colors hover:bg-[#007acc]"
                         >
                             <GripHorizontal size={10} className="text-gray-600" />
                         </div>
@@ -687,7 +687,7 @@ export default function DockerIDEPage() {
                             className="flex flex-col overflow-hidden bg-[#1a1a1a]"
                         >
                             {/* Console Header (Tabs + Actions) */}
-                            <div className="flex h-[38px] flex-shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-4">
+                            <div className="flex h-9.5 shrink-0 items-center justify-between border-b border-[#333] bg-[#282828] px-4">
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => setConsoleTab('testcase')}
@@ -1094,8 +1094,8 @@ function QualityBar({ label, value, maxValue = 5, color }) {
     const percentage = (value / maxValue) * 100
     return (
         <div className="flex items-center gap-3">
-            <span className="w-[72px] text-[11px] text-gray-500">{label}</span>
-            <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#1a1a1a]">
+            <span className="w-18 text-[11px] text-gray-500">{label}</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#1a1a1a]">
                 <div
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${percentage}%`, background: color }}
@@ -1117,7 +1117,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                         className="absolute inset-0 animate-ping rounded-full bg-purple-500/20"
                         style={{ animationDuration: '1.5s' }}
                     />
-                    <div className="relative rounded-full bg-gradient-to-br from-purple-500 to-violet-600 p-3">
+                    <div className="relative rounded-full bg-linear-to-br from-purple-500 to-violet-600 p-3">
                         <Brain size={22} className="animate-pulse text-white" />
                     </div>
                 </div>
@@ -1136,7 +1136,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
     if (!feedback) {
         return (
             <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-gray-500">
-                <div className="rounded-full bg-gradient-to-br from-purple-500/10 to-violet-600/10 p-4">
+                <div className="rounded-full bg-linear-to-br from-purple-500/10 to-violet-600/10 p-4">
                     <Sparkles size={28} className="text-purple-400/50" />
                 </div>
                 <div className="text-center">
@@ -1149,7 +1149,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                 </div>
                 <button
                     onClick={onRetry}
-                    className="mt-1 flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-violet-600 px-5 py-2 text-xs font-medium text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] hover:shadow-purple-500/40"
+                    className="mt-1 flex items-center gap-2 rounded-lg bg-linear-to-r from-purple-600 to-violet-600 px-5 py-2 text-xs font-medium text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] hover:shadow-purple-500/40"
                 >
                     <Sparkles size={14} /> Analyze with AI
                 </button>
@@ -1181,7 +1181,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
             {/* ── Top: Rating + Complexity + Algorithm ── */}
             <div className="flex gap-3">
                 {/* Rating Circle */}
-                <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl border border-[#333] bg-[#222] p-4">
+                <div className="flex min-w-25 flex-col items-center justify-center rounded-xl border border-[#333] bg-[#222] p-4">
                     <div className="relative flex items-center justify-center">
                         <svg width="56" height="56" viewBox="0 0 56 56">
                             <circle
@@ -1260,7 +1260,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
             {feedback.verdict_explanation && (
                 <div className="rounded-xl border border-[#333] bg-[#222] p-3">
                     <div className="flex items-start gap-2">
-                        <Target size={14} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                        <Target size={14} className="mt-0.5 shrink-0 text-gray-400" />
                         <p className="text-xs leading-relaxed text-gray-300">
                             {feedback.verdict_explanation}
                         </p>
@@ -1316,7 +1316,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                             >
                                 <CheckCircle2
                                     size={13}
-                                    className="mt-0.5 flex-shrink-0 text-[#2cbb5d]/60"
+                                    className="mt-0.5 shrink-0 text-[#2cbb5d]/60"
                                 />
                                 {s}
                             </li>
@@ -1342,7 +1342,7 @@ function AiFeedbackConsole({ feedback, isLoading, onRetry }) {
                             >
                                 <ArrowRight
                                     size={13}
-                                    className="mt-0.5 flex-shrink-0 text-[#ffc01e]/60"
+                                    className="mt-0.5 shrink-0 text-[#ffc01e]/60"
                                 />
                                 {s}
                             </li>
