@@ -12,8 +12,13 @@ import {
     TrendingUp,
     MessageSquare,
     ClipboardList,
+    Trophy,
+    Lightbulb,
+    Target,
+    Code2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 export default function ScorecardView({ sessionId }) {
     const [result, setResult] = useState(null)
@@ -270,44 +275,69 @@ export default function ScorecardView({ sessionId }) {
                 </section>
 
                 {/* Grid: Detailed Ratings */}
-                <section className="mt-8 grid gap-6 md:grid-cols-3">
+                <section className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                     {[
                         {
                             label: 'Communication',
                             val: result.communicationScore,
-                            color: 'text-accent',
+                            color: 'text-blue-500',
+                            icon: MessageSquare,
                         },
                         {
-                            label: 'Technical Approach',
-                            val: result.approachScore,
-                            color: 'text-accent',
-                        },
-                        {
-                            label: 'Code Quality',
+                            label: 'Coding Performance',
                             val: result.codeQualityScore,
+                            color: 'text-emerald-500',
+                            icon: Code2,
+                        },
+                        {
+                            label: 'Problem Solving',
+                            val: result.problemSolvingScore,
                             color: 'text-accent',
+                            icon: Target,
+                        },
+                        {
+                            label: 'Technical Accuracy',
+                            val: result.approachScore,
+                            color: 'text-purple-500',
+                            icon: TrendingUp,
                         },
                     ].map((item, i) => (
-                        <div
+                        <motion.div
                             key={i}
-                            className="border-border bg-bg-subtle/50 hover:bg-bg-muted rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 * i }}
+                            className="border-border bg-bg-subtle/50 group hover:bg-bg-muted relative overflow-hidden rounded-[2rem] border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1"
                         >
-                            <span className="text-text-muted text-[10px] font-black tracking-widest uppercase">
+                            <div className="mb-4 flex items-center justify-between">
+                                <div
+                                    className={`bg-opacity-10 rounded-xl bg-current p-2 ${item.color}`}
+                                >
+                                    <item.icon size={18} />
+                                </div>
+                                <div className="text-right">
+                                    <span className={`text-2xl font-black ${item.color}`}>
+                                        {item.val}
+                                    </span>
+                                    <span className="text-text-muted ml-1 text-[10px] font-bold">
+                                        /100
+                                    </span>
+                                </div>
+                            </div>
+
+                            <span className="text-text-primary text-xs font-black tracking-tight uppercase">
                                 {item.label}
                             </span>
-                            <div className="mt-2 flex items-baseline gap-2">
-                                <span className={`text-3xl font-[1000] ${item.color}`}>
-                                    {item.val}
-                                </span>
-                                <span className="text-text-muted text-sm font-bold">/ 100</span>
-                            </div>
+
                             <div className="bg-border mt-4 h-1.5 w-full overflow-hidden rounded-full">
-                                <div
-                                    className={`h-full transition-all duration-700 ${item.color.replace('text-', 'bg-')}`}
-                                    style={{ width: `${item.val}%` }}
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${item.val}%` }}
+                                    transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
+                                    className={`h-full ${item.color.replace('text-', 'bg-')}`}
                                 />
                             </div>
-                        </div>
+                        </motion.div>
                     ))}
                 </section>
 
@@ -324,12 +354,16 @@ export default function ScorecardView({ sessionId }) {
                     </div>
                 </section>
 
-                {/* Strengths & Improvements */}
+                {/* Strengths & Weaknesses */}
                 <section className="mt-12 grid gap-8 md:grid-cols-2">
                     {/* Strengths */}
-                    <div className="space-y-4">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="space-y-4"
+                    >
                         <div className="flex items-center gap-3">
-                            <CheckCircle2 className="text-accent h-5 w-5" />
+                            <Trophy className="text-accent h-5 w-5" />
                             <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
                                 Key Strengths
                             </h3>
@@ -338,40 +372,73 @@ export default function ScorecardView({ sessionId }) {
                             {result.strengths?.map((s, i) => (
                                 <div
                                     key={i}
-                                    className="bg-accent/5 border-accent/10 text-accent hover:bg-accent/10 flex gap-3 rounded-2xl border p-4 text-sm font-medium transition-all"
+                                    className="bg-accent/5 border-accent/10 text-text-primary group hover:bg-accent/10 flex gap-4 rounded-2xl border p-5 text-sm font-medium transition-all"
                                 >
-                                    <span className="font-mono opacity-50">
-                                        {String(i + 1).padStart(2, '0')}
-                                    </span>
+                                    <span className="text-accent font-black">{i + 1}.</span>
                                     {s}
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
-                    {/* Improvements */}
-                    <div className="space-y-4">
+                    {/* Weaknesses */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="space-y-4"
+                    >
                         <div className="flex items-center gap-3">
-                            <ClipboardList className="text-warning h-5 w-5" />
+                            <AlertCircle className="text-error h-5 w-5" />
                             <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
-                                Growth Areas
+                                Critical Weaknesses
                             </h3>
                         </div>
                         <div className="space-y-3">
-                            {result.areasToImprove?.map((a, i) => (
+                            {(result.weaknesses || result.areasToImprove)?.map((a, i) => (
                                 <div
                                     key={i}
-                                    className="bg-warning/5 border-warning/10 text-warning hover:bg-warning/10 flex gap-3 rounded-2xl border p-4 text-sm font-medium transition-all"
+                                    className="bg-error/5 border-error/10 text-text-primary group hover:bg-error/10 flex gap-4 rounded-2xl border p-5 text-sm font-medium transition-all"
                                 >
-                                    <span className="font-mono opacity-50">
-                                        {String(i + 1).padStart(2, '0')}
-                                    </span>
+                                    <span className="text-error font-black">{i + 1}.</span>
                                     {a}
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
                 </section>
+
+                {/* Recommendations */}
+                <motion.section
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="mt-12 space-y-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <Lightbulb className="h-5 w-5 text-yellow-500" />
+                        <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
+                            Expert Recommendations
+                        </h3>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {result.recommendations?.map((r, i) => (
+                            <div
+                                key={i}
+                                className="border-border bg-bg-subtle/50 hover:bg-bg-muted flex gap-4 rounded-2xl border p-6 text-sm font-medium backdrop-blur-xl transition-all"
+                            >
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yellow-500/10 text-[10px] font-black text-yellow-500">
+                                    {i + 1}
+                                </div>
+                                {r}
+                            </div>
+                        ))}
+                        {(!result.recommendations || result.recommendations.length === 0) && (
+                            <div className="bg-bg-subtle border-border text-text-muted col-span-2 rounded-2xl border border-dashed p-8 text-center text-sm font-medium">
+                                No specific recommendations provided for this session.
+                            </div>
+                        )}
+                    </div>
+                </motion.section>
 
                 {/* Footer Credits */}
                 <footer className="border-border text-text-muted mt-20 border-t pt-8 text-center text-[10px] font-bold tracking-widest uppercase">

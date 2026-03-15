@@ -132,13 +132,6 @@ export default function InterviewLandingPage() {
                     />
                 </div>
             </section>
-
-            {/* History Section */}
-            <section className="border-border bg-bg-subtle/30 relative mt-20 border-t py-12 backdrop-blur-3xl">
-                <div className="via-accent/30 absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent" />
-                <div className="bg-grid-white/[0.02] pointer-events-none absolute inset-0" />
-                <HistoryList />
-            </section>
         </main>
     )
 }

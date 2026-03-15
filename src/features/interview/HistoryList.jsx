@@ -99,37 +99,18 @@ export default function HistoryList() {
     }
 
     return (
-        <div className="mx-auto max-w-6xl px-4 py-24">
-            <header className="mb-20 space-y-6 text-center">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="border-accent/20 bg-accent/10 text-accent inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase"
-                >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Performance Tracking
-                </motion.div>
-
-                <div className="space-y-2">
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="text-text-primary text-5xl leading-none font-[1000] tracking-tighter lg:text-8xl"
-                    >
-                        Interview <span className="text-accent font-serif italic">History.</span>
-                    </motion.h1>
+        <div className="mx-auto max-w-6xl px-4 py-5">
+            <header className="mb-12 space-y-4">
+                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                    <div className="text-center md:text-left">
+                        <h2 className="text-text-primary text-2xl font-black tracking-tight md:text-3xl">
+                            Past Sessions
+                        </h2>
+                        <p className="text-text-muted text-sm font-medium">
+                            {sessions.length} interviews completed so far
+                        </p>
+                    </div>
                 </div>
-
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-text-secondary mx-auto max-w-2xl text-lg leading-relaxed font-medium"
-                >
-                    Review your past attempts, crystal-clear analysis reports, and growth trajectory
-                    in our AI-driven sandbox.
-                </motion.p>
             </header>
 
             <div className="grid gap-6">
@@ -230,13 +211,14 @@ export default function HistoryList() {
                                         )}
 
                                     {/* Action Buttons */}
-                                    <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
+                                    <div className="flex w-full flex-shrink-0 flex-col gap-3 sm:flex-row md:w-auto">
                                         <Link
                                             href={`/interview/${session._id}${session.status === 'active' ? '' : '/replay'}`}
+                                            className="w-full"
                                         >
                                             <Button
                                                 variant="ghost"
-                                                className="bg-bg-muted/50 hover:bg-bg-muted h-14 w-full rounded-2xl text-xs font-black tracking-widest uppercase transition-all md:px-6"
+                                                className="bg-bg-muted/50 hover:bg-bg-muted text-text-primary h-12 w-full rounded-xl text-xs font-black tracking-widest uppercase transition-all md:px-6"
                                             >
                                                 {session.status === 'active' ? (
                                                     <Sparkles className="text-accent mr-2 h-4 w-4" />
@@ -244,23 +226,24 @@ export default function HistoryList() {
                                                     <PlayCircle className="text-accent mr-2 h-4 w-4" />
                                                 )}
                                                 {session.status === 'active'
-                                                    ? 'Resume Session'
+                                                    ? 'Resume'
                                                     : 'View Replay'}
                                             </Button>
                                         </Link>
                                         <Link
                                             href={`/interview/${session._id}/${session.status === 'active' ? '' : 'result'}`}
+                                            className="w-full"
                                         >
                                             <Button
-                                                className={`h-14 w-full rounded-2xl text-xs font-black tracking-widest uppercase transition-all md:px-8 ${
+                                                className={`h-12 w-full rounded-xl text-xs font-black tracking-widest uppercase transition-all md:px-8 ${
                                                     session.status === 'active'
                                                         ? 'bg-accent hover:bg-accent-hover text-black'
                                                         : 'hover:bg-accent bg-white text-black'
-                                                } hover:shadow-accent/20 hover:shadow-xl`}
+                                                } hover:shadow-accent/20 shadow-lg`}
                                             >
                                                 {session.status === 'active'
-                                                    ? 'Enter Sandbox'
-                                                    : 'Expert Report'}
+                                                    ? 'Join Now'
+                                                    : 'View Result'}
                                                 <ChevronRight className="ml-2 h-4 w-4" />
                                             </Button>
                                         </Link>

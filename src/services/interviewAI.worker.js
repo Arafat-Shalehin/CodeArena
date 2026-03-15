@@ -177,7 +177,15 @@ export function initInterviewAIWorker() {
                         {
                             sessionId,
                             userId,
-                            ...scorecardData,
+                            communicationScore: scorecardData.communicationScore || 0,
+                            codeQualityScore: scorecardData.codeQualityScore || 0,
+                            problemSolvingScore: scorecardData.problemSolvingScore || 0,
+                            approachScore: scorecardData.approachScore || 0,
+                            overallScore: scorecardData.overallScore || 0,
+                            aiSummary: scorecardData.aiSummary || '',
+                            strengths: scorecardData.strengths || [],
+                            weaknesses: scorecardData.weaknesses || [],
+                            recommendations: scorecardData.recommendations || [],
                             createdAt: new Date(),
                             error: false, // Ensure error flag is false on success
                         },
