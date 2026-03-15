@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useMemo, useState } from 'react'
 
 const ExecutionContext = createContext()
 
@@ -18,32 +18,48 @@ export function ExecutionProvider({ children }) {
     const [lastAnalyzedCode, setLastAnalyzedCode] = useState('')
     const [submissionIdForAi, setSubmissionIdForAi] = useState(null)
 
-    const value = {
-        isRunning,
-        setIsRunning,
-        isSubmitting,
-        setIsSubmitting,
-        testResult,
-        setTestResult,
-        activeTestCase,
-        setActiveTestCase,
-        consoleTab,
-        setConsoleTab,
-        testInput,
-        setTestInput,
-        testResultData,
-        setTestResultData,
-        isAiLoading,
-        setIsAiLoading,
-        lastSubmittedCode,
-        setLastSubmittedCode,
-        lastSubmittedLanguage,
-        setLastSubmittedLanguage,
-        lastAnalyzedCode,
-        setLastAnalyzedCode,
-        submissionIdForAi,
-        setSubmissionIdForAi,
-    }
+    const value = useMemo(
+        () => ({
+            isRunning,
+            setIsRunning,
+            isSubmitting,
+            setIsSubmitting,
+            testResult,
+            setTestResult,
+            activeTestCase,
+            setActiveTestCase,
+            consoleTab,
+            setConsoleTab,
+            testInput,
+            setTestInput,
+            testResultData,
+            setTestResultData,
+            isAiLoading,
+            setIsAiLoading,
+            lastSubmittedCode,
+            setLastSubmittedCode,
+            lastSubmittedLanguage,
+            setLastSubmittedLanguage,
+            lastAnalyzedCode,
+            setLastAnalyzedCode,
+            submissionIdForAi,
+            setSubmissionIdForAi,
+        }),
+        [
+            isRunning,
+            isSubmitting,
+            testResult,
+            activeTestCase,
+            consoleTab,
+            testInput,
+            testResultData,
+            isAiLoading,
+            lastSubmittedCode,
+            lastSubmittedLanguage,
+            lastAnalyzedCode,
+            submissionIdForAi,
+        ]
+    )
 
     return <ExecutionContext.Provider value={value}>{children}</ExecutionContext.Provider>
 }

@@ -1,23 +1,61 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
     Clock,
     HardDrive,
     Sparkles,
-    CheckCircle2,
-    XCircle,
     ChevronLeft,
     Zap,
-    BarChart3,
     Copy,
     Check,
+    Loader2,
+    TrendingUp,
 } from 'lucide-react'
 
 import { useProblemSolve, LANG_LABELS } from '@/context/ProblemSolveContext'
 import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'
-import { Loader2, TrendingUp, TrendingDown } from 'lucide-react'
+
+const CELEBRATION_PIECES = [
+    { left: '8%', delay: 0, rotate: -18 },
+    { left: '16%', delay: 0.22, rotate: 12 },
+    { left: '24%', delay: 0.3, rotate: -26 },
+    { left: '34%', delay: 0.12, rotate: 20 },
+    { left: '43%', delay: 0.36, rotate: -14 },
+    { left: '52%', delay: 0.08, rotate: 24 },
+    { left: '62%', delay: 0.28, rotate: -22 },
+    { left: '72%', delay: 0.18, rotate: 10 },
+    { left: '82%', delay: 0.4, rotate: -30 },
+    { left: '90%', delay: 0.26, rotate: 16 },
+]
+
+function SubmissionConfetti() {
+    return (
+        <motion.div
+            className="pointer-events-none absolute inset-0 overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+        >
+            {CELEBRATION_PIECES.map((piece, index) => {
+                const colors = ['bg-success', 'bg-accent', 'bg-warning']
+                return (
+                    <motion.span
+                        key={`${piece.left}-${index}`}
+                        className={`absolute top-2 h-2 w-1 rounded-full ${colors[index % colors.length]}`}
+                        style={{ left: piece.left }}
+                        initial={{ y: -12, opacity: 0, rotate: 0 }}
+                        animate={{ y: 150, opacity: [0, 1, 1, 0], rotate: piece.rotate }}
+                        transition={{ duration: 1.85, delay: piece.delay, ease: 'easeOut' }}
+                    />
+                )
+            })}
+        </motion.div>
+    )
+}
 
 // ─── Simple Bar Chart ───────────────────────────────────────────────────────
 
@@ -69,9 +107,14 @@ function DistributionChart({ userValue, label, unit }) {
 
 // ─── Metric Box ─────────────────────────────────────────────────────────────
 
-function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white' }) {
+function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white', delay = 0 }) {
     return (
-        <div className="border-border bg-bg-muted/50 flex-1 rounded-2xl border p-5 transition-all hover:shadow-lg">
+        <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut', delay }}
+            className="border-border bg-bg-muted/50 flex-1 rounded-2xl border p-5 transition-all hover:shadow-lg"
+        >
             <div className="text-text-muted mb-3 flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase">
                 <Icon size={14} className="opacity-70" />
                 {label}
@@ -89,7 +132,7 @@ function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white'
                     users
                 </div>
             )}
-        </div>
+        </motion.div>
     )
 }
 
@@ -161,11 +204,23 @@ export default function SubmissionResultTab() {
         : ''
 
     const memoryMB = typeof result.memory === 'number' ? (result.memory / 1024).toFixed(2) : '—'
-    const runtimeBeats = result.time === 0 ? '100.00' : (Math.random() * 40 + 60).toFixed(2)
-    const memoryBeats = (Math.random() * 30 + 60).toFixed(2)
+    const { runtimeBeats, memoryBeats } = useMemo(() => {
+        const seedBase = Number(result.time || 0) + Number(result.memory || 0)
+        const runtimeSeed = seedBase % 41
+        const memorySeed = (seedBase * 7) % 31
+
+        const runtimeValue = result.time === 0 ? 100 : 60 + runtimeSeed
+        const memoryValue = 60 + memorySeed
+
+        return {
+            runtimeBeats: Number(runtimeValue).toFixed(2),
+            memoryBeats: Number(memoryValue).toFixed(2),
+        }
+    }, [result.time, result.memory])
 
     return (
-        <div className="animate-fade-up space-y-6">
+        <div className="animate-fade-up relative space-y-6">
+            <AnimatePresence>{isAccepted && <SubmissionConfetti />}</AnimatePresence>
             {/* Nav */}
             <button
                 onClick={() => setLeftTab('submissions')}
@@ -213,6 +268,7 @@ export default function SubmissionResultTab() {
                     unit="ms"
                     beats={runtimeBeats}
                     color={isAccepted ? 'text-success' : 'text-text-primary'}
+                    delay={0.05}
                 />
                 <MetricBox
                     icon={HardDrive}
@@ -221,6 +277,7 @@ export default function SubmissionResultTab() {
                     unit="MB"
                     beats={memoryBeats}
                     color={isAccepted ? 'text-success' : 'text-text-primary'}
+                    delay={0.12}
                 />
             </div>
 
@@ -291,8 +348,8 @@ export default function SubmissionResultTab() {
                 </div>
                 <div className="border-border bg-bg-page relative overflow-hidden rounded-2xl border shadow-2xl">
                     <div className="bg-accent/20 absolute top-0 left-0 h-full w-1.5" />
-                    <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent max-h-[500px] overflow-y-auto p-6">
-                        <pre className="text-text-secondary font-mono text-[13px] leading-relaxed break-words whitespace-pre-wrap select-all">
+                    <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent max-h-125 overflow-y-auto p-6">
+                        <pre className="text-text-secondary font-mono text-[13px] leading-relaxed wrap-break-word whitespace-pre-wrap select-all">
                             <code>{submittedCode}</code>
                         </pre>
                     </div>

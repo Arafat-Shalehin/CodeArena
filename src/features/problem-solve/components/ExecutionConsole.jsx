@@ -1,23 +1,14 @@
 'use client'
 
 import React, { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import {
     CheckCircle2,
-    XCircle,
     Terminal,
     Loader2,
     Heart,
     Sparkles,
-    Brain,
-    Zap,
-    HardDrive,
-    Target,
-    BarChart3,
-    ThumbsUp,
-    Lightbulb,
-    ArrowRight,
-    Award,
-    RotateCcw,
     ChevronDown,
     Maximize2,
     Minimize2,
@@ -25,7 +16,14 @@ import {
 } from 'lucide-react'
 
 import { useProblemSolve } from '@/context/ProblemSolveContext'
-import AiFeedbackTab from './AiFeedbackTab'
+
+const AiFeedbackTab = dynamic(() => import('./AiFeedbackTab'), {
+    loading: () => (
+        <div className="flex h-full items-center justify-center text-xs text-gray-500">
+            Loading AI analysis...
+        </div>
+    ),
+})
 
 // ─── Testcase Tab ───────────────────────────────────────────────────────────
 
@@ -100,11 +98,68 @@ function TestCaseTab() {
 
 // ─── Test Result Tab ────────────────────────────────────────────────────────
 
+const CONFETTI_PIECES = [
+    { left: '6%', delay: 0, duration: 2.2, rotate: -24 },
+    { left: '13%', delay: 0.2, duration: 2.8, rotate: 16 },
+    { left: '19%', delay: 0.35, duration: 2.6, rotate: -12 },
+    { left: '26%', delay: 0.1, duration: 2.4, rotate: 22 },
+    { left: '32%', delay: 0.3, duration: 2.7, rotate: -18 },
+    { left: '39%', delay: 0.15, duration: 2.5, rotate: 28 },
+    { left: '47%', delay: 0.05, duration: 2.3, rotate: -30 },
+    { left: '54%', delay: 0.22, duration: 2.9, rotate: 12 },
+    { left: '61%', delay: 0.4, duration: 2.7, rotate: -20 },
+    { left: '68%', delay: 0.12, duration: 2.35, rotate: 26 },
+    { left: '74%', delay: 0.32, duration: 2.6, rotate: -14 },
+    { left: '82%', delay: 0.18, duration: 2.85, rotate: 18 },
+    { left: '89%', delay: 0.28, duration: 2.5, rotate: -26 },
+]
+
+function StagePill({ label, state }) {
+    const stateClasses =
+        state === 'active'
+            ? 'border-accent/40 bg-accent/15 text-accent'
+            : state === 'done'
+              ? 'border-success/40 bg-success/15 text-success'
+              : 'border-border bg-bg-muted/30 text-text-muted'
+
+    return (
+        <div
+            className={`rounded-full border px-2.5 py-1 text-[10px] leading-none font-bold tracking-wide whitespace-nowrap uppercase transition-colors ${stateClasses}`}
+        >
+            {label}
+        </div>
+    )
+}
+
+function AcceptedConfetti() {
+    return (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {CONFETTI_PIECES.map((piece, index) => {
+                const colors = ['bg-success', 'bg-accent', 'bg-warning']
+                return (
+                    <motion.span
+                        key={index}
+                        className={`absolute top-2 h-2 w-1 rounded-full ${colors[index % colors.length]}`}
+                        style={{ left: piece.left }}
+                        initial={{ y: -12, opacity: 0, rotate: 0 }}
+                        animate={{ y: 140, opacity: [0, 1, 1, 0], rotate: piece.rotate }}
+                        transition={{
+                            duration: piece.duration,
+                            delay: piece.delay,
+                            repeat: Infinity,
+                            repeatDelay: 1.8,
+                            ease: 'easeOut',
+                        }}
+                    />
+                )
+            })}
+        </div>
+    )
+}
+
 function TestResultTab() {
     const { testResult: result, problem } = useProblemSolve()
     const [viewingCase, setViewingCase] = useState(0)
-
-    console.log(result)
 
     if (!result) {
         return (
@@ -115,60 +170,145 @@ function TestResultTab() {
         )
     }
     if (result.status === 'running') {
-        const passedCount = result.results?.length || 0
-        const totalCount = result.totalCount || '?'
-        const progress = result.progress || 0
+        const stage = result.stage || 'compile'
+        const stageIndex =
+            stage === 'running' ? 1 : stage === 'finalizing' || stage === 'finalized' ? 2 : 0
+        const steps = ['Compiling', 'Running Cases', 'Finalizing']
+        const caseResults = result.results || []
+        const passedCount = caseResults.filter((item) => item.verdict === 'ACCEPTED').length
+        const totalCount = Number(result.totalCount) > 0 ? Number(result.totalCount) : 0
+        const progressValue = Number.isFinite(Number(result.progress)) ? Number(result.progress) : 0
+        const progress = Math.max(0, Math.min(100, progressValue))
+        const isFailFast = Boolean(result.failedAtCase && stage === 'finalizing')
+        const statusText =
+            result.statusMessage || result.progressMessage || 'Judging in progress...'
+        const caseCounterText =
+            totalCount > 0 ? `${passedCount} / ${totalCount} test cases` : 'Preparing test cases...'
 
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-6 py-12">
-                {/* Status Message */}
-                <div className="flex flex-col items-center gap-3">
-                    <Loader2 size={32} className="text-accent animate-spin" />
-                    <div className="text-center">
-                        <p className="text-text-primary text-sm font-semibold">
-                            {result.statusMessage ||
-                                result.progressMessage ||
-                                'Judging in progress...'}
-                        </p>
-                        <p className="text-text-muted mt-1 text-xs">
-                            {passedCount} / {totalCount} test cases
-                        </p>
-                    </div>
-                </div>
+            <div className="px-3 py-3 sm:px-4 sm:py-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border-border bg-bg-subtle/80 relative mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border p-4 shadow-sm"
+                >
+                    <motion.div
+                        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_50%,rgba(var(--accent-rgb),0.1),transparent_45%)]"
+                        animate={{ opacity: [0.3, 0.55, 0.3] }}
+                        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                        className={`pointer-events-none absolute inset-y-0 w-24 -skew-x-12 ${
+                            isFailFast
+                                ? 'from-error/0 via-error/15 to-error/0 bg-linear-to-r'
+                                : 'from-accent/0 via-accent/20 to-accent/0 bg-linear-to-r'
+                        }`}
+                        animate={{ x: ['-140%', '180%'] }}
+                        transition={{ duration: 2.8, repeat: Infinity, ease: 'linear' }}
+                    />
 
-                {/* Progress Bar */}
-                {totalCount !== '?' && (
-                    <div className="w-48 space-y-2">
-                        <div className="bg-bg-muted/50 border-border flex h-2 overflow-hidden rounded-full border">
-                            <div
-                                className="from-accent to-success bg-linear-to-r transition-all duration-300"
-                                style={{ width: `${progress}%` }}
+                    <div className="relative mb-3 flex items-center justify-between gap-2">
+                        <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`rounded-full border px-3 py-1 text-[11px] font-bold tracking-wide ${
+                                isFailFast
+                                    ? 'border-error/40 bg-error/15 text-error'
+                                    : 'border-accent/35 bg-accent/10 text-accent'
+                            }`}
+                        >
+                            {result.stageBadge || '[ ⟳ ] Compiling...'}
+                        </motion.div>
+                        <div className="text-text-muted rounded-full border border-current/20 px-2 py-0.5 text-[11px] font-semibold">
+                            {progress}%
+                        </div>
+                    </div>
+
+                    <div className="relative mb-3 flex flex-wrap items-center gap-1.5">
+                        {steps.map((step, index) => (
+                            <StagePill
+                                key={step}
+                                label={step}
+                                state={
+                                    index < stageIndex
+                                        ? 'done'
+                                        : index === stageIndex
+                                          ? 'active'
+                                          : 'todo'
+                                }
                             />
-                        </div>
-                        <div className="text-text-muted text-center text-xs font-medium">
-                            {progress}% complete
-                        </div>
-                    </div>
-                )}
-
-                {/* Test Cases Progress */}
-                {result.results && result.results.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-2">
-                        {result.results.map((r, i) => (
-                            <div
-                                key={i}
-                                className={`flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold ${
-                                    r.verdict === 'ACCEPTED'
-                                        ? 'bg-success/20 text-success'
-                                        : 'bg-error/20 text-error'
-                                }`}
-                                title={`Case ${r.caseNumber}: ${r.verdict}`}
-                            >
-                                {r.caseNumber}
-                            </div>
                         ))}
                     </div>
-                )}
+
+                    <div className="relative mb-3 flex items-start gap-2.5">
+                        <Loader2 size={18} className="text-accent mt-0.5 shrink-0 animate-spin" />
+                        <div className="min-w-0">
+                            <p className="text-text-primary truncate text-sm leading-tight font-semibold">
+                                {statusText}
+                            </p>
+                            <p className="text-text-muted mt-1 text-[11px]">{caseCounterText}</p>
+                        </div>
+                    </div>
+
+                    {totalCount > 0 && (
+                        <div className="relative space-y-1.5">
+                            <div className="bg-bg-muted/60 border-border flex h-2 overflow-hidden rounded-full border">
+                                <motion.div
+                                    className={`h-full ${
+                                        isFailFast
+                                            ? 'from-error via-error/90 to-warning/70 bg-linear-to-r'
+                                            : 'from-accent to-success bg-linear-to-r'
+                                    }`}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    transition={{ type: 'spring', stiffness: 50, damping: 18 }}
+                                />
+                            </div>
+                            <div className="text-text-muted flex items-center justify-between text-[11px] font-medium">
+                                <span>0%</span>
+                                <span>
+                                    {isFailFast
+                                        ? `Stopped at case ${result.failedAtCase}`
+                                        : `${progress}% complete`}
+                                </span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {caseResults.length > 0 && (
+                        <div className="border-border/60 relative mt-3 border-t pt-3">
+                            <div className="mb-2 flex items-center justify-between">
+                                <span className="text-text-muted text-[11px] font-semibold tracking-wide uppercase">
+                                    Case Stream
+                                </span>
+                                {isFailFast && (
+                                    <span className="text-error text-[11px] font-semibold">
+                                        Failed at #{result.failedAtCase}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex max-h-20 flex-wrap gap-1.5 overflow-y-auto pr-1">
+                                {caseResults.map((r, i) => (
+                                    <motion.div
+                                        key={`${r.caseNumber || i}-${r.verdict || 'pending'}`}
+                                        initial={{ scale: 0.86, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ delay: i * 0.025 }}
+                                        className={`flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-[10px] font-bold ${
+                                            r.verdict === 'ACCEPTED'
+                                                ? 'bg-success/20 text-success'
+                                                : 'bg-error/20 text-error'
+                                        }`}
+                                        title={`Case ${r.caseNumber}: ${r.verdict}`}
+                                    >
+                                        {r.caseNumber}
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
             </div>
         )
     }
@@ -201,7 +341,8 @@ function TestResultTab() {
     const currentTestCase = testCases[viewingCase]
 
     return (
-        <div className="p-5">
+        <div className="relative p-5">
+            <AnimatePresence>{isAccepted && <AcceptedConfetti />}</AnimatePresence>
             {/* Verdict Header */}
             <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-baseline gap-3">

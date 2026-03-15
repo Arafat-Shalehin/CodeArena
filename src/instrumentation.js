@@ -43,7 +43,7 @@ export async function register() {
             console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
             if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
             globalWorkers.interviewAI = initInterviewAIWorker()
-
+            globalThis._workersInitialized = true
             console.log(
                 '>>> CodeArena Workers v2.1 Initialized (Submission, Stats, AI, InterviewAI)'
             )

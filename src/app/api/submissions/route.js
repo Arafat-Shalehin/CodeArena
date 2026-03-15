@@ -11,7 +11,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Initialize workers on module load if in development
 async function ensureWorkersInitialized() {
-    if (global._workersInitialized) return
+    if (globalThis._workersInitialized) return
 
     console.log('[API ROUTE] Initializing workers...')
     try {
@@ -24,7 +24,7 @@ async function ensureWorkersInitialized() {
         initStatsWorker()
         initAIWorker()
         initInterviewAIWorker()
-        global._workersInitialized = true
+        globalThis._workersInitialized = true
         console.log('[API ROUTE] >>> Workers Successfully Initialized')
     } catch (err) {
         console.error('[API ROUTE] Failed to initialize workers:', err.message)
