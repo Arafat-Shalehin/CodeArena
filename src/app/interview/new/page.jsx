@@ -37,7 +37,7 @@ const MODES = [
     },
 ]
 
-const DURATIONS = [1, 30, 45, 60]
+const DURATIONS = [1, 5, 30, 45, 60]
 
 export default function NewInterviewPage() {
     const router = useRouter()

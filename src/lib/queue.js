@@ -45,6 +45,10 @@ export function getAIAnalysisQueue() {
     return getQueue('ai-analysis-queue')
 }
 
+export function getStatsQueue() {
+    return getQueue('stats-queue')
+}
+
 /**
  * Queue for processing live interview AI chat messages.
  * Uses a shorter timeout since streaming must be real-time.
@@ -65,8 +69,19 @@ export function getInterviewAIQueue() {
     return queues['interview-ai']
 }
 
-export function getStatsQueue() {
-    return getQueue('stats-queue')
+export function getInterviewExecutionQueue() {
+    if (!queues['interview-execution']) {
+        queues['interview-execution'] = new Queue('interview-execution', {
+            connection,
+            defaultJobOptions: {
+                attempts: 2,
+                removeOnComplete: true,
+                removeOnFail: false,
+                timeout: 120000, // 2 mins total for multiple test cases
+            },
+        })
+    }
+    return queues['interview-execution']
 }
 
 export { connection }

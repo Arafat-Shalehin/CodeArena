@@ -119,50 +119,50 @@ function injectUserMessage(message) {
 /**
  * Returns the phase-specific behavioural instructions block.
  *
- * @param {'greeting'|'coding'|'submitted'|'followup'|'ended'} phase
+ * @param {'intro'|'qa'|'coding'|'evaluation'|'completed'} phase
  * @returns {string}
  */
 function getPhaseInstructions(phase) {
     const instructions = {
-        greeting: `
-CURRENT PHASE: greeting
+        intro: `
+CURRENT PHASE: intro
 - Warmly welcome the candidate.
 - Briefly overview the problem without giving hints or the solution.
-- Ask if they have any clarifying questions before starting.
+- Tell them you'll start with a few conceptual questions before coding.
 - Keep it conversational; you are starting a 1:1 technical interview.
+`.trim(),
+
+        qa: `
+CURRENT PHASE: qa
+- This is the initial Q&A round. Ask the candidate 1-2 conceptual questions related to the problem's domain.
+- Topics: Time/Space complexity considerations, potential algorithms, or data structures.
+- Evaluate their answers. Be conversational.
+- Once you're satisfied with their conceptual overview, tell them the editor is now unlocked for implementation.
 `.trim(),
 
         coding: `
 CURRENT PHASE: coding
 - The candidate is actively writing code. Watch their progress.
 - If they ask for help, give a SUBTLE HINT — never the direct answer.
-- Probe their understanding: ask about time/space complexity or edge cases.
 - You can see their latest code in <user_code>. Reference it specifically.
 - Keep responses concise (1-3 sentences).
+- If they've finished, encourage them to run tests before submitting.
 `.trim(),
 
-        submitted: `
-CURRENT PHASE: submitted
-- The candidate has just submitted a solution.
-- You can see the result in <submission_verdict>.
-- If they passed: congratulate them and ask them to walk through the approach.
-- If they failed: be encouraging, point them toward the failing scenario without revealing the fix.
-- Reference specific details from their code and verdict.
+        evaluation: `
+CURRENT PHASE: evaluation
+- The candidate has submitted code. You must provide technical feedback.
+- Reference the <submission_verdict> results (Success or Failure).
+- Explain WHY the code passed or failed specific cases.
+- Offer 1-2 constructive points for improvement (performance, readability).
+- Wrap up the interview professionally. 
+- IMPORTANT: When you are finished and ready to end the session, append the tag <WRAP_UP /> at the very end of your response.
 `.trim(),
 
-        followup: `
-CURRENT PHASE: followup
-- The coding round is over. Shift to a reflective, conversational debrief.
-- Ask the candidate about alternative approaches, edge cases they considered, or how they would improve the solution.
-- Discuss trade-offs between time and space complexity.
-- Keep the tone positive and learning-focused.
-`.trim(),
-
-        ended: `
-CURRENT PHASE: ended
-- The interview session has concluded.
-- Provide a brief, warm closing message.
-- Do not discuss technical content further.
+        completed: `
+CURRENT PHASE: completed
+- The interview is finished. Maintain a professional, celebratory tone.
+- Do not engage in further technical discussion.
 `.trim(),
     }
 
@@ -183,6 +183,7 @@ CURRENT PHASE: ended
  * @property {Object}   [submissionVerdict] - Last submission result object
  * @property {string}   [userMessage]       - The current user message turn
  * @property {Array}    [history]           - Prior messages [{role, content}]
+ * @property {Object}    [evaluationMetadata] - { correctAnswer, expectedConcepts, evaluationCriteria }
  */
 
 /**
@@ -196,10 +197,11 @@ export function buildPrompt({
     problemDescription,
     currentCode = '',
     language = 'python',
-    phase = 'coding',
+    phase = 'intro',
     submissionVerdict = null,
     userMessage = '',
     history = [],
+    evaluationMetadata = null,
 }) {
     // ── Assemble context blocks ──────────────────────────────────────────────
     const problemSection = `
@@ -212,6 +214,18 @@ ${sanitizeInput(problemDescription, { maxLength: 4000 })}
     const codeBlock = currentCode ? injectUserCode(currentCode, language) : ''
     const verdictBlock = submissionVerdict ? injectSubmissionVerdict(submissionVerdict) : ''
     const phaseBlock = getPhaseInstructions(phase)
+
+    let evaluationBlock = ''
+    if ((phase === 'qa' || phase === 'intro') && evaluationMetadata) {
+        evaluationBlock = `
+EVALUATION CONTEXT (FOR YOUR REFERENCE ONLY - INTERNAL):
+- Correct Conceptual Answer: ${evaluationMetadata.correctAnswer || 'Not provided'}
+- Expected Concepts: ${(evaluationMetadata.expectedConcepts || []).join(', ')}
+- Evaluation Rubric: ${evaluationMetadata.evaluationCriteria || 'Be fair but rigorous'}
+
+Use this to verify the candidate's answers. If they are correct, move towards the coding phase.
+`.trim()
+    }
 
     // ── System prompt ────────────────────────────────────────────────────────
     const systemPrompt = `
@@ -229,6 +243,8 @@ ${problemSection}
 ${codeBlock}
 
 ${verdictBlock}
+
+${evaluationBlock}
 
 ${phaseBlock}
 `.trim()
@@ -257,6 +273,7 @@ ${phaseBlock}
  * @param {string} ctx.problemDescription
  * @param {Array}  ctx.history      - Full transcript [{role, content}]
  * @param {Array}  ctx.submissions  - List of submissions/verdicts
+ * @param {Object}  [ctx.evaluationMetadata] - { correctAnswer, expectedConcepts, evaluationCriteria }
  * @returns {{ systemPrompt: string, messages: Array }}
  */
 export function buildScorecardPrompt({
@@ -264,8 +281,19 @@ export function buildScorecardPrompt({
     problemDescription,
     history = [],
     submissions = [],
+    evaluationMetadata = null,
 }) {
     const transcript = history.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
+
+    let evaluationContext = ''
+    if (evaluationMetadata) {
+        evaluationContext = `
+GROUND TRUTH (INTERNAL REFERENCE):
+- Correct Solution/Approach: ${evaluationMetadata.correctAnswer || 'Not provided'}
+- Key Concepts Expected: ${(evaluationMetadata.expectedConcepts || []).join(', ')}
+- Grading Guidelines: ${evaluationMetadata.evaluationCriteria || 'Not provided'}
+`.trim()
+    }
 
     const submissionSummary = submissions
         .map(
@@ -298,12 +326,14 @@ Rules:
 - Be strictly objective.
 - If they failed test cases, reflect that in Code Quality/Approach.
 - If they were silent or didn't explain, reflect that in Communication.
-- Respond ONLY with the JSON block.
+- Respond ONLY with the raw JSON block. Do NOT wrap it in markdown code blocks like \`\`\`json.
 `.trim()
 
     const userContent = `
 PROBLEM: ${problemTitle}
 DESCRIPTION: ${problemDescription}
+
+${evaluationContext}
 
 TRANSCRIPT:
 ${transcript}

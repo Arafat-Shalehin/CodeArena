@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { protect } from '@/middlewares/auth.middleware'
 import { InterviewResult } from '@/models/InterviewResult.model'
-import { dbConnect } from '@/lib/db'
+import dbConnect from '@/lib/mongodb'
 
 export async function GET(req, { params }) {
     await dbConnect()
 
     try {
         const user = await protect(req)
-        const { id: sessionId } = params
+        const { id: sessionId } = await params
 
         const result = await InterviewResult.findOne({
             sessionId: sessionId,
@@ -18,10 +18,11 @@ export async function GET(req, { params }) {
         if (!result) {
             return NextResponse.json(
                 {
-                    error: 'NOT_FOUND',
-                    message: 'Interview result not found or pending calculation.',
+                    success: true,
+                    status: 'pending',
+                    message: 'Interview result is being calculated.',
                 },
-                { status: 404 }
+                { status: 200 }
             )
         }
 

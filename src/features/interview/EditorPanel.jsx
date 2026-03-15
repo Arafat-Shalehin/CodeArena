@@ -52,6 +52,7 @@ export default function EditorPanel({
     onSubmit,
     isRunning = false,
     isSubmitting = false,
+    isReadOnly = false,
     onMaximize,
     isMaximized = false,
 }) {
@@ -97,8 +98,9 @@ export default function EditorPanel({
                     {/* Language Dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => setShowLangDropdown((v) => !v)}
-                            className="bg-bg-muted text-text-primary flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold transition-all hover:opacity-80"
+                            onClick={() => !isReadOnly && setShowLangDropdown((v) => !v)}
+                            disabled={isReadOnly}
+                            className={`bg-bg-muted text-text-primary flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${isReadOnly ? 'cursor-not-allowed opacity-50' : 'hover:opacity-80'}`}
                         >
                             {LANG_LABELS[language] ?? language}
                             <ChevronDown
@@ -166,7 +168,7 @@ export default function EditorPanel({
                     {/* Run */}
                     <button
                         onClick={onRun}
-                        disabled={isRunning || isSubmitting}
+                        disabled={isRunning || isSubmitting || isReadOnly}
                         title="Run sample tests"
                         className="bg-bg-muted text-text-primary hover:bg-bg-muted/80 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -181,7 +183,7 @@ export default function EditorPanel({
                     {/* Submit */}
                     <button
                         onClick={onSubmit}
-                        disabled={isRunning || isSubmitting}
+                        disabled={isRunning || isSubmitting || isReadOnly}
                         title="Submit solution"
                         className="bg-accent hover:bg-accent-hover flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -228,6 +230,7 @@ export default function EditorPanel({
                         renderLineHighlight: 'line',
                         cursorBlinking: 'smooth',
                         smoothScrolling: true,
+                        readOnly: isReadOnly,
                     }}
                 />
             </div>
@@ -235,8 +238,10 @@ export default function EditorPanel({
             {/* ─── Status Bar ─────────────────────────────────────────── */}
             <div className="border-border bg-bg-subtle text-text-muted flex h-[26px] flex-shrink-0 items-center justify-between border-t px-4 text-[11px]">
                 <span className="flex items-center gap-1.5">
-                    <div className="bg-success h-1.5 w-1.5 rounded-full" />
-                    {LANG_LABELS[language] ?? language}
+                    <div
+                        className={`h-1.5 w-1.5 rounded-full ${isReadOnly ? 'bg-error' : 'bg-success'}`}
+                    />
+                    {isReadOnly ? 'Read Only' : (LANG_LABELS[language] ?? language)}
                 </span>
                 <span className="font-mono">
                     Ln <span className="text-text-primary">{cursor.ln}</span>, Col{' '}

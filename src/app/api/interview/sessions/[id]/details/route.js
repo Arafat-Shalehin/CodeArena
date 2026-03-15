@@ -4,7 +4,7 @@ import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewResult } from '@/models/InterviewResult.model'
-import { dbConnect } from '@/lib/db'
+import dbConnect from '@/lib/mongodb'
 
 export async function GET(req, { params }) {
     await dbConnect()

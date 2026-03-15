@@ -59,6 +59,34 @@ export function interviewAIChannel(sessionId) {
     return `interview:ai:${sessionId}`
 }
 
+function extractJSON(rawText) {
+    if (!rawText) throw new Error('Empty AI response')
+
+    // Find the first occurrence of '{' and the last occurrence of '}'
+    const startIndex = rawText.indexOf('{')
+    const endIndex = rawText.lastIndexOf('}')
+
+    if (startIndex === -1 || endIndex === -1) {
+        console.error('[extractJSON] Raw text with no JSON object:', rawText)
+        throw new Error('No valid JSON object found in AI response')
+    }
+
+    const jsonCandidate = rawText.substring(startIndex, endIndex + 1).trim()
+
+    try {
+        return JSON.parse(jsonCandidate)
+    } catch (parseError) {
+        console.error('[extractJSON] Parse failed for candidate:', jsonCandidate)
+        // Try one more thing: strip backticks if they somehow leaked into the candidate
+        const ultraClean = jsonCandidate.replace(/`/g, '').trim()
+        try {
+            return JSON.parse(ultraClean)
+        } catch (e) {
+            throw new Error(`Failed to parse JSON: ${parseError.message}`)
+        }
+    }
+}
+
 // ── Worker ─────────────────────────────────────────────────────────────────────
 
 export function initInterviewAIWorker() {
@@ -76,48 +104,74 @@ export function initInterviewAIWorker() {
             } = job.data
 
             console.log(
-                `[InterviewAI Worker] Processing job ${job.id} (${job.name}) for session ${sessionId}`
+                `[InterviewAI Worker] v2.1 Processing job ${job.id} (${job.name}) for session ${sessionId}`
             )
 
             await dbConnect()
 
             // ─── Case 1: Final Scorecard ──────────────────────────────────────
             if (job.name === 'process-scorecard') {
-                const [session, history, snapshots] = await Promise.all([
-                    InterviewSession.findById(sessionId).populate('problemIds'),
-                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
-                    InterviewSnapshot.find({
-                        sessionId,
-                        snapshotType: { $in: ['run', 'submit'] },
-                    }).sort({ ts: 1 }),
-                ])
-
-                const problem = session?.problemIds?.[0]
-                if (!problem) throw new Error('Problem context lost')
-
-                // Build prompt
-                const { systemPrompt, messages } = buildScorecardPrompt({
-                    problemTitle: problem.title,
-                    problemDescription: problem.description,
-                    history,
-                    submissions: snapshots.map((s) => ({
-                        verdict: s.snapshotType === 'submit' ? 'SUBMITTED' : 'RUN',
-                        // Note: actual pass/fail details would need InterviewSnapshot mod or separate Verdict collection
-                        // for now we use what we have in metadata or just role-play
-                        passedCount: s.snapshotType === 'submit' ? '?' : '?',
-                        totalCount: '?',
-                    })),
-                })
-
-                // Get AI response (non-streaming)
-                const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
-                let fullResponse = ''
-                for await (const chunk of aiStream) {
-                    fullResponse += chunk
-                }
-
                 try {
-                    const scorecardData = JSON.parse(fullResponse)
+                    // Idempotency guard — abort if result already exists
+                    const existing = await InterviewResult.findOne({ sessionId })
+                    if (existing) {
+                        console.log('[InterviewAI Worker] Scorecard already exists, skipping.')
+                        return { success: true, type: 'scorecard', skipped: true }
+                    }
+
+                    const [session, history, snapshots] = await Promise.all([
+                        InterviewSession.findById(sessionId).populate('problemIds'),
+                        InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
+                        InterviewSnapshot.find({
+                            sessionId,
+                            snapshotType: { $in: ['run', 'submit'] },
+                        }).sort({ ts: 1 }),
+                    ])
+
+                    const problem = session?.problemIds?.[0]
+                    if (!problem) {
+                        console.error(
+                            '[InterviewAI Worker] Problem context lost for session:',
+                            sessionId
+                        )
+                        throw new Error('Problem context lost')
+                    }
+
+                    console.log(`[InterviewAI Worker] Generating scorecard for ${problem.title}...`)
+
+                    // Build prompt with evaluation metadata
+                    const { systemPrompt, messages } = buildScorecardPrompt({
+                        problemTitle: problem.title,
+                        problemDescription: problem.description,
+                        history,
+                        submissions: snapshots.map((s) => ({
+                            verdict: s.verdict || (s.snapshotType === 'submit' ? 'UNKNOWN' : 'RUN'),
+                            passedCount: s.passedCount ?? '?',
+                            totalCount: s.totalCount ?? '?',
+                        })),
+                        evaluationMetadata: {
+                            correctAnswer: problem.correctAnswer,
+                            expectedConcepts: problem.expectedConcepts,
+                            evaluationCriteria: problem.evaluationCriteria,
+                        },
+                    })
+
+                    // Get AI response (non-streaming)
+                    const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+                    let fullResponse = ''
+                    for await (const chunk of aiStream) {
+                        fullResponse += chunk
+                    }
+
+                    // Robust JSON extraction
+                    console.log('[InterviewAI Worker] Raw AI Response length:', fullResponse.length)
+                    const scorecardData = extractJSON(fullResponse)
+                    console.log(
+                        '[InterviewAI Worker] Parsed scorecard successfully. Overall Score:',
+                        scorecardData.overallScore
+                    )
+
+                    // a. Update result document
                     const result = await InterviewResult.findOneAndUpdate(
                         { sessionId },
                         {
@@ -125,54 +179,121 @@ export function initInterviewAIWorker() {
                             userId,
                             ...scorecardData,
                             createdAt: new Date(),
+                            error: false, // Ensure error flag is false on success
                         },
-                        { upsify: true, new: true, upsert: true }
+                        { upsert: true, new: true }
                     )
+                    console.log('[InterviewAI Worker] Saved result document:', result._id)
+
+                    // b. Update session document: status -> completed, finalScore -> overallScore
+                    await InterviewSession.findByIdAndUpdate(sessionId, {
+                        status: 'completed',
+                        currentPhase: 'completed',
+                        finalScore: scorecardData.overallScore || 0,
+                        endedAt: new Date(),
+                    })
 
                     const pub = await getPublisher()
                     await pub.publish(
                         interviewAIChannel(sessionId),
-                        JSON.stringify({ scorecard: result })
+                        JSON.stringify({ scorecard: result, phase: 'completed' })
                     )
 
                     return { success: true, type: 'scorecard' }
                 } catch (e) {
-                    console.error('[InterviewAI Worker] Scorecard Parse/Save failed:', e)
-                    throw e
+                    console.error('[InterviewAI Worker] Scorecard Generation failed:', e)
+
+                    // Fallback logic: If this was the final attempt, save a dummy result
+                    // to prevent the user from being stuck in "Pending" forever.
+                    if (job.attemptsMade >= 2) {
+                        // 3 attempts total (0, 1, 2)
+                        console.warn(
+                            '[InterviewAI Worker] Final attempt failed. Saving fallback result.'
+                        )
+
+                        const errorResult = await InterviewResult.findOneAndUpdate(
+                            { sessionId },
+                            {
+                                sessionId,
+                                userId,
+                                overallScore: 0,
+                                aiSummary:
+                                    'Evaluation could not be completed at this time due to an AI response error. Please contact support if this persists.',
+                                sections: [],
+                                error: true,
+                                createdAt: new Date(),
+                            },
+                            { upsert: true, new: true }
+                        )
+
+                        await InterviewSession.findByIdAndUpdate(sessionId, {
+                            status: 'completed',
+                            currentPhase: 'completed',
+                            endedAt: new Date(),
+                        })
+
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ scorecard: errorResult, phase: 'completed' })
+                        )
+
+                        return {
+                            success: false,
+                            type: 'scorecard',
+                            error: e.message,
+                            fallbackSaved: true,
+                        }
+                    }
+
+                    throw e // Re-throw to trigger BullMQ retry
                 }
             }
 
-            // ─── Case 2: Chat / Submission Analysis (Streaming) ───────────────
-            // 1. Fetch full context from DB
-            const [session, history, lastSnapshot] = await Promise.all([
+            // ─── Case 2: Conversation / Analysis ─────────────────────────────
+
+            // Handle Auto-greeting trigger
+            const isSystemStart = content === '[SYSTEM_START_INTERVIEW]'
+            const adjustedContent = isSystemStart
+                ? 'Introduce yourself as Alex and start the interview. Explain the rules (Conceptual then Coding) and ask the first conceptual question.'
+                : content
+
+            const [session, history] = await Promise.all([
                 InterviewSession.findById(sessionId).populate('problemIds'),
-                InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(12),
-                InterviewSnapshot.findOne({ sessionId }).sort({ ts: -1 }),
+                InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
             ])
 
-            const problem = session?.problemIds?.[0]
-            if (!problem) {
-                console.warn(
-                    `[InterviewAI Worker] No problem found for session ${sessionId}. Skipping.`
-                )
-                return { skipped: true }
+            if (!session) {
+                console.error('[InterviewAI Worker] Session not found:', sessionId)
+                return { success: false, error: 'Session not found' }
             }
+            const currentPhase = session.currentPhase
+            const problem = session.problemIds?.[0]
 
-            // 2. Build a sanitised, phase-aware prompt
-            const currentPhase =
-                job.name === 'process-submission-analysis'
-                    ? 'submitted'
-                    : session.currentPhase || phase || 'coding'
+            // Inject evaluation metadata for QA phase
+            const evaluationMetadata =
+                currentPhase === 'qa' || currentPhase === 'intro'
+                    ? {
+                          correctAnswer: problem?.correctAnswer,
+                          expectedConcepts: problem?.expectedConcepts,
+                          evaluationCriteria: problem?.evaluationCriteria,
+                      }
+                    : null
 
+            const lastSnapshot = await InterviewSnapshot.findOne({ sessionId })
+                .sort({ ts: -1 })
+                .lean()
+
+            // Build prompt
             const { systemPrompt, messages } = buildPrompt({
-                problemTitle: problem.title,
                 problemDescription: problem.description,
                 currentCode: code || lastSnapshot?.code || '',
                 language: lang || lastSnapshot?.language || 'python',
                 phase: currentPhase,
                 submissionVerdict: submissionVerdict || null,
                 userMessage: content || '',
-                history: history.slice(0, -1), // exclude the just-saved user turn if it was a chat job
+                history: job.name === 'process-chat' ? history.slice(0, -1) : history, // exclude the just-saved user turn if it was a chat job
+                evaluationMetadata,
             })
 
             // 3. Stream AI response and publish each chunk to Redis
@@ -200,6 +321,12 @@ export function initInterviewAIWorker() {
                 await pub.publish(channel, JSON.stringify({ analysis: fullResponse }))
             }
 
+            // [PART 3] Check for Wrap-up signal
+            if (fullResponse.includes('<WRAP_UP />')) {
+                const { transitionPhase } = await import('./interviewSession.service')
+                await transitionPhase(sessionId, 'completed')
+            }
+
             // 5. Persist the full response to DB
             await InterviewMessage.create({
                 sessionId,
@@ -210,11 +337,47 @@ export function initInterviewAIWorker() {
             })
 
             // 6. Update session phase if it was a submission
-            if (
-                job.name === 'process-submission-analysis' &&
-                session.currentPhase !== 'submitted'
-            ) {
-                await InterviewSession.findByIdAndUpdate(sessionId, { currentPhase: 'submitted' })
+            if (job.name === 'process-submission-analysis') {
+                // Advance to evaluation (feedback) phase using centralized service
+                const { transitionPhase } = await import('./interviewSession.service')
+                await transitionPhase(sessionId, 'evaluation')
+
+                // b. Emit phase change to client
+                const pub = await getPublisher()
+                await pub.publish(
+                    interviewAIChannel(sessionId),
+                    JSON.stringify({ phase: 'evaluation' })
+                )
+            }
+
+            // 7. Handle Interactive Phase Transitions (Intro -> QA -> Coding)
+            if (job.name === 'process-chat') {
+                const userMessages = history.filter((m) => m.role === 'user')
+
+                if (session.currentPhase === 'intro') {
+                    // Move to QA after the first user greeting
+                    const { transitionPhase } = await import('./interviewSession.service')
+                    await transitionPhase(sessionId, 'qa')
+
+                    const pub = await getPublisher()
+                    await pub.publish(
+                        interviewAIChannel(sessionId),
+                        JSON.stringify({ phase: 'qa' })
+                    )
+                } else if (session.currentPhase === 'qa') {
+                    const qaCount = userMessages.filter((m) => m.phase === 'qa').length
+                    if (qaCount >= 2) {
+                        // Move to coding after 2 QA turns
+                        const { transitionPhase } = await import('./interviewSession.service')
+                        await transitionPhase(sessionId, 'coding')
+
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ phase: 'coding' })
+                        )
+                    }
+                }
             }
 
             console.log(

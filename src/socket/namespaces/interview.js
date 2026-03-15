@@ -16,8 +16,9 @@ import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { Problem } from '@/models/Problem.models'
 import dbConnect from '@/lib/mongodb'
 import { executeCode } from '@/lib/docker/executor'
-import { getInterviewAIQueue } from '@/lib/queue'
+import { getInterviewAIQueue, getInterviewExecutionQueue } from '@/lib/queue'
 import { interviewAIChannel } from '@/services/interviewAI.worker'
+import { interviewExecutionChannel } from '@/services/interviewExecution.worker'
 import { createClient } from 'redis'
 
 // ── Dedicated subscriber factory ───────────────────────────────────────────────
@@ -35,11 +36,21 @@ const redisConfig = redisUrl
           password: process.env.REDIS_PASSWORD || undefined,
       }
 
-async function createSubscriber() {
+let sharedSubscriber = null
+const sessionRefCount = new Map()
+
+async function getSharedSubscriber() {
+    if (sharedSubscriber) return sharedSubscriber
     const client = createClient(redisConfig)
-    client.on('error', (err) => console.error('[Interview NS] Redis sub error:', err))
+    client.on('error', (err) => console.error('[Interview NS] Redis shared sub error:', err))
     await client.connect()
-    return client
+    sharedSubscriber = client
+    return sharedSubscriber
+}
+
+function createSubscriber() {
+    // Legacy function, no longer used per-socket
+    return getSharedSubscriber()
 }
 
 // ── Namespace ──────────────────────────────────────────────────────────────────
@@ -76,29 +87,65 @@ export function registerInterviewNamespace(io) {
             `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
         )
 
-        // ── Redis subscriber for this socket ───────────────────────────────────
-        // Creates one Redis subscriber per socket connection that listens on the
-        // session's AI pub/sub channel and forwards chunks to the client.
-        let subscriber = null
+        // ── Shared Redis subscriber for this namespace ──────────────────────────
+        // Subscribes once per sessionId and broadcasts to the session room.
         try {
-            subscriber = await createSubscriber()
-            await subscriber.subscribe(interviewAIChannel(sessionId), (message) => {
-                try {
-                    const parsed = JSON.parse(message)
-                    // Support both streaming chunks and full analysis results
-                    if (parsed.analysis) {
-                        socket.emit('interview:ai_analysis', parsed)
-                    } else if (parsed.scorecard) {
-                        socket.emit('interview:scorecard', parsed.scorecard)
-                    } else if (parsed.chunk !== undefined) {
-                        socket.emit('interview:ai_stream_chunk', parsed)
+            const sub = await getSharedSubscriber()
+            const channel = interviewAIChannel(sessionId)
+
+            // Increment ref count
+            const currentCount = sessionRefCount.get(sessionId) || 0
+            sessionRefCount.set(sessionId, currentCount + 1)
+
+            if (currentCount === 0) {
+                const aiChannel = interviewAIChannel(sessionId)
+                const execChannel = interviewExecutionChannel(sessionId)
+
+                console.log(
+                    `[Interview NS] Subscribing to Redis channels: ${aiChannel}, ${execChannel}`
+                )
+
+                // Subscription handler
+                const messageHandler = (message, channel) => {
+                    try {
+                        const parsed = JSON.parse(message)
+                        const ns = interviewNs
+                        const targetRoom = `interview:${sessionId}`
+
+                        // a. AI Related events
+                        if (channel === aiChannel) {
+                            if (parsed.analysis) {
+                                ns.to(targetRoom).emit('interview:ai_analysis', parsed)
+                            } else if (parsed.scorecard) {
+                                ns.to(targetRoom).emit('interview:scorecard', parsed.scorecard)
+                            } else if (parsed.phase) {
+                                ns.to(targetRoom).emit('interview:phase_change', parsed.phase)
+                            } else if (parsed.chunk !== undefined) {
+                                ns.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
+                            }
+                        }
+
+                        // b. Code Execution events
+                        if (channel === execChannel) {
+                            if (parsed.jobType === 'run') {
+                                ns.to(targetRoom).emit('interview:run_result', parsed.result)
+                            } else if (parsed.jobType === 'submit') {
+                                ns.to(targetRoom).emit('interview:submission_result', parsed.result)
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[Interview NS] Message parsing error:', err)
                     }
-                } catch {
-                    // Malformed message — ignore
                 }
-            })
+
+                await sub.subscribe(aiChannel, messageHandler)
+                await sub.subscribe(execChannel, messageHandler)
+            }
         } catch (err) {
-            console.error(`[Interview NS] Failed to subscribe for session ${sessionId}:`, err)
+            console.error(
+                `[Interview NS] Failed to manage subscription for session ${sessionId}:`,
+                err
+            )
         }
 
         // 1. Client joins their dedicated session room
@@ -126,96 +173,65 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        // 3. Client attempts to run code
+        // 3. Client attempts to run code (Refactored to Background Worker)
         socket.on('interview:run', async (payload) => {
             try {
-                await dbConnect()
                 const { code, language, problemId } = payload
+                const queue = getInterviewExecutionQueue()
 
-                const problem = await Problem.findById(problemId)
-                if (!problem) throw new Error('Problem not found')
-
-                const input = problem.sampleTestCases?.[0]?.input || ''
-                const expectedOutput = problem.sampleTestCases?.[0]?.output || ''
-
-                const result = await executeCode({
+                await queue.add('run', {
+                    sessionId,
+                    userId: socket.userId,
                     code,
                     language,
-                    input,
-                    expectedOutput,
-                    timeLimit: problem.timeLimit,
-                    memoryLimit: problem.memoryLimit,
+                    problemId,
+                    jobType: 'run',
                 })
 
-                socket.emit('interview:run_result', result)
+                // Note: Result will come via Redis Pub/Sub subscriber
             } catch (error) {
-                console.error('[Socket.IO] Run Error:', error)
+                console.error('[Socket.IO] Run Enqueue Error:', error)
                 socket.emit('interview:run_result', {
                     success: false,
                     verdict: 'SYSTEM_ERROR',
-                    error: error.message,
+                    error: 'Failed to enqueue execution job.',
                 })
             }
         })
 
-        // 4. Client attempts to submit code
+        // 4. Client attempts to submit code (Refactored to Background Worker)
         socket.on('interview:submit', async (payload) => {
             try {
                 await dbConnect()
                 const { code, language, problemId } = payload
+                const session = await InterviewSession.findById(sessionId)
 
-                const problem = await Problem.findById(problemId)
-                if (!problem) throw new Error('Problem not found')
-
-                const testCases = [...(problem.sampleTestCases || []), ...(problem.testCases || [])]
-
-                let overallResult = {
-                    success: true,
-                    verdict: 'SUCCESS',
-                    passedCount: 0,
-                    totalCount: testCases.length,
-                }
-
-                for (const tc of testCases) {
-                    const res = await executeCode({
-                        code,
-                        language,
-                        input: tc.input,
-                        expectedOutput: tc.output,
-                        timeLimit: problem.timeLimit,
-                        memoryLimit: problem.memoryLimit,
+                if (session.currentPhase !== 'coding') {
+                    return socket.emit('interview:submission_result', {
+                        success: false,
+                        verdict: 'SKIPPED',
+                        error: 'Submission is only allowed during the coding phase.',
                     })
-
-                    if (!res.success || res.verdict !== 'SUCCESS') {
-                        overallResult = {
-                            ...res,
-                            passedCount: overallResult.passedCount,
-                            totalCount: testCases.length,
-                        }
-                        break
-                    }
-                    overallResult.passedCount++
                 }
 
-                // a. Emit raw verdict to client
-                socket.emit('interview:submission_result', overallResult)
-
-                // b. Enqueue AI analysis job
-                const queue = getInterviewAIQueue()
-                await queue.add('process-submission-analysis', {
+                const queue = getInterviewExecutionQueue()
+                await queue.add('submit', {
                     sessionId,
                     userId: socket.userId,
-                    problemId,
-                    submissionVerdict: overallResult,
                     code,
                     language,
+                    problemId,
+                    jobType: 'submit',
                 })
+
+                // Result persistence and AI analysis trigger are now handled by
+                // interviewExecution.worker.js to keep this namespace non-blocking.
             } catch (error) {
-                console.error('[Socket.IO] Submit Error:', error)
+                console.error('[Socket.IO] Submit Enqueue Error:', error)
                 socket.emit('interview:submission_result', {
                     success: false,
                     verdict: 'SYSTEM_ERROR',
-                    error: error.message,
+                    error: 'Failed to enqueue submission job.',
                 })
             }
         })
@@ -259,12 +275,25 @@ export function registerInterviewNamespace(io) {
             console.log(
                 `[Socket.IO /interview] User ${socket.userId} disconnected from session ${sessionId}`
             )
-            if (subscriber) {
-                try {
-                    await subscriber.unsubscribe(interviewAIChannel(sessionId))
-                    await subscriber.quit()
-                } catch {
-                    // Ignore cleanup errors
+
+            // Decrement ref count
+            const currentCount = sessionRefCount.get(sessionId) || 0
+            if (currentCount > 1) {
+                sessionRefCount.set(sessionId, currentCount - 1)
+            } else {
+                sessionRefCount.delete(sessionId)
+                if (sharedSubscriber) {
+                    try {
+                        const aiChannel = interviewAIChannel(sessionId)
+                        const execChannel = interviewExecutionChannel(sessionId)
+                        console.log(
+                            `[Interview NS] Last socket left. Unsubscribing from: ${aiChannel}, ${execChannel}`
+                        )
+                        await sharedSubscriber.unsubscribe(aiChannel)
+                        await sharedSubscriber.unsubscribe(execChannel)
+                    } catch (err) {
+                        console.error('[Interview NS] Unsubscribe error:', err)
+                    }
                 }
             }
         })

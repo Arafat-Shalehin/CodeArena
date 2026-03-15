@@ -102,7 +102,8 @@ export default function SearchBar() {
         isOpen && (isSearching || results.length > 0 || (query.trim().length >= 2 && !isSearching))
 
     return (
-        <div ref={containerRef} className="relative hidden max-w-md flex-1 lg:block">
+        <div ref={containerRef} className="relative hidden max-w-[280px] flex-1 lg:block">
+            {/* Input */}
             <div className="group relative">
                 {isSearching ? (
                     <Loader2 className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 animate-spin" />

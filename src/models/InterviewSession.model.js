@@ -16,9 +16,9 @@ const interviewSessionSchema = new mongoose.Schema(
         ],
         mode: {
             type: String,
-            enum: ['practice', 'timed', 'company_sim'],
+            enum: ['practice', 'timed', 'company_sim', 'coding', 'mock'],
             required: true,
-            default: 'practice',
+            default: 'coding',
         },
         durationMins: {
             type: Number,
@@ -33,8 +33,8 @@ const interviewSessionSchema = new mongoose.Schema(
         },
         currentPhase: {
             type: String,
-            enum: ['greeting', 'coding', 'submitted', 'followup', 'ended'],
-            default: 'greeting',
+            enum: ['intro', 'qa', 'coding', 'evaluation', 'completed'],
+            default: 'intro',
         },
         startedAt: {
             type: Date,
@@ -63,5 +63,10 @@ const interviewSessionSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
-export const InterviewSession =
-    mongoose.models.InterviewSession || mongoose.model('InterviewSession', interviewSessionSchema)
+// In Next.js with HMR, the model might already be registered with an old schema.
+// We delete it from the cache to ensure the new enum values are recognized.
+if (mongoose.models && mongoose.models.InterviewSession) {
+    delete mongoose.models.InterviewSession
+}
+
+export const InterviewSession = mongoose.model('InterviewSession', interviewSessionSchema)
