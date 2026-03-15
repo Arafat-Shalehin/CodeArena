@@ -158,17 +158,52 @@ export async function createSubmission(data) {
                 })
                 console.log('[SERVICE] Job added to queue successfully')
 
+                let waitingCount = 0
+                try {
+                    waitingCount = await queue.getWaitingCount()
+                } catch (err) {
+                    console.warn('[SERVICE] Failed to read queue waiting count:', err?.message)
+                }
+
+                const queueAhead = Math.max(0, waitingCount - 1)
+                const queueMessage =
+                    queueAhead > 0
+                        ? `Queued. ${queueAhead} ahead in queue...`
+                        : 'Queued. Starting shortly...'
+
                 // 8️⃣ Publish event for real-time updates
                 if (redisClient.isOpen) {
                     console.log('[SERVICE] Publishing submission_queued event...')
+                    const queuedPayload = {
+                        type: 'submission_queued',
+                        userId,
+                        submissionId: submission[0]._id,
+                        problemId,
+                        stage: 'queued',
+                        message: queueMessage,
+                        queueAhead,
+                        event: 'SUBMISSION_STATUS',
+                    }
+
+                    redisClient
+                        .publish('submission_updates', JSON.stringify(queuedPayload))
+                        .catch(console.error)
+
+                    // Backward-compatible stage stream for existing and new clients.
                     redisClient
                         .publish(
                             'submission_updates',
                             JSON.stringify({
-                                type: 'submission_queued',
+                                type: 'submission_status',
                                 userId,
                                 submissionId: submission[0]._id,
                                 problemId,
+                                stage: 'queued',
+                                status: 'queued',
+                                message: queueMessage,
+                                queueAhead,
+                                event: 'SUBMISSION_STATUS',
+                                current: 0,
                             })
                         )
                         .catch(console.error)

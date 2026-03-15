@@ -51,6 +51,12 @@ export async function initSocketServer() {
                         socket.join(roomId)
                     }
                 })
+
+                socket.on('leave_room', (roomId) => {
+                    if (roomId) {
+                        socket.leave(roomId)
+                    }
+                })
             })
 
             // Redis Subscriber for submission events
@@ -71,16 +77,31 @@ export async function initSocketServer() {
                             const userId = data.userId.toString()
 
                             // Route specific event types to submission room
-                            if (
-                                data.type === 'test_case_completed' ||
-                                data.type === 'execution_completed'
-                            ) {
-                                // Send to the submission room
-                                console.log(
-                                    `[Socket.IO] Broadcasting ${data.type} to room submission_${data.submissionId}`
-                                )
-                                serverIo.to(`submission_${data.submissionId}`).emit(data.type, data)
-                                console.log(`[Socket.IO] Broadcast complete for ${data.type}`)
+                            if (data.submissionId) {
+                                const roomRoutedEvents = new Set([
+                                    'submission_status',
+                                    'judging_started',
+                                    'test_case_result',
+                                    'test_case_completed',
+                                    'test_case_failed',
+                                    'execution_completed',
+                                    'final_verdict',
+                                ])
+
+                                if (roomRoutedEvents.has(data.type)) {
+                                    const submissionRoom = `submission_${data.submissionId}`
+
+                                    console.log(
+                                        `[Socket.IO] Broadcasting ${data.type} to room ${submissionRoom}`
+                                    )
+                                    serverIo.to(submissionRoom).emit(data.type, data)
+
+                                    if (data.type === 'final_verdict' && data.closeRoom) {
+                                        serverIo
+                                            .to(submissionRoom)
+                                            .emit('submission_room_close', data)
+                                    }
+                                }
                             }
 
                             // Also emit the generic submission_update for other listeners

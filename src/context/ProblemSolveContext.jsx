@@ -1,7 +1,14 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { io } from 'socket.io-client'
+import React, {
+    createContext,
+    useContext,
+    useState,
+    useEffect,
+    useCallback,
+    useRef,
+    useMemo,
+} from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'
 import {
@@ -14,6 +21,7 @@ import { ExecutionProvider, useExecution } from '@/context/ExecutionContext'
 import { RealtimeProvider, useRealtime } from '@/context/RealtimeContext'
 import { CacheProvider, useCache } from '@/context/CacheContext'
 import { toast } from 'sonner'
+import { useSubmissionRealtime } from '@/features/problem-solve/hooks/useSubmissionRealtime'
 
 const ProblemSolveContext = createContext()
 
@@ -76,6 +84,9 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 
     // Track previous problemId to only reset when actually changing problems
     const prevProblemIdRef = useRef(null)
+    const activeSubmissionRoomRef = useRef(null)
+    const finalVerdictHandledRef = useRef(false)
+    const lastFinalSubmissionIdRef = useRef(null)
 
     // Reset all states ONLY when problem actually changes, not on first render
     useEffect(() => {
@@ -104,6 +115,14 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             execution.setTestResultData(null)
             execution.setLastSubmittedCode('')
             execution.setLastAnalyzedCode('')
+
+            if (realtime.socket && activeSubmissionRoomRef.current) {
+                realtime.socket.emit('leave_room', activeSubmissionRoomRef.current)
+            }
+
+            activeSubmissionRoomRef.current = null
+            finalVerdictHandledRef.current = false
+            lastFinalSubmissionIdRef.current = null
             cache.clearCache()
             setIsConsoleOpen(true)
             setLeftTabState(readSavedLeftTab(problemId))
@@ -215,6 +234,9 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             totalCount: totalTestCases,
             results: [],
             progress: 0,
+            currentCase: 0,
+            stage: 'queued',
+            stageBadge: '[ ⟳ ] Compiling...',
             statusMessage: 'Queuing submission...',
         })
 
@@ -289,7 +311,14 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     zustandStore.setCurrentPage('submission-details')
                     toast.success('Submission created!')
                     if (realtime.socket) {
-                        realtime.socket.emit('join_room', `submission_${submissionId}`)
+                        if (activeSubmissionRoomRef.current) {
+                            realtime.socket.emit('leave_room', activeSubmissionRoomRef.current)
+                        }
+                        const roomId = `submission_${submissionId}`
+                        realtime.socket.emit('join_room', roomId)
+                        activeSubmissionRoomRef.current = roomId
+                        finalVerdictHandledRef.current = false
+                        lastFinalSubmissionIdRef.current = null
                     }
                     execution.setIsSubmitting(false)
                 }
@@ -334,7 +363,14 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 zustandStore.setCurrentPage('submission-details')
                 toast.success('Submission created!')
                 if (realtime.socket) {
-                    realtime.socket.emit('join_room', `submission_${submissionId}`)
+                    if (activeSubmissionRoomRef.current) {
+                        realtime.socket.emit('leave_room', activeSubmissionRoomRef.current)
+                    }
+                    const roomId = `submission_${submissionId}`
+                    realtime.socket.emit('join_room', roomId)
+                    activeSubmissionRoomRef.current = roomId
+                    finalVerdictHandledRef.current = false
+                    lastFinalSubmissionIdRef.current = null
                 }
             }
         } catch (err) {
@@ -505,217 +541,116 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         [syncUser]
     )
 
-    // ─── Socket.io Connection ──────────────────────────────────────────────
-    useEffect(() => {
-        if (!user || !(user._id || user.id)) return
-
-        const userId = user._id || user.id
-        const newSocket = io(`http://${window.location.hostname}:3002`)
-
-        newSocket.on('connect', () => {
-            console.log('[Socket] Connected to realtime server')
-            newSocket.emit('join_room', userId)
-            newSocket.emit('join_room', `problem:${problemId}`)
-        })
-
-        newSocket.on('test_case_completed', (data) => {
-            console.log('[Socket] Test case completed:', data)
-            if (data.submissionId) {
-                execution.setTestResult((prev) => ({
-                    ...prev,
-                    status: 'running',
-                    totalCount: data.totalTestCases || prev?.totalCount,
-                    progress: data.progress,
-                    progressMessage: data.message,
-                    results: prev?.results
-                        ? [...prev.results, { verdict: data.verdict, caseNumber: data.caseNumber }]
-                        : [{ verdict: data.verdict, caseNumber: data.caseNumber }],
-                }))
-            }
-        })
-
-        newSocket.on('test_case_failed', (data) => {
-            console.log('[Socket] Test case failed (fail-fast):', data)
-            if (data.submissionId) {
-                execution.setTestResult((prev) => ({
-                    ...prev,
-                    status: 'done',
-                    verdict: data.verdict,
-                    passed: false,
-                    failedAtCase: data.caseNumber,
-                    totalCount: data.totalTestCases,
-                    progressMessage: data.message,
-                }))
-                execution.setIsSubmitting(false)
-                toast.error(`Failed at test case ${data.caseNumber}`)
-            }
-        })
-
-        newSocket.on('submission_status', (data) => {
-            console.log('[Socket] Submission status:', data)
-            if (data.problemId === problemId) {
-                execution.setTestResult((prev) => ({
-                    ...prev,
-                    status: 'running',
-                    statusMessage: data.message,
-                    totalCount: data.totalTestCases || prev?.totalCount,
-                    progress: data.progress || 0,
-                }))
-            }
-        })
-
-        newSocket.on('execution_completed', (data) => {
-            console.log('[Socket] Execution completed:', data)
-            if (data.submissionId) {
-                execution.setTestResult({
-                    status: 'done',
-                    verdict: data.verdict,
-                    passed: data.verdict === 'ACCEPTED',
-                    time: data.executionTime,
-                    memory: data.memoryUsed,
-                    results: [{ actual: data.output, error: data.error }],
-                    error: data.error,
-                })
-                execution.setIsRunning(false)
-            }
-        })
-
-        newSocket.on('submission_update', (data) => {
-            console.log('[Socket] Submission update:', data)
-            realtime.setLatestSubmissionEvent(data)
-
-            if (data.problemId === problemId) {
-                // Handle new event types: 'run_result', 'submit_result'
-                const isRunResult = data.type === 'run_result'
-                const isSubmitResult = data.type === 'submit_result'
-                const isEvaluated =
-                    data.type === 'submission_evaluated' || isRunResult || isSubmitResult
-
-                if (isEvaluated) {
-                    // Clear timeout since verdict arrived
-                    // Note: timeout is stored in closure, here we just mark it resolved
-
-                    // 1. Immediately update execution result from socket data
-                    if (isRunResult || isSubmitResult) {
-                        execution.setTestResult({
-                            status: 'done',
-                            verdict: data.verdict,
-                            passed: data.verdict === 'ACCEPTED' || data.verdict === 'EXECUTED',
-                            time: data.executionTime,
-                            memory: data.memoryUsed,
-                            results: data.testResults || [],
-                            totalCount: data.totalCount,
-                            passedCount: data.passedCount,
-                            error: data.error,
-                        })
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    }
-
-                    // 2. For submit_result, immediately set submission result and switch tab
-                    if (isSubmitResult) {
-                        // Set submission result for SubmissionResultTab
-                        realtime.setSubmissionResult({
-                            id: data.submissionId,
-                            verdict: data.verdict,
-                            passed: data.verdict === 'ACCEPTED',
-                            passedCount: data.passedCount || 0,
-                            totalCount: data.totalCount || 0,
-                            time: data.executionTime,
-                            memory: data.memoryUsed,
-                            submittedCode: '(Loading...)',
-                            submittedLanguage: 'Loading',
-                            submittedAt: new Date().toISOString(),
-                        })
-
-                        // Switch to submission result tab
-                        setLeftTab('submission-result')
-
-                        // Asynchronously fetch full submission details
-                        viewSubmissionDetails(data.submissionId).catch(console.error)
-                    }
-
-                    // 3. Show notifications
-                    if (
-                        data.verdict?.toUpperCase() === 'ACCEPTED' ||
-                        data.verdict?.toUpperCase() === 'EXECUTED'
-                    ) {
-                        if (isSubmitResult) {
-                            toast.success('Accepted!')
-                        } else if (isRunResult) {
-                            toast.success('Executed!')
-                        }
-                    } else if (data.status === 'error' || data.type === 'submission_error') {
-                        toast.error(data.error || 'Evaluation Error')
-                    } else if (data.verdict && !isRunResult) {
-                        toast.error(data.verdict.replace(/_/g, ' '))
-                    }
-                }
-            }
-        })
-
-        newSocket.on('reaction_update', (data) => {
-            if (data.problemId === problemId) {
-                // Reaction system component can listen directly
-            }
-        })
-
-        realtime.setSocket(newSocket)
-        return () => newSocket.disconnect()
-    }, [user, problemId, viewSubmissionDetails, execution])
-
-    const value = {
-        // From CodeEditor context
-        code: codeEditor.code,
-        updateCode: codeEditor.updateCode,
-        language: codeEditor.language,
-        setLanguage: codeEditor.setLanguage,
-        resetCode: codeEditor.resetCode,
-        files: codeEditor.files,
-        activeFileIndex: codeEditor.activeFileIndex,
-        addFile: codeEditor.addFile,
-        removeFile: codeEditor.removeFile,
-        renameFile: codeEditor.renameFile,
-        switchToFile: codeEditor.switchToFile,
-
-        // From Execution context
-        isRunning: execution.isRunning,
-        isSubmitting: execution.isSubmitting,
-        runCode,
-        submitCode,
-        consoleTab: execution.consoleTab,
-        setConsoleTab: execution.setConsoleTab,
-        testInput: execution.testInput,
-        setTestInput: execution.setTestInput,
-        testResult: execution.testResult,
-        setTestResult: execution.setTestResult,
-        activeTestCase: execution.activeTestCase,
-        setActiveTestCase: execution.setActiveTestCase,
-        testResultData: execution.testResultData,
-        fetchAiFeedback,
-        aiFeedback: execution.testResultData?.aiFeedback,
-        isAiLoading: execution.isAiLoading,
-
-        // From Realtime context
-        socket: realtime.socket,
-        latestSubmissionEvent: realtime.latestSubmissionEvent,
-        submissionResult: realtime.submissionResult,
-        viewSubmissionDetails,
-
-        // From Cache context
-        cachedCodeHash: cache.cachedCodeHash,
-        cachedResult: cache.cachedResult,
-
-        // Local UI state
-        isConsoleOpen,
-        setIsConsoleOpen,
-        leftTab,
-        setLeftTab,
-
-        // Problem context
-        problem,
+    useSubmissionRealtime({
+        user,
         problemId,
-    }
+        setSocket: realtime.setSocket,
+        setLatestSubmissionEvent: realtime.setLatestSubmissionEvent,
+        setSubmissionResult: realtime.setSubmissionResult,
+        setIsSubmitting: execution.setIsSubmitting,
+        setIsRunning: execution.setIsRunning,
+        setTestResult: execution.setTestResult,
+        viewSubmissionDetails,
+        setLeftTab,
+        syncUser,
+        activeSubmissionRoomRef,
+        finalVerdictHandledRef,
+        lastFinalSubmissionIdRef,
+    })
+
+    const value = useMemo(
+        () => ({
+            // From CodeEditor context
+            code: codeEditor.code,
+            updateCode: codeEditor.updateCode,
+            language: codeEditor.language,
+            setLanguage: codeEditor.setLanguage,
+            resetCode: codeEditor.resetCode,
+            files: codeEditor.files,
+            activeFileIndex: codeEditor.activeFileIndex,
+            addFile: codeEditor.addFile,
+            removeFile: codeEditor.removeFile,
+            renameFile: codeEditor.renameFile,
+            switchToFile: codeEditor.switchToFile,
+
+            // From Execution context
+            isRunning: execution.isRunning,
+            isSubmitting: execution.isSubmitting,
+            runCode,
+            submitCode,
+            consoleTab: execution.consoleTab,
+            setConsoleTab: execution.setConsoleTab,
+            testInput: execution.testInput,
+            setTestInput: execution.setTestInput,
+            testResult: execution.testResult,
+            setTestResult: execution.setTestResult,
+            activeTestCase: execution.activeTestCase,
+            setActiveTestCase: execution.setActiveTestCase,
+            testResultData: execution.testResultData,
+            fetchAiFeedback,
+            aiFeedback: execution.testResultData?.aiFeedback,
+            isAiLoading: execution.isAiLoading,
+
+            // From Realtime context
+            socket: realtime.socket,
+            latestSubmissionEvent: realtime.latestSubmissionEvent,
+            submissionResult: realtime.submissionResult,
+            viewSubmissionDetails,
+
+            // From Cache context
+            cachedCodeHash: cache.cachedCodeHash,
+            cachedResult: cache.cachedResult,
+
+            // Local UI state
+            isConsoleOpen,
+            setIsConsoleOpen,
+            leftTab,
+            setLeftTab,
+
+            // Problem context
+            problem,
+            problemId,
+        }),
+        [
+            codeEditor.code,
+            codeEditor.updateCode,
+            codeEditor.language,
+            codeEditor.setLanguage,
+            codeEditor.resetCode,
+            codeEditor.files,
+            codeEditor.activeFileIndex,
+            codeEditor.addFile,
+            codeEditor.removeFile,
+            codeEditor.renameFile,
+            codeEditor.switchToFile,
+            execution.isRunning,
+            execution.isSubmitting,
+            runCode,
+            submitCode,
+            execution.consoleTab,
+            execution.setConsoleTab,
+            execution.testInput,
+            execution.setTestInput,
+            execution.testResult,
+            execution.setTestResult,
+            execution.activeTestCase,
+            execution.setActiveTestCase,
+            execution.testResultData,
+            fetchAiFeedback,
+            execution.isAiLoading,
+            realtime.socket,
+            realtime.latestSubmissionEvent,
+            realtime.submissionResult,
+            viewSubmissionDetails,
+            cache.cachedCodeHash,
+            cache.cachedResult,
+            isConsoleOpen,
+            leftTab,
+            setLeftTab,
+            problem,
+            problemId,
+        ]
+    )
 
     return <ProblemSolveContext.Provider value={value}>{children}</ProblemSolveContext.Provider>
 }

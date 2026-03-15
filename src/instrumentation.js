@@ -27,6 +27,7 @@ export async function register() {
             globalWorkers.ai = initAIWorker()
             console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
             globalWorkers.interviewAI = initInterviewAIWorker()
+            globalThis._workersInitialized = true
             console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI, InterviewAI)')
         } catch (err) {
             console.error('[CRITICAL] Failed to initialize Workers:', err.message)
