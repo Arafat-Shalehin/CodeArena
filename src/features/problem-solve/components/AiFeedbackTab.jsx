@@ -544,7 +544,7 @@ export default function AiFeedbackTab() {
                             {feedback.critical_flaws.map((flaw, i) => (
                                 <li
                                     key={i}
-                                    className="bg-error/10 border-error/40 border-error text-error/90 flex gap-2.5 rounded-lg border-l-3 py-2 pl-3 text-[12px] leading-relaxed"
+                                    className="bg-error/10 border-error/40 text-error/90 flex gap-2.5 rounded-lg border-l-3 py-2 pl-3 text-[12px] leading-relaxed"
                                 >
                                     <Flame size={13} className="text-error/70 mt-0.5 shrink-0" />
                                     <span className="font-medium">{formatText(flaw)}</span>

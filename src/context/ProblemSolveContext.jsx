@@ -1,8 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { useAuth } from '@/context/AuthContext'
+import { useProblemSolveStore } from '@/store/problemSolveStore'
 import {
     CodeEditorProvider,
     useCodeEditor,
@@ -16,12 +17,36 @@ import { toast } from 'sonner'
 
 const ProblemSolveContext = createContext()
 
+const VALID_LEFT_TABS = new Set([
+    'description',
+    'editorial',
+    'solutions',
+    'submissions',
+    'submission-result',
+])
+
+const getLeftTabStorageKey = (problemId) => `codearena_left_tab_${problemId}`
+
+const readSavedLeftTab = (problemId) => {
+    if (typeof window === 'undefined' || !problemId) return 'description'
+
+    try {
+        const savedTab = localStorage.getItem(getLeftTabStorageKey(problemId))
+        return VALID_LEFT_TABS.has(savedTab) ? savedTab : 'description'
+    } catch {
+        return 'description'
+    }
+}
+
 // Re-export for backward compatibility
 export { STARTER_CODES, LANG_LABELS }
 
 // Inner component that uses all sub-contexts
 function ProblemSolveProviderInner({ children, problemId, initialCode, problem, contestId }) {
     const { user, syncUser } = useAuth()
+
+    // Get Zustand store for persistence
+    const zustandStore = useProblemSolveStore()
 
     // Get sub-contexts
     const codeEditor = useCodeEditor()
@@ -31,20 +56,60 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 
     // Local UI state
     const [isConsoleOpen, setIsConsoleOpen] = useState(true)
-    const [leftTab, setLeftTab] = useState('description')
+    const [leftTab, setLeftTabState] = useState(() => readSavedLeftTab(problemId))
 
-    // Reset all states when problem changes
+    const setLeftTab = useCallback((nextTab) => {
+        setLeftTabState((prevTab) => {
+            const resolvedTab = typeof nextTab === 'function' ? nextTab(prevTab) : nextTab
+            return VALID_LEFT_TABS.has(resolvedTab) ? resolvedTab : prevTab
+        })
+    }, [])
+
+    // Persist current left tab per problem so reload can restore the same tab.
     useEffect(() => {
-        execution.setIsRunning(false)
-        execution.setIsSubmitting(false)
-        execution.setTestResult(null)
-        execution.setTestInput('')
-        execution.setActiveTestCase(0)
-        execution.setConsoleTab('testcase')
-        execution.setTestResultData(null)
-        cache.clearCache()
-        setIsConsoleOpen(true)
-        setLeftTab('description')
+        if (typeof window === 'undefined' || !problemId) return
+
+        try {
+            localStorage.setItem(getLeftTabStorageKey(problemId), leftTab)
+        } catch {}
+    }, [problemId, leftTab])
+
+    // Track previous problemId to only reset when actually changing problems
+    const prevProblemIdRef = useRef(null)
+
+    // Reset all states ONLY when problem actually changes, not on first render
+    useEffect(() => {
+        // Skip reset on initial render
+        if (prevProblemIdRef.current === null) {
+            prevProblemIdRef.current = problemId
+            console.log('[ProblemContext] Initial problem set:', problemId)
+            return
+        }
+
+        // Only reset if problemId actually changed
+        if (prevProblemIdRef.current !== problemId) {
+            console.log(
+                '[ProblemContext] Problem changed from',
+                prevProblemIdRef.current,
+                'to',
+                problemId
+            )
+            // Clear execution state for new problem
+            execution.setIsRunning(false)
+            execution.setIsSubmitting(false)
+            execution.setTestResult(null)
+            execution.setTestInput('')
+            execution.setActiveTestCase(0)
+            execution.setConsoleTab('testcase')
+            execution.setTestResultData(null)
+            execution.setLastSubmittedCode('')
+            execution.setLastAnalyzedCode('')
+            cache.clearCache()
+            setIsConsoleOpen(true)
+            setLeftTabState(readSavedLeftTab(problemId))
+
+            prevProblemIdRef.current = problemId
+        }
     }, [problemId])
 
     // Initialize test input from problem
@@ -218,6 +283,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                         '[FRONTEND] Submission created (from cache), joining room:',
                         `submission_${submissionId}`
                     )
+                    // 💾 Save submission ID to Zustand for persistence
+                    zustandStore.setSubmissionId(submissionId)
+                    zustandStore.setSubmissionViewId(submissionId)
+                    zustandStore.setCurrentPage('submission-details')
                     toast.success('Submission created!')
                     if (realtime.socket) {
                         realtime.socket.emit('join_room', `submission_${submissionId}`)
@@ -259,6 +328,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     '[FRONTEND] Submission created, joining room:',
                     `submission_${submissionId}`
                 )
+                // 💾 Save submission ID to Zustand for persistence
+                zustandStore.setSubmissionId(submissionId)
+                zustandStore.setSubmissionViewId(submissionId)
+                zustandStore.setCurrentPage('submission-details')
                 toast.success('Submission created!')
                 if (realtime.socket) {
                     realtime.socket.emit('join_room', `submission_${submissionId}`)
@@ -331,6 +404,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     // 🔥 MARK THIS CODE AS ANALYZED
                     execution.setLastAnalyzedCode(codeToAnalyze)
                     execution.setTestResultData({ aiFeedback: data.feedback })
+                    // 💾 Save AI feedback to Zustand for persistence
+                    zustandStore.setAiFeedback(data.feedback)
                     if (options.switchTab) {
                         execution.setConsoleTab('ai')
                     }
@@ -390,6 +465,13 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                         // 🔥 STORE THE SUBMISSION CODE FOR AI ANALYSIS
                         execution.setLastSubmittedCode(s.code)
                         execution.setLastSubmittedLanguage(s.language)
+
+                        // 💾 Save submission details to Zustand for persistence
+                        zustandStore.setSubmissionId(s._id)
+                        zustandStore.setSubmissionDetails(s)
+                        if (s.aiFeedback) {
+                            zustandStore.setAiFeedback(s.aiFeedback)
+                        }
 
                         realtime.setSubmissionResult({
                             id: s._id,

@@ -73,7 +73,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
     return (
         <>
             {/* Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-3">
+            <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center justify-between border-b px-3">
                 <div className="flex items-center gap-3">
                     <span className="text-text-primary flex items-center gap-1.5 text-xs font-bold">
                         <FileCode2 size={14} className="text-accent" />
@@ -165,7 +165,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
             </div>
 
             {/* File Tabs Bar */}
-            <div className="bg-bg-page border-border no-scrollbar flex h-[34px] flex-shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
+            <div className="bg-bg-page border-border no-scrollbar flex h-8.5 shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
                 {files.map((file, idx) => (
                     <button
                         key={idx}
@@ -180,14 +180,14 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                             size={12}
                             className={activeFileIndex === idx ? 'text-accent' : 'opacity-60'}
                         />
-                        <span className="max-w-[120px] truncate">{file.filename}</span>
+                        <span className="max-w-30 truncate">{file.filename}</span>
                         {file.isMain && (
                             <span className="bg-accent/15 text-accent rounded px-1.5 py-0.5 text-[9px] font-black tracking-wider uppercase">
                                 Main
                             </span>
                         )}
                         {activeFileIndex === idx && (
-                            <div className="bg-accent absolute bottom-0 left-0 h-[2px] w-full" />
+                            <div className="bg-accent absolute bottom-0 left-0 h-0.5 w-full" />
                         )}
                         {!file.isMain && (
                             <span
@@ -227,7 +227,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                                 }
                             }}
                             placeholder="filename"
-                            className="w-[100px] rounded border border-[#555] bg-[#2a2a2a] px-2 py-0.5 text-[11px] text-white outline-none focus:border-emerald-500"
+                            className="w-25 rounded border border-[#555] bg-[#2a2a2a] px-2 py-0.5 text-[11px] text-white outline-none focus:border-emerald-500"
                             autoFocus
                         />
                         <button
@@ -275,7 +275,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
             </div>
 
             {/* Footer */}
-            <div className="border-border bg-bg-subtle text-text-muted flex h-[28px] flex-shrink-0 items-center justify-between border-t px-4 text-[11px] font-medium">
+            <div className="border-border bg-bg-subtle text-text-muted flex h-7 shrink-0 items-center justify-between border-t px-4 text-[11px] font-medium">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5">
                         <div className="bg-success h-1.5 w-1.5 rounded-full" />

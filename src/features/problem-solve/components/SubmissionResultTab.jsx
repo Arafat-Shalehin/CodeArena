@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
     Clock,
     HardDrive,
@@ -16,6 +16,7 @@ import {
 
 import { useProblemSolve, LANG_LABELS } from '@/context/ProblemSolveContext'
 import { useAuth } from '@/context/AuthContext'
+import { useProblemSolveStore } from '@/store/problemSolveStore'
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react'
 
 // ─── Simple Bar Chart ───────────────────────────────────────────────────────
@@ -95,17 +96,55 @@ function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white'
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function SubmissionResultTab() {
-    const { submissionResult: result, setLeftTab, fetchAiFeedback, isAiLoading } = useProblemSolve()
+    const {
+        submissionResult: result,
+        setLeftTab,
+        fetchAiFeedback,
+        isAiLoading,
+        viewSubmissionDetails,
+    } = useProblemSolve()
     const { user } = useAuth()
     const [copied, setCopied] = useState(false)
+    const restoreAttemptedRef = useRef(false)
+
+    useEffect(() => {
+        if (result || restoreAttemptedRef.current) return
+
+        const state = useProblemSolveStore.getState()
+        const fallbackSubmissionId =
+            state.submissionViewId || state.submissionId || state.submissionDetails?._id
+
+        if (!fallbackSubmissionId || !viewSubmissionDetails) return
+
+        restoreAttemptedRef.current = true
+        viewSubmissionDetails(fallbackSubmissionId).catch((err) => {
+            console.error('Failed to auto-restore submission details:', err)
+        })
+    }, [result, viewSubmissionDetails])
+
+    if (!result) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <Loader2 size={24} className="text-accent animate-spin" />
+                <p className="text-text-muted text-sm font-medium">Loading submission details...</p>
+                <button
+                    onClick={() => setLeftTab('submissions')}
+                    className="text-text-primary hover:text-accent text-xs font-semibold"
+                >
+                    Go Back To Submissions
+                </button>
+            </div>
+        )
+    }
+
+    const submittedCode = result.submittedCode || ''
+    const submittedLanguage = result.submittedLanguage || 'python'
 
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(result.submittedCode || '')
+        navigator.clipboard.writeText(submittedCode)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }
-
-    if (!result) return null
 
     const isAccepted = result.verdict === 'ACCEPTED' || result.verdict === 'EXECUTED'
     const verdictColor = isAccepted ? 'text-success' : 'text-error'
@@ -229,9 +268,7 @@ export default function SubmissionResultTab() {
                             Submitted Code
                         </span>
                         <span className="opacity-20">|</span>
-                        <span>
-                            {LANG_LABELS[result.submittedLanguage] || result.submittedLanguage}
-                        </span>
+                        <span>{LANG_LABELS[submittedLanguage] || submittedLanguage}</span>
                     </div>
                     <button
                         onClick={handleCopyCode}
@@ -256,7 +293,7 @@ export default function SubmissionResultTab() {
                     <div className="bg-accent/20 absolute top-0 left-0 h-full w-1.5" />
                     <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent max-h-[500px] overflow-y-auto p-6">
                         <pre className="text-text-secondary font-mono text-[13px] leading-relaxed break-words whitespace-pre-wrap select-all">
-                            <code>{result.submittedCode}</code>
+                            <code>{submittedCode}</code>
                         </pre>
                     </div>
                 </div>
