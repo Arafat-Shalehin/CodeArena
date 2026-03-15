@@ -5,14 +5,13 @@ import PropTypes from 'prop-types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Terminal, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useCodeEditor } from '@/context/CodeEditorContext'
 
 /**
  * @component CodeEditorPreview
  * @description A visual representation of a code editor with a self-typing Python solution.
  */
 export default function CodeEditorPreview({ className }) {
-    const { language } = useCodeEditor()
+    const language = 'python' // Static preview language
     const [currentLineIndex, setCurrentLineIndex] = useState(0)
     const [currentCharIndex, setCurrentCharIndex] = useState(0)
 

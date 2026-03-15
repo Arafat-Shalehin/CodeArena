@@ -45,28 +45,61 @@ export function useSubmissionRealtime({
     finalVerdictHandledRef,
     lastFinalSubmissionIdRef,
 }) {
-    useEffect(() => {
-        if (!user || !(user._id || user.id)) return
+    const userId = user?._id || user?.id || null
 
-        const userId = user._id || user.id
+    useEffect(() => {
+        if (!problemId) return
+
+        console.log(
+            '[Socket] Creating socket connection to http://' + window.location.hostname + ':3002'
+        )
         const newSocket = io(`http://${window.location.hostname}:3002`)
 
         newSocket.on('connect', () => {
-            console.log('[Socket] Connected to realtime server')
-            newSocket.emit('join_room', userId)
+            console.log('[Socket] ✓ Connected to realtime server on port 3002')
+            console.log('[Socket] Socket ID:', newSocket.id)
+            console.log('[Socket] Socket connected property:', newSocket.connected)
+
+            if (userId) {
+                newSocket.emit('join_room', userId)
+            }
+
             newSocket.emit('join_room', `problem:${problemId}`)
+
+            // If there's an active submission, rejoin it after reconnection
+            if (activeSubmissionRoomRef.current) {
+                console.log(
+                    '[Socket] Rejoining active submission room:',
+                    activeSubmissionRoomRef.current
+                )
+                newSocket.emit('join_room', activeSubmissionRoomRef.current)
+            }
+        })
+
+        newSocket.on('disconnect', (reason) => {
+            console.log('[Socket] Disconnected from realtime server:', reason)
         })
 
         const isCurrentSubmissionEvent = (submissionId, eventProblemId) => {
-            if (submissionId && activeSubmissionRoomRef.current) {
-                return activeSubmissionRoomRef.current === `submission_${submissionId}`
+            // First priority: match exact submission if actively waiting for one
+            if (activeSubmissionRoomRef.current && submissionId) {
+                const matches = activeSubmissionRoomRef.current === `submission_${submissionId}`
+                if (!matches) {
+                    console.log('[Socket] Event submission ID mismatch:', {
+                        expecting: activeSubmissionRoomRef.current,
+                        got: submissionId,
+                    })
+                }
+                return matches
             }
 
+            // Fallback: if no active submission room, match by problem ID
             if (eventProblemId) {
                 return eventProblemId === problemId
             }
 
-            return true
+            // Last resort: if both IDs are missing, process it (legacy events)
+            return !submissionId && !eventProblemId
         }
 
         const updateRunningState = (data = {}) => {
@@ -135,11 +168,18 @@ export function useSubmissionRealtime({
 
         const finalizeSubmission = (data, source = 'final_verdict') => {
             const submissionId = data.submissionId
-            if (!submissionId || !isCurrentSubmissionEvent(submissionId, data.problemId)) {
+            if (!submissionId) {
+                console.warn('[Socket] Cannot finalize: missing submissionId')
+                return
+            }
+
+            if (!isCurrentSubmissionEvent(submissionId, data.problemId)) {
+                console.log('[Socket] Ignoring event for different submission:', { submissionId })
                 return
             }
 
             if (lastFinalSubmissionIdRef.current === submissionId) {
+                console.log('[Socket] Final verdict already processed for this submission')
                 return
             }
 
@@ -150,12 +190,14 @@ export function useSubmissionRealtime({
             lastFinalSubmissionIdRef.current = submissionId
             finalVerdictHandledRef.current = true
 
+            console.log('[Socket] Finalizing submission with verdict:', verdict)
+
             setTestResult((prev) => {
                 const resolvedTotal = totalCount || prev?.totalCount || 0
                 const failedProgress =
                     failedAtCase && resolvedTotal > 0
                         ? Math.round((Number(failedAtCase) / Number(resolvedTotal)) * 100)
-                        : prev?.progress || 0
+                        : prev?.progress || 100
 
                 return {
                     ...prev,
@@ -170,7 +212,7 @@ export function useSubmissionRealtime({
                     progress:
                         verdict === 'ACCEPTED' || verdict === 'EXECUTED' ? 100 : failedProgress,
                     progressMessage: data.message || prev?.progressMessage,
-                    statusMessage: data.message || prev?.statusMessage,
+                    statusMessage: data.message || `Verdict: ${verdict}`,
                     time: data.executionTime ?? prev?.time,
                     memory: data.memoryUsed ?? prev?.memory,
                     error: data.error ?? prev?.error,
@@ -215,15 +257,25 @@ export function useSubmissionRealtime({
             viewSubmissionDetails(submissionId).catch(console.error)
 
             if (activeSubmissionRoomRef.current === `submission_${submissionId}`) {
+                console.log('[Socket] Leaving submission room:', activeSubmissionRoomRef.current)
                 newSocket.emit('leave_room', activeSubmissionRoomRef.current)
                 activeSubmissionRoomRef.current = null
             }
         }
 
         newSocket.on('submission_status', (data) => {
-            console.log('[Socket] Submission status:', data)
+            console.log('[Socket] Submission status received:', {
+                submissionId: data.submissionId,
+                stage: data.stage,
+                verdict: data.verdict,
+                progress: data.progress,
+                status: data.status,
+                message: data.message,
+                allData: data,
+            })
 
             if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
+                console.log('[Socket] Ignoring event - not for current submission')
                 return
             }
 
@@ -328,7 +380,16 @@ export function useSubmissionRealtime({
         })
 
         newSocket.on('final_verdict', (data) => {
-            console.log('[Socket] Final verdict:', data)
+            console.log('[Socket] Final verdict received:', data)
+            console.log('[Socket] Current active room:', activeSubmissionRoomRef.current)
+            console.log('[Socket] Event submission ID:', data.submissionId)
+
+            // Ensure we're handling the right submission
+            if (!data.submissionId) {
+                console.warn('[Socket] Final verdict missing submissionId')
+                return
+            }
+
             finalizeSubmission(data, 'final_verdict')
         })
 
@@ -375,11 +436,12 @@ export function useSubmissionRealtime({
             const isSubmitResult = data.type === 'submit_result'
 
             if (isRunResult) {
+                console.log('[Socket] Run result received, updating test result')
                 setTestResult((prev) => ({
                     ...prev,
                     status: 'done',
                     stage: 'finalized',
-                    stageBadge: '[ ✓ ] Finalizing Results...',
+                    stageBadge: '[ ✓ ] Results Ready',
                     verdict: data.verdict,
                     passed: data.verdict === 'ACCEPTED' || data.verdict === 'EXECUTED',
                     time: data.executionTime,
@@ -402,13 +464,20 @@ export function useSubmissionRealtime({
             }
 
             if (isSubmitResult) {
+                console.log('[Socket] Submit result received, finalizing')
                 finalizeSubmission(data, 'submit_result')
                 return
             }
 
             if (data.status === 'error' || data.type === 'submission_error') {
+                console.error('[Socket] Submission error:', data.error)
                 setIsSubmitting(false)
                 setIsRunning(false)
+                setTestResult((prev) => ({
+                    ...prev,
+                    status: 'error',
+                    error: data.error || 'Evaluation Error',
+                }))
                 toast.error(data.error || 'Evaluation Error')
             }
         })
@@ -419,10 +488,25 @@ export function useSubmissionRealtime({
             }
         })
 
+        newSocket.on('connect_error', (error) => {
+            console.error('[Socket] Connection error:', error)
+        })
+
+        newSocket.on('error', (error) => {
+            console.error('[Socket] Socket error:', error)
+        })
+
+        newSocket.on('connect_timeout', () => {
+            console.error('[Socket] Connection timeout')
+        })
+
         setSocket(newSocket)
-        return () => newSocket.disconnect()
+        return () => {
+            setSocket(null)
+            newSocket.disconnect()
+        }
     }, [
-        user,
+        userId,
         problemId,
         setSocket,
         setLatestSubmissionEvent,

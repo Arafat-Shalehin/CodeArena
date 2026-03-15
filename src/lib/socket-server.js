@@ -40,22 +40,59 @@ export async function initSocketServer() {
             global._io = serverIo
             console.log(`[Socket.IO] Real-time server started on port ${port}`)
 
+            // Ensure submission worker is running in the same long-lived process.
+            if (!global._submissionWorker) {
+                try {
+                    const { initSubmissionWorker } = await import('@/services/submission.worker')
+                    global._submissionWorker = initSubmissionWorker()
+                    console.log('[Socket.IO] Submission worker initialized from socket server')
+                } catch (workerErr) {
+                    console.error('[Socket.IO] Failed to initialize submission worker:', workerErr)
+                }
+            }
+
             // Register Namespaces
             const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
             registerInterviewNamespace(serverIo)
 
             // Handle client connections
             serverIo.on('connection', (socket) => {
+                console.log(`[Socket.IO] Client connected: ${socket.id}`)
+                console.log(`[Socket.IO] Total connected clients:`, serverIo.engine.clientsCount)
+
                 socket.on('join_room', (roomId) => {
                     if (roomId) {
                         socket.join(roomId)
+                        const roomClients = serverIo.sockets.adapter.rooms.get(roomId)
+                        console.log(`[Socket.IO] Client ${socket.id} joined room: ${roomId}`, {
+                            clientsInRoom: roomClients ? roomClients.size : 0,
+                            allRoomsForClient: Array.from(socket.rooms),
+                        })
+                    } else {
+                        console.warn(`[Socket.IO] Client ${socket.id} tried to join empty roomId`)
                     }
                 })
 
                 socket.on('leave_room', (roomId) => {
                     if (roomId) {
                         socket.leave(roomId)
+                        const roomClients = serverIo.sockets.adapter.rooms.get(roomId)
+                        console.log(`[Socket.IO] Client ${socket.id} left room: ${roomId}`, {
+                            clientsInRoom: roomClients ? roomClients.size : 0,
+                        })
                     }
+                })
+
+                socket.on('disconnect', (reason) => {
+                    console.log(`[Socket.IO] Client ${socket.id} disconnected: ${reason}`)
+                    console.log(
+                        `[Socket.IO] Total connected clients after disconnect:`,
+                        serverIo.engine.clientsCount
+                    )
+                })
+
+                socket.on('error', (error) => {
+                    console.error(`[Socket.IO] Socket error from ${socket.id}:`, error)
                 })
             })
 
@@ -78,6 +115,7 @@ export async function initSocketServer() {
 
                             // Route specific event types to submission room
                             if (data.submissionId) {
+                                const submissionRoom = `submission_${data.submissionId}`
                                 const roomRoutedEvents = new Set([
                                     'submission_status',
                                     'judging_started',
@@ -89,12 +127,24 @@ export async function initSocketServer() {
                                 ])
 
                                 if (roomRoutedEvents.has(data.type)) {
-                                    const submissionRoom = `submission_${data.submissionId}`
-
                                     console.log(
-                                        `[Socket.IO] Broadcasting ${data.type} to room ${submissionRoom}`
+                                        `[Socket.IO] Broadcasting ${data.type} to room ${submissionRoom}`,
+                                        {
+                                            verdict: data.verdict ?? 'PENDING',
+                                            stage: data.stage ?? 'queued',
+                                            progress: data.progress ?? 0,
+                                        }
                                     )
+
+                                    const clientsInRoom =
+                                        serverIo.sockets.adapter.rooms.get(submissionRoom)
+                                    const clientCount = clientsInRoom ? clientsInRoom.size : 0
+                                    console.log(
+                                        `[Socket.IO] Room ${submissionRoom} has ${clientCount} connected clients`
+                                    )
+
                                     serverIo.to(submissionRoom).emit(data.type, data)
+                                    serverIo.to(userId).emit(data.type, data)
 
                                     if (data.type === 'final_verdict' && data.closeRoom) {
                                         serverIo
@@ -105,6 +155,7 @@ export async function initSocketServer() {
                             }
 
                             // Also emit the generic submission_update for other listeners
+                            console.log(`[Socket.IO] Emitting submission_update to user ${userId}`)
                             serverIo.to(userId).emit('submission_update', data)
                         }
                     } catch (e) {
