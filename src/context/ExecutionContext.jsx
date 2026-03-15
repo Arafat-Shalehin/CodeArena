@@ -13,6 +13,10 @@ export function ExecutionProvider({ children }) {
     const [testInput, setTestInput] = useState('')
     const [testResultData, setTestResultData] = useState(null)
     const [isAiLoading, setIsAiLoading] = useState(false)
+    const [lastSubmittedCode, setLastSubmittedCode] = useState('')
+    const [lastSubmittedLanguage, setLastSubmittedLanguage] = useState('')
+    const [lastAnalyzedCode, setLastAnalyzedCode] = useState('')
+    const [submissionIdForAi, setSubmissionIdForAi] = useState(null)
 
     const value = {
         isRunning,
@@ -31,6 +35,14 @@ export function ExecutionProvider({ children }) {
         setTestResultData,
         isAiLoading,
         setIsAiLoading,
+        lastSubmittedCode,
+        setLastSubmittedCode,
+        lastSubmittedLanguage,
+        setLastSubmittedLanguage,
+        lastAnalyzedCode,
+        setLastAnalyzedCode,
+        submissionIdForAi,
+        setSubmissionIdForAi,
     }
 
     return <ExecutionContext.Provider value={value}>{children}</ExecutionContext.Provider>

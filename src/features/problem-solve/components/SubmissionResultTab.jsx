@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
     Clock,
     HardDrive,
@@ -10,6 +10,8 @@ import {
     ChevronLeft,
     Zap,
     BarChart3,
+    Copy,
+    Check,
 } from 'lucide-react'
 
 import { useProblemSolve, LANG_LABELS } from '@/context/ProblemSolveContext'
@@ -95,6 +97,13 @@ function MetricBox({ icon: Icon, label, value, unit, beats, color = 'text-white'
 export default function SubmissionResultTab() {
     const { submissionResult: result, setLeftTab, fetchAiFeedback, isAiLoading } = useProblemSolve()
     const { user } = useAuth()
+    const [copied, setCopied] = useState(false)
+
+    const handleCopyCode = () => {
+        navigator.clipboard.writeText(result.submittedCode || '')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+    }
 
     if (!result) return null
 
@@ -224,11 +233,29 @@ export default function SubmissionResultTab() {
                             {LANG_LABELS[result.submittedLanguage] || result.submittedLanguage}
                         </span>
                     </div>
+                    <button
+                        onClick={handleCopyCode}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                            copied
+                                ? 'bg-success/20 border-success/30 text-success border'
+                                : 'bg-bg-muted/50 border-border hover:bg-bg-muted text-text-muted border'
+                        }`}
+                    >
+                        {copied ? (
+                            <>
+                                <Check size={13} /> Copied
+                            </>
+                        ) : (
+                            <>
+                                <Copy size={13} /> Copy
+                            </>
+                        )}
+                    </button>
                 </div>
-                <div className="border-border bg-bg-page relative max-h-100 overflow-hidden rounded-2xl border shadow-2xl">
+                <div className="border-border bg-bg-page relative overflow-hidden rounded-2xl border shadow-2xl">
                     <div className="bg-accent/20 absolute top-0 left-0 h-full w-1.5" />
-                    <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent overflow-y-auto p-6">
-                        <pre className="text-text-secondary font-mono text-[13px] leading-relaxed select-all">
+                    <div className="scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent max-h-[500px] overflow-y-auto p-6">
+                        <pre className="text-text-secondary font-mono text-[13px] leading-relaxed break-words whitespace-pre-wrap select-all">
                             <code>{result.submittedCode}</code>
                         </pre>
                     </div>

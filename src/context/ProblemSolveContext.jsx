@@ -63,6 +63,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         console.log('[FRONTEND] Language:', codeEditor.language)
         console.log('[FRONTEND] Custom input:', execution.testInput)
 
+        // 🔥 STORE THE RUN CODE FOR AI ANALYSIS
+        execution.setLastSubmittedCode(codeEditor.code)
+        execution.setLastSubmittedLanguage(codeEditor.language)
+
         execution.setIsRunning(true)
         execution.setConsoleTab('result')
         setIsConsoleOpen(true)
@@ -129,6 +133,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         console.log('[FRONTEND] Problem testCaseCount:', problem.testCaseCount)
         console.log('[FRONTEND] Code length:', codeEditor.code.length)
         console.log('[FRONTEND] Language:', codeEditor.language)
+
+        // 🔥 STORE THE SUBMITTED CODE FOR AI ANALYSIS
+        execution.setLastSubmittedCode(codeEditor.code)
+        execution.setLastSubmittedLanguage(codeEditor.language)
 
         execution.setIsSubmitting(true)
         execution.setConsoleTab('result')
@@ -275,14 +283,43 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
     const fetchAiFeedback = useCallback(
         async (options = { switchTab: true }) => {
+            // Get the code to analyze (prefer submitted code, fallback to last analyzed)
+            const codeToAnalyze =
+                execution.lastSubmittedCode || execution.lastAnalyzedCode || codeEditor.code
+            const languageToAnalyze = execution.lastSubmittedLanguage || codeEditor.language
+
+            // Create a hash of code for reliable comparison (ignoring whitespace differences)
+            const codeHash = (code) => {
+                return code?.trim().replace(/\s+/g, ' ') || ''
+            }
+
+            const currentCodeHash = codeHash(codeToAnalyze)
+            const lastAnalyzedHash = codeHash(execution.lastAnalyzedCode)
+
+            // Check if we already analyzed this exact code - no need to refetch
+            if (
+                currentCodeHash === lastAnalyzedHash &&
+                execution.testResultData?.aiFeedback &&
+                !execution.testResultData.aiFeedback.error
+            ) {
+                console.log(
+                    '[FRONTEND] AI feedback already analyzed for this code submission, showing cached result'
+                )
+                if (options.switchTab) {
+                    execution.setConsoleTab('ai')
+                }
+                return
+            }
+
+            console.log('[FRONTEND] New code detected, analyzing...')
             execution.setIsAiLoading(true)
             try {
                 const res = await fetch('/api/evaluation/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        code: codeEditor.code,
-                        language: codeEditor.language,
+                        code: codeToAnalyze,
+                        language: languageToAnalyze,
                         problemTitle: problem?.title || 'Code Challenge',
                         verdict: execution.testResult?.verdict || 'UNKNOWN',
                         executionTime: execution.testResult?.time || 0,
@@ -291,6 +328,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 })
                 const data = await res.json()
                 if (data.success) {
+                    // 🔥 MARK THIS CODE AS ANALYZED
+                    execution.setLastAnalyzedCode(codeToAnalyze)
                     execution.setTestResultData({ aiFeedback: data.feedback })
                     if (options.switchTab) {
                         execution.setConsoleTab('ai')
@@ -348,6 +387,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     })
 
                     if (s.type === 'submit') {
+                        // 🔥 STORE THE SUBMISSION CODE FOR AI ANALYSIS
+                        execution.setLastSubmittedCode(s.code)
+                        execution.setLastSubmittedLanguage(s.language)
+
                         realtime.setSubmissionResult({
                             id: s._id,
                             verdict: verdict,
