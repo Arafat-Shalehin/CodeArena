@@ -9,6 +9,11 @@ import { User, LogOut, Search, ChevronRight } from 'lucide-react'
 const NAV_LINKS = [
     { name: 'Feed', href: '/feed' },
     { name: 'Problems', href: '/problems' },
+    {
+        name: 'AI Interview',
+        href: '/interview',
+        subLinks: [{ name: 'History', href: '/interview/history' }],
+    },
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
 ]
@@ -50,15 +55,30 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                 <nav className="grid gap-1">
                     {NAV_LINKS.filter((link) => link.name !== 'Feed' || isAuthenticated).map(
                         (link) => (
-                            <Link
-                                key={link.name}
-                                href={link.href}
-                                onClick={onClose}
-                                className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
-                            >
-                                {link.name}
-                                <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
-                            </Link>
+                            <div key={link.name} className="flex flex-col">
+                                <Link
+                                    href={link.href}
+                                    onClick={onClose}
+                                    className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
+                                >
+                                    {link.name}
+                                    <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
+                                </Link>
+                                {link.subLinks && (
+                                    <div className="border-border ml-4 flex flex-col border-l pl-4">
+                                        {link.subLinks.map((sub) => (
+                                            <Link
+                                                key={sub.name}
+                                                href={sub.href}
+                                                onClick={onClose}
+                                                className="text-text-secondary hover:text-text-primary py-2 text-sm font-bold transition-colors"
+                                            >
+                                                {sub.name}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )
                     )}
                 </nav>

@@ -307,26 +307,30 @@ You are the Technical Evaluating Committee at CodeArena.
 Your task is to generate a final Scorecard for a candidate who just completed a live AI interview.
 
 Evaluate based on:
-1. Communication (0-100): Did they explain their logic? Did they ask clarifying questions?
-2. Approach (0-100): Was the chosen algorithm optimal? Did they consider edge cases?
-3. Code Quality (0-100): Is the code clean, readable, and efficient?
+1. Communication (0-100): Clarity of explanation, ability to articulate trade-offs, and professional interaction.
+2. Coding Performance (0-100): Code correctness, handling of edge cases, idiomatic usage, and clean structure.
+3. Problem Solving (0-100): Algorithmic efficiency (Time/Space), ability to navigate the problem space, and refinement of approach.
+4. Technical Accuracy (0-100): Understanding of the specific concepts required for this problem.
 
 OUTPUT FORMAT (MANDATORY JSON):
 {
   "communicationScore": number,
-  "approachScore": number,
-  "codeQualityScore": number,
+  "codingPerformanceScore": number,
+  "problemSolvingScore": number,
+  "technicalAccuracyScore": number,
   "overallScore": number,
-  "aiSummary": "1-2 paragraph professional summary",
-  "strengths": ["string", "string"],
-  "areasToImprove": ["string", "string"]
+  "aiSummary": "2-3 paragraph professional technical analysis",
+  "strengths": ["string", "string", ...],
+  "weaknesses": ["string", "string", ...],
+  "recommendations": ["string", "string", ...]
 }
 
 Rules:
-- Be strictly objective.
-- If they failed test cases, reflect that in Code Quality/Approach.
-- If they were silent or didn't explain, reflect that in Communication.
-- Respond ONLY with the raw JSON block. Do NOT wrap it in markdown code blocks like \`\`\`json.
+- Be EXTREMELY STRICT and objective. A score of 90+ should be rare and represent elite performance.
+- If code fails test cases or has major complexity issues, Coding/Problem Solving should not exceed 60.
+- If the candidate provided no explanation during coding, Communication should be low.
+- "aiSummary" must provide specific technical feedback referencing the code they wrote.
+- Respond ONLY with the raw JSON block. Do NOT wrap it in markdown code blocks.
 `.trim()
 
     const userContent = `

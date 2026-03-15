@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTheme } from 'next-themes'
 import Editor from '@monaco-editor/react'
 import ProblemListSidebar from './ProblemListSidebar'
 import {
@@ -143,9 +144,16 @@ function useResizable(initialRatio = 0.45, direction = 'horizontal') {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function DockerIDEPage() {
+    const { resolvedTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
+
     // Resizable panels
     const hSplit = useResizable(0.42, 'horizontal')
     const vSplit = useResizable(0.6, 'vertical')
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     // Core state
     const [language, setLanguage] = useState('python')
@@ -646,27 +654,33 @@ export default function DockerIDEPage() {
 
                             {/* Monaco Editor */}
                             <div className="flex-1">
-                                <Editor
-                                    height="100%"
-                                    language={language === 'cpp' ? 'cpp' : language}
-                                    value={code}
-                                    theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
-                                    onChange={(value) => setCode(value || '')}
-                                    options={{
-                                        minimap: { enabled: false },
-                                        fontSize: 14,
-                                        fontFamily:
-                                            "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                                        automaticLayout: true,
-                                        scrollBeyondLastLine: false,
-                                        wordWrap: 'on',
-                                        padding: { top: 12 },
-                                        lineNumbers: 'on',
-                                        renderLineHighlight: 'line',
-                                        cursorBlinking: 'smooth',
-                                        smoothScrolling: true,
-                                    }}
-                                />
+                                {mounted ? (
+                                    <Editor
+                                        height="100%"
+                                        language={language === 'cpp' ? 'cpp' : language}
+                                        value={code}
+                                        theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
+                                        onChange={(value) => setCode(value || '')}
+                                        options={{
+                                            minimap: { enabled: false },
+                                            fontSize: 14,
+                                            fontFamily:
+                                                "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                                            automaticLayout: true,
+                                            scrollBeyondLastLine: false,
+                                            wordWrap: 'on',
+                                            padding: { top: 12 },
+                                            lineNumbers: 'on',
+                                            renderLineHighlight: 'line',
+                                            cursorBlinking: 'smooth',
+                                            smoothScrolling: true,
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="bg-bg-page flex h-full items-center justify-center">
+                                        <Loader2 className="text-text-muted animate-spin" />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Editor Footer */}
