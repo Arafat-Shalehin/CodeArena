@@ -7,15 +7,14 @@ import {
     Download,
     FileText,
     ChevronLeft,
-    CheckCircle2,
     AlertCircle,
     TrendingUp,
     MessageSquare,
-    ClipboardList,
     Trophy,
     Lightbulb,
     Target,
     Code2,
+    Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -177,13 +176,13 @@ export default function ScorecardView({ sessionId }) {
     }
 
     return (
-        <div className="bg-bg-page text-text-primary selection:bg-accent/30 min-h-screen pb-20">
+        <div className="bg-bg-page text-text-primary selection:bg-accent/30 min-h-screen overflow-x-hidden pb-10">
             {/* Header - Hidden on Print */}
             <header className="border-border bg-bg-page/80 sticky top-0 z-40 border-b px-6 py-4 backdrop-blur-xl print:hidden">
-                <div className="mx-auto flex max-w-5xl items-center justify-between">
+                <div className="mx-auto flex max-w-7xl items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link
-                            href="/interview"
+                            href="/interview/history"
                             className="group border-border bg-bg-subtle hover:bg-bg-muted flex h-10 w-10 items-center justify-center rounded-xl border transition-all"
                         >
                             <ChevronLeft className="text-text-secondary h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
@@ -217,233 +216,305 @@ export default function ScorecardView({ sessionId }) {
                 </div>
             </header>
 
-            {/* Main Scorecard Content */}
-            <main className="mx-auto max-w-4xl px-6 pt-12 print:pt-0">
-                {/* Hero Section: Overall Score */}
-                <section className="border-border bg-bg-subtle/50 relative overflow-hidden rounded-[2.5rem] border p-8 shadow-2xl backdrop-blur-3xl md:p-12">
-                    <div className="bg-accent/5 absolute top-0 right-0 h-64 w-64 blur-[100px]" />
-                    <div className="bg-grid-white/[0.02] pointer-events-none absolute inset-0" />
-
-                    <div className="flex flex-col items-center gap-8 md:flex-row md:justify-between">
-                        <div className="space-y-4 text-center md:text-left">
-                            <div className="border-accent/20 bg-accent/10 text-accent inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase">
-                                <TrendingUp size={12} />
-                                Performance Insight
+            {/* Main Scorecard Content - 12 Column Grid */}
+            <main className="mx-auto max-w-[1500px] px-8 pt-15 print:pt-0">
+                <div className="grid grid-cols-12 gap-8 lg:gap-12">
+                    {/* Overall Score Hero Card - 7 Columns */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="matte-surface relative col-span-12 flex flex-col justify-center overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-7 lg:h-[450px]"
+                    >
+                        <div className="bg-accent/10 absolute -top-24 -right-24 h-64 w-64 blur-[100px]" />
+                        <div className="relative z-10 flex flex-col items-center justify-between gap-10 md:flex-row">
+                            <div className="space-y-6 text-center md:text-left">
+                                <div className="bg-accent/10 border-accent/20 text-accent inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase">
+                                    <TrendingUp size={12} />
+                                    Performance Insight
+                                </div>
+                                <h2 className="text-text-primary text-5xl leading-[0.9] font-[1000] tracking-tighter md:text-7xl">
+                                    Exceptional <br /> Results.
+                                </h2>
+                                <p className="text-text-secondary max-w-sm text-base leading-relaxed font-medium opacity-80 md:text-lg">
+                                    You demonstrated strong technical proficiency and clear
+                                    communication throughout this session.
+                                </p>
                             </div>
-                            <h2 className="text-text-primary text-4xl font-[1000] tracking-tight md:text-6xl">
-                                Exceptional <br className="hidden md:block" /> Results.
-                            </h2>
-                            <p className="text-text-secondary max-w-md text-sm leading-relaxed font-medium md:text-base">
-                                You demonstrated strong technical proficiency and clear
-                                communication during this {result.problemTitle} interview.
+
+                            <div className="relative flex h-48 w-48 shrink-0 items-center justify-center">
+                                <svg className="absolute inset-0 h-full w-full -rotate-90 transform">
+                                    <circle
+                                        cx="50%"
+                                        cy="50%"
+                                        r="42%"
+                                        className="stroke-border/20 fill-none"
+                                        strokeWidth="12"
+                                    />
+                                    <motion.circle
+                                        cx="50%"
+                                        cy="50%"
+                                        r="42%"
+                                        className="stroke-accent fill-none"
+                                        strokeWidth="12"
+                                        strokeDasharray="264"
+                                        initial={{ strokeDashoffset: 264 }}
+                                        animate={{
+                                            strokeDashoffset:
+                                                264 - (264 * (result.overallScore || 0)) / 100,
+                                        }}
+                                        transition={{ duration: 1.5, ease: 'easeOut' }}
+                                        strokeLinecap="round"
+                                    />
+                                </svg>
+                                <div className="text-center">
+                                    <span className="text-text-primary block text-6xl font-[1000]">
+                                        {result.overallScore}
+                                    </span>
+                                    <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+                                        Final Score
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.section>
+
+                    {/* AI Review Summary Card - 5 Columns */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="matte-surface col-span-12 flex flex-col rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-5 lg:h-[450px]"
+                    >
+                        <div className="mb-8 flex shrink-0 items-center gap-4">
+                            <div className="bg-accent/10 rounded-2xl p-3 shadow-inner">
+                                <Sparkles className="text-accent h-7 w-7" />
+                            </div>
+                            <h3 className="text-text-primary text-2xl font-[900] tracking-tight">
+                                AI Review Summary
+                            </h3>
+                        </div>
+                        <div className="custom-scrollbar flex-grow overflow-y-auto pr-4">
+                            <p className="text-text-secondary text-base leading-[1.7] font-medium opacity-90 md:text-lg">
+                                {result.aiSummary}
                             </p>
                         </div>
+                    </motion.section>
 
-                        <div className="border-border bg-bg-page relative flex h-48 w-48 items-center justify-center rounded-full border-[10px] shadow-inner md:h-56 md:w-56">
-                            {/* Score Circle */}
-                            <svg className="absolute inset-0 h-full w-full -rotate-90 transform">
-                                <circle
-                                    cx="50%"
-                                    cy="50%"
-                                    r="44%"
-                                    className="stroke-border/50 fill-none"
-                                    strokeWidth="10"
-                                />
-                                <circle
-                                    cx="50%"
-                                    cy="50%"
-                                    r="44%"
-                                    className="stroke-accent fill-none transition-all duration-1000 ease-out"
-                                    strokeWidth="10"
-                                    strokeDasharray="276"
-                                    strokeDashoffset={
-                                        276 - (276 * (result.overallScore || 0)) / 100
-                                    }
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                            <div className="text-center">
-                                <span className="text-text-primary block text-5xl font-[1000] md:text-6xl">
-                                    {result.overallScore}
-                                </span>
-                                <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
-                                    Final Score
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                    {/* Spacer row for visual separation */}
+                    <div className="col-span-12 hidden h-4 lg:block" />
 
-                {/* Grid: Detailed Ratings */}
-                <section className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                    {/* Category Detail Scores - Row 2 (4 cards x 3 cols) */}
                     {[
                         {
                             label: 'Communication',
                             val: result.communicationScore,
                             color: 'text-blue-500',
+                            desc: 'Excellent Clarity',
                             icon: MessageSquare,
                         },
                         {
                             label: 'Coding Performance',
                             val: result.codeQualityScore,
                             color: 'text-emerald-500',
+                            desc: 'Solid Implementation',
                             icon: Code2,
                         },
                         {
                             label: 'Problem Solving',
                             val: result.problemSolvingScore,
                             color: 'text-accent',
+                            desc: 'Needs Focus',
                             icon: Target,
                         },
                         {
                             label: 'Technical Accuracy',
                             val: result.approachScore,
                             color: 'text-purple-500',
-                            icon: TrendingUp,
+                            desc: 'Critical Gap',
+                            icon: Trophy,
                         },
                     ].map((item, i) => (
                         <motion.div
                             key={i}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 * i }}
-                            className="border-border bg-bg-subtle/50 group hover:bg-bg-muted relative overflow-hidden rounded-[2rem] border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.2 + i * 0.1 }}
+                            className="matte-surface group relative col-span-6 overflow-hidden rounded-[2.5rem] border p-8 transition-all hover:-translate-y-1 md:col-span-3"
                         >
-                            <div className="mb-4 flex items-center justify-between">
+                            <div className="flex flex-col items-center gap-4 text-center">
                                 <div
-                                    className={`bg-opacity-10 rounded-xl bg-current p-2 ${item.color}`}
+                                    className={`bg-opacity-10 mb-2 rounded-2xl bg-current p-3 transition-transform group-hover:scale-110 ${item.color}`}
                                 >
-                                    <item.icon size={18} />
+                                    <item.icon size={24} />
                                 </div>
-                                <div className="text-right">
-                                    <span className={`text-2xl font-black ${item.color}`}>
-                                        {item.val}
-                                    </span>
-                                    <span className="text-text-muted ml-1 text-[10px] font-bold">
-                                        /100
-                                    </span>
+                                <div className="space-y-1">
+                                    <div className="flex items-baseline justify-center gap-1">
+                                        <span className={`text-3xl font-black ${item.color}`}>
+                                            {item.val}
+                                        </span>
+                                        <span className="text-text-muted text-[10px] font-bold">
+                                            /100
+                                        </span>
+                                    </div>
+                                    <p
+                                        className={`text-[10px] font-black tracking-widest uppercase ${item.color}`}
+                                    >
+                                        {item.desc}
+                                    </p>
                                 </div>
-                            </div>
-
-                            <span className="text-text-primary text-xs font-black tracking-tight uppercase">
-                                {item.label}
-                            </span>
-
-                            <div className="bg-border mt-4 h-1.5 w-full overflow-hidden rounded-full">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${item.val}%` }}
-                                    transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
-                                    className={`h-full ${item.color.replace('text-', 'bg-')}`}
-                                />
+                                <div className="w-full space-y-2">
+                                    <p className="text-text-primary text-[10px] font-black tracking-widest uppercase">
+                                        {item.label}
+                                    </p>
+                                    <div className="bg-border/30 h-2 w-full overflow-hidden rounded-full">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${item.val}%` }}
+                                            transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
+                                            className={`h-full ${item.color.replace('text-', 'bg-')}`}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
                     ))}
-                </section>
 
-                {/* AI Summary */}
-                <section className="mt-12 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <MessageSquare className="text-accent h-5 w-5" />
-                        <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
-                            AI Review Summary
-                        </h3>
-                    </div>
-                    <div className="border-border bg-bg-subtle/50 text-text-secondary rounded-3xl border p-8 text-sm leading-relaxed font-medium backdrop-blur-xl md:text-base">
-                        {result.aiSummary}
-                    </div>
-                </section>
+                    {/* Spacer row for visual separation */}
+                    <div className="col-span-12 hidden h-4 lg:block" />
 
-                {/* Strengths & Weaknesses */}
-                <section className="mt-12 grid gap-8 md:grid-cols-2">
-                    {/* Strengths */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="space-y-4"
-                    >
-                        <div className="flex items-center gap-3">
-                            <Trophy className="text-accent h-5 w-5" />
-                            <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
-                                Key Strengths
-                            </h3>
-                        </div>
-                        <div className="space-y-3">
-                            {result.strengths?.map((s, i) => (
-                                <div
-                                    key={i}
-                                    className="bg-accent/5 border-accent/10 text-text-primary group hover:bg-accent/10 flex gap-4 rounded-2xl border p-5 text-sm font-medium transition-all"
-                                >
-                                    <span className="text-accent font-black">{i + 1}.</span>
-                                    {s}
+                    {/* Insights: Left Col (Strengths & Weaknesses) - 6 Columns */}
+                    <div className="col-span-12 space-y-6 lg:col-span-6">
+                        {/* Strengths */}
+                        <motion.section
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="matte-surface relative overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-12"
+                        >
+                            <div className="pointer-events-none absolute inset-0 bg-emerald-500/5" />
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center gap-3">
+                                    <Trophy className="h-6 w-6 text-emerald-500" />
+                                    <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                        Key Strengths
+                                    </h3>
                                 </div>
-                            ))}
-                        </div>
-                    </motion.div>
-
-                    {/* Weaknesses */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="space-y-4"
-                    >
-                        <div className="flex items-center gap-3">
-                            <AlertCircle className="text-error h-5 w-5" />
-                            <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
-                                Critical Weaknesses
-                            </h3>
-                        </div>
-                        <div className="space-y-3">
-                            {(result.weaknesses || result.areasToImprove)?.map((a, i) => (
-                                <div
-                                    key={i}
-                                    className="bg-error/5 border-error/10 text-text-primary group hover:bg-error/10 flex gap-4 rounded-2xl border p-5 text-sm font-medium transition-all"
-                                >
-                                    <span className="text-error font-black">{i + 1}.</span>
-                                    {a}
+                                <div className="space-y-4">
+                                    {result.strengths?.map((s, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            whileInView={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            className="flex items-start gap-4 rounded-[1.5rem] border border-emerald-500/10 bg-emerald-500/5 p-5 transition-all hover:bg-emerald-500/10"
+                                        >
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-500">
+                                                {i + 1}
+                                            </span>
+                                            <p className="text-text-primary text-base leading-snug font-bold">
+                                                {s}
+                                            </p>
+                                        </motion.div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                </section>
-
-                {/* Recommendations */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="mt-12 space-y-4"
-                >
-                    <div className="flex items-center gap-3">
-                        <Lightbulb className="h-5 w-5 text-yellow-500" />
-                        <h3 className="text-text-primary text-sm font-black tracking-widest uppercase">
-                            Expert Recommendations
-                        </h3>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {result.recommendations?.map((r, i) => (
-                            <div
-                                key={i}
-                                className="border-border bg-bg-subtle/50 hover:bg-bg-muted flex gap-4 rounded-2xl border p-6 text-sm font-medium backdrop-blur-xl transition-all"
-                            >
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yellow-500/10 text-[10px] font-black text-yellow-500">
-                                    {i + 1}
-                                </div>
-                                {r}
                             </div>
-                        ))}
-                        {(!result.recommendations || result.recommendations.length === 0) && (
-                            <div className="bg-bg-subtle border-border text-text-muted col-span-2 rounded-2xl border border-dashed p-8 text-center text-sm font-medium">
-                                No specific recommendations provided for this session.
+                        </motion.section>
+
+                        {/* Weaknesses */}
+                        <motion.section
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="matte-surface relative overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-12"
+                        >
+                            <div className="bg-error/5 pointer-events-none absolute inset-0" />
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center gap-3">
+                                    <AlertCircle className="text-error h-6 w-6" />
+                                    <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                        Critical Weaknesses
+                                    </h3>
+                                </div>
+                                <div className="space-y-4">
+                                    {(result.weaknesses || result.areasToImprove)?.map((a, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            whileInView={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            className="bg-error/5 border-error/10 hover:bg-error/10 flex items-start gap-4 rounded-[1.5rem] border p-5 transition-all"
+                                        >
+                                            <span className="bg-error/20 text-error flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black">
+                                                {i + 1}
+                                            </span>
+                                            <p className="text-text-primary text-base leading-snug font-bold">
+                                                {a}
+                                            </p>
+                                        </motion.div>
+                                    ))}
+                                </div>
                             </div>
-                        )}
+                        </motion.section>
                     </div>
-                </motion.section>
+
+                    {/* Recommendations: Right Col - 6 Columns */}
+                    <motion.section
+                        initial={{ opacity: 0, x: 30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="matte-surface relative col-span-12 overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-12 lg:col-span-6"
+                    >
+                        <div className="pointer-events-none absolute inset-0 bg-yellow-500/5" />
+                        <div className="relative z-10 flex h-full flex-col space-y-8">
+                            <div className="flex items-center gap-3">
+                                <Lightbulb className="h-6 w-6 text-yellow-500" />
+                                <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                    Expert Recommendations
+                                </h3>
+                            </div>
+
+                            <div className="custom-scrollbar grid grid-cols-1 gap-4 overflow-y-auto pr-2">
+                                {result.recommendations?.map((r, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="matte-surface group flex flex-col gap-4 rounded-[2rem] border-yellow-500/10 p-8 shadow-inner transition-all hover:border-yellow-500/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-yellow-500/20 text-xs font-black text-yellow-500">
+                                                {i + 1}
+                                            </div>
+                                            <h4 className="text-sm font-black tracking-widest text-yellow-500 uppercase">
+                                                {r.split(':')[0] || 'Recommendation'}
+                                            </h4>
+                                        </div>
+                                        <p className="text-text-secondary text-base leading-relaxed font-bold opacity-90">
+                                            {r.includes(':')
+                                                ? r.split(':').slice(1).join(':').trim()
+                                                : r}
+                                        </p>
+                                    </motion.div>
+                                ))}
+                                {(!result.recommendations ||
+                                    result.recommendations.length === 0) && (
+                                    <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2.5rem] border border-dashed p-12 text-center">
+                                        <Target className="text-text-muted mb-4 h-12 w-12 opacity-20" />
+                                        <p className="text-text-muted text-sm font-medium">
+                                            No specific recommendations provided for this session.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.section>
+                </div>
 
                 {/* Footer Credits */}
-                <footer className="border-border text-text-muted mt-20 border-t pt-8 text-center text-[10px] font-bold tracking-widest uppercase">
-                    CodeArena Artificial Intelligence • Session ID:{' '}
-                    <span className="text-text-primary font-mono">{sessionId.toUpperCase()}</span>
+                <footer className="border-border text-text-muted mt-20 mb-12 border-t pt-8 text-center text-[10px] font-bold tracking-widest uppercase">
+                    CodeArena Artificial Intelligence • Session Protocol 8.4 •{' '}
+                    {sessionId.toUpperCase()}
                 </footer>
             </main>
 
@@ -458,12 +529,11 @@ export default function ScorecardView({ sessionId }) {
                         background: white !important;
                         color: black !important;
                     }
-                    .bg-bg-page {
+                    .matte-surface {
                         background: white !important;
-                    }
-                    .bg-bg-subtle {
-                        background: #f8fafc !important;
                         border: 1px solid #e2e8f0 !important;
+                        box-shadow: none !important;
+                        backdrop-filter: none !important;
                     }
                     .text-text-primary {
                         color: #0f172a !important;
@@ -475,16 +545,25 @@ export default function ScorecardView({ sessionId }) {
                     .border-border {
                         border-color: #e2e8f0 !important;
                     }
-                    .shadow-2xl,
-                    .shadow-lg {
-                        box-shadow: none !important;
-                    }
                     .print\\:hidden {
                         display: none !important;
                     }
                     button {
                         display: none !important;
                     }
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: var(--ca-border);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: var(--ca-accent);
                 }
             `}</style>
         </div>
