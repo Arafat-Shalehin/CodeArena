@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { CodeEditorProvider } from '@/context/CodeEditorContext'
 import { Toaster } from '@/components/ui/sonner'
+import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
 const inter = Inter({
@@ -40,6 +41,10 @@ export default function RootLayout({ children }) {
                 suppressHydrationWarning={true}
                 className="bg-bg-page site-gradient text-text-primary font-sans antialiased transition-colors duration-300"
             >
+                <HydrationWrapper>
+                    <AuthProvider>{children}</AuthProvider>
+                </HydrationWrapper>
+                <Toaster position="top-center" />
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                     <AuthProvider>
                         <CodeEditorProvider>{children}</CodeEditorProvider>

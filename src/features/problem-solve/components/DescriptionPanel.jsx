@@ -163,7 +163,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
     return (
         <>
             {/* Tab Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-2">
+            <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center justify-between border-b px-2">
                 <div className="flex items-center gap-0.5">
                     {TABS.map((tab) => (
                         <button
@@ -251,7 +251,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
             </div>
 
             {/* Footer */}
-            <div className="border-border bg-bg-subtle text-text-muted flex h-[36px] flex-shrink-0 items-center justify-between border-t px-4 text-xs transition-colors">
+            <div className="flex h-9 shrink-0 items-center justify-between border-t border-[#333] px-4 text-xs text-gray-500">
                 <div className="flex items-center gap-4">
                     <span className="hover:text-text-primary flex items-center gap-1 transition-colors">
                         <ThumbsUp size={12} /> {problem.totalSubmissions || 0}

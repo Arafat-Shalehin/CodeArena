@@ -120,31 +120,73 @@ function TestResultTab() {
         const progress = result.progress || 0
 
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-gray-400">
-                <Loader2 size={24} className="animate-spin text-blue-500" />
-                <div className="flex flex-col items-center gap-2">
-                    <span className="text-sm font-semibold">Judging in progress...</span>
-                    <div className="text-xs text-gray-500">
-                        {passedCount} / {totalCount} test cases
+            <div className="flex h-full flex-col items-center justify-center gap-6 py-12">
+                {/* Status Message */}
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 size={32} className="text-accent animate-spin" />
+                    <div className="text-center">
+                        <p className="text-text-primary text-sm font-semibold">
+                            {result.statusMessage ||
+                                result.progressMessage ||
+                                'Judging in progress...'}
+                        </p>
+                        <p className="text-text-muted mt-1 text-xs">
+                            {passedCount} / {totalCount} test cases
+                        </p>
                     </div>
                 </div>
+
                 {/* Progress Bar */}
-                <div className="h-2 w-48 overflow-hidden rounded-full bg-gray-700">
-                    <div
-                        className="h-full bg-blue-500 transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-                {progress > 0 && <div className="text-xs text-gray-400">{progress}% complete</div>}
+                {totalCount !== '?' && (
+                    <div className="w-48 space-y-2">
+                        <div className="bg-bg-muted/50 border-border flex h-2 overflow-hidden rounded-full border">
+                            <div
+                                className="from-accent to-success bg-linear-to-r transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                        <div className="text-text-muted text-center text-xs font-medium">
+                            {progress}% complete
+                        </div>
+                    </div>
+                )}
+
+                {/* Test Cases Progress */}
+                {result.results && result.results.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                        {result.results.map((r, i) => (
+                            <div
+                                key={i}
+                                className={`flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold ${
+                                    r.verdict === 'ACCEPTED'
+                                        ? 'bg-success/20 text-success'
+                                        : 'bg-error/20 text-error'
+                                }`}
+                                title={`Case ${r.caseNumber}: ${r.verdict}`}
+                            >
+                                {r.caseNumber}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         )
     }
     if (result.status === 'error') {
         return (
             <div className="p-5">
-                <div className="mb-1 text-xl font-bold text-[#ff375f]">Runtime Error</div>
-                <div className="rounded-lg bg-[#262626] p-4 font-mono text-sm text-[#ff375f]">
-                    {result.error}
+                <div className="mb-3 flex items-start justify-between">
+                    <div>
+                        <div className="text-error mb-1 text-xl font-bold">Runtime Error</div>
+                        {result.failedAtCase && (
+                            <div className="text-text-muted text-xs">
+                                Failed at test case {result.failedAtCase}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="bg-error/10 border-error/20 text-error rounded-lg border p-4 font-mono text-sm">
+                    {result.error || 'An error occurred during execution'}
                     {result.message && <div className="mt-2 text-gray-500">{result.message}</div>}
                 </div>
             </div>
@@ -161,24 +203,20 @@ function TestResultTab() {
     return (
         <div className="p-5">
             {/* Verdict Header */}
-            <div className="mb-1 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-baseline gap-3">
                     <span className={`text-2xl font-black ${verdictColor}`}>
                         {result.verdict?.replace(/_/g, ' ')}
                     </span>
-                    {result.time !== undefined && (
-                        <span className="text-text-muted text-[13px]">
-                            Runtime:{' '}
-                            <span className="text-text-primary font-bold">{result.time} ms</span>
-                        </span>
+                    {result.failedAtCase && (
+                        <div className="bg-error/10 border-error/30 text-error rounded-lg border px-3 py-1 text-xs font-bold">
+                            Case #{result.failedAtCase}
+                        </div>
                     )}
-                    {result.memory !== undefined && (
-                        <span className="text-text-muted text-[13px]">
-                            Memory:{' '}
-                            <span className="text-text-primary font-bold">
-                                {(result.memory / 1024).toFixed(2)} MB
-                            </span>
-                        </span>
+                    {result.totalCount > 0 && (
+                        <div className="text-text-muted border-border bg-bg-muted rounded-lg border px-2 py-0.5 text-xs font-black">
+                            {result.passedCount} / {result.totalCount} PASSED
+                        </div>
                     )}
                 </div>
                 <button

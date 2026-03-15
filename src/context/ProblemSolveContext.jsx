@@ -1,8 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { useAuth } from '@/context/AuthContext'
+import { useProblemSolveStore } from '@/store/problemSolveStore'
 import {
     CodeEditorProvider,
     useCodeEditor,
@@ -16,12 +17,36 @@ import { toast } from 'sonner'
 
 const ProblemSolveContext = createContext()
 
+const VALID_LEFT_TABS = new Set([
+    'description',
+    'editorial',
+    'solutions',
+    'submissions',
+    'submission-result',
+])
+
+const getLeftTabStorageKey = (problemId) => `codearena_left_tab_${problemId}`
+
+const readSavedLeftTab = (problemId) => {
+    if (typeof window === 'undefined' || !problemId) return 'description'
+
+    try {
+        const savedTab = localStorage.getItem(getLeftTabStorageKey(problemId))
+        return VALID_LEFT_TABS.has(savedTab) ? savedTab : 'description'
+    } catch {
+        return 'description'
+    }
+}
+
 // Re-export for backward compatibility
 export { STARTER_CODES, LANG_LABELS }
 
 // Inner component that uses all sub-contexts
 function ProblemSolveProviderInner({ children, problemId, initialCode, problem, contestId }) {
     const { user, syncUser } = useAuth()
+
+    // Get Zustand store for persistence
+    const zustandStore = useProblemSolveStore()
 
     // Get sub-contexts
     const codeEditor = useCodeEditor()
@@ -31,20 +56,60 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 
     // Local UI state
     const [isConsoleOpen, setIsConsoleOpen] = useState(true)
-    const [leftTab, setLeftTab] = useState('description')
+    const [leftTab, setLeftTabState] = useState(() => readSavedLeftTab(problemId))
 
-    // Reset all states when problem changes
+    const setLeftTab = useCallback((nextTab) => {
+        setLeftTabState((prevTab) => {
+            const resolvedTab = typeof nextTab === 'function' ? nextTab(prevTab) : nextTab
+            return VALID_LEFT_TABS.has(resolvedTab) ? resolvedTab : prevTab
+        })
+    }, [])
+
+    // Persist current left tab per problem so reload can restore the same tab.
     useEffect(() => {
-        execution.setIsRunning(false)
-        execution.setIsSubmitting(false)
-        execution.setTestResult(null)
-        execution.setTestInput('')
-        execution.setActiveTestCase(0)
-        execution.setConsoleTab('output')
-        execution.setTestResultData(null)
-        cache.clearCache()
-        setIsConsoleOpen(true)
-        setLeftTab('description')
+        if (typeof window === 'undefined' || !problemId) return
+
+        try {
+            localStorage.setItem(getLeftTabStorageKey(problemId), leftTab)
+        } catch {}
+    }, [problemId, leftTab])
+
+    // Track previous problemId to only reset when actually changing problems
+    const prevProblemIdRef = useRef(null)
+
+    // Reset all states ONLY when problem actually changes, not on first render
+    useEffect(() => {
+        // Skip reset on initial render
+        if (prevProblemIdRef.current === null) {
+            prevProblemIdRef.current = problemId
+            console.log('[ProblemContext] Initial problem set:', problemId)
+            return
+        }
+
+        // Only reset if problemId actually changed
+        if (prevProblemIdRef.current !== problemId) {
+            console.log(
+                '[ProblemContext] Problem changed from',
+                prevProblemIdRef.current,
+                'to',
+                problemId
+            )
+            // Clear execution state for new problem
+            execution.setIsRunning(false)
+            execution.setIsSubmitting(false)
+            execution.setTestResult(null)
+            execution.setTestInput('')
+            execution.setActiveTestCase(0)
+            execution.setConsoleTab('testcase')
+            execution.setTestResultData(null)
+            execution.setLastSubmittedCode('')
+            execution.setLastAnalyzedCode('')
+            cache.clearCache()
+            setIsConsoleOpen(true)
+            setLeftTabState(readSavedLeftTab(problemId))
+
+            prevProblemIdRef.current = problemId
+        }
     }, [problemId])
 
     // Initialize test input from problem
@@ -62,6 +127,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         console.log('[FRONTEND] Code length:', codeEditor.code.length)
         console.log('[FRONTEND] Language:', codeEditor.language)
         console.log('[FRONTEND] Custom input:', execution.testInput)
+
+        // 🔥 STORE THE RUN CODE FOR AI ANALYSIS
+        execution.setLastSubmittedCode(codeEditor.code)
+        execution.setLastSubmittedLanguage(codeEditor.language)
 
         execution.setIsRunning(true)
         execution.setConsoleTab('result')
@@ -130,6 +199,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         console.log('[FRONTEND] Code length:', codeEditor.code.length)
         console.log('[FRONTEND] Language:', codeEditor.language)
 
+        // 🔥 STORE THE SUBMITTED CODE FOR AI ANALYSIS
+        execution.setLastSubmittedCode(codeEditor.code)
+        execution.setLastSubmittedLanguage(codeEditor.language)
+
         execution.setIsSubmitting(true)
         execution.setConsoleTab('result')
         setIsConsoleOpen(true)
@@ -141,7 +214,22 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             status: 'running',
             totalCount: totalTestCases,
             results: [],
+            progress: 0,
+            statusMessage: 'Queuing submission...',
         })
+
+        // Client-side timeout: 20 seconds
+        const submissionTimeout = setTimeout(() => {
+            if (execution.isSubmitting) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'error',
+                    error: 'Server is taking longer than expected. Please check your internet or try again.',
+                }))
+                execution.setIsSubmitting(false)
+                toast.error('Submission timeout')
+            }
+        }, 20000)
 
         try {
             // 🚀 CHECK CACHE: If code hasn't changed since last Run, use cached result
@@ -195,6 +283,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                         '[FRONTEND] Submission created (from cache), joining room:',
                         `submission_${submissionId}`
                     )
+                    // 💾 Save submission ID to Zustand for persistence
+                    zustandStore.setSubmissionId(submissionId)
+                    zustandStore.setSubmissionViewId(submissionId)
+                    zustandStore.setCurrentPage('submission-details')
                     toast.success('Submission created!')
                     if (realtime.socket) {
                         realtime.socket.emit('join_room', `submission_${submissionId}`)
@@ -236,6 +328,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     '[FRONTEND] Submission created, joining room:',
                     `submission_${submissionId}`
                 )
+                // 💾 Save submission ID to Zustand for persistence
+                zustandStore.setSubmissionId(submissionId)
+                zustandStore.setSubmissionViewId(submissionId)
+                zustandStore.setCurrentPage('submission-details')
                 toast.success('Submission created!')
                 if (realtime.socket) {
                     realtime.socket.emit('join_room', `submission_${submissionId}`)
@@ -243,6 +339,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             }
         } catch (err) {
             console.error('[FRONTEND] SUBMIT CODE ERROR:', err)
+            clearTimeout(submissionTimeout)
             execution.setTestResult({ status: 'error', error: err.message })
             execution.setIsSubmitting(false)
         }
@@ -259,13 +356,43 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
     const fetchAiFeedback = useCallback(
         async (options = { switchTab: true }) => {
+            // Get the code to analyze (prefer submitted code, fallback to last analyzed)
+            const codeToAnalyze =
+                execution.lastSubmittedCode || execution.lastAnalyzedCode || codeEditor.code
+            const languageToAnalyze = execution.lastSubmittedLanguage || codeEditor.language
+
+            // Create a hash of code for reliable comparison (ignoring whitespace differences)
+            const codeHash = (code) => {
+                return code?.trim().replace(/\s+/g, ' ') || ''
+            }
+
+            const currentCodeHash = codeHash(codeToAnalyze)
+            const lastAnalyzedHash = codeHash(execution.lastAnalyzedCode)
+
+            // Check if we already analyzed this exact code - no need to refetch
+            if (
+                currentCodeHash === lastAnalyzedHash &&
+                execution.testResultData?.aiFeedback &&
+                !execution.testResultData.aiFeedback.error
+            ) {
+                console.log(
+                    '[FRONTEND] AI feedback already analyzed for this code submission, showing cached result'
+                )
+                if (options.switchTab) {
+                    execution.setConsoleTab('ai')
+                }
+                return
+            }
+
+            console.log('[FRONTEND] New code detected, analyzing...')
+            execution.setIsAiLoading(true)
             try {
                 const res = await fetch('/api/evaluation/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        code: codeEditor.code,
-                        language: codeEditor.language,
+                        code: codeToAnalyze,
+                        language: languageToAnalyze,
                         problemTitle: problem?.title || 'Code Challenge',
                         verdict: execution.testResult?.verdict || 'UNKNOWN',
                         executionTime: execution.testResult?.time || 0,
@@ -274,7 +401,11 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 })
                 const data = await res.json()
                 if (data.success) {
+                    // 🔥 MARK THIS CODE AS ANALYZED
+                    execution.setLastAnalyzedCode(codeToAnalyze)
                     execution.setTestResultData({ aiFeedback: data.feedback })
+                    // 💾 Save AI feedback to Zustand for persistence
+                    zustandStore.setAiFeedback(data.feedback)
                     if (options.switchTab) {
                         execution.setConsoleTab('ai')
                     }
@@ -286,6 +417,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             } catch (err) {
                 console.error('AI feedback error:', err)
                 execution.setTestResultData({ aiFeedback: { error: err.message } })
+            } finally {
+                execution.setIsAiLoading(false)
             }
         },
         [
@@ -329,6 +462,17 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     })
 
                     if (s.type === 'submit') {
+                        // 🔥 STORE THE SUBMISSION CODE FOR AI ANALYSIS
+                        execution.setLastSubmittedCode(s.code)
+                        execution.setLastSubmittedLanguage(s.language)
+
+                        // 💾 Save submission details to Zustand for persistence
+                        zustandStore.setSubmissionId(s._id)
+                        zustandStore.setSubmissionDetails(s)
+                        if (s.aiFeedback) {
+                            zustandStore.setAiFeedback(s.aiFeedback)
+                        }
+
                         realtime.setSubmissionResult({
                             id: s._id,
                             verdict: verdict,
@@ -382,9 +526,40 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     status: 'running',
                     totalCount: data.totalTestCases || prev?.totalCount,
                     progress: data.progress,
+                    progressMessage: data.message,
                     results: prev?.results
-                        ? [...prev.results, data.testCaseResult]
-                        : [data.testCaseResult],
+                        ? [...prev.results, { verdict: data.verdict, caseNumber: data.caseNumber }]
+                        : [{ verdict: data.verdict, caseNumber: data.caseNumber }],
+                }))
+            }
+        })
+
+        newSocket.on('test_case_failed', (data) => {
+            console.log('[Socket] Test case failed (fail-fast):', data)
+            if (data.submissionId) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'done',
+                    verdict: data.verdict,
+                    passed: false,
+                    failedAtCase: data.caseNumber,
+                    totalCount: data.totalTestCases,
+                    progressMessage: data.message,
+                }))
+                execution.setIsSubmitting(false)
+                toast.error(`Failed at test case ${data.caseNumber}`)
+            }
+        })
+
+        newSocket.on('submission_status', (data) => {
+            console.log('[Socket] Submission status:', data)
+            if (data.problemId === problemId) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'running',
+                    statusMessage: data.message,
+                    totalCount: data.totalTestCases || prev?.totalCount,
+                    progress: data.progress || 0,
                 }))
             }
         })
@@ -417,33 +592,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     data.type === 'submission_evaluated' || isRunResult || isSubmitResult
 
                 if (isEvaluated) {
-                    // For submit_result, fetch full details
-                    if (isSubmitResult) {
-                        viewSubmissionDetails(data.submissionId)
-                    }
+                    // Clear timeout since verdict arrived
+                    // Note: timeout is stored in closure, here we just mark it resolved
 
-                    if (
-                        data.verdict?.toUpperCase() === 'ACCEPTED' ||
-                        data.verdict?.toUpperCase() === 'EXECUTED'
-                    ) {
-                        if (isSubmitResult) {
-                            toast.success('Accepted!')
-                        } else if (isRunResult) {
-                            toast.success('Executed!')
-                        }
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    } else if (data.status === 'error' || data.type === 'submission_error') {
-                        toast.error(data.error || 'Evaluation Error')
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    } else if (data.verdict && !isRunResult) {
-                        toast.error(data.verdict.replace(/_/g, ' '))
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    }
-
-                    // Update execution result for both run and submit
+                    // 1. Immediately update execution result from socket data
                     if (isRunResult || isSubmitResult) {
                         execution.setTestResult({
                             status: 'done',
@@ -456,6 +608,47 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                             passedCount: data.passedCount,
                             error: data.error,
                         })
+                        execution.setIsSubmitting(false)
+                        execution.setIsRunning(false)
+                    }
+
+                    // 2. For submit_result, immediately set submission result and switch tab
+                    if (isSubmitResult) {
+                        // Set submission result for SubmissionResultTab
+                        realtime.setSubmissionResult({
+                            id: data.submissionId,
+                            verdict: data.verdict,
+                            passed: data.verdict === 'ACCEPTED',
+                            passedCount: data.passedCount || 0,
+                            totalCount: data.totalCount || 0,
+                            time: data.executionTime,
+                            memory: data.memoryUsed,
+                            submittedCode: '(Loading...)',
+                            submittedLanguage: 'Loading',
+                            submittedAt: new Date().toISOString(),
+                        })
+
+                        // Switch to submission result tab
+                        setLeftTab('submission-result')
+
+                        // Asynchronously fetch full submission details
+                        viewSubmissionDetails(data.submissionId).catch(console.error)
+                    }
+
+                    // 3. Show notifications
+                    if (
+                        data.verdict?.toUpperCase() === 'ACCEPTED' ||
+                        data.verdict?.toUpperCase() === 'EXECUTED'
+                    ) {
+                        if (isSubmitResult) {
+                            toast.success('Accepted!')
+                        } else if (isRunResult) {
+                            toast.success('Executed!')
+                        }
+                    } else if (data.status === 'error' || data.type === 'submission_error') {
+                        toast.error(data.error || 'Evaluation Error')
+                    } else if (data.verdict && !isRunResult) {
+                        toast.error(data.verdict.replace(/_/g, ' '))
                     }
                 }
             }
@@ -500,6 +693,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         setActiveTestCase: execution.setActiveTestCase,
         testResultData: execution.testResultData,
         fetchAiFeedback,
+        aiFeedback: execution.testResultData?.aiFeedback,
+        isAiLoading: execution.isAiLoading,
 
         // From Realtime context
         socket: realtime.socket,

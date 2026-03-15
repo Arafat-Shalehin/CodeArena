@@ -28,6 +28,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import ProblemListSidebar from '@/app/test-docker/ProblemListSidebar'
 import { ProblemSolveProvider, useProblemSolve } from '@/context/ProblemSolveContext'
 import { useAuth } from '@/context/AuthContext'
+import { useProblemSolveStore } from '@/store/problemSolveStore'
+import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
 
 import DescriptionPanel from './DescriptionPanel'
@@ -46,6 +48,9 @@ function InnerLayout({
     randomProblem,
     contestId,
 }) {
+    // Mark that user is viewing this problem (for reload restoration)
+    useMarkProblemView(problem?._id)
+
     const { runCode, submitCode, isRunning, isSubmitting, testResult, fetchAiFeedback } =
         useProblemSolve()
     const { user } = useAuth()
@@ -120,7 +125,7 @@ function InnerLayout({
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <nav className="border-border bg-bg-subtle flex h-[48px] flex-shrink-0 items-center justify-between border-b px-4">
+            <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}
                 <div className="flex items-center gap-1">
                     <AreanaLogo
@@ -232,7 +237,7 @@ function InnerLayout({
                                 />
                             </div>
                         ) : (
-                            <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex w-[40px] flex-shrink-0 items-center justify-center rounded-xl border transition-colors">
+                            <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex w-10 shrink-0 items-center justify-center rounded-xl border transition-colors">
                                 <span
                                     style={{ writingMode: 'vertical-rl' }}
                                     className="cursor-pointer font-medium"
@@ -270,7 +275,7 @@ function InnerLayout({
                                     />
                                 </div>
                             ) : (
-                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-10 shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
                                         className="cursor-pointer font-medium"
                                         onClick={() => toggleMaximize('editor')}
@@ -306,7 +311,7 @@ function InnerLayout({
                                     />
                                 </div>
                             ) : (
-                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-10 shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
                                         className="flex cursor-pointer items-center gap-2 font-medium"
                                         onClick={() => toggleMaximize('console')}
@@ -338,7 +343,7 @@ function InnerLayout({
                     <>
                         {/* ─── Left: Description or collapsed stub ─── */}
                         {collapsedPanels.description ? (
-                            <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex w-[40px] flex-shrink-0 items-center justify-center rounded-xl border transition-colors">
+                            <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex w-10 shrink-0 items-center justify-center rounded-xl border transition-colors">
                                 <span
                                     style={{ writingMode: 'vertical-rl' }}
                                     className="cursor-pointer font-medium"
@@ -385,7 +390,7 @@ function InnerLayout({
                                 }
                                 hSplit.onMouseDown(e)
                             }}
-                            className="bg-bg-page hover:bg-accent/40 flex w-[8px] cursor-col-resize items-center justify-center transition-colors"
+                            className="bg-bg-page hover:bg-accent/40 flex w-2 cursor-col-resize items-center justify-center transition-colors"
                         >
                             <GripVertical size={12} className="text-text-muted" />
                         </div>
@@ -402,7 +407,7 @@ function InnerLayout({
                         >
                             {/* Editor or collapsed stub */}
                             {collapsedPanels.editor ? (
-                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-10 shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
                                         className="cursor-pointer font-medium"
                                         onClick={() => toggleCollapse('editor')}
@@ -452,14 +457,14 @@ function InnerLayout({
                                         setCollapsedPanels((p) => ({ ...p, console: false }))
                                     vSplit.onMouseDown(e)
                                 }}
-                                className="bg-bg-page hover:bg-accent/40 flex h-[8px] cursor-row-resize items-center justify-center transition-colors"
+                                className="bg-bg-page hover:bg-accent/40 flex h-2 cursor-row-resize items-center justify-center transition-colors"
                             >
                                 <GripHorizontal size={12} className="text-text-muted" />
                             </div>
 
                             {/* Console or collapsed stub */}
                             {collapsedPanels.console ? (
-                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-[40px] flex-shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
+                                <div className="border-border bg-bg-subtle text-text-muted hover:text-text-primary group hover:bg-bg-muted relative flex h-10 shrink-0 items-center gap-3 rounded-xl border px-4 transition-colors">
                                     <span
                                         className="flex cursor-pointer items-center gap-2 font-medium"
                                         onClick={() => toggleCollapse('console')}
@@ -511,32 +516,85 @@ function InnerLayout({
 
 export default function ProblemSolverLayout({ problemId, contestId }) {
     const router = useRouter()
-    const [problem, setProblem] = useState(null)
-    const [problems, setProblems] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
+
+    // Get cached data from Zustand
+    const zustandStore = useProblemSolveStore()
+
+    // Start with quicker loading if cache exists for same problem
+    const shouldShowCached = zustandStore.cachedProblem?._id === problemId
+
+    const [problem, setProblem] = useState(shouldShowCached ? zustandStore.cachedProblem : null)
+    const [problems, setProblems] = useState(zustandStore.cachedProblems || [])
+    const [isLoading, setIsLoading] = useState(!shouldShowCached)
     const [error, setError] = useState(null)
 
     useEffect(() => {
+        let isMounted = true
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 12000)
+
         const loadData = async () => {
             try {
-                const [problemRes, listRes] = await Promise.all([
-                    fetch(`/api/problems/${problemId}`),
-                    fetch('/api/problems'),
-                ])
+                if (isMounted) setIsLoading(true)
+
+                // Always fetch the current problem (can change quickly)
+                console.log('[ProblemSolver] Fetching problem data for:', problemId)
+                const problemRes = await fetch(`/api/problems/${problemId}`, {
+                    signal: controller.signal,
+                })
                 const problemData = await problemRes.json()
-                const listData = await listRes.json()
 
-                if (problemData.success) setProblem(problemData.data)
-                else setError(problemData.error || 'Failed to load problem')
+                if (problemData.success) {
+                    console.log('[ProblemSolver] Problem loaded:', problemId)
+                    if (isMounted) setProblem(problemData.data)
+                    // Use getState() to avoid re-renders from object reference changes
+                    useProblemSolveStore.getState().setCachedProblem(problemData.data)
+                    if (isMounted) setError(null)
+                } else {
+                    console.error('[ProblemSolver] Problem fetch failed:', problemData.error)
+                    if (isMounted) setError(problemData.error || 'Failed to load problem')
+                }
 
-                if (listData.success) setProblems(listData.data || [])
+                // Load problem list only if not cached
+                const state = useProblemSolveStore.getState()
+                if (!state.cachedProblems || state.cachedProblems.length === 0) {
+                    console.log('[ProblemSolver] Fetching problem list')
+                    const listRes = await fetch('/api/problems', { signal: controller.signal })
+                    const listData = await listRes.json()
+
+                    if (listData.success) {
+                        const problemsList = listData.data || []
+                        if (isMounted) setProblems(problemsList)
+                        useProblemSolveStore.getState().setCachedProblems(problemsList)
+                    }
+                } else {
+                    console.log('[ProblemSolver] Using cached problem list')
+                    if (isMounted) setProblems(state.cachedProblems)
+                }
+
+                if (isMounted) setIsLoading(false)
             } catch (err) {
-                setError('Network error')
+                console.error('[ProblemSolver] Fetch error:', err)
+                if (isMounted) {
+                    if (err?.name === 'AbortError') {
+                        setError('Request timeout. Please retry.')
+                    } else {
+                        setError('Network error')
+                    }
+                    setIsLoading(false)
+                }
             } finally {
-                setIsLoading(false)
+                clearTimeout(timeoutId)
             }
         }
+
         loadData()
+
+        return () => {
+            isMounted = false
+            clearTimeout(timeoutId)
+            controller.abort()
+        }
     }, [problemId])
 
     const problemIndex = problems.findIndex((p) => p._id === problemId)
