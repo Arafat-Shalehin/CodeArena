@@ -82,7 +82,7 @@ export default function AiFeedbackTab() {
                     <h3 className="text-text-primary text-[13px] font-semibold">
                         Ready for Analysis
                     </h3>
-                    <p className="text-text-muted mx-auto max-w-[240px] text-[12px] leading-relaxed">
+                    <p className="text-text-muted mx-auto max-w-60 text-[12px] leading-relaxed">
                         Execute our static analyzer to surface critical complexity insights and
                         refactoring advice.
                     </p>
@@ -220,7 +220,7 @@ export default function AiFeedbackTab() {
                                     key={i}
                                     className="bg-success/5 border-success/10 text-text-muted hover:bg-success/10 hover:text-text-primary flex cursor-default items-start gap-3 rounded-lg border px-3 py-2.5 text-[13px] leading-relaxed transition-colors"
                                 >
-                                    <div className="text-success/70 mt-[3px] shrink-0">
+                                    <div className="text-success/70 mt-0.75 shrink-0">
                                         <Check size={12} strokeWidth={3} />
                                     </div>
                                     <div className="flex-1">{formatText(s)}</div>

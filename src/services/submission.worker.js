@@ -25,7 +25,8 @@ export function initSubmissionWorker() {
         'submission-queue',
         async (job) => {
             const { submissionId } = job.data
-            console.log(`[WORKER] Started processing submission: ${submissionId}`)
+            console.log(`[WORKER] ⭐ Started processing submission: ${submissionId}`)
+            console.log(`[WORKER] Job ID: ${job.id}, Data:`, job.data)
 
             try {
                 // Connect to MongoDB
@@ -94,6 +95,23 @@ export function initSubmissionWorker() {
                         `[WORKER] Code length: ${submission.code.length}, Language: ${submission.language}`
                     )
 
+                    // Notify client that execution is starting
+                    if (redisClient.isOpen) {
+                        redisClient
+                            .publish(
+                                'submission_updates',
+                                JSON.stringify({
+                                    type: 'submission_status',
+                                    submissionId,
+                                    userId: submission.userId,
+                                    status: 'running',
+                                    message: 'Executing code...',
+                                    problemId: submission.problemId,
+                                })
+                            )
+                            .catch(console.error)
+                    }
+
                     const result = await executeCode({
                         code: submission.code,
                         files: submission.files || [],
@@ -155,6 +173,24 @@ export function initSubmissionWorker() {
                     console.log(
                         `[WORKER] SUBMIT TYPE: Running ${totalCount} test case(s) for submission ${submissionId}`
                     )
+
+                    // Notify client that judging is starting
+                    if (redisClient.isOpen) {
+                        redisClient
+                            .publish(
+                                'submission_updates',
+                                JSON.stringify({
+                                    type: 'submission_status',
+                                    submissionId,
+                                    userId: submission.userId,
+                                    status: 'running',
+                                    message: `Starting judge... Running ${totalCount} test cases`,
+                                    totalTestCases: totalCount,
+                                    problemId: submission.problemId,
+                                })
+                            )
+                            .catch(console.error)
+                    }
 
                     for (let i = 0; i < totalCount; i++) {
                         const testCase = testCases[i]
@@ -225,6 +261,8 @@ export function initSubmissionWorker() {
 
                         // 📊 Real-time progress update via Redis pub/sub
                         if (redisClient.isOpen) {
+                            const passStatus = resultVerdict === VERDICTS.ACCEPTED ? 'AC' : 'WA'
+                            const progressPercent = Math.round(((i + 1) / totalCount) * 100)
                             redisClient
                                 .publish(
                                     'submission_updates',
@@ -235,7 +273,9 @@ export function initSubmissionWorker() {
                                         caseNumber: i + 1,
                                         totalTestCases: totalCount,
                                         verdict: resultVerdict,
-                                        progress: Math.round(((i + 1) / totalCount) * 100),
+                                        progress: progressPercent,
+                                        message: `Test case ${i + 1}/${totalCount}: ${passStatus} (${result.executionTime}ms)`,
+                                        problemId: submission.problemId,
                                     })
                                 )
                                 .catch(console.error)
@@ -252,6 +292,25 @@ export function initSubmissionWorker() {
                             console.log(
                                 `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
                             )
+
+                            // Send fail-fast event immediately
+                            if (redisClient.isOpen) {
+                                redisClient
+                                    .publish(
+                                        'submission_updates',
+                                        JSON.stringify({
+                                            type: 'test_case_failed',
+                                            submissionId,
+                                            userId: submission.userId,
+                                            caseNumber: i + 1,
+                                            totalTestCases: totalCount,
+                                            verdict: resultVerdict,
+                                            message: `❌ Failed at test case ${i + 1}/${totalCount}: ${resultVerdict}`,
+                                            problemId: submission.problemId,
+                                        })
+                                    )
+                                    .catch(console.error)
+                            }
                             break
                         }
                     }
@@ -430,9 +489,12 @@ export function initSubmissionWorker() {
 
     console.log('[WORKER] Submission worker initialized with concurrency: 2')
     console.log('[WORKER] Worker ready to process jobs from submission-queue')
+    console.log('[WORKER] ✅ Worker is now monitoring the submission-queue for incoming jobs...')
 
     worker.on('active', (job) => {
-        console.log(`[WORKER] Job ${job.id} is now processing submission ${job.data.submissionId}`)
+        console.log(
+            `[WORKER] 🔴 ACTIVE: Job ${job.id} is now executing submission ${job.data.submissionId}`
+        )
     })
 
     worker.on('progress', (job, progress) => {

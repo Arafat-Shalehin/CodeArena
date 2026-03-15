@@ -40,7 +40,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         execution.setTestResult(null)
         execution.setTestInput('')
         execution.setActiveTestCase(0)
-        execution.setConsoleTab('output')
+        execution.setConsoleTab('testcase')
         execution.setTestResultData(null)
         cache.clearCache()
         setIsConsoleOpen(true)
@@ -141,7 +141,22 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             status: 'running',
             totalCount: totalTestCases,
             results: [],
+            progress: 0,
+            statusMessage: 'Queuing submission...',
         })
+
+        // Client-side timeout: 20 seconds
+        const submissionTimeout = setTimeout(() => {
+            if (execution.isSubmitting) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'error',
+                    error: 'Server is taking longer than expected. Please check your internet or try again.',
+                }))
+                execution.setIsSubmitting(false)
+                toast.error('Submission timeout')
+            }
+        }, 20000)
 
         try {
             // 🚀 CHECK CACHE: If code hasn't changed since last Run, use cached result
@@ -243,6 +258,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             }
         } catch (err) {
             console.error('[FRONTEND] SUBMIT CODE ERROR:', err)
+            clearTimeout(submissionTimeout)
             execution.setTestResult({ status: 'error', error: err.message })
             execution.setIsSubmitting(false)
         }
@@ -259,6 +275,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
     const fetchAiFeedback = useCallback(
         async (options = { switchTab: true }) => {
+            execution.setIsAiLoading(true)
             try {
                 const res = await fetch('/api/evaluation/analyze', {
                     method: 'POST',
@@ -286,6 +303,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             } catch (err) {
                 console.error('AI feedback error:', err)
                 execution.setTestResultData({ aiFeedback: { error: err.message } })
+            } finally {
+                execution.setIsAiLoading(false)
             }
         },
         [
@@ -382,9 +401,40 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     status: 'running',
                     totalCount: data.totalTestCases || prev?.totalCount,
                     progress: data.progress,
+                    progressMessage: data.message,
                     results: prev?.results
-                        ? [...prev.results, data.testCaseResult]
-                        : [data.testCaseResult],
+                        ? [...prev.results, { verdict: data.verdict, caseNumber: data.caseNumber }]
+                        : [{ verdict: data.verdict, caseNumber: data.caseNumber }],
+                }))
+            }
+        })
+
+        newSocket.on('test_case_failed', (data) => {
+            console.log('[Socket] Test case failed (fail-fast):', data)
+            if (data.submissionId) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'done',
+                    verdict: data.verdict,
+                    passed: false,
+                    failedAtCase: data.caseNumber,
+                    totalCount: data.totalTestCases,
+                    progressMessage: data.message,
+                }))
+                execution.setIsSubmitting(false)
+                toast.error(`Failed at test case ${data.caseNumber}`)
+            }
+        })
+
+        newSocket.on('submission_status', (data) => {
+            console.log('[Socket] Submission status:', data)
+            if (data.problemId === problemId) {
+                execution.setTestResult((prev) => ({
+                    ...prev,
+                    status: 'running',
+                    statusMessage: data.message,
+                    totalCount: data.totalTestCases || prev?.totalCount,
+                    progress: data.progress || 0,
                 }))
             }
         })
@@ -417,33 +467,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     data.type === 'submission_evaluated' || isRunResult || isSubmitResult
 
                 if (isEvaluated) {
-                    // For submit_result, fetch full details
-                    if (isSubmitResult) {
-                        viewSubmissionDetails(data.submissionId)
-                    }
+                    // Clear timeout since verdict arrived
+                    // Note: timeout is stored in closure, here we just mark it resolved
 
-                    if (
-                        data.verdict?.toUpperCase() === 'ACCEPTED' ||
-                        data.verdict?.toUpperCase() === 'EXECUTED'
-                    ) {
-                        if (isSubmitResult) {
-                            toast.success('Accepted!')
-                        } else if (isRunResult) {
-                            toast.success('Executed!')
-                        }
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    } else if (data.status === 'error' || data.type === 'submission_error') {
-                        toast.error(data.error || 'Evaluation Error')
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    } else if (data.verdict && !isRunResult) {
-                        toast.error(data.verdict.replace(/_/g, ' '))
-                        execution.setIsSubmitting(false)
-                        execution.setIsRunning(false)
-                    }
-
-                    // Update execution result for both run and submit
+                    // 1. Immediately update execution result from socket data
                     if (isRunResult || isSubmitResult) {
                         execution.setTestResult({
                             status: 'done',
@@ -456,6 +483,47 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                             passedCount: data.passedCount,
                             error: data.error,
                         })
+                        execution.setIsSubmitting(false)
+                        execution.setIsRunning(false)
+                    }
+
+                    // 2. For submit_result, immediately set submission result and switch tab
+                    if (isSubmitResult) {
+                        // Set submission result for SubmissionResultTab
+                        realtime.setSubmissionResult({
+                            id: data.submissionId,
+                            verdict: data.verdict,
+                            passed: data.verdict === 'ACCEPTED',
+                            passedCount: data.passedCount || 0,
+                            totalCount: data.totalCount || 0,
+                            time: data.executionTime,
+                            memory: data.memoryUsed,
+                            submittedCode: '(Loading...)',
+                            submittedLanguage: 'Loading',
+                            submittedAt: new Date().toISOString(),
+                        })
+
+                        // Switch to submission result tab
+                        setLeftTab('submission-result')
+
+                        // Asynchronously fetch full submission details
+                        viewSubmissionDetails(data.submissionId).catch(console.error)
+                    }
+
+                    // 3. Show notifications
+                    if (
+                        data.verdict?.toUpperCase() === 'ACCEPTED' ||
+                        data.verdict?.toUpperCase() === 'EXECUTED'
+                    ) {
+                        if (isSubmitResult) {
+                            toast.success('Accepted!')
+                        } else if (isRunResult) {
+                            toast.success('Executed!')
+                        }
+                    } else if (data.status === 'error' || data.type === 'submission_error') {
+                        toast.error(data.error || 'Evaluation Error')
+                    } else if (data.verdict && !isRunResult) {
+                        toast.error(data.verdict.replace(/_/g, ' '))
                     }
                 }
             }
@@ -500,6 +568,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         setActiveTestCase: execution.setActiveTestCase,
         testResultData: execution.testResultData,
         fetchAiFeedback,
+        aiFeedback: execution.testResultData?.aiFeedback,
+        isAiLoading: execution.isAiLoading,
 
         // From Realtime context
         socket: realtime.socket,
