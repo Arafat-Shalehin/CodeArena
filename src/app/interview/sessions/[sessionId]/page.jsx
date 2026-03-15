@@ -90,6 +90,7 @@ export default function InterviewSessionPage() {
             wsToken={sessionData.wsToken}
             durationMins={sessionData.durationMins}
             startedAt={sessionData.startedAt}
+            initialMessages={sessionData.messages || []}
             onEnd={handleEnd}
         />
     )

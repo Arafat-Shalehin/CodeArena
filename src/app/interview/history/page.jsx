@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function InterviewHistoryPage() {
     return (
-        <main className="min-h-screen bg-[#0a0a0a] text-white">
+        <main className="bg-bg-page text-text-primary min-h-screen">
             <HistoryList />
         </main>
     )

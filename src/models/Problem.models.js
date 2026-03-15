@@ -32,6 +32,20 @@ const problemSchema = new mongoose.Schema(
         ],
         testCaseCount: { type: Number, default: 0 },
 
+        // AI Interview Evaluation Helpers
+        correctAnswer: {
+            type: String,
+            default: '',
+        },
+        expectedConcepts: {
+            type: [String],
+            default: [],
+        },
+        evaluationCriteria: {
+            type: String,
+            default: '',
+        },
+
         // Judging Type
         judgeType: {
             type: String,
