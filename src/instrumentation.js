@@ -11,6 +11,15 @@ export async function register() {
     console.log('[INSTRUMENTATION] NEXT_RUNTIME:', process.env.NEXT_RUNTIME)
 
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+        const isBuild =
+            process.env.NEXT_PHASE === 'phase-production-build' ||
+            process.env.SKIP_WORKER_INIT === 'true'
+
+        if (isBuild) {
+            console.log('[INSTRUMENTATION] Skipping worker initialization during build phase.')
+            return
+        }
+
         console.log('[INSTRUMENTATION] Running in Node.js runtime, initializing workers...')
         try {
             console.log('[INSTRUMENTATION] Importing submission worker...')
@@ -20,15 +29,24 @@ export async function register() {
             const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
 
             console.log('[INSTRUMENTATION] Calling initSubmissionWorker...')
+            if (globalWorkers.submission) await globalWorkers.submission.close()
             globalWorkers.submission = initSubmissionWorker()
+
             console.log('[INSTRUMENTATION] Calling initStatsWorker...')
+            if (globalWorkers.stats) await globalWorkers.stats.close()
             globalWorkers.stats = initStatsWorker()
+
             console.log('[INSTRUMENTATION] Calling initAIWorker...')
+            if (globalWorkers.ai) await globalWorkers.ai.close()
             globalWorkers.ai = initAIWorker()
+
             console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
+            if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
             globalWorkers.interviewAI = initInterviewAIWorker()
             globalThis._workersInitialized = true
-            console.log('>>> CodeArena Workers Initialized (Submission, Stats, AI, InterviewAI)')
+            console.log(
+                '>>> CodeArena Workers v2.1 Initialized (Submission, Stats, AI, InterviewAI)'
+            )
         } catch (err) {
             console.error('[CRITICAL] Failed to initialize Workers:', err.message)
             console.error('[CRITICAL] Error stack:', err.stack)

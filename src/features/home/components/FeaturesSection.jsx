@@ -36,12 +36,9 @@ export default function FeaturesSection() {
               Background ambient glow attached to scroll.
               Moves down slightly as user scrolls through features.
             */}
-            <motion.div
-                className="bg-accent/5 absolute top-0 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full blur-[120px]"
-                style={{
-                    y: useTransform(smoothedProgress, [0, 1], [0, 800]),
-                }}
-            />
+            {/* 
+              Background glow removed for a cleaner look as per user request.
+            */}
 
             <div className="sticky top-0 flex h-screen w-full flex-col items-center justify-between gap-12 overflow-hidden pt-20 lg:flex-row lg:gap-24 lg:pt-0">
                 {/* Left Column: Fixed Narrative Text */}

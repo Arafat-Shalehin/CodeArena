@@ -13,8 +13,12 @@ import {
     FileCode,
     Award,
     Loader2,
+    Clock,
+    Zap,
+    Calendar,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useTheme } from 'next-themes'
 
 export default function ReplayPlayer({ sessionId }) {
     const [data, setData] = useState(null)
@@ -93,57 +97,93 @@ export default function ReplayPlayer({ sessionId }) {
         return () => clearTimeout(timer)
     }, [isPlaying, currentIndex, timeline.length])
 
+    const { resolvedTheme } = useTheme()
+
     if (loading) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a]">
-                <Loader2 className="mb-4 h-12 w-12 animate-spin text-blue-500" />
-                <p className="font-medium text-slate-400">Reconstructing your session...</p>
+            <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center">
+                <Loader2 className="text-accent mb-4 h-12 w-12 animate-spin" />
+                <p className="text-text-secondary font-medium">Reconstructing your session...</p>
             </div>
         )
     }
 
-    if (!data) return <div>Error loading session</div>
+    if (!data)
+        return <div className="text-text-primary p-20 text-center">Error loading session</div>
+
+    const sessionDuration = data.session.endedAt
+        ? Math.round((new Date(data.session.endedAt) - new Date(data.session.startedAt)) / 60000)
+        : '?'
 
     return (
-        <div className="flex h-screen flex-col bg-[#0a0a0a] text-white">
+        <div className="bg-bg-page text-text-primary flex h-screen flex-col">
             {/* Header */}
-            <header className="flex h-16 items-center justify-between border-b border-white/5 bg-[#0d0d0d] px-6">
+            <header className="border-border bg-bg-subtle/80 sticky top-0 z-50 flex h-16 items-center justify-between border-b px-6 backdrop-blur-xl">
                 <div className="flex items-center gap-4">
                     <Link
                         href="/interview/history"
-                        className="rounded-lg p-2 text-slate-400 hover:bg-white/5"
+                        className="hover:bg-bg-muted text-text-muted rounded-lg p-2 transition-colors"
                     >
                         <ChevronLeft className="h-5 w-5" />
                     </Link>
                     <div>
-                        <h1 className="text-sm leading-tight font-bold text-white">
+                        <h1 className="text-text-primary text-sm font-black tracking-tight uppercase">
                             {data.session.problemIds?.[0]?.title || 'Replay'}
                         </h1>
-                        <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-                            Review Session • {format(new Date(data.session.startedAt), 'PPp')}
-                        </p>
+                        <div className="text-text-muted flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase">
+                            <Calendar size={10} />
+                            {format(new Date(data.session.startedAt), 'PPp')}
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    {data.result && (
-                        <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-4 py-1.5">
-                            <Award className="h-4 w-4 text-yellow-500" />
+                <div className="flex items-center gap-4">
+                    {/* Summary Badges */}
+                    <div className="hidden items-center gap-3 sm:flex">
+                        <div className="border-border bg-bg-muted/50 flex items-center gap-2 rounded-xl border px-3 py-1.5">
+                            <Clock className="text-accent h-3.5 w-3.5" />
                             <div className="flex flex-col">
-                                <span className="text-[9px] font-bold tracking-tighter text-slate-500 uppercase">
-                                    Performance
+                                <span className="text-text-muted text-[8px] font-bold uppercase">
+                                    Duration
                                 </span>
-                                <span className="text-sm font-black text-white">
-                                    {data.result.overallScore}/100
+                                <span className="text-xs font-bold">{sessionDuration} min</span>
+                            </div>
+                        </div>
+                        {data.result && (
+                            <div className="border-border bg-bg-muted/50 flex items-center gap-2 rounded-xl border px-3 py-1.5">
+                                <Award className="h-3.5 w-3.5 text-yellow-500" />
+                                <div className="flex flex-col">
+                                    <span className="text-text-muted text-[8px] font-bold uppercase">
+                                        Score
+                                    </span>
+                                    <span className="text-xs font-bold">
+                                        {data.result.overallScore}/100
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        <div
+                            className={`border-border bg-bg-muted/50 flex items-center gap-2 rounded-xl border px-3 py-1.5`}
+                        >
+                            <Zap
+                                className={`h-3.5 w-3.5 ${data.session.status === 'completed' ? 'text-success' : 'text-warning'}`}
+                            />
+                            <div className="flex flex-col">
+                                <span className="text-text-muted text-[8px] font-bold uppercase">
+                                    Status
+                                </span>
+                                <span className="text-xs font-bold capitalize">
+                                    {data.session.status}
                                 </span>
                             </div>
                         </div>
-                    )}
+                    </div>
+
                     <Link
                         href={`/interview/${sessionId}/result`}
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold transition-colors hover:bg-blue-500"
+                        className="bg-accent shadow-accent/20 hover:bg-accent-hover hidden rounded-lg px-4 py-2 text-xs font-black text-black transition-all sm:block"
                     >
-                        View Full Report
+                        FULL REPORT
                     </Link>
                 </div>
             </header>
@@ -151,13 +191,13 @@ export default function ReplayPlayer({ sessionId }) {
             {/* Main Content */}
             <main className="flex flex-1 overflow-hidden">
                 {/* Left Side: Code Editor */}
-                <div className="flex min-w-0 flex-1 flex-col border-r border-white/5">
-                    <div className="flex h-10 items-center justify-between border-b border-white/5 bg-black/40 px-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                            <FileCode className="h-4 w-4" />
+                <div className="border-border bg-bg-page flex min-w-0 flex-1 flex-col border-r">
+                    <div className="border-border bg-bg-subtle/50 flex h-10 items-center justify-between border-b px-4">
+                        <div className="text-text-secondary flex items-center gap-2 text-xs font-bold">
+                            <FileCode className="text-accent h-4 w-4" />
                             CODE SNAPSHOT
                         </div>
-                        <div className="font-mono text-[10px] text-slate-500 uppercase">
+                        <div className="text-text-muted font-mono text-[10px] tracking-widest uppercase">
                             {currentLanguage}
                         </div>
                     </div>
@@ -166,7 +206,7 @@ export default function ReplayPlayer({ sessionId }) {
                             height="100%"
                             language={currentLanguage === 'cpp' ? 'cpp' : currentLanguage}
                             value={currentCode}
-                            theme="vs-dark"
+                            theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
                             options={{
                                 readOnly: true,
                                 minimap: { enabled: false },
@@ -175,20 +215,22 @@ export default function ReplayPlayer({ sessionId }) {
                                 scrollBeyondLastLine: false,
                                 automaticLayout: true,
                                 padding: { top: 10 },
+                                renderLineHighlight: 'all',
+                                lineNumbers: 'on',
                             }}
                         />
                     </div>
                 </div>
 
                 {/* Right Side: Chat Transcript */}
-                <div className="flex w-[380px] flex-col bg-[#0d0d0d]">
-                    <div className="flex h-10 items-center border-b border-white/5 bg-black/40 px-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                            <MessageSquare className="h-4 w-4" />
+                <div className="bg-bg-subtle flex w-[400px] flex-col overflow-hidden">
+                    <div className="border-border bg-bg-muted/50 flex h-10 items-center border-b px-4">
+                        <div className="text-text-secondary flex items-center gap-2 text-xs font-bold">
+                            <MessageSquare className="text-accent h-4 w-4" />
                             TRANSCRIPT
                         </div>
                     </div>
-                    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                    <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-4">
                         {currentTranscript.map((event, idx) => (
                             <div
                                 key={idx}
@@ -196,16 +238,14 @@ export default function ReplayPlayer({ sessionId }) {
                                     event.data.role === 'ai' ? 'items-start' : 'items-end'
                                 }`}
                             >
-                                <span className="px-1 text-[9px] font-black tracking-widest text-slate-500 uppercase">
-                                    {event.data.role === 'ai'
-                                        ? 'Alex (AI Interviwer)'
-                                        : 'Candidate'}
+                                <span className="text-text-muted px-2 text-[9px] font-black tracking-widest uppercase">
+                                    {event.data.role === 'ai' ? 'ALEX (AI)' : 'YOU'}
                                 </span>
                                 <div
-                                    className={`max-w-[90%] rounded-2xl px-3 py-2.5 text-[13px] leading-relaxed shadow-lg ${
+                                    className={`max-w-[90%] rounded-2xl px-4 py-3 text-[13px] leading-relaxed shadow-sm ${
                                         event.data.role === 'ai'
-                                            ? 'rounded-tl-none bg-slate-800 text-slate-200'
-                                            : 'rounded-tr-none bg-blue-600 text-white'
+                                            ? 'bg-bg-muted text-text-primary rounded-tl-none'
+                                            : 'bg-accent rounded-tr-none font-medium text-black'
                                     }`}
                                 >
                                     {event.data.content}
@@ -213,20 +253,23 @@ export default function ReplayPlayer({ sessionId }) {
                             </div>
                         ))}
                         {currentTranscript.length === 0 && (
-                            <p className="py-20 text-center text-xs font-medium text-slate-600">
-                                Waiting for conversation to start...
-                            </p>
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <Bot className="text-text-muted mb-4 h-12 w-12 opacity-20" />
+                                <p className="text-text-muted text-xs font-medium">
+                                    Waiting for conversation to start...
+                                </p>
+                            </div>
                         )}
                     </div>
                 </div>
             </main>
 
             {/* Timeline & Controls */}
-            <footer className="h-24 border-t border-white/5 bg-[#0d0d0d] p-4">
+            <footer className="border-border bg-bg-subtle border-t p-4">
                 <div className="mx-auto flex max-w-4xl flex-col gap-3">
                     {/* Progress Slider */}
                     <div className="flex items-center gap-4">
-                        <span className="w-10 text-right font-mono text-[10px] text-slate-500">
+                        <span className="text-text-muted w-10 text-right font-mono text-[10px]">
                             {currentIndex + 1} / {timeline.length}
                         </span>
                         <input
@@ -238,7 +281,7 @@ export default function ReplayPlayer({ sessionId }) {
                                 setCurrentIndex(parseInt(e.target.value))
                                 setIsPlaying(false)
                             }}
-                            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-800 accent-blue-500"
+                            className="bg-bg-muted accent-accent h-1.5 flex-1 cursor-pointer appearance-none rounded-lg"
                         />
                         <span className="font-mono text-[10px] text-slate-500">
                             {timeline[currentIndex]
@@ -254,13 +297,13 @@ export default function ReplayPlayer({ sessionId }) {
                                 setCurrentIndex(0)
                                 setIsPlaying(false)
                             }}
-                            className="rounded-full p-2 text-slate-400 hover:bg-white/5"
+                            className="hover:bg-bg-muted text-text-muted rounded-full p-2 transition-colors"
                         >
                             <SkipBack className="h-5 w-5" />
                         </button>
                         <button
                             onClick={() => setIsPlaying(!isPlaying)}
-                            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition-all hover:scale-110 active:scale-95"
+                            className="bg-accent hover:bg-accent-hover shadow-accent/20 flex h-10 w-10 items-center justify-center rounded-full text-black shadow-lg transition-all hover:scale-110 active:scale-95"
                         >
                             {isPlaying ? (
                                 <Pause className="h-5 w-5 fill-current" />
@@ -273,7 +316,7 @@ export default function ReplayPlayer({ sessionId }) {
                                 setCurrentIndex(timeline.length - 1)
                                 setIsPlaying(false)
                             }}
-                            className="rounded-full p-2 text-slate-400 hover:bg-white/5"
+                            className="hover:bg-bg-muted text-text-muted rounded-full p-2 transition-colors"
                         >
                             <SkipForward className="h-5 w-5" />
                         </button>

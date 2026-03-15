@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Editor from '@monaco-editor/react'
+import { useTheme } from 'next-themes'
 import {
     ChevronDown,
     ChevronUp,
@@ -32,6 +33,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
         removeFile,
         switchToFile,
     } = useProblemSolve()
+    const { resolvedTheme } = useTheme()
     const [showLangDropdown, setShowLangDropdown] = useState(false)
     const [cursor, setCursor] = useState({ ln: 1, col: 1 })
     const [showAddFile, setShowAddFile] = useState(false)
@@ -208,7 +210,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                 {!showAddFile ? (
                     <button
                         onClick={() => setShowAddFile(true)}
-                        className="ml-1 flex items-center gap-1 rounded px-1.5 py-1 text-[10px] text-gray-600 hover:bg-[#333] hover:text-gray-300"
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary ml-1 flex items-center gap-1 rounded px-1.5 py-1 text-[10px] transition-colors"
                         title="Add file"
                     >
                         <Plus size={12} />
@@ -232,7 +234,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                         />
                         <button
                             onClick={handleAddFile}
-                            className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white hover:bg-emerald-700"
+                            className="bg-accent hover:bg-accent-hover rounded px-1.5 py-0.5 text-[10px] text-white transition-colors"
                         >
                             Add
                         </button>
@@ -241,7 +243,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                                 setShowAddFile(false)
                                 setNewFileName('')
                             }}
-                            className="rounded px-1 py-0.5 text-[10px] text-gray-500 hover:text-white"
+                            className="text-text-muted hover:text-text-primary rounded px-1 py-0.5 text-[10px] transition-colors"
                         >
                             <X size={12} />
                         </button>
@@ -255,7 +257,7 @@ export default function CodeEditorPanel({ onMaximize, onCollapse, isMaximized })
                     height="100%"
                     language={language === 'cpp' ? 'cpp' : language}
                     value={code}
-                    theme="vs-dark"
+                    theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
                     onChange={(v) => updateCode(v || '')}
                     onMount={handleEditorMount}
                     options={{

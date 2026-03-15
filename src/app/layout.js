@@ -1,8 +1,10 @@
 import { Inter, Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
+import { CodeEditorProvider } from '@/context/CodeEditorContext'
 import { Toaster } from '@/components/ui/sonner'
 import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -32,16 +34,23 @@ export default function RootLayout({ children }) {
     return (
         <html
             lang="en"
+            suppressHydrationWarning
             className={`${inter.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}
         >
             <body
                 suppressHydrationWarning={true}
-                className="bg-bg-page site-gradient text-text-primary font-sans antialiased"
+                className="bg-bg-page site-gradient text-text-primary font-sans antialiased transition-colors duration-300"
             >
                 <HydrationWrapper>
                     <AuthProvider>{children}</AuthProvider>
                 </HydrationWrapper>
                 <Toaster position="top-center" />
+                <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                    <AuthProvider>
+                        <CodeEditorProvider>{children}</CodeEditorProvider>
+                    </AuthProvider>
+                    <Toaster position="top-center" />
+                </ThemeProvider>
             </body>
         </html>
     )

@@ -249,6 +249,7 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
         removeFile,
         renameFile,
         switchToFile,
+        isLoaded,
     }
 
     return <CodeEditorContext.Provider value={value}>{children}</CodeEditorContext.Provider>

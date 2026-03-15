@@ -1,9 +1,10 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 
 // Monaco Editor
 import Editor from '@monaco-editor/react'
+import { useTheme } from 'next-themes'
 
 /**
  * CodeEditor Component
@@ -16,9 +17,11 @@ import { useProblemSolve } from '@/context/ProblemSolveContext'
 
 export default function CodeEditor({ initialCode = '' }) {
     const { code, updateCode, language } = useProblemSolve()
+    const { resolvedTheme } = useTheme()
 
     // Custom editor mounting to set specific CodeArena aesthetics
     const handleEditorDidMount = (editor, monaco) => {
+        // Define Dark Theme
         monaco.editor.defineTheme('codearena-dark', {
             base: 'vs-dark',
             inherit: true,
@@ -30,25 +33,58 @@ export default function CodeEditor({ initialCode = '' }) {
                 { token: 'number', foreground: 'bd93f9' },
             ],
             colors: {
-                'editor.background': '#0f0f0f', // Matches bg-page approximately
-                'editor.lineHighlightBackground': '#1a1a1a',
-                'editorLineNumber.foreground': '#4b5563',
-                'editorLineNumber.activeForeground': '#a78bfa',
-                'editorIndentGuide.background': '#2d2d2d',
+                'editor.background': '#0f1117', // Matches var(--ca-bg-page) in dark
+                'editor.lineHighlightBackground': '#161b22', // Matches var(--ca-bg-subtle) in dark
+                'editorLineNumber.foreground': '#484f58', // Matches var(--ca-text-muted) in dark
+                'editorLineNumber.activeForeground': '#02ba4c', // Matches var(--ca-accent)
+                'editorIndentGuide.background': '#21262d', // Matches var(--ca-border) in dark
                 'editor.selectionBackground': '#3e445166',
             },
         })
-        monaco.editor.setTheme('codearena-dark')
+
+        // Define Light Theme
+        monaco.editor.defineTheme('codearena-light', {
+            base: 'vs',
+            inherit: true,
+            rules: [
+                { token: 'comment', foreground: '6a737d', fontStyle: 'italic' },
+                { token: 'keyword', foreground: 'd73a49' },
+                { token: 'identifier', foreground: '24292e' },
+                { token: 'string', foreground: '032f62' },
+                { token: 'number', foreground: '005cc5' },
+            ],
+            colors: {
+                'editor.background': '#ffffff', // Matches var(--ca-bg-page) in light
+                'editor.lineHighlightBackground': '#f7f8fa', // Matches var(--ca-bg-subtle) in light
+                'editorLineNumber.foreground': '#9ca3af', // Matches var(--ca-text-muted) in light
+                'editorLineNumber.activeForeground': '#02ba4c', // Matches var(--ca-accent)
+                'editorIndentGuide.background': '#e5e7eb', // Matches var(--ca-border) in light
+                'editor.selectionBackground': '#add6ff',
+            },
+        })
+
+        monaco.editor.setTheme(resolvedTheme === 'dark' ? 'codearena-dark' : 'codearena-light')
     }
 
+    // Update theme when resolvedTheme changes
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.monaco) {
+            window.monaco.editor.setTheme(
+                resolvedTheme === 'dark' ? 'codearena-dark' : 'codearena-light'
+            )
+        }
+    }, [resolvedTheme])
+
+    const editorTheme = resolvedTheme === 'dark' ? 'codearena-dark' : 'codearena-light'
+
     return (
-        <div className="relative h-full w-full flex-1 bg-[#0f0f0f]">
+        <div className="bg-bg-page relative h-full w-full flex-1">
             <Editor
                 height="100%"
                 language={language === 'cpp' ? 'cpp' : language}
                 value={code}
                 onChange={(value) => updateCode(value)}
-                theme="codearena-dark"
+                theme={editorTheme}
                 options={{
                     minimap: { enabled: false },
                     fontSize: 14,

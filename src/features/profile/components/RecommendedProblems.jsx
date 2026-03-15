@@ -118,6 +118,7 @@ export default function RecommendedProblems() {
                             <ProblemCard
                                 key={problem._id}
                                 problem={problem}
+                                variant="simple"
                                 highlightTags={weakTags}
                             />
                         ))}
@@ -144,6 +145,7 @@ export default function RecommendedProblems() {
                             <ProblemCard
                                 key={problem._id}
                                 problem={problem}
+                                variant="simple"
                                 highlightTags={discoveryTags}
                                 badge="New!"
                             />

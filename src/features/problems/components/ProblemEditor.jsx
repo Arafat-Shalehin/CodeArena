@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import Editor from '@monaco-editor/react'
+import { useTheme } from 'next-themes'
 import {
     Play,
     Send,
@@ -64,6 +65,7 @@ rl.on('line', (line) => {
  * - initialLanguage {string} - Default language (default: 'python')
  */
 export default function ProblemEditor({ problemId, initialLanguage = 'python' }) {
+    const { resolvedTheme } = useTheme()
     const [language, setLanguage] = useState(initialLanguage)
     const [code, setCode] = useState(SAMPLE_CODES[initialLanguage] || '')
     const [input, setInput] = useState('')
@@ -220,15 +222,15 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
     }
 
     return (
-        <div className="border-border flex h-full flex-col overflow-hidden rounded-xl border bg-[#1e1e1e] shadow-2xl">
+        <div className="border-border bg-bg-page flex h-full flex-col overflow-hidden rounded-xl border shadow-2xl">
             {/* Header / Toolbar */}
-            <div className="flex h-12 items-center justify-between border-b border-[#2b2b2b] bg-[#252526] px-4">
+            <div className="border-border bg-bg-subtle flex h-12 items-center justify-between border-b px-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1">
+                    <div className="bg-bg-muted border-border flex rounded-md border px-2 py-1">
                         <select
                             value={language}
                             onChange={(e) => handleLanguageChange(e.target.value)}
-                            className="cursor-pointer bg-transparent font-mono text-xs text-gray-300 outline-none"
+                            className="text-text-primary cursor-pointer bg-transparent font-mono text-xs outline-none"
                         >
                             <option value="python">Python 3</option>
                             <option value="cpp">C++ 17</option>
@@ -236,7 +238,7 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                             <option value="javascript">JavaScript (Node.js)</option>
                         </select>
                     </div>
-                    <span className="font-mono text-[10px] tracking-tighter text-gray-500">
+                    <span className="text-text-muted font-mono text-[10px] tracking-tighter">
                         ID: {problemId.substring(0, 8)}...
                     </span>
                 </div>
@@ -247,7 +249,7 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                         variant="ghost"
                         onClick={handleRun}
                         disabled={isRunning || isSubmitting}
-                        className="h-8 gap-1.5 border border-green-500/20 text-xs text-green-400 hover:bg-green-500/10 hover:text-green-300"
+                        className="h-8 gap-1.5 border border-green-500/20 text-xs text-green-500 hover:bg-green-500/10 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300"
                     >
                         {isRunning ? (
                             <Loader2 size={14} className="animate-spin" />
@@ -278,7 +280,7 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                     height="100%"
                     language={language === 'cpp' ? 'cpp' : language}
                     value={code}
-                    theme="vs-dark"
+                    theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
                     onMount={(editor) => (editorRef.current = editor)}
                     onChange={(val) => setCode(val || '')}
                     options={{
@@ -296,12 +298,12 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
             </div>
 
             {/* Bottom Panel (Console) */}
-            <div className="flex h-56 flex-col border-t border-[#2b2b2b] bg-[#1e1e1e]">
+            <div className="border-border bg-bg-page flex h-56 flex-col border-t">
                 {/* Panel Tabs */}
-                <div className="flex items-center gap-6 border-b border-[#2b2b2b] px-4 py-2 text-xs font-semibold tracking-wide">
+                <div className="border-border flex items-center gap-6 border-b px-4 py-2 text-xs font-semibold tracking-wide">
                     <button
                         onClick={() => setActiveTab('OUTPUT')}
-                        className={`${activeTab === 'OUTPUT' ? 'border-accent border-b-2 pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                        className={`${activeTab === 'OUTPUT' ? 'border-accent text-text-primary border-b-2 pb-1' : 'text-text-muted hover:text-text-secondary'}`}
                     >
                         CONSOLE{' '}
                         {verdict && (
@@ -314,12 +316,12 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                     </button>
                     <button
                         onClick={() => setActiveTab('INPUT')}
-                        className={`${activeTab === 'INPUT' ? 'border-accent border-b-2 pb-1 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                        className={`${activeTab === 'INPUT' ? 'border-accent text-text-primary border-b-2 pb-1' : 'text-text-muted hover:text-text-secondary'}`}
                     >
                         TEST INPUT
                     </button>
 
-                    <div className="ml-auto flex items-center gap-3 text-gray-500">
+                    <div className="text-text-muted ml-auto flex items-center gap-3">
                         {stats && (
                             <div className="mr-4 flex gap-3 font-mono text-[10px] opacity-60">
                                 <span>{stats.time}ms</span>
@@ -332,7 +334,7 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                                 setVerdict(null)
                                 setStats(null)
                             }}
-                            className="p-1 transition-colors hover:text-white"
+                            className="hover:text-text-primary p-1 transition-colors"
                         >
                             <Trash2 size={14} />
                         </button>
@@ -346,15 +348,15 @@ export default function ProblemEditor({ problemId, initialLanguage = 'python' })
                             <textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                className="custom-scrollbar flex-1 resize-none border-none bg-transparent p-0 text-gray-300 outline-none"
+                                className="text-text-primary placeholder:text-text-muted custom-scrollbar flex-1 resize-none border-none bg-transparent p-0 outline-none"
                                 placeholder="Enter custom input for 'Run'..."
                                 spellCheck="false"
                             />
                         </div>
                     ) : (
-                        <pre className="custom-scrollbar h-full whitespace-pre-wrap text-gray-300">
+                        <pre className="text-text-primary custom-scrollbar h-full whitespace-pre-wrap">
                             {output || (
-                                <span className="text-gray-600 italic">
+                                <span className="text-text-muted italic">
                                     Click &apos;Run&apos; to test your code or &apos;Submit&apos; to
                                     verify against all cases.
                                 </span>
