@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import { protect } from '@/middlewares/auth.middleware'
 import { terminateSession } from '@/services/interviewSession.service'
 import { InterviewSession } from '@/models/InterviewSession.model'
-import { dbConnect } from '@/lib/db'
+import dbConnect from '@/lib/mongodb'
 
 export async function POST(req, { params }) {
     await dbConnect()
 
     try {
         const user = await protect(req)
-        const { id: sessionId } = params
+        const { id: sessionId } = await params
 
         // Verify ownership
         const session = await InterviewSession.findOne({

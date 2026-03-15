@@ -19,59 +19,70 @@ export function Tiles({ className, rows = 100, cols = 10, tileClassName, tileSiz
     const colsArray = new Array(cols).fill(1)
 
     return (
-        <motion.div
-            initial={{ x: -20, y: -20 }}
-            animate={{
-                x: [-20, 0, -20],
-                y: [-20, 0, -20],
-            }}
-            transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: 'linear',
-            }}
-            className={cn(
-                'relative z-0 flex h-[110%] w-[110%] justify-center overflow-hidden',
-                className
-            )}
-        >
-            {rowsArray.map((_, i) => (
+        <div className={cn('pointer-events-none absolute inset-0 z-0 overflow-hidden', className)}>
+            {/* Radial Mask to fade edges */}
+            <div
+                className="absolute inset-0 z-10"
+                style={{
+                    maskImage: 'radial-gradient(circle at center, white 20%, transparent 80%)',
+                    WebkitMaskImage:
+                        'radial-gradient(circle at center, white 20%, transparent 80%)',
+                }}
+            >
                 <motion.div
-                    key={`row-${i}`}
-                    className={cn(
-                        tileSizes[tileSize],
-                        'relative border-l border-neutral-200 dark:border-neutral-900',
-                        tileClassName
-                    )}
+                    initial={{ x: -10, y: -10 }}
+                    animate={{
+                        x: [-10, 0, -10],
+                        y: [-10, 0, -10],
+                    }}
+                    transition={{
+                        duration: 30, // Slower, more atmospheric
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                    }}
+                    className="flex h-[120%] w-[120%] justify-center"
                 >
-                    {colsArray.map((_, j) => (
-                        <motion.div
-                            whileHover={{
-                                backgroundColor: `var(--tile)`,
-                                transition: { duration: 0 },
-                            }}
-                            animate={{
-                                backgroundColor: [
-                                    'transparent',
-                                    Math.random() > 0.98 ? 'var(--tile)' : 'transparent',
-                                    'transparent',
-                                ],
-                                transition: {
-                                    duration: Math.random() * 5 + 5,
-                                    repeat: Infinity,
-                                    delay: Math.random() * 10,
-                                },
-                            }}
-                            key={`col-${j}`}
+                    {rowsArray.map((_, i) => (
+                        <div
+                            key={`row-${i}`}
                             className={cn(
                                 tileSizes[tileSize],
-                                'relative border-t border-r border-neutral-200 dark:border-neutral-900',
+                                'border-border/20 dark:border-border/10 relative border-l',
                                 tileClassName
                             )}
-                        />
+                        >
+                            {colsArray.map((_, j) => (
+                                <motion.div
+                                    whileHover={{
+                                        backgroundColor: `var(--tile)`,
+                                        opacity: 0.2,
+                                        transition: { duration: 0.2 },
+                                    }}
+                                    animate={{
+                                        backgroundColor: [
+                                            'transparent',
+                                            Math.random() > 0.99 ? 'var(--tile)' : 'transparent',
+                                            'transparent',
+                                        ],
+                                        opacity: [0, 0.15, 0],
+                                        transition: {
+                                            duration: Math.random() * 8 + 8,
+                                            repeat: Infinity,
+                                            delay: Math.random() * 10,
+                                        },
+                                    }}
+                                    key={`col-${j}`}
+                                    className={cn(
+                                        tileSizes[tileSize],
+                                        'border-border/20 dark:border-border/10 relative border-t border-r',
+                                        tileClassName
+                                    )}
+                                />
+                            ))}
+                        </div>
                     ))}
                 </motion.div>
-            ))}
-        </motion.div>
+            </div>
+        </div>
     )
 }

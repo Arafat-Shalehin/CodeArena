@@ -3,15 +3,16 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Terminal } from 'lucide-react'
+import { Terminal, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCodeEditor } from '@/context/CodeEditorContext'
 
 /**
  * @component CodeEditorPreview
  * @description A visual representation of a code editor with a self-typing Python solution.
  */
 export default function CodeEditorPreview({ className }) {
-    const [displayedLines, setDisplayedLines] = useState([])
+    const { language } = useCodeEditor()
     const [currentLineIndex, setCurrentLineIndex] = useState(0)
     const [currentCharIndex, setCurrentCharIndex] = useState(0)
 
@@ -26,16 +27,18 @@ export default function CodeEditorPreview({ className }) {
             ],
         },
         {
-            text: '    # Apply optimized binary search',
-            tokens: [{ text: '    # Apply optimized binary search', color: 'text-zinc-400' }],
+            text: '    # Optimized complexity: O(log N)',
+            tokens: [
+                { text: '    # Optimized complexity: O(log N)', color: 'text-text-muted italic' },
+            ],
         },
         {
             text: '    left, right = 0, len(data)',
             tokens: [
                 { text: '    left, right = ', color: '' },
-                { text: '0', color: 'text-emerald-600' },
+                { text: '0', color: 'text-emerald-500 dark:text-emerald-400' },
                 { text: ', ', color: '' },
-                { text: 'len', color: 'text-emerald-600' },
+                { text: 'len', color: 'text-emerald-500 dark:text-emerald-400' },
                 { text: '(data)', color: '' },
             ],
         },
@@ -51,28 +54,36 @@ export default function CodeEditorPreview({ className }) {
             text: '        mid = (left + right) // 2',
             tokens: [
                 { text: '        mid = (left + right) // ', color: '' },
-                { text: '2', color: 'text-emerald-600' },
+                { text: '2', color: 'text-emerald-500 dark:text-emerald-400' },
+            ],
+        },
+        {
+            text: '    return "CodeArena Legend"',
+            tokens: [
+                { text: '    ', color: '' },
+                { text: 'return', color: 'text-accent font-bold' },
+                { text: ' "CodeArena Legend"', color: 'text-amber-500' },
             ],
         },
     ]
 
     useEffect(() => {
-        if (currentLineIndex < codeLines.length) {
-            const currentLine = codeLines[currentLineIndex].text
-            if (currentCharIndex < currentLine.length) {
-                const timeout = setTimeout(() => {
+        const timer = setTimeout(() => {
+            if (currentLineIndex < codeLines.length) {
+                const currentLine = codeLines[currentLineIndex].text
+                if (currentCharIndex < currentLine.length) {
                     setCurrentCharIndex((prev) => prev + 1)
-                }, 30) // Typing speed
-                return () => clearTimeout(timeout)
-            } else {
-                const timeout = setTimeout(() => {
-                    setCurrentLineIndex((prev) => prev + 1)
-                    setCurrentCharIndex(0)
-                }, 500) // Delay between lines
-                return () => clearTimeout(timeout)
+                } else {
+                    const lineDelay = setTimeout(() => {
+                        setCurrentLineIndex((prev) => prev + 1)
+                        setCurrentCharIndex(0)
+                    }, 400)
+                    return () => clearTimeout(lineDelay)
+                }
             }
-        }
-    }, [currentLineIndex, currentCharIndex])
+        }, 35)
+        return () => clearTimeout(timer)
+    }, [currentLineIndex, currentCharIndex, codeLines.length])
 
     const getLineContent = (lineIdx) => {
         const fullLine = codeLines[lineIdx]
@@ -85,7 +96,6 @@ export default function CodeEditorPreview({ className }) {
             ))
         }
 
-        // Current typing line
         let currentLength = 0
         return fullLine.tokens.map((t, i) => {
             const start = currentLength
@@ -101,53 +111,62 @@ export default function CodeEditorPreview({ className }) {
     }
 
     return (
-        <div className={cn('group relative [perspective:1500px]', className)}>
-            {/* Pulsing Glow Effect */}
+        <div className={cn('group relative [perspective:2000px]', className)}>
+            {/* Animated Glow Backdrops */}
             <motion.div
                 animate={{
                     scale: [1, 1.1, 1],
-                    opacity: [0.3, 0.5, 0.3],
+                    opacity: [0.2, 0.4, 0.2],
                 }}
-                transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                }}
-                className="from-accent/20 absolute -inset-8 rounded-[3rem] bg-gradient-to-tr to-transparent blur-3xl"
+                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                className="from-accent/20 absolute -inset-12 rounded-[4rem] bg-gradient-to-tr to-transparent blur-3xl"
             />
 
             <motion.div
-                initial={{ rotateX: 60, y: 100, opacity: 0 }}
-                animate={{ rotateX: 0, y: 0, opacity: 1 }}
+                initial={{ rotateX: 45, y: 100, opacity: 0, scale: 0.9 }}
+                animate={{ rotateX: 0, y: 0, opacity: 1, scale: 1 }}
                 transition={{
-                    duration: 1.2,
-                    delay: 0.6,
-                    ease: [0.22, 1, 0.36, 1],
+                    duration: 1.4,
+                    delay: 0.2,
+                    ease: [0.16, 1, 0.3, 1],
                 }}
-                style={{ transformOrigin: 'bottom center' }}
-                className="matte-surface border-border/50 bg-bg-subtle/30 relative overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-sm"
+                className="glass-card border-border/50 bg-bg-page/40 relative overflow-hidden rounded-3xl border shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] backdrop-blur-xl"
             >
-                {/* Editor Title Bar */}
-                <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/50 px-4 py-3">
-                    <div className="flex gap-1.5">
-                        <div className="size-2.5 rounded-full bg-red-400/50" />
-                        <div className="size-2.5 rounded-full bg-amber-400/50" />
-                        <div className="size-2.5 rounded-full bg-emerald-400/50" />
+                {/* Editor Header */}
+                <div className="border-border bg-bg-muted/40 flex items-center justify-between border-b px-6 py-4">
+                    <div className="flex gap-2">
+                        <div className="size-3 rounded-full bg-red-500/50" />
+                        <div className="size-3 rounded-full bg-amber-500/50" />
+                        <div className="size-3 rounded-full bg-emerald-500/50" />
                     </div>
-                    <div className="font-mono text-[10px] tracking-tight text-zinc-400 uppercase">
-                        solution.py — CodeArena
+                    <div className="text-text-muted flex items-center gap-2 font-mono text-[11px] font-bold tracking-widest uppercase opacity-60">
+                        <Terminal size={12} />
+                        solution.py — {language.toUpperCase()}
                     </div>
-                    <div className="flex gap-3">
-                        <Terminal className="size-4 text-zinc-400" />
+                    <div className="flex items-center gap-3">
+                        <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="text-accent flex items-center gap-1.5 text-[10px] font-black uppercase"
+                        >
+                            <span className="bg-accent size-1.5 animate-pulse rounded-full" />
+                            Live
+                        </motion.div>
                     </div>
                 </div>
 
-                {/* Editor Content */}
-                <div className="bg-bg-page/50 text-text-secondary p-8 font-mono text-[13px] leading-relaxed">
-                    <div className="space-y-1">
+                {/* Editor Content Area */}
+                <div className="p-8 font-mono text-[14px] leading-relaxed">
+                    <div className="space-y-1.5">
                         {codeLines.map((_, idx) => (
-                            <div key={idx} className="flex gap-4">
-                                <span className="w-4 text-right text-zinc-300 select-none">
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.5 + idx * 0.1 }}
+                                className="flex gap-6"
+                            >
+                                <span className="text-text-muted/30 w-5 text-right select-none">
                                     {idx + 1}
                                 </span>
                                 <div className="min-h-[1.5em]">
@@ -156,30 +175,44 @@ export default function CodeEditorPreview({ className }) {
                                         <motion.span
                                             animate={{ opacity: [1, 0] }}
                                             transition={{ duration: 0.8, repeat: Infinity }}
-                                            className="bg-accent ml-1 inline-block h-4 w-1.5 align-middle"
+                                            className="bg-accent ml-1 inline-block h-4 w-2 align-middle shadow-[0_0_8px_var(--ca-accent)]"
                                         />
                                     )}
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
 
-                    {/* Editor Footer / Status Bar */}
+                    {/* Editor Footer / AI Analysis Preview */}
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 3 }}
-                        className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 2.5, duration: 0.8 }}
+                        className="border-border mt-10 flex items-center justify-between border-t pt-8"
                     >
-                        <div className="flex items-center gap-4">
-                            <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                PASS 24/24
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-success/20 flex size-6 items-center justify-center rounded-full">
+                                    <div className="bg-success size-2 rounded-full" />
+                                </div>
+                                <span className="text-success-text text-[11px] font-bold uppercase">
+                                    Tests Passed: 24/24
+                                </span>
+                            </div>
+                            <span className="text-text-muted text-[11px] font-medium opacity-60">
+                                1.2ms latency · 14.2MB
                             </span>
-                            <span className="text-[10px] text-zinc-400">1.2ms latency</span>
                         </div>
-                        <button className="bg-accent shadow-accent-glow min-h-11 cursor-pointer rounded px-4 py-2 text-[10px] font-bold text-white transition-all hover:scale-105 active:scale-95">
-                            Submit Draft
-                        </button>
+
+                        <div className="flex items-center gap-3">
+                            <button className="bg-bg-muted hover:bg-bg-subtle text-text-secondary rounded-xl px-4 py-2 text-[11px] font-bold transition-all">
+                                View Logs
+                            </button>
+                            <button className="bg-accent shadow-accent-glow flex items-center gap-2 rounded-xl px-5 py-2.5 text-[11px] font-black text-white transition-all hover:scale-105 active:scale-95">
+                                <Sparkles size={14} />
+                                Submit Solution
+                            </button>
+                        </div>
                     </motion.div>
                 </div>
             </motion.div>

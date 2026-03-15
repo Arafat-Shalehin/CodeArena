@@ -14,7 +14,7 @@ export async function setInterviewState(sessionId, stateData, durationMins) {
         problemId: stateData.problemId.toString(),
         startedAt: stateData.startedAt.toString() || Date.now().toString(),
         timeLimit: (durationMins * 60).toString(),
-        currentPhase: stateData.currentPhase || 'greeting',
+        currentPhase: stateData.currentPhase || 'intro',
         aiContextLen: (stateData.aiContextLen || 0).toString(),
         submissionCount: (stateData.submissionCount || 0).toString(),
         hintsUsed: (stateData.hintsUsed || 0).toString(),

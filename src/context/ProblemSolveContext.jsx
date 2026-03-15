@@ -712,6 +712,9 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         leftTab,
         setLeftTab,
 
+        // Status
+        isLoaded: codeEditor.isLoaded,
+
         // Problem context
         problem,
         problemId,

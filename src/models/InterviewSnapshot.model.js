@@ -25,6 +25,15 @@ const interviewSnapshotSchema = new mongoose.Schema(
             enum: ['auto', 'run', 'submit'],
             required: true,
         },
+        verdict: {
+            type: String, // e.g., 'Accepted', 'Wrong Answer'
+        },
+        passedCount: {
+            type: Number,
+        },
+        totalCount: {
+            type: Number,
+        },
         ts: {
             type: Date,
             default: Date.now,
