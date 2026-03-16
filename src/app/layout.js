@@ -42,15 +42,13 @@ export default function RootLayout({ children }) {
                 className="bg-bg-page site-gradient text-text-primary font-sans antialiased transition-colors duration-300"
             >
                 <HydrationWrapper>
-                    <AuthProvider>{children}</AuthProvider>
-                </HydrationWrapper>
-                <Toaster position="top-center" />
-                <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-                    <AuthProvider>
-                        <CodeEditorProvider>{children}</CodeEditorProvider>
-                    </AuthProvider>
+                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                        <AuthProvider>
+                            <CodeEditorProvider>{children}</CodeEditorProvider>
+                        </AuthProvider>
+                    </ThemeProvider>
                     <Toaster position="top-center" />
-                </ThemeProvider>
+                </HydrationWrapper>
             </body>
         </html>
     )

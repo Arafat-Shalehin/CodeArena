@@ -180,6 +180,9 @@ export async function createSubmission(data) {
                         submissionId: submission[0]._id,
                         problemId,
                         stage: 'queued',
+                        status: 'queued',
+                        verdict: 'PENDING',
+                        progress: 0,
                         message: queueMessage,
                         queueAhead,
                         event: 'SUBMISSION_STATUS',
@@ -200,10 +203,13 @@ export async function createSubmission(data) {
                                 problemId,
                                 stage: 'queued',
                                 status: 'queued',
+                                verdict: 'PENDING',
+                                progress: 0,
                                 message: queueMessage,
                                 queueAhead,
                                 event: 'SUBMISSION_STATUS',
                                 current: 0,
+                                total: Number(problem?.testCaseCount) || 0,
                             })
                         )
                         .catch(console.error)

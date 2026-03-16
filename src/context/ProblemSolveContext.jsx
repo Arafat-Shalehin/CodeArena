@@ -87,6 +87,11 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
     const activeSubmissionRoomRef = useRef(null)
     const finalVerdictHandledRef = useRef(false)
     const lastFinalSubmissionIdRef = useRef(null)
+    const realtimeSocketRef = useRef(null)
+
+    useEffect(() => {
+        realtimeSocketRef.current = realtime.socket
+    }, [realtime.socket])
 
     // Reset all states ONLY when problem actually changes, not on first render
     useEffect(() => {
@@ -310,16 +315,58 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     zustandStore.setSubmissionViewId(submissionId)
                     zustandStore.setCurrentPage('submission-details')
                     toast.success('Submission created!')
-                    if (realtime.socket) {
-                        if (activeSubmissionRoomRef.current) {
-                            realtime.socket.emit('leave_room', activeSubmissionRoomRef.current)
+                    const roomId = `submission_${submissionId}`
+
+                    // Join submission room with retry logic and latest socket instance.
+                    let joinAttempts = 0
+                    const maxAttempts = 50
+                    const attemptJoinRoom = () => {
+                        joinAttempts++
+                        const socket = realtimeSocketRef.current
+                        const socketConnected = Boolean(socket?.connected)
+                        const socketId = socket?.id
+
+                        console.log(
+                            `[FRONTEND] Join attempt ${joinAttempts} (cached): socket.connected=${socketConnected}, socket.id=${socketId}, roomId=${roomId}`
+                        )
+
+                        if (socketConnected && socket) {
+                            console.log(
+                                '[FRONTEND] Socket connected (cached), emitting join_room event'
+                            )
+                            if (activeSubmissionRoomRef.current) {
+                                console.log(
+                                    '[FRONTEND] Leaving previous room (cached):',
+                                    activeSubmissionRoomRef.current
+                                )
+                                socket.emit('leave_room', activeSubmissionRoomRef.current)
+                            }
+
+                            console.log('[FRONTEND] Emitting join_room for (cached):', roomId)
+                            socket.emit('join_room', roomId)
+                            activeSubmissionRoomRef.current = roomId
+                            finalVerdictHandledRef.current = false
+                            lastFinalSubmissionIdRef.current = null
+                            return
                         }
-                        const roomId = `submission_${submissionId}`
-                        realtime.socket.emit('join_room', roomId)
-                        activeSubmissionRoomRef.current = roomId
-                        finalVerdictHandledRef.current = false
-                        lastFinalSubmissionIdRef.current = null
+
+                        if (joinAttempts < maxAttempts) {
+                            setTimeout(attemptJoinRoom, 100)
+                            return
+                        }
+
+                        console.error(
+                            '[FRONTEND] Failed to join submission room (cached) after',
+                            maxAttempts,
+                            'attempts. Socket state:',
+                            {
+                                socketExists: Boolean(socket),
+                                socketConnected,
+                                socketId,
+                            }
+                        )
                     }
+                    attemptJoinRoom()
                     execution.setIsSubmitting(false)
                 }
                 return
@@ -362,16 +409,95 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 zustandStore.setSubmissionViewId(submissionId)
                 zustandStore.setCurrentPage('submission-details')
                 toast.success('Submission created!')
-                if (realtime.socket) {
-                    if (activeSubmissionRoomRef.current) {
-                        realtime.socket.emit('leave_room', activeSubmissionRoomRef.current)
+                const roomId = `submission_${submissionId}`
+
+                // Join submission room with retry logic using socket.connected
+                let joinAttempts = 0
+                const maxAttempts = 50
+                const attemptJoinRoom = () => {
+                    joinAttempts++
+                    const socket = realtimeSocketRef.current
+                    const socketConnected = Boolean(socket?.connected)
+                    const socketId = socket?.id
+                    console.log(
+                        `[FRONTEND] Join attempt ${joinAttempts}: socket.connected=${socketConnected}, socket.id=${socketId}, roomId=${roomId}`
+                    )
+
+                    if (socketConnected && socket) {
+                        console.log('[FRONTEND] Socket connected, emitting join_room event')
+                        if (activeSubmissionRoomRef.current) {
+                            console.log(
+                                '[FRONTEND] Leaving previous room:',
+                                activeSubmissionRoomRef.current
+                            )
+                            socket.emit('leave_room', activeSubmissionRoomRef.current)
+                        }
+                        console.log('[FRONTEND] Emitting join_room for:', roomId)
+                        socket.emit('join_room', roomId)
+                        activeSubmissionRoomRef.current = roomId
+                        finalVerdictHandledRef.current = false
+                        lastFinalSubmissionIdRef.current = null
+                        return
+                    } else if (joinAttempts < maxAttempts) {
+                        setTimeout(attemptJoinRoom, 100)
+                        return
+                    } else {
+                        console.error(
+                            '[FRONTEND] Failed to join submission room after',
+                            maxAttempts,
+                            'attempts. Socket state:',
+                            {
+                                socketExists: Boolean(socket),
+                                socketConnected,
+                                socketId,
+                            }
+                        )
                     }
-                    const roomId = `submission_${submissionId}`
-                    realtime.socket.emit('join_room', roomId)
-                    activeSubmissionRoomRef.current = roomId
-                    finalVerdictHandledRef.current = false
-                    lastFinalSubmissionIdRef.current = null
                 }
+                attemptJoinRoom()
+
+                // 🔄 FALLBACK: Poll submission status after 30 seconds if no final verdict received
+                setTimeout(() => {
+                    if (!finalVerdictHandledRef.current) {
+                        console.log(
+                            '[FRONTEND] No final verdict received within 30s, polling status for submission:',
+                            submissionId
+                        )
+                        fetch(`/api/submissions/${submissionId}`)
+                            .then((res) => res.json())
+                            .then((pollData) => {
+                                if (pollData.success && pollData.data) {
+                                    const s = pollData.data
+                                    const verdict = (s.verdict || '').toUpperCase()
+                                    console.log('[FRONTEND] Polled submission status:', verdict)
+
+                                    if (verdict && verdict !== 'PENDING') {
+                                        // Update testResult with the actual verdict
+                                        execution.setTestResult({
+                                            status: 'done',
+                                            verdict: verdict,
+                                            passed:
+                                                verdict === 'ACCEPTED' || verdict === 'EXECUTED',
+                                            passedCount: (s.testCaseResults || []).filter(
+                                                (r) => r.verdict === 'ACCEPTED'
+                                            ).length,
+                                            totalCount: s.testCaseResults?.length || 0,
+                                            time: s.executionTime,
+                                            memory: s.memoryUsed,
+                                            results: (s.testCaseResults || []).map((tr) => ({
+                                                passed: tr.verdict === 'ACCEPTED',
+                                                actual: tr.actualOutput ?? '',
+                                                expected: '(Hidden)',
+                                            })),
+                                            error: s.error,
+                                        })
+                                        execution.setIsSubmitting(false)
+                                    }
+                                }
+                            })
+                            .catch((err) => console.error('[FRONTEND] Status poll error:', err))
+                    }
+                }, 30000)
             }
         } catch (err) {
             console.error('[FRONTEND] SUBMIT CODE ERROR:', err)

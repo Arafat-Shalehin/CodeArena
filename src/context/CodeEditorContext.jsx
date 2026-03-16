@@ -60,6 +60,7 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
 
     const getSavedLanguage = () => {
         try {
+            if (typeof window === 'undefined') return 'python'
             const savedLanguage = localStorage.getItem(`codearena_lang_${problemId}`)
             if (savedLanguage && LANG_LABELS[savedLanguage]) {
                 return savedLanguage
@@ -77,6 +78,7 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
 
     const getSavedCodeForLanguage = (lang) => {
         try {
+            if (typeof window === 'undefined') return null
             return localStorage.getItem(`codearena_code_${problemId}_${lang}`)
         } catch (e) {
             console.warn('[CodeEditor] Error reading saved code:', e)
@@ -115,7 +117,9 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
     // Load persisted code when mounting OR language changes
     useEffect(() => {
         try {
-            localStorage.setItem(`codearena_lang_${problemId}`, language)
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(`codearena_lang_${problemId}`, language)
+            }
         } catch (e) {
             console.warn('[CodeEditor] Error persisting language:', e)
         }
@@ -141,7 +145,9 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
             setCode(newCode)
             // Save to localStorage with problem+language key
             const problemLanguageKey = `codearena_code_${problemId}_${language}`
-            localStorage.setItem(problemLanguageKey, newCode)
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(problemLanguageKey, newCode)
+            }
             console.log('[CodeEditor] Saved code to:', problemLanguageKey)
 
             // Also sync to Zustand for current session
@@ -249,7 +255,6 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
         removeFile,
         renameFile,
         switchToFile,
-        isLoaded,
     }
 
     return <CodeEditorContext.Provider value={value}>{children}</CodeEditorContext.Provider>
