@@ -139,6 +139,57 @@ export function initInterviewAIWorker() {
 
                     console.log(`[InterviewAI Worker] Generating scorecard for ${problem.title}...`)
 
+                    // ─── Participation Guard ───────────────────────────────────────
+                    // Avoid AI Hallucination: If no user messages AND no snapshots exists,
+                    // or if the only snapshot is a boilerplate "auto" save.
+                    const userMessages = history.filter((m) => m.role === 'user')
+                    const meaningfulSnapshots = snapshots.filter(
+                        (s) => s.snapshotType !== 'auto' || (s.code && s.code.length > 100)
+                    )
+
+                    if (userMessages.length === 0 && meaningfulSnapshots.length === 0) {
+                        console.log(
+                            '[InterviewAI Worker] Zero participation detected. Saving default 0 result.'
+                        )
+                        const result = await InterviewResult.findOneAndUpdate(
+                            { sessionId },
+                            {
+                                sessionId,
+                                userId,
+                                communicationScore: 0,
+                                codeQualityScore: 0,
+                                problemSolvingScore: 0,
+                                approachScore: 0,
+                                overallScore: 0,
+                                aiSummary:
+                                    'The candidate ended the session without providing any conceptual answers or code implementations. Participation was insufficient for a technical evaluation.',
+                                strengths: [],
+                                weaknesses: ['No participation detected'],
+                                recommendations: [
+                                    'Engage with the interviewer during the Q&A phase',
+                                    'Attempt a partial implementation even if stuck',
+                                ],
+                                createdAt: new Date(),
+                                error: false,
+                            },
+                            { upsert: true, new: true }
+                        )
+
+                        await InterviewSession.findByIdAndUpdate(sessionId, {
+                            status: 'terminated',
+                            currentPhase: 'completed',
+                            finalScore: 0,
+                            endedAt: new Date(),
+                        })
+
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ scorecard: result, phase: 'completed' })
+                        )
+                        return { success: true, type: 'scorecard', participation: 'none' }
+                    }
+
                     // Build prompt with evaluation metadata
                     const { systemPrompt, messages } = buildScorecardPrompt({
                         problemTitle: problem.title,
@@ -194,8 +245,15 @@ export function initInterviewAIWorker() {
                     console.log('[InterviewAI Worker] Saved result document:', result._id)
 
                     // b. Update session document: status -> completed, finalScore -> overallScore
+                    // If the original session status was already set (expired/terminated), keep it.
+                    // Only set to 'completed' if it was generically ending.
+                    const currentSession = await InterviewSession.findById(sessionId)
+                    const finalStatus = ['expired', 'terminated'].includes(currentSession?.status)
+                        ? currentSession.status
+                        : 'completed'
+
                     await InterviewSession.findByIdAndUpdate(sessionId, {
-                        status: 'completed',
+                        status: finalStatus,
                         currentPhase: 'completed',
                         finalScore: scorecardData.overallScore || 0,
                         endedAt: new Date(),
