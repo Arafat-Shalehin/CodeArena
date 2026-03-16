@@ -6,8 +6,10 @@ import { cn } from '@/lib/utils'
 
 /**
  * @component Tiles
- * @description Renders an interactive grid of tiles that respond to hover.
+ * @description Original framer-motion version (provided)
+ * Note: This is heavier than the optimized CSS version
  */
+
 const tileSizes = {
     sm: 'w-8 h-8',
     md: 'w-9 h-9 md:w-12 md:h-12',
@@ -25,14 +27,14 @@ export function Tiles({ className, rows = 100, cols = 10, tileClassName, tileSiz
                     key={`row-${i}`}
                     className={cn(
                         tileSizes[tileSize],
-                        'relative border-l border-neutral-300 dark:border-neutral-800/50',
+                        'relative border-l border-neutral-200 dark:border-neutral-900',
                         tileClassName
                     )}
                 >
                     {colsArray.map((_, j) => (
                         <motion.div
                             whileHover={{
-                                backgroundColor: `var(--ca-accent)`, // Using site's accent token
+                                backgroundColor: `var(--tile)`,
                                 transition: { duration: 0 },
                             }}
                             animate={{
@@ -41,7 +43,7 @@ export function Tiles({ className, rows = 100, cols = 10, tileClassName, tileSiz
                             key={`col-${j}`}
                             className={cn(
                                 tileSizes[tileSize],
-                                'relative border-t border-r border-neutral-300 dark:border-neutral-800/50',
+                                'relative border-t border-r border-neutral-200 dark:border-neutral-900',
                                 tileClassName
                             )}
                         />

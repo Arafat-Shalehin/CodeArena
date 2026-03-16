@@ -4,7 +4,6 @@ import { useRef } from 'react'
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import { stepsData } from '../data/steps.data'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
-import { Tiles } from '@/components/ui/tiles'
 import { cn } from '@/lib/utils'
 
 export default function HowItWorksSection() {
@@ -17,12 +16,6 @@ export default function HowItWorksSection() {
 
     return (
         <section ref={containerRef} className="bg-bg-page relative overflow-hidden py-24 md:py-32">
-            {/* Background Atmosphere */}
-            <div className="absolute inset-0 z-0">
-                <Tiles rows={30} cols={15} tileSize="lg" className="opacity-40" />
-                <div className="from-bg-subtle absolute inset-0 bg-gradient-to-b to-transparent" />
-            </div>
-
             <div className="relative z-10 mx-auto max-w-7xl px-4">
                 {/* Header */}
                 <motion.div

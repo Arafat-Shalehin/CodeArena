@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CodeEditorPreview from './CodeEditorPreview'
+import { ScrollRevealCard } from '@/components/ui/ScrollRevealCard'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 import { Tiles } from '@/components/ui/tiles'
 import { SiPython, SiCplusplus, SiJavascript, SiRust, SiGo } from 'react-icons/si'
@@ -217,20 +218,9 @@ export default function Hero() {
                     </motion.div>
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 100, rotateX: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
-                    transition={{
-                        duration: 1.2,
-                        delay: 0.6,
-                        ease: [0.16, 1, 0.3, 1],
-                    }}
-                    className="w-full max-w-6xl [perspective:2000px]"
-                >
-                    <div className="aspect-[2.4/1] w-full">
-                        <CodeEditorPreview className="h-full w-full" />
-                    </div>
-                </motion.div>
+                <ScrollRevealCard className="w-full">
+                    <CodeEditorPreview className="h-full w-full" />
+                </ScrollRevealCard>
             </div>
         </section>
     )
