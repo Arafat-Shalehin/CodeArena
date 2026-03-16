@@ -1,10 +1,14 @@
 @import 'tailwindcss';
 
-@theme {
-    /* Backgrounds */
-    --color-bg-page: var(--ca-bg-page);
-    --color-bg-subtle: var(--ca-bg-subtle);
-    --color-bg-muted: var(--ca-bg-muted);
+/* Enhanced transitions for theme switching */
+body,
+.site-gradient,
+#root,
+#__next {
+    transition:
+        background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 :root {
@@ -62,6 +66,16 @@
     --ca-gold-rgb: 245, 158, 11;
     --ca-silver-rgb: 156, 163, 175;
     --ca-bronze-rgb: 217, 119, 6;
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
 
     /* Competitive ranking colors */
     --ca-rank-gold: #f59e0b;
@@ -276,7 +290,6 @@
  * ============================================================ */
 @layer base {
     html {
-        scroll-behavior: smooth;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }

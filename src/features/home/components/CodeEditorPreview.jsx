@@ -129,7 +129,7 @@ export default function CodeEditorPreview({ className }) {
                     delay: 0.2,
                     ease: [0.16, 1, 0.3, 1],
                 }}
-                className="glass-card border-border/50 bg-bg-page/40 relative overflow-hidden rounded-3xl border shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] backdrop-blur-xl"
+                className="bg-bg-page border-border relative overflow-hidden rounded-3xl border-2 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-3xl"
             >
                 {/* Editor Header */}
                 <div className="border-border bg-bg-muted/40 flex items-center justify-between border-b px-6 py-4">
