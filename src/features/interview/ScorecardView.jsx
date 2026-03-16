@@ -130,6 +130,53 @@ export default function ScorecardView({ sessionId }) {
         window.print()
     }
 
+    const getScoreTheme = (score) => {
+        if (score === 0) {
+            return {
+                colorClass: 'text-error',
+                strokeClass: 'stroke-error',
+                bgClass: 'bg-error/10',
+                borderClass: 'border-error/20',
+                heading: 'Incomplete \n Session.',
+                subheading:
+                    'Participation was insufficient to provide a technical evaluation of your skills.',
+            }
+        }
+        if (score <= 40) {
+            return {
+                colorClass: 'text-error',
+                strokeClass: 'stroke-error',
+                bgClass: 'bg-error/10',
+                borderClass: 'border-error/20',
+                heading: 'Needs \n Focus.',
+                subheading:
+                    'There are significant gaps in your implementation that need attention.',
+            }
+        }
+        if (score <= 70) {
+            return {
+                colorClass: 'text-warning',
+                strokeClass: 'stroke-yellow-500',
+                bgClass: 'bg-warning/10',
+                borderClass: 'border-warning/20',
+                heading: 'Solid \n Attempt.',
+                subheading:
+                    'You have a good foundation but missed some key optimization or edge cases.',
+            }
+        }
+        return {
+            colorClass: 'text-accent',
+            strokeClass: 'stroke-accent',
+            bgClass: 'bg-accent/10',
+            borderClass: 'border-accent/20',
+            heading: 'Exceptional \n Results.',
+            subheading:
+                'You demonstrated strong technical proficiency and clear communication throughout.',
+        }
+    }
+
+    const theme = result ? getScoreTheme(result.overallScore || 0) : null
+
     if (loading) {
         return (
             <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center">
@@ -228,16 +275,22 @@ export default function ScorecardView({ sessionId }) {
                         <div className="bg-accent/10 absolute -top-24 -right-24 h-64 w-64 blur-[100px]" />
                         <div className="relative z-10 flex flex-col items-center justify-between gap-10 md:flex-row">
                             <div className="space-y-6 text-center md:text-left">
-                                <div className="bg-accent/10 border-accent/20 text-accent inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase">
+                                <div
+                                    className={`${theme.bgClass} ${theme.borderClass} ${theme.colorClass} inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase`}
+                                >
                                     <TrendingUp size={12} />
                                     Performance Insight
                                 </div>
                                 <h2 className="text-text-primary text-5xl leading-[0.9] font-[1000] tracking-tighter md:text-7xl">
-                                    Exceptional <br /> Results.
+                                    {theme.heading.split('\n').map((line, idx) => (
+                                        <React.Fragment key={idx}>
+                                            {line}
+                                            <br />
+                                        </React.Fragment>
+                                    ))}
                                 </h2>
                                 <p className="text-text-secondary max-w-sm text-base leading-relaxed font-medium opacity-80 md:text-lg">
-                                    You demonstrated strong technical proficiency and clear
-                                    communication throughout this session.
+                                    {theme.subheading}
                                 </p>
                             </div>
 
@@ -254,7 +307,7 @@ export default function ScorecardView({ sessionId }) {
                                         cx="50%"
                                         cy="50%"
                                         r="42%"
-                                        className="stroke-accent fill-none"
+                                        className={`${theme.strokeClass} fill-none`}
                                         strokeWidth="12"
                                         strokeDasharray="264"
                                         initial={{ strokeDashoffset: 264 }}
@@ -267,7 +320,9 @@ export default function ScorecardView({ sessionId }) {
                                     />
                                 </svg>
                                 <div className="text-center">
-                                    <span className="text-text-primary block text-6xl font-[1000]">
+                                    <span
+                                        className={`${theme.colorClass} block text-6xl font-[1000]`}
+                                    >
                                         {result.overallScore}
                                     </span>
                                     <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
@@ -309,75 +364,81 @@ export default function ScorecardView({ sessionId }) {
                             label: 'Communication',
                             val: result.communicationScore,
                             color: 'text-blue-500',
-                            desc: 'Excellent Clarity',
                             icon: MessageSquare,
                         },
                         {
                             label: 'Coding Performance',
                             val: result.codeQualityScore,
                             color: 'text-emerald-500',
-                            desc: 'Solid Implementation',
                             icon: Code2,
                         },
                         {
                             label: 'Problem Solving',
                             val: result.problemSolvingScore,
                             color: 'text-accent',
-                            desc: 'Needs Focus',
                             icon: Target,
                         },
                         {
                             label: 'Technical Accuracy',
                             val: result.approachScore,
                             color: 'text-purple-500',
-                            desc: 'Critical Gap',
                             icon: Trophy,
                         },
-                    ].map((item, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.2 + i * 0.1 }}
-                            className="matte-surface group relative col-span-6 overflow-hidden rounded-[2.5rem] border p-8 transition-all hover:-translate-y-1 md:col-span-3"
-                        >
-                            <div className="flex flex-col items-center gap-4 text-center">
-                                <div
-                                    className={`bg-opacity-10 mb-2 rounded-2xl bg-current p-3 transition-transform group-hover:scale-110 ${item.color}`}
-                                >
-                                    <item.icon size={24} />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-baseline justify-center gap-1">
-                                        <span className={`text-3xl font-black ${item.color}`}>
-                                            {item.val}
-                                        </span>
-                                        <span className="text-text-muted text-[10px] font-bold">
-                                            /100
-                                        </span>
-                                    </div>
-                                    <p
-                                        className={`text-[10px] font-black tracking-widest uppercase ${item.color}`}
+                    ].map((item, i) => {
+                        const getStatusDesc = (val) => {
+                            if (val === 0) return 'No Participation'
+                            if (val <= 40) return 'Critical Gap'
+                            if (val <= 70) return 'Needs Focus'
+                            return 'Strong Proficiency'
+                        }
+                        const statusDesc = getStatusDesc(item.val || 0)
+
+                        return (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.2 + i * 0.1 }}
+                                className="matte-surface group relative col-span-6 overflow-hidden rounded-[2.5rem] border p-8 transition-all hover:-translate-y-1 md:col-span-3"
+                            >
+                                <div className="flex flex-col items-center gap-4 text-center">
+                                    <div
+                                        className={`bg-opacity-10 mb-2 rounded-2xl bg-current p-3 transition-transform group-hover:scale-110 ${item.color}`}
                                     >
-                                        {item.desc}
-                                    </p>
-                                </div>
-                                <div className="w-full space-y-2">
-                                    <p className="text-text-primary text-[10px] font-black tracking-widest uppercase">
-                                        {item.label}
-                                    </p>
-                                    <div className="bg-border/30 h-2 w-full overflow-hidden rounded-full">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${item.val}%` }}
-                                            transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
-                                            className={`h-full ${item.color.replace('text-', 'bg-')}`}
-                                        />
+                                        <item.icon size={24} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex items-baseline justify-center gap-1">
+                                            <span className={`text-3xl font-black ${item.color}`}>
+                                                {item.val || 0}
+                                            </span>
+                                            <span className="text-text-muted text-[10px] font-bold">
+                                                /100
+                                            </span>
+                                        </div>
+                                        <p
+                                            className={`text-[10px] font-black tracking-widest uppercase ${item.color}`}
+                                        >
+                                            {statusDesc}
+                                        </p>
+                                    </div>
+                                    <div className="w-full space-y-2">
+                                        <p className="text-text-primary text-[10px] font-black tracking-widest uppercase">
+                                            {item.label}
+                                        </p>
+                                        <div className="bg-border/30 h-2 w-full overflow-hidden rounded-full">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${item.val || 0}%` }}
+                                                transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
+                                                className={`h-full ${item.color.replace('text-', 'bg-')}`}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    ))}
+                            </motion.div>
+                        )
+                    })}
 
                     {/* Spacer row for visual separation */}
                     <div className="col-span-12 hidden h-4 lg:block" />
@@ -400,22 +461,30 @@ export default function ScorecardView({ sessionId }) {
                                     </h3>
                                 </div>
                                 <div className="space-y-4">
-                                    {result.strengths?.map((s, i) => (
-                                        <motion.div
-                                            key={i}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            whileInView={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: i * 0.1 }}
-                                            className="flex items-start gap-4 rounded-[1.5rem] border border-emerald-500/10 bg-emerald-500/5 p-5 transition-all hover:bg-emerald-500/10"
-                                        >
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-500">
-                                                {i + 1}
-                                            </span>
-                                            <p className="text-text-primary text-base leading-snug font-bold">
-                                                {s}
+                                    {result.strengths && result.strengths.length > 0 ? (
+                                        result.strengths.map((s, i) => (
+                                            <motion.div
+                                                key={i}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                whileInView={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: i * 0.1 }}
+                                                className="flex items-start gap-4 rounded-[1.5rem] border border-emerald-500/10 bg-emerald-500/5 p-5 transition-all hover:bg-emerald-500/10"
+                                            >
+                                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-500">
+                                                    {i + 1}
+                                                </span>
+                                                <p className="text-text-primary text-base leading-snug font-bold">
+                                                    {s}
+                                                </p>
+                                            </motion.div>
+                                        ))
+                                    ) : (
+                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2rem] border border-dashed py-10 text-center">
+                                            <p className="text-text-muted text-sm font-medium">
+                                                No specific strengths identified.
                                             </p>
-                                        </motion.div>
-                                    ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.section>
@@ -436,22 +505,31 @@ export default function ScorecardView({ sessionId }) {
                                     </h3>
                                 </div>
                                 <div className="space-y-4">
-                                    {(result.weaknesses || result.areasToImprove)?.map((a, i) => (
-                                        <motion.div
-                                            key={i}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            whileInView={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: i * 0.1 }}
-                                            className="bg-error/5 border-error/10 hover:bg-error/10 flex items-start gap-4 rounded-[1.5rem] border p-5 transition-all"
-                                        >
-                                            <span className="bg-error/20 text-error flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black">
-                                                {i + 1}
-                                            </span>
-                                            <p className="text-text-primary text-base leading-snug font-bold">
-                                                {a}
+                                    {(result.weaknesses || result.areasToImprove) &&
+                                    (result.weaknesses || result.areasToImprove).length > 0 ? (
+                                        (result.weaknesses || result.areasToImprove).map((a, i) => (
+                                            <motion.div
+                                                key={i}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                whileInView={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: i * 0.1 }}
+                                                className="bg-error/5 border-error/10 hover:bg-error/10 flex items-start gap-4 rounded-[1.5rem] border p-5 transition-all"
+                                            >
+                                                <span className="bg-error/20 text-error flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black">
+                                                    {i + 1}
+                                                </span>
+                                                <p className="text-text-primary text-base leading-snug font-bold">
+                                                    {a}
+                                                </p>
+                                            </motion.div>
+                                        ))
+                                    ) : (
+                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2rem] border border-dashed py-10 text-center">
+                                            <p className="text-text-muted text-sm font-medium">
+                                                No specific weaknesses identified.
                                             </p>
-                                        </motion.div>
-                                    ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.section>

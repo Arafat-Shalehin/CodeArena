@@ -26,6 +26,7 @@ import {
     AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { useAuth } from '@/context/AuthContext'
 import EditorPanel from './EditorPanel'
@@ -415,6 +416,8 @@ export default function InterviewShell({
     // ── Error & Connection state ──────────────────────────────────────────────
     const [error, setError] = useState(null)
     const [connectionStatus, setConnectionStatus] = useState('connected') // connected, disconnected, reconnecting, failed
+    const [showExitConfirm, setShowExitConfirm] = useState(false)
+    const [isTerminating, setIsTerminating] = useState(false)
 
     // ── Layout: left-panel width ratio ───────────────────────────────────────
     const [leftPct, setLeftPct] = useState(30) // % for problem description
@@ -683,6 +686,28 @@ export default function InterviewShell({
         emitSnapshot('submit')
     }, [code, language, problemState?._id, emitSnapshot, sessionStatus])
 
+    // ── End Session ───────────────────────────────────────────────────────────
+    const handleTerminateSession = async () => {
+        if (isTerminating) return
+        setIsTerminating(true)
+        try {
+            const res = await fetch(`/api/interview/sessions/${sessionId}/end`, {
+                method: 'POST',
+            })
+            const json = await res.json()
+            if (json.success) {
+                toast.success('Session ending. Generating your scorecard...')
+                // The socket 'interview:ended' or 'interview:phase_change' will handle the redirect
+            } else {
+                throw new Error(json.error || 'Failed to terminate session')
+            }
+        } catch (err) {
+            toast.error(err.message)
+            setIsTerminating(false)
+            setShowExitConfirm(false)
+        }
+    }
+
     // ── Send chat message ─────────────────────────────────────────────────────
     const handleSendMessage = useCallback(
         (content) => {
@@ -814,15 +839,58 @@ export default function InterviewShell({
                 )}
 
                 {/* Right */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                    <div className="bg-border h-6 w-px" />
                     <button
-                        onClick={onEnd}
-                        className="rounded-md border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/10"
+                        onClick={() => setShowExitConfirm(true)}
+                        className="bg-error/10 text-error hover:bg-error/20 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
                     >
-                        End Session
+                        <LogOut size={14} />
+                        End Interview
                     </button>
                 </div>
             </nav>
+
+            {/* ═══ Exit Confirmation Modal ═════════════════════════════════ */}
+            {showExitConfirm && (
+                <div className="bg-bg-page/80 fixed inset-0 z-[150] flex items-center justify-center p-4 backdrop-blur-md">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="border-border bg-bg-subtle max-w-md rounded-[2rem] border p-8 shadow-2xl"
+                    >
+                        <div className="bg-error/15 text-error mb-6 flex h-14 w-14 items-center justify-center rounded-2xl">
+                            <AlertTriangle size={28} />
+                        </div>
+                        <h3 className="text-text-primary mb-2 text-2xl font-black tracking-tight">
+                            End Interview Early?
+                        </h3>
+                        <p className="text-text-secondary mb-8 text-sm leading-relaxed">
+                            Are you sure you want to finish now? We will generate your scorecard
+                            based on the current progress. You cannot resume after ending.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowExitConfirm(false)}
+                                className="border-border text-text-primary flex-1 rounded-xl border py-3 text-sm font-bold transition-colors hover:bg-white/5"
+                            >
+                                Continue Interview
+                            </button>
+                            <button
+                                onClick={handleTerminateSession}
+                                disabled={isTerminating}
+                                className="bg-error hover:bg-error/90 flex-1 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-50"
+                            >
+                                {isTerminating ? (
+                                    <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                                ) : (
+                                    'End & Evaluate'
+                                )}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
 
             {/* ═══ Three-panel workspace ══════════════════════════════════════ */}
             <div ref={containerRef} className="flex flex-1 gap-1.5 overflow-hidden p-1.5">
