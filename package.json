@@ -38,6 +38,7 @@
         "gsap": "^3.14.2",
         "jsonwebtoken": "^9.0.3",
         "katex": "^0.16.33",
+        "lenis": "^1.3.18",
         "lucide-react": "^0.564.0",
         "mongoose": "^8.13.0",
         "next": "16.1.6",

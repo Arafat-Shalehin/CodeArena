@@ -17,6 +17,7 @@ import {
     X,
     Flame,
     Zap,
+    Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -41,6 +42,7 @@ export default function DashboardHome({ user: initialUser }) {
         topContributors: [],
     })
     const [loading, setLoading] = useState(true)
+    const [followLoading, setFollowLoading] = useState({})
     const [isPostModalOpen, setIsPostModalOpen] = useState(false)
     const [postContent, setPostContent] = useState('')
     const [isPosting, setIsPosting] = useState(false)
@@ -122,6 +124,37 @@ export default function DashboardHome({ user: initialUser }) {
         }
     }
 
+    const handleFollow = async (userId) => {
+        if (followLoading[userId]) return
+
+        setFollowLoading((prev) => ({ ...prev, [userId]: true }))
+        try {
+            const res = await fetch(`/api/users/${userId}/follow`, {
+                method: 'POST',
+            })
+            const data = await res.json()
+
+            if (data.success) {
+                // Update local sidebar data to reflect follow status
+                setSidebarData((prev) => ({
+                    ...prev,
+                    suggestedUsers: prev.suggestedUsers.map((u) =>
+                        u._id === userId ? { ...u, isFollowing: true } : u
+                    ),
+                }))
+                // Update global auth context
+                if (updateProfile && user) {
+                    const currentFollowing = user.following || []
+                    updateProfile({ following: [...currentFollowing, userId] })
+                }
+            }
+        } catch (error) {
+            console.error('Failed to follow user:', error)
+        } finally {
+            setFollowLoading((prev) => ({ ...prev, [userId]: false }))
+        }
+    }
+
     const getDifficultyClass = (diff) => {
         const d = diff?.toLowerCase()
         if (d === 'easy') return 'bg-success-light text-success'
@@ -138,7 +171,7 @@ export default function DashboardHome({ user: initialUser }) {
                 )}
             >
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:sticky lg:top-20 lg:col-span-3 lg:flex lg:h-fit">
                     {/* Quick Stats Card */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <p className="text-text-muted mb-4 text-xs font-bold tracking-wider uppercase">
@@ -237,7 +270,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </aside>
 
                 {/* MAIN FEED (6 cols on desktop) */}
-                <section className="no-scrollbar col-span-1 flex flex-col gap-6 px-1 pt-8 pb-8 lg:sticky lg:top-16 lg:col-span-6 lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
+                <section className="col-span-1 flex flex-col gap-6 px-1 pt-8 pb-8 lg:col-span-6">
                     {/* Mobile Only: Progress/Streak Banner */}
                     <div className="from-accent/10 to-bg-subtle border-accent/20 rounded-lg border bg-gradient-to-r p-4 shadow-sm lg:hidden">
                         <div className="mb-2 flex items-center justify-between">
@@ -332,7 +365,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </section>
 
                 {/* RIGHT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:sticky lg:top-16 lg:col-span-3 lg:flex lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:sticky lg:top-20 lg:col-span-3 lg:flex lg:h-fit">
                     {/* Trending Problems */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <h4 className="text-text-primary mb-4 flex items-center gap-2 font-semibold">
@@ -415,12 +448,30 @@ export default function DashboardHome({ user: initialUser }) {
                                             </div>
                                         </div>
                                         <Button
-                                            variant="outline"
+                                            variant={sugg.isFollowing ? 'ghost' : 'outline'}
                                             size="sm"
-                                            className="bg-accent-light text-accent-text hover:bg-accent ml-2 h-6 shrink-0 border-none px-3 text-[10px] font-bold transition-colors hover:text-white"
+                                            onClick={() => handleFollow(sugg._id)}
+                                            disabled={followLoading[sugg._id] || sugg.isFollowing}
+                                            className={cn(
+                                                'ml-2 h-6 shrink-0 border-none px-3 text-[10px] font-bold transition-all',
+                                                sugg.isFollowing
+                                                    ? 'text-success bg-success/10'
+                                                    : 'bg-accent-light text-accent-text hover:bg-accent hover:text-white'
+                                            )}
                                         >
-                                            <UserPlus className="mt-[-1px] mr-1 h-3 w-3" />
-                                            Follow
+                                            {followLoading[sugg._id] ? (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : sugg.isFollowing ? (
+                                                <>
+                                                    <Check className="mr-1 h-3 w-3" />
+                                                    Following
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <UserPlus className="mt-[-1px] mr-1 h-3 w-3" />
+                                                    Follow
+                                                </>
+                                            )}
                                         </Button>
                                     </div>
                                 ))}
