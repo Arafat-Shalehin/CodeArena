@@ -697,7 +697,8 @@ export default function InterviewShell({
             const json = await res.json()
             if (json.success) {
                 toast.success('Session ending. Generating your scorecard...')
-                // The socket 'interview:ended' or 'interview:phase_change' will handle the redirect
+                // Immediately redirect, the result page has a loading state for the scorecard.
+                window.location.href = `/interview/${sessionId}/result`
             } else {
                 throw new Error(json.error || 'Failed to terminate session')
             }

@@ -16,6 +16,8 @@ import { Problem } from '@/models/Problem.models'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { executeCode } from '@/lib/docker/executor'
 import { getInterviewAIQueue } from '@/lib/queue'
+import { transitionPhase } from '@/services/interviewSession.service'
+import { interviewAIChannel } from '@/services/interviewAI.worker'
 
 const redisUrl = process.env.REDIS_URL || ''
 const redisConfig = redisUrl
@@ -129,6 +131,15 @@ const worker = new Worker(
                     code,
                     lang: language,
                 })
+
+                if (result.success && result.verdict === 'SUCCESS') {
+                    await transitionPhase(sessionId, 'evaluation')
+                    const pub = await getPublisher()
+                    await pub.publish(
+                        interviewAIChannel(sessionId),
+                        JSON.stringify({ phase: 'evaluation' })
+                    )
+                }
             }
 
             // Publish result back to Redis

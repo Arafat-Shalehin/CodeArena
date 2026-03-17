@@ -229,9 +229,15 @@ export function initInterviewAIWorker() {
                             sessionId,
                             userId,
                             communicationScore: scorecardData.communicationScore || 0,
-                            codeQualityScore: scorecardData.codeQualityScore || 0,
+                            codeQualityScore:
+                                scorecardData.codeQualityScore ||
+                                scorecardData.codingPerformanceScore ||
+                                0,
                             problemSolvingScore: scorecardData.problemSolvingScore || 0,
-                            approachScore: scorecardData.approachScore || 0,
+                            approachScore:
+                                scorecardData.approachScore ||
+                                scorecardData.technicalAccuracyScore ||
+                                0,
                             overallScore: scorecardData.overallScore || 0,
                             aiSummary: scorecardData.aiSummary || '',
                             strengths: scorecardData.strengths || [],
@@ -368,6 +374,7 @@ export function initInterviewAIWorker() {
             let fullResponse = ''
 
             const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+            let emitBuffer = ''
 
             // If it's a submission analysis, we might want to stream it or just send it at once.
             // Following 'interview:ai_analysis' requirement, we'll stream internally and then emit final.
@@ -375,9 +382,47 @@ export function initInterviewAIWorker() {
                 fullResponse += chunk
                 // Only stream for chat messages; for analysis, we'll send the full object at the end
                 if (job.name === 'process-chat') {
-                    await pub.publish(channel, JSON.stringify({ chunk, done: false }))
+                    emitBuffer += chunk
+
+                    let hold = false
+                    const tag = '[INTERVIEW_COMPLETE]'
+                    for (let i = 1; i <= tag.length; i++) {
+                        if (emitBuffer.endsWith(tag.substring(0, i))) {
+                            hold = true
+                            break
+                        }
+                    }
+
+                    if (hold) continue
+
+                    if (emitBuffer.includes(tag)) {
+                        emitBuffer = emitBuffer.replace(tag, '')
+                    }
+
+                    if (emitBuffer) {
+                        await pub.publish(
+                            channel,
+                            JSON.stringify({ chunk: emitBuffer, done: false })
+                        )
+                        emitBuffer = ''
+                    }
                 }
             }
+
+            if (emitBuffer) {
+                emitBuffer = emitBuffer.replace('[INTERVIEW_COMPLETE]', '')
+                if (emitBuffer) {
+                    await pub.publish(channel, JSON.stringify({ chunk: emitBuffer, done: false }))
+                }
+            }
+
+            const isComplete =
+                fullResponse.includes('[INTERVIEW_COMPLETE]') ||
+                fullResponse.includes('<WRAP_UP />')
+            fullResponse = fullResponse
+                .replace(/\[INTERVIEW_COMPLETE\]/g, '')
+                .replace(/<WRAP_UP \/>/g, '')
+                .trim()
 
             // 4. Finalise
             if (job.name === 'process-chat') {
@@ -388,7 +433,7 @@ export function initInterviewAIWorker() {
             }
 
             // [PART 3] Check for Wrap-up signal
-            if (fullResponse.includes('<WRAP_UP />')) {
+            if (isComplete) {
                 const { transitionPhase } = await import('./interviewSession.service')
                 await transitionPhase(sessionId, 'completed')
             }
