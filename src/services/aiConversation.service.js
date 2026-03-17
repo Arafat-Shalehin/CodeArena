@@ -156,13 +156,14 @@ CURRENT PHASE: evaluation
 - Explain WHY the code passed or failed specific cases.
 - Offer 1-2 constructive points for improvement (performance, readability).
 - Wrap up the interview professionally. 
-- IMPORTANT: When you are finished and ready to end the session, append the tag <WRAP_UP /> at the very end of your response.
+- IMPORTANT: When you are finished and ready to end the session, append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.
 `.trim(),
 
         completed: `
 CURRENT PHASE: completed
 - The interview is finished. Maintain a professional, celebratory tone.
 - Do not engage in further technical discussion.
+- You MUST append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.
 `.trim(),
     }
 
@@ -322,9 +323,9 @@ CRITICAL RULES (ZERO TOLERANCE):
 OUTPUT FORMAT (MANDATORY RAW JSON):
 {
   "communicationScore": number,
-  "codingPerformanceScore": number,
+  "codeQualityScore": number,
   "problemSolvingScore": number,
-  "technicalAccuracyScore": number,
+  "approachScore": number,
   "overallScore": number,
   "aiSummary": "Professional technical analysis...",
   "strengths": ["string", ...],
