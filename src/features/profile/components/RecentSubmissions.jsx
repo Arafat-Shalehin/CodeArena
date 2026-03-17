@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { submissions } from '../data/submissions.data'
 
 /**
@@ -8,7 +9,6 @@ import { submissions } from '../data/submissions.data'
  * @returns {JSX.Element} The rendered recent submissions list.
  */
 import { formatDistanceToNow } from 'date-fns'
-
 export default function RecentSubmissions({ submissions = [] }) {
     if (!submissions || submissions.length === 0) {
         return (
@@ -17,7 +17,7 @@ export default function RecentSubmissions({ submissions = [] }) {
             </div>
         )
     }
-
+    // console.log(submissions.map((i) => console.log(i._id)))
     return (
         <div className="divide-border divide-y">
             {submissions.map((item) => {
@@ -70,9 +70,16 @@ export default function RecentSubmissions({ submissions = [] }) {
                                 {isAccepted ? '●' : '■'}
                             </span>
                             <div>
-                                <p className="text-text-primary font-mono text-sm font-semibold">
+                                <Link
+                                    key={item._id}
+                                    href={
+                                        ` 
+/problems/${item.problemId._id}?tab=results&submission=${item._id}` || '#'
+                                    }
+                                    className="text-text-primary hover:text-accent-hover font-mono text-sm font-semibold"
+                                >
                                     {item.problemId?.title || 'Unknown Problem'}
-                                </p>
+                                </Link>
                                 <p className="text-text-muted text-[10px] font-medium uppercase">
                                     {item.createdAt
                                         ? formatDistanceToNow(new Date(item.createdAt), {

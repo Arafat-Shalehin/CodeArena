@@ -16,9 +16,10 @@ const TYPE_ICONS = {
 
 export default function NotificationBell() {
     const { notifications, unreadCount, markAllAsRead } = useNotification()
+    console.log(notifications)
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef(null)
-
+    console.log(notifications)
     // Close dropdown on outside click
     useEffect(() => {
         function handleClickOutside(e) {
@@ -29,7 +30,6 @@ export default function NotificationBell() {
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
-
     return (
         <div className="relative" ref={dropdownRef}>
             <button
