@@ -69,7 +69,6 @@ export default function LeaderboardPage() {
 
                 const res = await fetch(`/api/leaderboard?${params.toString()}`, { signal })
                 const json = await res.json()
-                console.log(json)
 
                 if (json.success) {
                     // Transform API User objects to match the expected leaderboard format

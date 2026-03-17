@@ -16,10 +16,8 @@ const TYPE_ICONS = {
 
 export default function NotificationBell() {
     const { notifications, unreadCount, markAllAsRead } = useNotification()
-    console.log(notifications)
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef(null)
-    console.log(notifications)
     // Close dropdown on outside click
     useEffect(() => {
         function handleClickOutside(e) {

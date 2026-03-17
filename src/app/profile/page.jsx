@@ -14,6 +14,7 @@ import RecentSubmissions from '@/features/profile/components/RecentSubmissions'
 import ProblemStats from '@/features/profile/components/ProblemStats'
 import ContestPerformance from '@/features/profile/components/ContestPerformance'
 import Achievements from '@/features/profile/components/Achievements'
+import Badges from '@/features/profile/components/Badges'
 import RecommendedProblems from '@/features/profile/components/RecommendedProblems'
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -97,7 +98,7 @@ export default function ProfilePage() {
     }
 
     const sortedLanguages = getLanguageStats(user.stats)
-
+    console.log(user)
     return (
         <div className="bg-bg-page text-text-primary min-h-screen font-sans">
             <Navbar />
@@ -165,6 +166,11 @@ export default function ProfilePage() {
                             )}
 
                             <Achievements achievements={user.stats?.achievements} />
+                            <Badges
+                                badgeCount={
+                                    user.stats?.achievements?.filter((b) => b.earned).length || 0
+                                }
+                            />
                         </div>
 
                         {/* Right Column (8/12) — Activity & Submissions */}
