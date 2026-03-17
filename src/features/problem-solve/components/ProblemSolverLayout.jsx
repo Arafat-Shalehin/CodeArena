@@ -9,7 +9,6 @@ import {
     ChevronUp,
     Shuffle,
     Loader2,
-    Sparkles,
     Maximize2,
     Minimize2,
     CheckCircle2,
@@ -31,6 +30,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'
 import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
+import NotificationBell from '@/components/layout/NotificationBell'
 
 import DescriptionPanel from './DescriptionPanel'
 import CodeEditorPanel from './CodeEditorPanel'
@@ -51,9 +51,8 @@ function InnerLayout({
     // Mark that user is viewing this problem (for reload restoration)
     useMarkProblemView(problem?._id)
 
-    const { runCode, submitCode, isRunning, isSubmitting, testResult, fetchAiFeedback } =
-        useProblemSolve()
-    const { user } = useAuth()
+    const { runCode, submitCode, isRunning, isSubmitting } = useProblemSolve()
+    const { user, isAuthenticated } = useAuth()
 
     // ── Panel state: null = normal, 'description'|'editor'|'console' = that panel maximized ──
     const [maximizedPanel, setMaximizedPanel] = useState(null)
@@ -188,37 +187,34 @@ function InnerLayout({
                     </button>
                 </div>
                 {/* Right */}
-                <div className="flex items-center gap-4 text-gray-400">
-                    {testResult?.status === 'done' && (
-                        <button
-                            onClick={fetchAiFeedback}
-                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-purple-400 hover:bg-purple-500/10"
-                        >
-                            <Sparkles size={14} /> AI Analysis
-                        </button>
-                    )}
+                <div className="flex items-center gap-2 text-gray-400">
                     <button className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors">
                         <Settings2 size={18} />
                     </button>
 
                     <div className="bg-border h-6 w-px" />
 
-                    {user && (
-                        <Link
-                            href="/profile"
-                            className="group flex items-center transition-transform hover:scale-105"
-                        >
-                            <Avatar className="border-accent/20 group-hover:border-accent/40 size-8 border transition-colors">
+                    <NotificationBell />
+
+                    <Link
+                        href={isAuthenticated ? '/profile' : '/login'}
+                        className="border-border bg-bg-page hover:bg-bg-muted group flex items-center gap-2 rounded-full border px-2 py-1 transition-all"
+                    >
+                        <Avatar className="border-accent/20 group-hover:border-accent/40 size-7 border transition-colors">
+                            {isAuthenticated && user ? (
                                 <AvatarImage
                                     src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
                                     alt={user.name}
                                 />
-                                <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
-                                    <UserIcon size={12} />
-                                </AvatarFallback>
-                            </Avatar>
-                        </Link>
-                    )}
+                            ) : null}
+                            <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
+                                <UserIcon size={11} />
+                            </AvatarFallback>
+                        </Avatar>
+                        <span className="text-text-secondary group-hover:text-text-primary text-xs font-semibold">
+                            {isAuthenticated ? 'Profile' : 'Sign In'}
+                        </span>
+                    </Link>
                 </div>
             </nav>
 
