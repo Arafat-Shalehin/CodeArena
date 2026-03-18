@@ -13,13 +13,23 @@ import { verifyWsToken } from '@/lib/auth/wsToken'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
-import { Problem } from '@/models/Problem.models'
 import dbConnect from '@/lib/mongodb'
-import { executeCode } from '@/lib/docker/executor'
 import { getInterviewAIQueue, getInterviewExecutionQueue } from '@/lib/queue'
 import { interviewAIChannel } from '@/services/interviewAI.worker'
 import { interviewExecutionChannel } from '@/services/interviewExecution.worker'
 import { createClient } from 'redis'
+import { redisClient } from '@/lib/redis'
+
+async function isSessionActive(client, sessionId) {
+    try {
+        const status = await client.get(`session:status:${sessionId}`)
+        return status === 'active'
+    } catch (err) {
+        // Redis failure fallback: DO NOT block user actions
+        console.warn(`[Redis] Failed to check status for ${sessionId}:`, err.message)
+        return true
+    }
+}
 
 // ── Dedicated subscriber factory ───────────────────────────────────────────────
 // Each connected socket gets its own subscriber client so it can subscribe to
@@ -36,8 +46,15 @@ const redisConfig = redisUrl
           password: process.env.REDIS_PASSWORD || undefined,
       }
 
+// sessionId → Set of socketIds
+const sessionSockets = new Map()
+
+// sessionId → boolean (subscription active status)
+const sessionSubscribed = new Map()
+
+// Ensure message handler is registered exactly once across the Node process
+let isMessageHandlerRegistered = false
 let sharedSubscriber = null
-const sessionRefCount = new Map()
 
 async function getSharedSubscriber() {
     if (sharedSubscriber) return sharedSubscriber
@@ -48,9 +65,103 @@ async function getSharedSubscriber() {
     return sharedSubscriber
 }
 
-function createSubscriber() {
-    // Legacy function, no longer used per-socket
-    return getSharedSubscriber()
+async function registerSessionSocket(sessionId, socketId, interviewNs) {
+    if (!sessionSockets.has(sessionId)) {
+        sessionSockets.set(sessionId, new Set())
+    }
+
+    const sockets = sessionSockets.get(sessionId)
+    sockets.add(socketId)
+
+    // Ensure we only have 1 active Redis subscriber per session across all tabs
+    if (!sessionSubscribed.get(sessionId)) {
+        try {
+            const sub = await getSharedSubscriber()
+
+            // Attach the global message handler strictly ONCE
+            if (!isMessageHandlerRegistered) {
+                sub.on('message', (channel, message) => {
+                    try {
+                        const parsed = JSON.parse(message)
+                        // Extract sessionId from "interview:ai:SESSIONID" or "interview:execution:SESSIONID"
+                        const parts = channel.split(':')
+                        const targetSessionId = parts[parts.length - 1]
+                        const targetRoom = `interview:${targetSessionId}`
+
+                        const isAiChannel = channel.includes(':ai:')
+                        const isExecChannel = channel.includes(':execution:')
+
+                        if (isAiChannel) {
+                            if (parsed.analysis) {
+                                interviewNs.to(targetRoom).emit('interview:ai_analysis', parsed)
+                            } else if (parsed.scorecard) {
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:scorecard', parsed.scorecard)
+                            } else if (parsed.phase) {
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:phase_change', parsed.phase)
+                            } else if (parsed.chunk !== undefined) {
+                                interviewNs.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
+                            }
+                        } else if (isExecChannel) {
+                            if (parsed.jobType === 'run') {
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:run_result', parsed.result)
+                            } else if (parsed.jobType === 'submit') {
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:submission_result', parsed.result)
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[Interview NS] Message parsing error:', err)
+                    }
+                })
+                isMessageHandlerRegistered = true
+            }
+
+            const aiChannel = interviewAIChannel(sessionId)
+            const execChannel = interviewExecutionChannel(sessionId)
+
+            await sub.subscribe(aiChannel)
+            await sub.subscribe(execChannel)
+
+            sessionSubscribed.set(sessionId, true)
+            console.log(`[Interview NS] Subscribed to session ${sessionId}`)
+        } catch (err) {
+            console.error('[Interview NS] Redis subscribe error:', err)
+        }
+    } else {
+        console.log(`[Interview NS] Reusing existing subscription for session ${sessionId}`)
+    }
+}
+
+async function unregisterSessionSocket(sessionId, socketId) {
+    const sockets = sessionSockets.get(sessionId)
+    if (!sockets) return
+
+    sockets.delete(socketId)
+
+    // Only unsubscribe from Redis when the absolute last browser tab closes
+    if (sockets.size === 0) {
+        try {
+            const sub = await getSharedSubscriber()
+            const aiChannel = interviewAIChannel(sessionId)
+            const execChannel = interviewExecutionChannel(sessionId)
+
+            await sub.unsubscribe(aiChannel)
+            await sub.unsubscribe(execChannel)
+            console.log(`[Interview NS] Unsubscribed from session ${sessionId}`)
+        } catch (err) {
+            console.error(`[Interview NS] Redis unsubscribe error for ${sessionId}:`, err)
+        }
+
+        sessionSockets.delete(sessionId)
+        sessionSubscribed.delete(sessionId)
+    }
 }
 
 // ── Namespace ──────────────────────────────────────────────────────────────────
@@ -87,68 +198,11 @@ export function registerInterviewNamespace(io) {
             `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
         )
 
-        // ── Shared Redis subscriber for this namespace ──────────────────────────
-        // Subscribes once per sessionId and broadcasts to the session room.
-        try {
-            const sub = await getSharedSubscriber()
-            const channel = interviewAIChannel(sessionId)
+        // Force connection into room and register the socket to the Singleton
+        socket.join(roomName)
+        await registerSessionSocket(sessionId, socket.id, interviewNs)
 
-            // Increment ref count
-            const currentCount = sessionRefCount.get(sessionId) || 0
-            sessionRefCount.set(sessionId, currentCount + 1)
-
-            if (currentCount === 0) {
-                const aiChannel = interviewAIChannel(sessionId)
-                const execChannel = interviewExecutionChannel(sessionId)
-
-                console.log(
-                    `[Interview NS] Subscribing to Redis channels: ${aiChannel}, ${execChannel}`
-                )
-
-                // Subscription handler
-                const messageHandler = (message, channel) => {
-                    try {
-                        const parsed = JSON.parse(message)
-                        const ns = interviewNs
-                        const targetRoom = `interview:${sessionId}`
-
-                        // a. AI Related events
-                        if (channel === aiChannel) {
-                            if (parsed.analysis) {
-                                ns.to(targetRoom).emit('interview:ai_analysis', parsed)
-                            } else if (parsed.scorecard) {
-                                ns.to(targetRoom).emit('interview:scorecard', parsed.scorecard)
-                            } else if (parsed.phase) {
-                                ns.to(targetRoom).emit('interview:phase_change', parsed.phase)
-                            } else if (parsed.chunk !== undefined) {
-                                ns.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
-                            }
-                        }
-
-                        // b. Code Execution events
-                        if (channel === execChannel) {
-                            if (parsed.jobType === 'run') {
-                                ns.to(targetRoom).emit('interview:run_result', parsed.result)
-                            } else if (parsed.jobType === 'submit') {
-                                ns.to(targetRoom).emit('interview:submission_result', parsed.result)
-                            }
-                        }
-                    } catch (err) {
-                        console.error('[Interview NS] Message parsing error:', err)
-                    }
-                }
-
-                await sub.subscribe(aiChannel, messageHandler)
-                await sub.subscribe(execChannel, messageHandler)
-            }
-        } catch (err) {
-            console.error(
-                `[Interview NS] Failed to manage subscription for session ${sessionId}:`,
-                err
-            )
-        }
-
-        // 1. Client joins their dedicated session room
+        // 1. Client joins their dedicated session room (redundant due to ^ but kept for backwards comp)
         socket.on('interview:join', async () => {
             socket.join(roomName)
             console.log(`[Socket.IO /interview] Socket joined room: ${roomName}`)
@@ -156,6 +210,11 @@ export function registerInterviewNamespace(io) {
 
         // 2. Client sends a code snapshot (for playback/history)
         socket.on('interview:code_snapshot', async (payload) => {
+            if (!(await isSessionActive(redisClient, sessionId))) {
+                console.warn(`[Guard Blocked] code_snapshot on session ${sessionId}`)
+                return
+            }
+
             try {
                 await dbConnect()
                 const { problemId, language, code, snapshotType } = payload
@@ -175,6 +234,15 @@ export function registerInterviewNamespace(io) {
 
         // 3. Client attempts to run code (Refactored to Background Worker)
         socket.on('interview:run', async (payload) => {
+            if (!(await isSessionActive(redisClient, sessionId))) {
+                console.warn(`[Guard Blocked] run on session ${sessionId}`)
+                socket.emit('interview:error', {
+                    code: 'SESSION_ENDED',
+                    message: 'This session has ended. Please start a new session.',
+                })
+                return
+            }
+
             try {
                 const { code, language, problemId } = payload
                 const queue = getInterviewExecutionQueue()
@@ -201,6 +269,15 @@ export function registerInterviewNamespace(io) {
 
         // 4. Client attempts to submit code (Refactored to Background Worker)
         socket.on('interview:submit', async (payload) => {
+            if (!(await isSessionActive(redisClient, sessionId))) {
+                console.warn(`[Guard Blocked] submit on session ${sessionId}`)
+                socket.emit('interview:error', {
+                    code: 'SESSION_ENDED',
+                    message: 'This session has ended. Please start a new session.',
+                })
+                return
+            }
+
             try {
                 await dbConnect()
                 const { code, language, problemId } = payload
@@ -238,6 +315,15 @@ export function registerInterviewNamespace(io) {
 
         // 5. Client sends a chat message → enqueue AI job
         socket.on('interview:chat_message', async (payload) => {
+            if (!(await isSessionActive(redisClient, sessionId))) {
+                console.warn(`[Guard Blocked] chat_message on session ${sessionId}`)
+                socket.emit('interview:error', {
+                    code: 'SESSION_ENDED',
+                    message: 'This session has ended. Please start a new session.',
+                })
+                return
+            }
+
             try {
                 await dbConnect()
                 const { content, phase } = payload
@@ -276,31 +362,8 @@ export function registerInterviewNamespace(io) {
                 `[Socket.IO /interview] User ${socket.userId} disconnected from session ${sessionId}`
             )
 
-            // Decrement ref count
-            const currentCount = sessionRefCount.get(sessionId) || 0
-            if (currentCount > 1) {
-                sessionRefCount.set(sessionId, currentCount - 1)
-            } else {
-                sessionRefCount.delete(sessionId)
-
-                // Add a small delay before unsubscribing to prevent race conditions during rapid page refreshes (HMR / F5)
-                setTimeout(async () => {
-                    const latestCount = sessionRefCount.get(sessionId) || 0
-                    if (latestCount === 0 && sharedSubscriber) {
-                        try {
-                            const aiChannel = interviewAIChannel(sessionId)
-                            const execChannel = interviewExecutionChannel(sessionId)
-                            console.log(
-                                `[Interview NS] Last socket safely left. Unsubscribing from: ${aiChannel}, ${execChannel}`
-                            )
-                            await sharedSubscriber.unsubscribe(aiChannel)
-                            await sharedSubscriber.unsubscribe(execChannel)
-                        } catch (err) {
-                            console.error('[Interview NS] Unsubscribe error:', err)
-                        }
-                    }
-                }, 3000)
-            }
+            // Cleanly sever the socket node's attachment to the redis Singleton listener
+            await unregisterSessionSocket(sessionId, socket.id)
         })
     })
 

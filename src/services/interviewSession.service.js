@@ -10,6 +10,7 @@ import {
 import { getInterviewAIQueue } from '../lib/queue.js'
 import { buildPrompt } from './aiConversation.service.js'
 import { generateInterviewChatResponse } from '../lib/ai/interviewGroqClient.js'
+import { redisClient } from '../lib/redis.js'
 
 /**
  * Valid phases enforcing strict order transitions if necessary
@@ -64,6 +65,12 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
         currentPhase: 'intro',
         startedAt: new Date(),
     })
+
+    try {
+        await redisClient.set(`session:status:${session._id}`, 'active', { EX: 8 * 60 * 60 })
+    } catch (err) {
+        console.error('[createSession] Redis guard init failed:', err)
+    }
 
     try {
         // 5. Generate AI greeting synchronously
@@ -199,6 +206,12 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
                 return terminalSession
             }
             throw new Error('Session is in an invalid state for completion')
+        }
+
+        try {
+            await redisClient.set(`session:status:${sessionId}`, 'completed', { EX: 60 * 60 })
+        } catch (err) {
+            console.error('[transitionPhase] Redis guard update failed:', err)
         }
 
         // --- Success path: Transitioned from active ---
