@@ -28,12 +28,14 @@ export async function POST(req, { params }) {
         }
 
         if (session.status !== 'active') {
+            // Idempotent return to prevent race conditions (e.g., timer expired + user clicked end)
             return NextResponse.json(
                 {
-                    error: 'BAD_REQUEST',
-                    message: 'Session is no longer active',
+                    success: true,
+                    data: session,
+                    message: 'Session is already inactive',
                 },
-                { status: 400 }
+                { status: 200 }
             )
         }
 

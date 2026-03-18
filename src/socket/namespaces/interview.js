@@ -282,19 +282,24 @@ export function registerInterviewNamespace(io) {
                 sessionRefCount.set(sessionId, currentCount - 1)
             } else {
                 sessionRefCount.delete(sessionId)
-                if (sharedSubscriber) {
-                    try {
-                        const aiChannel = interviewAIChannel(sessionId)
-                        const execChannel = interviewExecutionChannel(sessionId)
-                        console.log(
-                            `[Interview NS] Last socket left. Unsubscribing from: ${aiChannel}, ${execChannel}`
-                        )
-                        await sharedSubscriber.unsubscribe(aiChannel)
-                        await sharedSubscriber.unsubscribe(execChannel)
-                    } catch (err) {
-                        console.error('[Interview NS] Unsubscribe error:', err)
+
+                // Add a small delay before unsubscribing to prevent race conditions during rapid page refreshes (HMR / F5)
+                setTimeout(async () => {
+                    const latestCount = sessionRefCount.get(sessionId) || 0
+                    if (latestCount === 0 && sharedSubscriber) {
+                        try {
+                            const aiChannel = interviewAIChannel(sessionId)
+                            const execChannel = interviewExecutionChannel(sessionId)
+                            console.log(
+                                `[Interview NS] Last socket safely left. Unsubscribing from: ${aiChannel}, ${execChannel}`
+                            )
+                            await sharedSubscriber.unsubscribe(aiChannel)
+                            await sharedSubscriber.unsubscribe(execChannel)
+                        } catch (err) {
+                            console.error('[Interview NS] Unsubscribe error:', err)
+                        }
                     }
-                }
+                }, 3000)
             }
         })
     })

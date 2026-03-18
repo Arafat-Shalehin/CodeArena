@@ -93,15 +93,7 @@ export function initInterviewAIWorker() {
     const worker = new Worker(
         'interview-ai',
         async (job) => {
-            const {
-                sessionId,
-                userId,
-                content,
-                phase,
-                submissionVerdict,
-                code,
-                language: lang,
-            } = job.data
+            const { sessionId, userId, content, submissionVerdict, code, language: lang } = job.data
 
             console.log(
                 `[InterviewAI Worker] v2.1 Processing job ${job.id} (${job.name}) for session ${sessionId}`
@@ -361,9 +353,9 @@ export function initInterviewAIWorker() {
                 problemDescription: problem.description,
                 currentCode: code || lastSnapshot?.code || '',
                 language: lang || lastSnapshot?.language || 'python',
-                phase: currentPhase,
+                phase: job.name === 'process-submission-analysis' ? 'evaluation' : currentPhase,
                 submissionVerdict: submissionVerdict || null,
-                userMessage: content || '',
+                userMessage: adjustedContent || '',
                 history: job.name === 'process-chat' ? history.slice(0, -1) : history, // exclude the just-saved user turn if it was a chat job
                 evaluationMetadata,
             })
