@@ -83,6 +83,17 @@ const submissionSchema = new mongoose.Schema(
                 correctness: { type: Number },
             },
         },
+        // --- Plagiarism Detection Fields ---
+        similarityScore: { type: Number, default: null },
+        suspectedPlagiarism: { type: Boolean, default: false },
+        plagiarismCheckedAt: { type: Date, default: null },
+        matchedSubmissions: [
+            {
+                submissionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Submission' },
+                userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                similarity: { type: Number },
+            },
+        ],
         testCaseResults: [
             {
                 testCaseId: { type: mongoose.Schema.Types.ObjectId, ref: 'TestCase' },
@@ -99,7 +110,8 @@ const submissionSchema = new mongoose.Schema(
 )
 
 submissionSchema.index({ userId: 1, problemId: 1 })
-submissionSchema.index({ contestId: 1 })
+submissionSchema.index({ problemId: 1, contestId: 1, language: 1, verdict: 1 })
+submissionSchema.index({ contestId: 1, plagiarismCheckedAt: 1, suspectedPlagiarism: 1 })
 
 export const Submission =
     mongoose.models.Submission || mongoose.model('Submission', submissionSchema)

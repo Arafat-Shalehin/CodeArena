@@ -4,6 +4,7 @@ let globalWorkers = {
     stats: null,
     ai: null,
     interviewAI: null,
+    plagiarism: null,
 }
 
 export async function register() {
@@ -27,6 +28,7 @@ export async function register() {
             const { initStatsWorker } = await import('@/services/stats.worker')
             const { initAIWorker } = await import('@/services/ai.worker')
             const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
+            const { initPlagiarismWorker } = await import('@/services/plagiarism.worker')
 
             console.log('[INSTRUMENTATION] Calling initSubmissionWorker...')
             if (globalWorkers.submission) await globalWorkers.submission.close()
@@ -43,9 +45,14 @@ export async function register() {
             console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
             if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
             globalWorkers.interviewAI = initInterviewAIWorker()
+
+            console.log('[INSTRUMENTATION] Calling initPlagiarismWorker...')
+            if (globalWorkers.plagiarism) await globalWorkers.plagiarism.close()
+            globalWorkers.plagiarism = initPlagiarismWorker()
+
             globalThis._workersInitialized = true
             console.log(
-                '>>> CodeArena Workers v2.1 Initialized (Submission, Stats, AI, InterviewAI)'
+                '>>> CodeArena Workers v2.2 Initialized (Submission, Stats, AI, InterviewAI, Plagiarism)'
             )
         } catch (err) {
             console.error('[CRITICAL] Failed to initialize Workers:', err.message)

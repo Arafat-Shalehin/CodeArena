@@ -84,4 +84,8 @@ export function getInterviewExecutionQueue() {
     return queues['interview-execution']
 }
 
+export function getPlagiarismQueue() {
+    return getQueue('plagiarism-checks')
+}
+
 export { connection }
