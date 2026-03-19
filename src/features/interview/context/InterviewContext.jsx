@@ -161,7 +161,18 @@ export function InterviewProvider({
         }
 
         const handleInterviewError = (errorRaw) => {
-            setError(typeof errorRaw === 'string' ? { message: errorRaw } : errorRaw)
+            const errObj = typeof errorRaw === 'string' ? { message: errorRaw } : errorRaw
+
+            if (errObj.code === 'SESSION_ENDED') {
+                setSessionStatus('completed')
+                toast.error(errObj.message)
+                setTimeout(() => {
+                    router.push(`/interview/${sessionId}/result`)
+                }, 2000)
+                return
+            }
+
+            setError(errObj)
             setIsRunning(false)
             setIsSubmitting(false)
         }

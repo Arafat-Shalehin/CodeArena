@@ -1,19 +1,52 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Bot, User as UserIcon, Loader2, AlertCircle, Send } from 'lucide-react'
 
-export default function AiChatPanel({ messages, onSend, isAiTyping, currentPhase }) {
+export default function AiChatPanel({
+    messages,
+    onSend,
+    isAiTyping,
+    currentPhase,
+    socket,
+    setIsAiTyping,
+}) {
     const [draft, setDraft] = useState('')
+    const [error, setError] = useState(null)
     const bottomRef = useRef(null)
 
     useEffect(() => {
+        if (!socket) return
+
+        const handleAiError = (payload) => {
+            if (setIsAiTyping) setIsAiTyping(false)
+            setError(payload)
+        }
+
+        socket.on('interview:ai_error', handleAiError)
+        return () => {
+            socket.off('interview:ai_error', handleAiError)
+        }
+    }, [socket, setIsAiTyping])
+
+    useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages, isAiTyping])
+    }, [messages, isAiTyping, error])
 
     const submit = () => {
         const trimmed = draft.trim()
         if (!trimmed) return
+        setError(null)
         onSend(trimmed)
         setDraft('')
+    }
+
+    const handleResend = () => {
+        const userMessages = messages.filter((m) => m.role === 'user')
+        const lastUserMessage = userMessages[userMessages.length - 1]
+
+        if (!lastUserMessage) return
+
+        setError(null)
+        onSend(lastUserMessage.content)
     }
 
     const handleKey = (e) => {
@@ -86,7 +119,7 @@ export default function AiChatPanel({ messages, onSend, isAiTyping, currentPhase
                     )
                 })}
 
-                {isAiTyping && (
+                {isAiTyping && !error && (
                     <div className="flex gap-2.5">
                         <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
                             <Bot size={14} />
@@ -95,6 +128,24 @@ export default function AiChatPanel({ messages, onSend, isAiTyping, currentPhase
                             <span className="bg-text-muted h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:0ms]" />
                             <span className="bg-text-muted h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:150ms]" />
                             <span className="bg-text-muted h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:300ms]" />
+                        </div>
+                    </div>
+                )}
+
+                {error && (
+                    <div className="flex gap-2.5">
+                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-red-500/20 text-xs text-red-400">
+                            <AlertCircle size={14} />
+                        </div>
+                        <div className="flex max-w-[80%] flex-col rounded-2xl rounded-tl-none border border-red-500/50 bg-red-500/10 px-3 py-2 text-[13px] leading-relaxed text-red-400">
+                            <span className="mb-1 font-bold">{error.code || 'AI_UNAVAILABLE'}</span>
+                            {error.message || 'Alex is having trouble responding.'}
+                            <button
+                                onClick={handleResend}
+                                className="mt-3 w-fit rounded bg-red-500/20 px-4 py-1.5 text-xs font-bold transition-colors hover:bg-red-500/30 active:scale-95"
+                            >
+                                Resend Message
+                            </button>
                         </div>
                     </div>
                 )}
