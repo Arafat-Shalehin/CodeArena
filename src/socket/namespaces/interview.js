@@ -92,7 +92,10 @@ async function registerSessionSocket(sessionId, socketId, interviewNs) {
                         const isExecChannel = channel.includes(':execution:')
 
                         if (isAiChannel) {
-                            if (parsed.analysis) {
+                            if (parsed.type === 'error') {
+                                interviewNs.to(targetRoom).emit('interview:ai_error', parsed)
+                                return
+                            } else if (parsed.analysis) {
                                 interviewNs.to(targetRoom).emit('interview:ai_analysis', parsed)
                             } else if (parsed.scorecard) {
                                 interviewNs

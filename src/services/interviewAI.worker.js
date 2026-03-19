@@ -494,26 +494,40 @@ export function initInterviewAIWorker() {
         }
     )
 
-    worker.on('failed', (job, err) => {
-        const sessionId = job?.data?.sessionId
-        console.error(
-            `[InterviewAI Worker] Job ${job?.id} failed for session ${sessionId}:`,
-            err.message
-        )
+    worker.on('failed', async (job, err) => {
+        const isFinalAttempt = job.attemptsMade >= job.opts.attempts
 
-        // Best-effort: publish an error chunk so the UI doesn't hang
-        if (sessionId) {
-            getPublisher()
-                .then((pub) =>
-                    pub.publish(
-                        interviewAIChannel(sessionId),
-                        JSON.stringify({
-                            chunk: 'Sorry, I encountered an error. Please try again.',
-                            done: true,
-                        })
-                    )
-                )
-                .catch(() => {})
+        if (!isFinalAttempt) return // Silently retry transient failures
+
+        // Idempotency Protection: Prevent duplicate error emissions on stray worker restarts
+        if (job.data.__errorEmitted) return
+        await job.updateData({ ...job.data, __errorEmitted: true })
+
+        const sessionId = job?.data?.sessionId
+        if (!sessionId) return
+
+        console.error('[AI Worker Final Failure]', {
+            jobId: job.id,
+            sessionId,
+            attempts: job.attemptsMade,
+            error: err.message,
+        })
+
+        const payload = {
+            type: 'error',
+            code: 'AI_UNAVAILABLE',
+            message: 'Alex is having trouble responding. Please resend your message.',
+            sessionId,
+            jobId: job.id,
+            attemptsMade: job.attemptsMade,
+            timestamp: Date.now(),
+        }
+
+        try {
+            const pub = await getPublisher()
+            await pub.publish(interviewAIChannel(sessionId), JSON.stringify(payload))
+        } catch (pubErr) {
+            console.error('[AI Worker] Failed to publish final failure event:', pubErr)
         }
     })
 

@@ -49,11 +49,32 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
     }
 
     // 3. Select a problem using the existing recommendation engine
-    const { recommendedProblems } = await getRecommendedProblems(userId, 1)
+    // Fetch a larger pool to allow random selection
+    const { recommendedProblems } = await getRecommendedProblems(userId, 10)
     if (!recommendedProblems || recommendedProblems.length === 0) {
         throw new Error('No appropriate problem found for this session')
     }
-    const problemId = recommendedProblems[0]._id
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+    // MongoDB handles `distinct` on array fields gracefully
+    const recentProblemIdsRaw = await InterviewSession.find({
+        userId,
+        createdAt: { $gt: sevenDaysAgo },
+    }).distinct('problemIds')
+
+    const recentProblemIds = new Set(recentProblemIdsRaw.map((id) => id.toString()))
+
+    const freshProblems = recommendedProblems.filter((p) => !recentProblemIds.has(p._id.toString()))
+
+    function pickOne(arr) {
+        return arr[Math.floor(Math.random() * arr.length)]
+    }
+
+    const chosenProblem =
+        freshProblems.length > 0 ? pickOne(freshProblems) : pickOne(recommendedProblems)
+
+    const problemId = chosenProblem._id
 
     // 4. Create the session record
     const session = await InterviewSession.create({
@@ -78,8 +99,8 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
         const introPrompt =
             'Introduce yourself as Alex and start the interview. Explain the rules (Conceptual then Coding) and ask the first conceptual question.'
 
-        // We get the problem details for context
-        const problem = recommendedProblems[0]
+        // We get the chosen problem details for context
+        const problem = chosenProblem
 
         const { systemPrompt, messages } = buildPrompt({
             problemDescription: problem.description,

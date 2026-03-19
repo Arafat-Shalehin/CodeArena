@@ -11,6 +11,14 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const MAX_HISTORY_MESSAGES = 12
+const MAX_CODE_LINES = 80
+const MAX_CODE_CHARS = 8000
+const TOKEN_WARNING_THRESHOLD = 6000
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. Sanitisation
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -68,16 +76,48 @@ export function sanitizeInput(text, { maxLength = 8000 } = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Truncates raw user code to prevent overwhelming the AI context window.
+ *
+ * @param {string} code
+ * @param {number} maxLines
+ * @returns {string}
+ */
+function truncateCode(code, maxLines = MAX_CODE_LINES) {
+    if (!code) return ''
+
+    // Character-level fallback (for minified code)
+    if (code.length > MAX_CODE_CHARS) {
+        return `[... truncated to last ${MAX_CODE_CHARS} chars]\n` + code.slice(-MAX_CODE_CHARS)
+    }
+
+    const lines = code.split('\n')
+
+    if (lines.length <= maxLines) return code
+
+    const tail = lines.slice(-maxLines).join('\n')
+
+    return `[... ${lines.length - maxLines} lines above truncated]\n` + tail
+}
+
+/**
  * Wraps candidate code in a <user_code> XML block.
- * Safe: code is sanitised first.
+ * Safe: code is truncated then sanitised.
  *
  * @param {string} code
  * @param {string} language
  * @returns {string}
  */
 function injectUserCode(code, language) {
-    const safe = sanitizeInput(code, { maxLength: 6000 })
+    const truncatedCode = truncateCode(code)
+    const safe = sanitizeInput(truncatedCode, { maxLength: MAX_CODE_CHARS })
     return `<user_code language="${language}">\n${safe}\n</user_code>`
+}
+
+/**
+ * Quick token estimation (Non-blocking)
+ */
+function estimateTokens(text) {
+    return Math.ceil((text || '').length / 4)
 }
 
 /**
@@ -253,8 +293,18 @@ ${phaseBlock}
 `.trim()
 
     // ── Message history ──────────────────────────────────────────────────────
+    // Sliding context window: Keep only the last N messages
+    const trimmedHistory = history.slice(-MAX_HISTORY_MESSAGES)
+
+    // Always include the first message (AI intro / context)
+    const firstMessage = history[0]
+    const finalHistory =
+        firstMessage && !trimmedHistory.includes(firstMessage)
+            ? [firstMessage, ...trimmedHistory]
+            : trimmedHistory
+
     // Cap history to last 12 turns to stay within context window
-    const cappedHistory = history.slice(-12).map((m) => ({
+    const cappedHistory = finalHistory.map((m) => ({
         role: m.role === 'ai' ? 'assistant' : m.role,
         content: sanitizeInput(m.content),
     }))
@@ -264,6 +314,14 @@ ${phaseBlock}
         ...cappedHistory,
         ...(userMessage ? [{ role: 'user', content: injectUserMessage(userMessage) }] : []),
     ]
+
+    // ── Token Estimation & Observability ─────────────────────────────────────
+    const fullPrompt = systemPrompt + JSON.stringify(messages)
+    const estimate = estimateTokens(fullPrompt)
+
+    if (estimate > TOKEN_WARNING_THRESHOLD) {
+        console.warn('[buildPrompt] estimated tokens:', estimate)
+    }
 
     return { systemPrompt, messages }
 }
