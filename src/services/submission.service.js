@@ -38,86 +38,77 @@ export async function createSubmission(data) {
         throw new Error('Code and language are required.')
     }
 
+    // 1️⃣ Rate limit (Redis-based throttle: 3 sec cooldown) — fail fast before any DB calls
+    if (type === 'submit' && redisClient.isOpen) {
+        const rateLimitKey = `ratelimit:submit:${userId}`
+        const isThrottled = await redisClient.get(rateLimitKey)
+
+        if (isThrottled) {
+            throw new Error('Submission rate limit exceeded. Please wait.')
+        }
+
+        // Set throttle for 3 seconds
+        await redisClient.set(rateLimitKey, '1', { EX: 3 })
+    } else if (type === 'submit') {
+        // Fallback to basic DB check if Redis is down
+        const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
+            .sort({ createdAt: -1 })
+            .lean()
+
+        if (lastSubmission && Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000) {
+            throw new Error('Submission rate limit exceeded. Please wait.')
+        }
+    }
+
+    // 2️⃣ Validate user & problem — reads outside transaction (no consistency requirement)
+    const [user, problem] = await Promise.all([
+        User.findById(userId).lean(),
+        Problem.findById(problemId).lean(),
+    ])
+    if (!user) throw new Error('User not found.')
+    console.log('[SERVICE] User validated:', userId)
+    if (!problem) throw new Error('Problem not found.')
+    console.log('[SERVICE] Problem validated:', problemId)
+
+    // 3️⃣ Contest validation (if provided) — reads outside transaction
+    if (contestId && type === 'submit') {
+        const contest = await Contest.findById(contestId).lean()
+        if (!contest) {
+            throw new Error('Contest not found.')
+        }
+
+        const now = new Date()
+
+        if (contest.startTime && now < contest.startTime) {
+            throw new Error('Contest has not started yet.')
+        }
+
+        if (contest.endTime && now > contest.endTime) {
+            throw new Error('Contest has already ended.')
+        }
+
+        // Check participant registration via ContestParticipant collection
+        const isRegistered = await ContestParticipant.findOne({ contestId, userId }).lean()
+
+        if (!isRegistered) {
+            throw new Error('User is not registered for this contest.')
+        }
+    }
+
+    // Check for code size limit
+    const codeSizeKB = Buffer.byteLength(code, 'utf8') / 1024
+    if (codeSizeKB > problem.codeSizeLimit) {
+        return {
+            status: 400,
+            message: `Code size (${codeSizeKB.toFixed(1)} KB) exceeds the limit (${problem.codeSizeLimit} KB)`,
+        }
+    }
+
     const session = await mongoose.startSession()
     session.startTransaction()
 
     try {
-        console.log('[SERVICE] Starting transaction...')
-        // 1️⃣ Validate user
-        const user = await User.findById(userId).session(session)
-        if (!user) {
-            throw new Error('User not found.')
-        }
-        console.log('[SERVICE] User validated:', userId)
-
-        // 2️⃣ Validate problem
-        const problem = await Problem.findById(problemId).session(session)
-        if (!problem) {
-            throw new Error('Problem not found.')
-        }
-        console.log('[SERVICE] Problem validated:', problemId)
-
-        // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
-        if (type === 'submit' && redisClient.isOpen) {
-            const rateLimitKey = `ratelimit:submit:${userId}`
-            const isThrottled = await redisClient.get(rateLimitKey)
-
-            if (isThrottled) {
-                throw new Error('Submission rate limit exceeded. Please wait.')
-            }
-
-            // Set throttle for 3 seconds
-            await redisClient.set(rateLimitKey, '1', { EX: 3 })
-        } else if (type === 'submit') {
-            // Fallback to basic DB check if Redis is down
-            const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
-                .sort({ createdAt: -1 })
-                .session(session)
-
-            if (
-                lastSubmission &&
-                Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000
-            ) {
-                throw new Error('Submission rate limit exceeded. Please wait.')
-            }
-        }
-
-        // 4️⃣ Contest validation (if provided)
-        if (contestId && type === 'submit') {
-            const contest = await Contest.findById(contestId).session(session)
-            if (!contest) {
-                throw new Error('Contest not found.')
-            }
-
-            const now = new Date()
-
-            if (contest.startTime && now < contest.startTime) {
-                throw new Error('Contest has not started yet.')
-            }
-
-            if (contest.endTime && now > contest.endTime) {
-                throw new Error('Contest has already ended.')
-            }
-
-            // Check participant registration via ContestParticipant collection
-            const isRegistered = await ContestParticipant.findOne({
-                contestId,
-                userId,
-            }).session(session)
-
-            if (!isRegistered) {
-                throw new Error('User is not registered for this contest.')
-            }
-        }
-
-        // Check for code size limit
-        const codeSizeKB = Buffer.byteLength(code, 'utf8') / 1024
-        if (codeSizeKB > problem.codeSizeLimit) {
-            return {
-                status: 400,
-                message: `Code size (${codeSizeKB.toFixed(1)} KB) exceeds the limit (${problem.codeSizeLimit} KB)`,
-            }
-        }
+        console.log('[SERVICE] Starting transaction for submission create...')
 
         // 5️⃣ Create submission
         // If cachedResult is provided, use it directly (skip queue)

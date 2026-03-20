@@ -30,7 +30,9 @@ export function getQueue(name) {
                 },
                 removeOnComplete: true,
                 removeOnFail: false,
-                timeout: 30000,
+                // Increased from 30s to 90s (configurable via env)
+                // Prevents false retry cycles for complex submissions with many test cases
+                timeout: parseInt(process.env.QUEUE_JOB_TIMEOUT_MS || '90000'),
             },
         })
     }
