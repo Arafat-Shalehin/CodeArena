@@ -120,6 +120,7 @@ export async function initSocketServer() {
                                     'submission_status',
                                     'judging_started',
                                     'test_case_result',
+                                    'test_case_result_batched', // Optimized batched message
                                     'test_case_completed',
                                     'test_case_failed',
                                     'execution_completed',

@@ -339,6 +339,37 @@ export function useSubmissionRealtime({
             }
         })
 
+        // Optimized batched test case result (new format)
+        newSocket.on('test_case_result_batched', (data) => {
+            console.log('[Socket] Test case result (batched):', data)
+
+            if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
+                return
+            }
+
+            const normalizedStatus = String(data.status || '').toLowerCase()
+            const totalCount = data.total ?? data.totalCount
+            const currentCase = data.current ?? data.caseNumber
+            const failedAtCase =
+                data.failedAtCase ||
+                data.failedCase ||
+                (normalizedStatus === 'failed' ? currentCase : null)
+            const stage = normalizedStatus === 'failed' ? 'finalizing' : data.stage || 'running'
+
+            updateRunningState({
+                ...data,
+                totalCount,
+                currentCase,
+                failedAtCase,
+                stage,
+                stageBadge: getStageBadge(stage, currentCase, totalCount),
+            })
+
+            if (normalizedStatus === 'failed' && currentCase) {
+                toast.error(`Failed at test case ${currentCase}`)
+            }
+        })
+
         // Backward-compatibility events while clients migrate
         newSocket.on('test_case_completed', (data) => {
             console.log('[Socket] Test case completed:', data)

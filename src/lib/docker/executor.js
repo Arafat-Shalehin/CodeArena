@@ -246,27 +246,30 @@ export async function executeMultipleInputs({
 
     try {
         for (let i = 0; i < inputs.length; i++) {
+            console.log(`[EXECUTOR] 🏃 Running test case ${i + 1}/${inputs.length}...`)
+
             // For runs after the first, overwrite input.txt inside the existing container
             if (i > 0) {
                 const inputContent = inputs[i] || ''
                 const inputB64 = Buffer.from(inputContent).toString('base64')
                 const exec = await container.exec({
                     Cmd: ['sh', '-c', `echo "${inputB64}" | base64 -d > /workspace/input.txt`],
-                    AttachStdout: true,
-                    AttachStderr: true,
                     User: 'root',
                 })
-                const stream = await exec.start({ Detach: false, Tty: false })
-                await new Promise((resolve, reject) => {
-                    stream.on('end', resolve)
-                    stream.on('error', reject)
-                })
+                // FIX: Run detached and use small delay - stream events unreliable for quick commands
+                await exec.start({ Detach: true })
+                // Give 50ms for the file write to complete (nearly instant operation)
+                await new Promise((resolve) => setTimeout(resolve, 50))
+                console.log(`[EXECUTOR] Input file written for test case ${i + 1}`)
             }
 
             let result
             try {
+                console.log(`[EXECUTOR] Calling runContainer for test case ${i + 1}...`)
                 result = await runContainer(container, effectiveTimeLimit)
+                console.log(`[EXECUTOR] ✅ Test case ${i + 1} completed: verdict=${result.verdict}, time=${result.executionTime}ms`)
             } catch (runErr) {
+                console.error(`[EXECUTOR] ❌ Test case ${i + 1} error:`, runErr.message)
                 result = { success: false, verdict: 'SYSTEM_ERROR', error: runErr.message }
             }
 
@@ -612,6 +615,7 @@ async function runContainer(container, timeLimit) {
 
     try {
         // Execute the runner script as coderunner user
+        console.log('[EXECUTOR] Starting exec for runner.sh...')
         const exec = await container.exec({
             Cmd: ['/usr/local/bin/runner.sh'],
             AttachStdout: true,
@@ -620,7 +624,9 @@ async function runContainer(container, timeLimit) {
         })
 
         // Start execution with timeout
+        console.log('[EXECUTOR] Exec created, starting stream...')
         const execStream = await exec.start({ Detach: false, Tty: false })
+        console.log('[EXECUTOR] Stream started, setting up demux...')
 
         // Collect output using PassThrough streams to handle Docker's multiplexing
         const stdoutStream = new PassThrough()
@@ -657,6 +663,7 @@ async function runContainer(container, timeLimit) {
         )
 
         await Promise.race([streamPromise, timeoutPromise])
+        console.log('[EXECUTOR] Stream completed, getting exit code...')
 
         const executionTime = Date.now() - startTime
 
