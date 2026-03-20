@@ -242,28 +242,7 @@ export async function executeMultipleInputs({
 
     const results = []
     let judgeContainer = null
-
-    // Pre-create special judge container once if needed (reuse mode = performance boost!)
-    if (specialJudgeCode) {
-        try {
-            const langConfig = getLanguageConfig('javascript')
-            const dockerConfig = getDockerRunConfig(langConfig.name)
-            judgeContainer = await docker.createContainer({
-                Image: langConfig.image,
-                Entrypoint: ['/bin/sh', '-c'],
-                Cmd: ['tail -f /dev/null'],
-                ...dockerConfig,
-                OpenStdin: true,
-                Tty: false,
-            })
-            await judgeContainer.start()
-            console.log('[EXECUTOR] Special judge container created for reuse across test cases')
-        } catch (err) {
-            console.error('[EXECUTOR] Failed to pre-create special judge container:', err.message)
-            // Continue without pre-created container (will create per-case)
-            judgeContainer = null
-        }
-    }
+    let judgeContainerInitialized = false // Track if we've attempted to create
 
     try {
         for (let i = 0; i < inputs.length; i++) {
@@ -293,12 +272,34 @@ export async function executeMultipleInputs({
 
             // Handle special judge if provided
             if (result.success && specialJudgeCode && expectedOutputs?.[i]) {
+                // Lazy-create special judge container on first use (once, reuse for all test cases)
+                if (!judgeContainerInitialized) {
+                    judgeContainerInitialized = true
+                    try {
+                        const langConfig = getLanguageConfig('javascript')
+                        const dockerConfig = getDockerRunConfig(langConfig.name)
+                        judgeContainer = await docker.createContainer({
+                            Image: langConfig.image,
+                            Entrypoint: ['/bin/sh', '-c'],
+                            Cmd: ['tail -f /dev/null'],
+                            ...dockerConfig,
+                            OpenStdin: true,
+                            Tty: false,
+                        })
+                        await judgeContainer.start()
+                        console.log('[EXECUTOR] Special judge container created for reuse across test cases')
+                    } catch (err) {
+                        console.error('[EXECUTOR] Failed to create special judge container:', err.message)
+                        judgeContainer = null
+                    }
+                }
+
                 const judgeResult = await runSpecialJudgeInSandbox({
                     specialJudgeCode,
                     input: inputs[i] || '',
                     actualOutput: result.output,
                     expectedOutput: expectedOutputs[i],
-                    judgeContainer: judgeContainer, // Reuse if pre-created
+                    judgeContainer: judgeContainer, // Reuse if created
                 })
                 if (!judgeResult.success) {
                     result = {
