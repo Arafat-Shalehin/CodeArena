@@ -11,6 +11,14 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const MAX_HISTORY_MESSAGES = 12
+const MAX_CODE_LINES = 80
+const MAX_CODE_CHARS = 8000
+const TOKEN_WARNING_THRESHOLD = 6000
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. Sanitisation
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -68,16 +76,48 @@ export function sanitizeInput(text, { maxLength = 8000 } = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Truncates raw user code to prevent overwhelming the AI context window.
+ *
+ * @param {string} code
+ * @param {number} maxLines
+ * @returns {string}
+ */
+function truncateCode(code, maxLines = MAX_CODE_LINES) {
+    if (!code) return ''
+
+    // Character-level fallback (for minified code)
+    if (code.length > MAX_CODE_CHARS) {
+        return `[... truncated to last ${MAX_CODE_CHARS} chars]\n` + code.slice(-MAX_CODE_CHARS)
+    }
+
+    const lines = code.split('\n')
+
+    if (lines.length <= maxLines) return code
+
+    const tail = lines.slice(-maxLines).join('\n')
+
+    return `[... ${lines.length - maxLines} lines above truncated]\n` + tail
+}
+
+/**
  * Wraps candidate code in a <user_code> XML block.
- * Safe: code is sanitised first.
+ * Safe: code is truncated then sanitised.
  *
  * @param {string} code
  * @param {string} language
  * @returns {string}
  */
 function injectUserCode(code, language) {
-    const safe = sanitizeInput(code, { maxLength: 6000 })
+    const truncatedCode = truncateCode(code)
+    const safe = sanitizeInput(truncatedCode, { maxLength: MAX_CODE_CHARS })
     return `<user_code language="${language}">\n${safe}\n</user_code>`
+}
+
+/**
+ * Quick token estimation (Non-blocking)
+ */
+function estimateTokens(text) {
+    return Math.ceil((text || '').length / 4)
 }
 
 /**
@@ -136,8 +176,10 @@ CURRENT PHASE: intro
 CURRENT PHASE: qa
 - This is the initial Q&A round. Ask the candidate 1-2 conceptual questions related to the problem's domain.
 - Topics: Time/Space complexity considerations, potential algorithms, or data structures.
-- Evaluate their answers. Be conversational.
-- Once you're satisfied with their conceptual overview, tell them the editor is now unlocked for implementation.
+- BE STRICT AND RIGOROUS. Do NOT accept vague, shallow, or high-level answers.
+- If their answer is incomplete, push back and ask them to clarify time/space complexity or edge cases.
+- Do NOT move to the coding phase until they have given a solid, technically sound conceptual explanation.
+- Once you are completely satisfied, tell them the editor is now unlocked for implementation.
 `.trim(),
 
         coding: `
@@ -156,13 +198,14 @@ CURRENT PHASE: evaluation
 - Explain WHY the code passed or failed specific cases.
 - Offer 1-2 constructive points for improvement (performance, readability).
 - Wrap up the interview professionally. 
-- IMPORTANT: When you are finished and ready to end the session, append the tag <WRAP_UP /> at the very end of your response.
+- IMPORTANT: When you are finished and ready to end the session, append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.
 `.trim(),
 
         completed: `
 CURRENT PHASE: completed
 - The interview is finished. Maintain a professional, celebratory tone.
 - Do not engage in further technical discussion.
+- You MUST append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.
 `.trim(),
     }
 
@@ -250,8 +293,18 @@ ${phaseBlock}
 `.trim()
 
     // ── Message history ──────────────────────────────────────────────────────
+    // Sliding context window: Keep only the last N messages
+    const trimmedHistory = history.slice(-MAX_HISTORY_MESSAGES)
+
+    // Always include the first message (AI intro / context)
+    const firstMessage = history[0]
+    const finalHistory =
+        firstMessage && !trimmedHistory.includes(firstMessage)
+            ? [firstMessage, ...trimmedHistory]
+            : trimmedHistory
+
     // Cap history to last 12 turns to stay within context window
-    const cappedHistory = history.slice(-12).map((m) => ({
+    const cappedHistory = finalHistory.map((m) => ({
         role: m.role === 'ai' ? 'assistant' : m.role,
         content: sanitizeInput(m.content),
     }))
@@ -261,6 +314,14 @@ ${phaseBlock}
         ...cappedHistory,
         ...(userMessage ? [{ role: 'user', content: injectUserMessage(userMessage) }] : []),
     ]
+
+    // ── Token Estimation & Observability ─────────────────────────────────────
+    const fullPrompt = systemPrompt + JSON.stringify(messages)
+    const estimate = estimateTokens(fullPrompt)
+
+    if (estimate > TOKEN_WARNING_THRESHOLD) {
+        console.warn('[buildPrompt] estimated tokens:', estimate)
+    }
 
     return { systemPrompt, messages }
 }
@@ -322,9 +383,9 @@ CRITICAL RULES (ZERO TOLERANCE):
 OUTPUT FORMAT (MANDATORY RAW JSON):
 {
   "communicationScore": number,
-  "codingPerformanceScore": number,
+  "codeQualityScore": number,
   "problemSolvingScore": number,
-  "technicalAccuracyScore": number,
+  "approachScore": number,
   "overallScore": number,
   "aiSummary": "Professional technical analysis...",
   "strengths": ["string", ...],

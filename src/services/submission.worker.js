@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq'
 import dbConnect from '@/lib/mongodb'
-import { connection, getAIAnalysisQueue, getStatsQueue } from '@/lib/queue'
+import { connection, getAIAnalysisQueue, getStatsQueue, getPlagiarismQueue } from '@/lib/queue'
+import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
@@ -528,6 +529,26 @@ export function initSubmissionWorker() {
                             } catch (err) {
                                 console.error('[WORKER] Failed to dispatch AI analysis job:', err)
                             }
+                        }
+
+                        // --- Plagiarism Detection Trigger ---
+                        try {
+                            const plagiarismQueue = getPlagiarismQueue()
+                            await plagiarismQueue.add(
+                                'check-plagiarism',
+                                { submissionId: submission._id.toString() },
+                                {
+                                    jobId: `plagiarism-${submission._id}`, // deduplication key
+                                    delay: 5000, // 5s delay to ensure DB consistency
+                                    attempts: 3,
+                                    backoff: { type: 'exponential', delay: 10000 },
+                                    removeOnComplete: true,
+                                }
+                            )
+                            console.log(`[WORKER] Enqueued plagiarism check for ${submissionId}`)
+                        } catch (err) {
+                            // log but NEVER throw — must not affect submission flow
+                            console.error('[WORKER] Failed to enqueue plagiarism job:', err)
                         }
 
                         // Judging notification should not block queue throughput.

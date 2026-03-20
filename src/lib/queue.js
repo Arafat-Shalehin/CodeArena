@@ -61,9 +61,13 @@ export function getInterviewAIQueue() {
         queues['interview-ai'] = new Queue('interview-ai', {
             connection,
             defaultJobOptions: {
-                attempts: 2,
-                removeOnComplete: true,
-                removeOnFail: false,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 2000,
+                },
+                removeOnComplete: 100,
+                removeOnFail: 50,
                 timeout: 60000,
             },
         })
@@ -84,6 +88,10 @@ export function getInterviewExecutionQueue() {
         })
     }
     return queues['interview-execution']
+}
+
+export function getPlagiarismQueue() {
+    return getQueue('plagiarism-checks')
 }
 
 export { connection }

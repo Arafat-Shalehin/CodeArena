@@ -93,15 +93,7 @@ export function initInterviewAIWorker() {
     const worker = new Worker(
         'interview-ai',
         async (job) => {
-            const {
-                sessionId,
-                userId,
-                content,
-                phase,
-                submissionVerdict,
-                code,
-                language: lang,
-            } = job.data
+            const { sessionId, userId, content, submissionVerdict, code, language: lang } = job.data
 
             console.log(
                 `[InterviewAI Worker] v2.1 Processing job ${job.id} (${job.name}) for session ${sessionId}`
@@ -229,9 +221,15 @@ export function initInterviewAIWorker() {
                             sessionId,
                             userId,
                             communicationScore: scorecardData.communicationScore || 0,
-                            codeQualityScore: scorecardData.codeQualityScore || 0,
+                            codeQualityScore:
+                                scorecardData.codeQualityScore ||
+                                scorecardData.codingPerformanceScore ||
+                                0,
                             problemSolvingScore: scorecardData.problemSolvingScore || 0,
-                            approachScore: scorecardData.approachScore || 0,
+                            approachScore:
+                                scorecardData.approachScore ||
+                                scorecardData.technicalAccuracyScore ||
+                                0,
                             overallScore: scorecardData.overallScore || 0,
                             aiSummary: scorecardData.aiSummary || '',
                             strengths: scorecardData.strengths || [],
@@ -355,9 +353,9 @@ export function initInterviewAIWorker() {
                 problemDescription: problem.description,
                 currentCode: code || lastSnapshot?.code || '',
                 language: lang || lastSnapshot?.language || 'python',
-                phase: currentPhase,
+                phase: job.name === 'process-submission-analysis' ? 'evaluation' : currentPhase,
                 submissionVerdict: submissionVerdict || null,
-                userMessage: content || '',
+                userMessage: adjustedContent || '',
                 history: job.name === 'process-chat' ? history.slice(0, -1) : history, // exclude the just-saved user turn if it was a chat job
                 evaluationMetadata,
             })
@@ -368,6 +366,7 @@ export function initInterviewAIWorker() {
             let fullResponse = ''
 
             const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+            let emitBuffer = ''
 
             // If it's a submission analysis, we might want to stream it or just send it at once.
             // Following 'interview:ai_analysis' requirement, we'll stream internally and then emit final.
@@ -375,9 +374,47 @@ export function initInterviewAIWorker() {
                 fullResponse += chunk
                 // Only stream for chat messages; for analysis, we'll send the full object at the end
                 if (job.name === 'process-chat') {
-                    await pub.publish(channel, JSON.stringify({ chunk, done: false }))
+                    emitBuffer += chunk
+
+                    let hold = false
+                    const tag = '[INTERVIEW_COMPLETE]'
+                    for (let i = 1; i <= tag.length; i++) {
+                        if (emitBuffer.endsWith(tag.substring(0, i))) {
+                            hold = true
+                            break
+                        }
+                    }
+
+                    if (hold) continue
+
+                    if (emitBuffer.includes(tag)) {
+                        emitBuffer = emitBuffer.replace(tag, '')
+                    }
+
+                    if (emitBuffer) {
+                        await pub.publish(
+                            channel,
+                            JSON.stringify({ chunk: emitBuffer, done: false })
+                        )
+                        emitBuffer = ''
+                    }
                 }
             }
+
+            if (emitBuffer) {
+                emitBuffer = emitBuffer.replace('[INTERVIEW_COMPLETE]', '')
+                if (emitBuffer) {
+                    await pub.publish(channel, JSON.stringify({ chunk: emitBuffer, done: false }))
+                }
+            }
+
+            const isComplete =
+                fullResponse.includes('[INTERVIEW_COMPLETE]') ||
+                fullResponse.includes('<WRAP_UP />')
+            fullResponse = fullResponse
+                .replace(/\[INTERVIEW_COMPLETE\]/g, '')
+                .replace(/<WRAP_UP \/>/g, '')
+                .trim()
 
             // 4. Finalise
             if (job.name === 'process-chat') {
@@ -388,7 +425,7 @@ export function initInterviewAIWorker() {
             }
 
             // [PART 3] Check for Wrap-up signal
-            if (fullResponse.includes('<WRAP_UP />')) {
+            if (isComplete) {
                 const { transitionPhase } = await import('./interviewSession.service')
                 await transitionPhase(sessionId, 'completed')
             }
@@ -457,26 +494,40 @@ export function initInterviewAIWorker() {
         }
     )
 
-    worker.on('failed', (job, err) => {
-        const sessionId = job?.data?.sessionId
-        console.error(
-            `[InterviewAI Worker] Job ${job?.id} failed for session ${sessionId}:`,
-            err.message
-        )
+    worker.on('failed', async (job, err) => {
+        const isFinalAttempt = job.attemptsMade >= job.opts.attempts
 
-        // Best-effort: publish an error chunk so the UI doesn't hang
-        if (sessionId) {
-            getPublisher()
-                .then((pub) =>
-                    pub.publish(
-                        interviewAIChannel(sessionId),
-                        JSON.stringify({
-                            chunk: 'Sorry, I encountered an error. Please try again.',
-                            done: true,
-                        })
-                    )
-                )
-                .catch(() => {})
+        if (!isFinalAttempt) return // Silently retry transient failures
+
+        // Idempotency Protection: Prevent duplicate error emissions on stray worker restarts
+        if (job.data.__errorEmitted) return
+        await job.updateData({ ...job.data, __errorEmitted: true })
+
+        const sessionId = job?.data?.sessionId
+        if (!sessionId) return
+
+        console.error('[AI Worker Final Failure]', {
+            jobId: job.id,
+            sessionId,
+            attempts: job.attemptsMade,
+            error: err.message,
+        })
+
+        const payload = {
+            type: 'error',
+            code: 'AI_UNAVAILABLE',
+            message: 'Alex is having trouble responding. Please resend your message.',
+            sessionId,
+            jobId: job.id,
+            attemptsMade: job.attemptsMade,
+            timestamp: Date.now(),
+        }
+
+        try {
+            const pub = await getPublisher()
+            await pub.publish(interviewAIChannel(sessionId), JSON.stringify(payload))
+        } catch (pubErr) {
+            console.error('[AI Worker] Failed to publish final failure event:', pubErr)
         }
     })
 
