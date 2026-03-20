@@ -52,25 +52,13 @@ export function initSubmissionWorker() {
 
                 // Update status to 'running'
                 await Submission.findByIdAndUpdate(submissionId, { status: 'running' })
+                // OPTIMIZED: Merged 2 Redis messages into 1 (submission_running + submission_status)
                 if (redisClient.isOpen) {
                     redisClient
                         .publish(
                             'submission_updates',
                             JSON.stringify({
                                 type: 'submission_running',
-                                userId: submission.userId,
-                                submissionId,
-                                problemId: submission.problemId,
-                                stage: 'running',
-                            })
-                        )
-                        .catch(console.error)
-
-                    redisClient
-                        .publish(
-                            'submission_updates',
-                            JSON.stringify({
-                                type: 'submission_status',
                                 event: 'SUBMISSION_STATUS',
                                 userId: submission.userId,
                                 submissionId,
@@ -198,7 +186,7 @@ export function initSubmissionWorker() {
                         `[WORKER] SUBMIT TYPE: Running ${totalCount} test case(s) for submission ${submissionId}`
                     )
 
-                    // Notify client that judging is starting
+                    // OPTIMIZED: Merged 2 Redis messages into 1 (judging_started + submission_status)
                     if (redisClient.isOpen) {
                         redisClient
                             .publish(
@@ -212,26 +200,8 @@ export function initSubmissionWorker() {
                                     stage: 'judging_started',
                                     current: 0,
                                     total: totalCount,
-                                    message: `Judging started on ${totalCount} test cases`,
-                                    problemId: submission.problemId,
-                                })
-                            )
-                            .catch(console.error)
-
-                        redisClient
-                            .publish(
-                                'submission_updates',
-                                JSON.stringify({
-                                    type: 'submission_status',
-                                    event: 'SUBMISSION_STATUS',
-                                    submissionId,
-                                    userId: submission.userId,
-                                    status: 'running',
-                                    stage: 'judging_started',
-                                    message: `Starting judge... Running ${totalCount} test cases`,
                                     totalTestCases: totalCount,
-                                    current: 0,
-                                    total: totalCount,
+                                    message: `Starting judge... Running ${totalCount} test cases`,
                                     problemId: submission.problemId,
                                 })
                             )
