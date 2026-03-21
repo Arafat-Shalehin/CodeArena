@@ -21,7 +21,7 @@ import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewResult } from '@/models/InterviewResult.model'
-import { buildPrompt, buildScorecardPrompt } from '@/services/aiConversation.service'
+import { buildPrompt, buildScorecardPrompt, selectModel } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
 
 // ── Redis publisher (separate client; cannot share the subscriber client) ──────
@@ -200,7 +200,15 @@ export function initInterviewAIWorker() {
                     })
 
                     // Get AI response (non-streaming)
-                    const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+                    const model = selectModel('completed', job.name)
+                    const aiStream = generateInterviewChatResponse({
+                        systemPrompt,
+                        messages,
+                        model,
+                        phase: 'completed',
+                        jobType: job.name,
+                    })
+
                     let fullResponse = ''
                     for await (const chunk of aiStream) {
                         fullResponse += chunk
@@ -363,9 +371,16 @@ export function initInterviewAIWorker() {
             // 3. Stream AI response and publish each chunk to Redis
             const pub = await getPublisher()
             const channel = interviewAIChannel(sessionId)
-            let fullResponse = ''
+            const model = selectModel(session.currentPhase, job.name)
+            const aiStream = generateInterviewChatResponse({
+                systemPrompt,
+                messages,
+                model,
+                phase: session.currentPhase,
+                jobType: job.name,
+            })
 
-            const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+            let fullResponse = ''
             let emitBuffer = ''
 
             // If it's a submission analysis, we might want to stream it or just send it at once.

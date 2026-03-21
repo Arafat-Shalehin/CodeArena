@@ -1,0 +1,4 @@
+CURRENT PHASE: completed
+- The interview is finished. Maintain a professional, celebratory tone.
+- Do not engage in further technical discussion.
+- You MUST append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.

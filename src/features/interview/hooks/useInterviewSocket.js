@@ -13,7 +13,7 @@ export function useInterviewSocket({ wsToken, sessionId }) {
             `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
             {
                 auth: { token: wsToken },
-                reconnectionAttempts: 3,
+                reconnectionDelayMax: 5000,
             }
         )
 
@@ -32,9 +32,17 @@ export function useInterviewSocket({ wsToken, sessionId }) {
             setConnectionStatus('disconnected')
         })
 
-        newSocket.on('connect_error', () => {
+        // Use the connection manager to track retry cycles natively
+        newSocket.io.on('reconnect_attempt', () => {
+            setConnectionStatus('reconnecting')
+        })
+
+        newSocket.io.on('reconnect_failed', () => {
             setConnectionStatus('failed')
         })
+
+        // Do not permanently kill the UI on transient connection errors
+        // newSocket.on('connect_error') intentionally ignored here to let the retry loop work
 
         return () => {
             newSocket.disconnect()

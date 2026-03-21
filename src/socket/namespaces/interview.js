@@ -52,9 +52,51 @@ const sessionSockets = new Map()
 // sessionId → boolean (subscription active status)
 const sessionSubscribed = new Map()
 
-// Ensure message handler is registered exactly once across the Node process
-let isMessageHandlerRegistered = false
 let sharedSubscriber = null
+
+// Expose the namespace globally so the strict-reference redis listener can invoke it
+let globalInterviewNs = null
+
+/**
+ * Global message handler for all Redis subscriptions.
+ * Dispatches messages to the correct Socket.io room based on the channel name.
+ */
+function handleRedisMessage(message, channel) {
+    if (!globalInterviewNs) return
+
+    try {
+        const parsed = JSON.parse(message)
+        const parts = channel.split(':')
+        const targetSessionId = parts[parts.length - 1]
+        const targetRoom = `interview:${targetSessionId}`
+
+        const isAiChannel = channel.includes(':ai:')
+        const isExecChannel = channel.includes(':execution:')
+
+        if (isAiChannel) {
+            if (parsed.type === 'error') {
+                globalInterviewNs.to(targetRoom).emit('interview:ai_error', parsed)
+                return
+            } else if (parsed.analysis) {
+                globalInterviewNs.to(targetRoom).emit('interview:ai_analysis', parsed)
+            } else if (parsed.scorecard) {
+                globalInterviewNs.to(targetRoom).emit('interview:scorecard', parsed.scorecard)
+            } else if (parsed.phase) {
+                globalInterviewNs.to(targetRoom).emit('interview:phase_change', parsed.phase)
+            } else if (parsed.chunk !== undefined) {
+                globalInterviewNs.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
+            }
+        } else if (isExecChannel) {
+            if (parsed.jobType === 'run') {
+                globalInterviewNs.to(targetRoom).emit('interview:run_result', parsed.result)
+            } else if (parsed.jobType === 'submit') {
+                globalInterviewNs.to(targetRoom).emit('interview:submission_result', parsed.result)
+            }
+        }
+    } catch (err) {
+        console.error('[Interview NS] Message parsing error:', err)
+    }
+}
 
 async function getSharedSubscriber() {
     if (sharedSubscriber) return sharedSubscriber
@@ -78,59 +120,12 @@ async function registerSessionSocket(sessionId, socketId, interviewNs) {
         try {
             const sub = await getSharedSubscriber()
 
-            // Attach the global message handler strictly ONCE
-            if (!isMessageHandlerRegistered) {
-                sub.on('message', (channel, message) => {
-                    try {
-                        const parsed = JSON.parse(message)
-                        // Extract sessionId from "interview:ai:SESSIONID" or "interview:execution:SESSIONID"
-                        const parts = channel.split(':')
-                        const targetSessionId = parts[parts.length - 1]
-                        const targetRoom = `interview:${targetSessionId}`
-
-                        const isAiChannel = channel.includes(':ai:')
-                        const isExecChannel = channel.includes(':execution:')
-
-                        if (isAiChannel) {
-                            if (parsed.type === 'error') {
-                                interviewNs.to(targetRoom).emit('interview:ai_error', parsed)
-                                return
-                            } else if (parsed.analysis) {
-                                interviewNs.to(targetRoom).emit('interview:ai_analysis', parsed)
-                            } else if (parsed.scorecard) {
-                                interviewNs
-                                    .to(targetRoom)
-                                    .emit('interview:scorecard', parsed.scorecard)
-                            } else if (parsed.phase) {
-                                interviewNs
-                                    .to(targetRoom)
-                                    .emit('interview:phase_change', parsed.phase)
-                            } else if (parsed.chunk !== undefined) {
-                                interviewNs.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
-                            }
-                        } else if (isExecChannel) {
-                            if (parsed.jobType === 'run') {
-                                interviewNs
-                                    .to(targetRoom)
-                                    .emit('interview:run_result', parsed.result)
-                            } else if (parsed.jobType === 'submit') {
-                                interviewNs
-                                    .to(targetRoom)
-                                    .emit('interview:submission_result', parsed.result)
-                            }
-                        }
-                    } catch (err) {
-                        console.error('[Interview NS] Message parsing error:', err)
-                    }
-                })
-                isMessageHandlerRegistered = true
-            }
-
             const aiChannel = interviewAIChannel(sessionId)
             const execChannel = interviewExecutionChannel(sessionId)
 
-            await sub.subscribe(aiChannel)
-            await sub.subscribe(execChannel)
+            // node-redis v4/v5 requires the EXACT listener reference for stable garbage collection.
+            await sub.subscribe(aiChannel, handleRedisMessage)
+            await sub.subscribe(execChannel, handleRedisMessage)
 
             sessionSubscribed.set(sessionId, true)
             console.log(`[Interview NS] Subscribed to session ${sessionId}`)
@@ -155,8 +150,9 @@ async function unregisterSessionSocket(sessionId, socketId) {
             const aiChannel = interviewAIChannel(sessionId)
             const execChannel = interviewExecutionChannel(sessionId)
 
-            await sub.unsubscribe(aiChannel)
-            await sub.unsubscribe(execChannel)
+            // Explicitly pass the matching reference to cleanly splice the internal emitter arrays
+            await sub.unsubscribe(aiChannel, handleRedisMessage)
+            await sub.unsubscribe(execChannel, handleRedisMessage)
             console.log(`[Interview NS] Unsubscribed from session ${sessionId}`)
         } catch (err) {
             console.error(`[Interview NS] Redis unsubscribe error for ${sessionId}:`, err)
@@ -171,6 +167,7 @@ async function unregisterSessionSocket(sessionId, socketId) {
 
 export function registerInterviewNamespace(io) {
     const interviewNs = io.of('/interview')
+    globalInterviewNs = interviewNs
 
     // Middleware for authentication
     interviewNs.use(async (socket, next) => {
@@ -200,6 +197,17 @@ export function registerInterviewNamespace(io) {
         console.log(
             `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
         )
+
+        // --- Heartbeat & Diagnostic Layer ---
+        const heartbeat = setInterval(() => {
+            socket.emit('interview:ping', { ts: Date.now() })
+        }, 25000)
+
+        // Diagnostic only. Used for analytics/health-checks, but NEVER to
+        // actively kill a session (sessions are governed strictly by DB/User logic).
+        socket.on('interview:pong', () => {
+            socket.data.lastPong = Date.now()
+        })
 
         // Force connection into room and register the socket to the Singleton
         socket.join(roomName)
@@ -361,6 +369,7 @@ export function registerInterviewNamespace(io) {
 
         // Clean up subscriber on disconnect
         socket.on('disconnect', async () => {
+            clearInterval(heartbeat)
             console.log(
                 `[Socket.IO /interview] User ${socket.userId} disconnected from session ${sessionId}`
             )
