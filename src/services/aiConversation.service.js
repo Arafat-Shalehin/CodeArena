@@ -18,8 +18,34 @@ const MAX_CODE_LINES = 80
 const MAX_CODE_CHARS = 8000
 const TOKEN_WARNING_THRESHOLD = 6000
 
+import { loadPrompt } from '../prompts/loader.js'
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Sanitisation
+// 1. LLM Tiering Strategy
+// ─────────────────────────────────────────────────────────────────────────────
+export const MODELS = {
+    FAST: 'llama-3.1-8b-instant', // Extremely low latency for chatter
+    QUALITY: 'llama-3.3-70b-versatile', // High reasoning threshold
+}
+
+/**
+ * Derives the optimal LLM size/cost tier based on reasoning intensity.
+ * @param {string} phase
+ * @param {string} jobType
+ */
+export function selectModel(phase, jobType) {
+    // 1. Explicit Final Scorecard always uses max intelligence
+    if (jobType === 'process-scorecard') return MODELS.QUALITY
+
+    // 2. High cognitive-load phases require intelligence
+    if (phase === 'qa' || phase === 'coding') return MODELS.QUALITY
+
+    // 3. Introductions and wrapping up can be fast generic chatter
+    return MODELS.FAST
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. Sanitisation
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -153,66 +179,6 @@ function injectUserMessage(message) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Phase system prompts
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Returns the phase-specific behavioural instructions block.
- *
- * @param {'intro'|'qa'|'coding'|'evaluation'|'completed'} phase
- * @returns {string}
- */
-function getPhaseInstructions(phase) {
-    const instructions = {
-        intro: `
-CURRENT PHASE: intro
-- Warmly welcome the candidate.
-- Briefly overview the problem without giving hints or the solution.
-- Tell them you'll start with a few conceptual questions before coding.
-- Keep it conversational; you are starting a 1:1 technical interview.
-`.trim(),
-
-        qa: `
-CURRENT PHASE: qa
-- This is the initial Q&A round. Ask the candidate 1-2 conceptual questions related to the problem's domain.
-- Topics: Time/Space complexity considerations, potential algorithms, or data structures.
-- BE STRICT AND RIGOROUS. Do NOT accept vague, shallow, or high-level answers.
-- If their answer is incomplete, push back and ask them to clarify time/space complexity or edge cases.
-- Do NOT move to the coding phase until they have given a solid, technically sound conceptual explanation.
-- Once you are completely satisfied, tell them the editor is now unlocked for implementation.
-`.trim(),
-
-        coding: `
-CURRENT PHASE: coding
-- The candidate is actively writing code. Watch their progress.
-- If they ask for help, give a SUBTLE HINT — never the direct answer.
-- You can see their latest code in <user_code>. Reference it specifically.
-- Keep responses concise (1-3 sentences).
-- If they've finished, encourage them to run tests before submitting.
-`.trim(),
-
-        evaluation: `
-CURRENT PHASE: evaluation
-- The candidate has submitted code. You must provide technical feedback.
-- Reference the <submission_verdict> results (Success or Failure).
-- Explain WHY the code passed or failed specific cases.
-- Offer 1-2 constructive points for improvement (performance, readability).
-- Wrap up the interview professionally. 
-- IMPORTANT: When you are finished and ready to end the session, append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.
-`.trim(),
-
-        completed: `
-CURRENT PHASE: completed
-- The interview is finished. Maintain a professional, celebratory tone.
-- Do not engage in further technical discussion.
-- You MUST append the exact phrase [INTERVIEW_COMPLETE] at the very end of your response.
-`.trim(),
-    }
-
-    return instructions[phase] ?? instructions.coding
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 4. Public API — buildPrompt
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -256,7 +222,9 @@ ${sanitizeInput(problemDescription, { maxLength: 4000 })}
 
     const codeBlock = currentCode ? injectUserCode(currentCode, language) : ''
     const verdictBlock = submissionVerdict ? injectSubmissionVerdict(submissionVerdict) : ''
-    const phaseBlock = getPhaseInstructions(phase)
+
+    // Dynamically load the phase template from the versioned loader
+    const phaseBlock = loadPrompt(phase)
 
     let evaluationBlock = ''
     if ((phase === 'qa' || phase === 'intro') && evaluationMetadata) {
@@ -420,6 +388,8 @@ export {
     injectUserCode,
     injectSubmissionVerdict,
     injectUserMessage,
-    getPhaseInstructions,
+    loadPrompt as getPhaseInstructions, // Alias for backwards compatibility with tests
     buildScorecardPrompt,
+    selectModel,
+    MODELS,
 }

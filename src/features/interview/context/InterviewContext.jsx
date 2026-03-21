@@ -183,6 +183,33 @@ export function InterviewProvider({
             onEnd?.()
         }
 
+        const handlePing = ({ ts }) => {
+            socket.emit('interview:pong', { ts })
+        }
+
+        const handleConnect = async () => {
+            try {
+                // Seamlessly resynchronise messages and basic state without blocking UI
+                const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
+                const json = await res.json()
+                if (json.success && json.data) {
+                    if (json.data.messages) setMessages(json.data.messages)
+                    if (json.data.currentPhase) {
+                        if (json.data.currentPhase !== currentPhase) {
+                            handlePhaseChange(json.data.currentPhase)
+                        } else {
+                            setCurrentPhase(json.data.currentPhase)
+                        }
+                    }
+                    if (json.data.status) setSessionStatus(json.data.status)
+                }
+            } catch (err) {
+                console.warn('[Interview] Background socket rehydration failed:', err)
+            }
+        }
+
+        socket.on('interview:ping', handlePing)
+        socket.on('connect', handleConnect)
         socket.on('interview:ai_stream_chunk', handleAiStream)
         socket.on('interview:phase_change', handlePhaseChange)
         socket.on('interview:run_result', handleRunResult)
@@ -192,6 +219,8 @@ export function InterviewProvider({
         socket.on('interview:ended', handleInterviewEnded)
 
         return () => {
+            socket.off('interview:ping', handlePing)
+            socket.off('connect', handleConnect)
             socket.off('interview:ai_stream_chunk', handleAiStream)
             socket.off('interview:phase_change', handlePhaseChange)
             socket.off('interview:run_result', handleRunResult)
