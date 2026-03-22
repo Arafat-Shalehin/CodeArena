@@ -21,6 +21,7 @@ import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewResult } from '@/models/InterviewResult.model'
+import { UserInterviewStats } from '@/models/UserInterviewStats.model'
 import { buildPrompt, buildScorecardPrompt, selectModel } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
 
@@ -264,6 +265,77 @@ export function initInterviewAIWorker() {
                         finalScore: scorecardData.overallScore || 0,
                         endedAt: new Date(),
                     })
+
+                    // --- c. Append Persistent Analytics Stats (Idempotent) ---
+                    try {
+                        let qaStartTime, qaEndTime, codingStartTime, codingEndTime
+
+                        history.forEach((m) => {
+                            if (m.phase === 'qa') {
+                                if (!qaStartTime) qaStartTime = m.ts
+                                qaEndTime = m.ts
+                            }
+                            if (m.phase === 'coding') {
+                                if (!codingStartTime) codingStartTime = m.ts
+                                codingEndTime = m.ts
+                            }
+                        })
+
+                        const timeInQaPhase =
+                            qaStartTime && qaEndTime
+                                ? Math.round((new Date(qaEndTime) - new Date(qaStartTime)) / 1000)
+                                : 0
+
+                        const timeInCodingPhase =
+                            codingStartTime && codingEndTime
+                                ? Math.round(
+                                      (new Date(codingEndTime) - new Date(codingStartTime)) / 1000
+                                  )
+                                : 0
+
+                        const finalOverallScore = scorecardData.overallScore || 0
+                        const recommendation =
+                            finalOverallScore >= 80
+                                ? 'hire'
+                                : finalOverallScore >= 60
+                                  ? 'maybe'
+                                  : 'no_hire'
+
+                        const statsPayload = {
+                            userId,
+                            sessionId,
+                            problemId: problem._id,
+                            overallScore: finalOverallScore,
+                            strengths: scorecardData.strengths || [],
+                            weaknesses: scorecardData.weaknesses || [],
+                            recommendation,
+                            timeInQaPhase,
+                            timeInCodingPhase,
+                            completedAt: new Date(),
+                        }
+
+                        await UserInterviewStats.updateOne(
+                            { sessionId },
+                            { $setOnInsert: statsPayload },
+                            { upsert: true }
+                        )
+                        console.log(
+                            `[InterviewAI Worker] Idempotent stats insert successful for ${sessionId}`
+                        )
+
+                        // Invalidate the user stats cache
+                        try {
+                            const { redisClient } = await import('@/lib/redis')
+                            await redisClient.del(`user:stats:${userId}`)
+                        } catch (cacheErr) {
+                            console.warn(
+                                '[InterviewAI Worker] Stats cache invalidation failed:',
+                                cacheErr
+                            )
+                        }
+                    } catch (statsErr) {
+                        console.error('[InterviewAI Worker] Stats insert failed:', statsErr)
+                    }
 
                     const pub = await getPublisher()
                     await pub.publish(
