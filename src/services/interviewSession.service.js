@@ -5,7 +5,6 @@ import {
     setInterviewState,
     deleteInterviewState,
     updateInterviewState,
-    getInterviewState,
 } from '../lib/redis/interviewState.js'
 import { getInterviewAIQueue } from '../lib/queue.js'
 import { buildPrompt, selectModel } from './aiConversation.service.js'
@@ -89,8 +88,9 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
 
     try {
         await redisClient.set(`session:status:${session._id}`, 'active', { EX: 8 * 60 * 60 })
+        await redisClient.set(`session:phase:${session._id}`, 'intro', { EX: 7200 })
     } catch (err) {
-        console.error('[createSession] Redis guard init failed:', err)
+        console.error('[createSession] Redis guard/phase init failed:', err)
     }
 
     try {
