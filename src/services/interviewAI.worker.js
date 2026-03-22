@@ -456,9 +456,23 @@ export function initInterviewAIWorker() {
 
             // 6. Update session phase if it was a submission
             if (job.name === 'process-submission-analysis') {
-                // Advance to evaluation (feedback) phase using centralized service
-                const { transitionPhase } = await import('./interviewSession.service')
-                await transitionPhase(sessionId, 'evaluation')
+                // Advance to evaluation (feedback) phase using deterministic state machine
+                const { requestPhaseTransition } = await import('./interviewPhase.service')
+                const { redisClient } = await import('@/lib/redis')
+
+                const result = await requestPhaseTransition(
+                    sessionId,
+                    'coding',
+                    'evaluation',
+                    redisClient
+                )
+
+                if (!result.success) {
+                    console.warn(
+                        `[InterviewAI Worker] Shielded invalid phase transition coding->evaluation: ${result.reason}`
+                    )
+                    return { success: false, reason: result.reason }
+                }
 
                 // b. Emit phase change to client
                 const pub = await getPublisher()
@@ -471,11 +485,24 @@ export function initInterviewAIWorker() {
             // 7. Handle Interactive Phase Transitions (Intro -> QA -> Coding)
             if (job.name === 'process-chat') {
                 const userMessages = history.filter((m) => m.role === 'user')
+                const { requestPhaseTransition } = await import('./interviewPhase.service')
+                const { redisClient } = await import('@/lib/redis')
 
                 if (session.currentPhase === 'intro') {
                     // Move to QA after the first user greeting
-                    const { transitionPhase } = await import('./interviewSession.service')
-                    await transitionPhase(sessionId, 'qa')
+                    const result = await requestPhaseTransition(
+                        sessionId,
+                        'intro',
+                        'qa',
+                        redisClient
+                    )
+
+                    if (!result.success) {
+                        console.warn(
+                            `[InterviewAI Worker] Shielded invalid phase transition intro->qa: ${result.reason}`
+                        )
+                        return { success: false, reason: result.reason }
+                    }
 
                     const pub = await getPublisher()
                     await pub.publish(
@@ -486,8 +513,19 @@ export function initInterviewAIWorker() {
                     const qaCount = userMessages.filter((m) => m.phase === 'qa').length
                     if (qaCount >= 2) {
                         // Move to coding after 2 QA turns
-                        const { transitionPhase } = await import('./interviewSession.service')
-                        await transitionPhase(sessionId, 'coding')
+                        const result = await requestPhaseTransition(
+                            sessionId,
+                            'qa',
+                            'coding',
+                            redisClient
+                        )
+
+                        if (!result.success) {
+                            console.warn(
+                                `[InterviewAI Worker] Shielded invalid phase transition qa->coding: ${result.reason}`
+                            )
+                            return { success: false, reason: result.reason }
+                        }
 
                         const pub = await getPublisher()
                         await pub.publish(
