@@ -94,4 +94,23 @@ export function getPlagiarismQueue() {
     return getQueue('plagiarism-checks')
 }
 
+export function getInterviewSummarizeQueue() {
+    if (!queues['interview-summarize']) {
+        queues['interview-summarize'] = new Queue('interview-summarize', {
+            connection,
+            defaultJobOptions: {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000, // Recover from rate limits gracefully
+                },
+                removeOnComplete: 100,
+                removeOnFail: 50,
+                timeout: 120000, // 2 mins max
+            },
+        })
+    }
+    return queues['interview-summarize']
+}
+
 export { connection }

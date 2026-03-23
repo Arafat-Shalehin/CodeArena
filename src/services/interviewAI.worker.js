@@ -24,6 +24,7 @@ import { InterviewResult } from '@/models/InterviewResult.model'
 import { UserInterviewStats } from '@/models/UserInterviewStats.model'
 import { buildPrompt, buildScorecardPrompt, selectModel } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
+import { z } from 'zod'
 
 // ── Redis publisher (separate client; cannot share the subscriber client) ──────
 const redisUrl = process.env.REDIS_URL || ''
@@ -60,31 +61,43 @@ export function interviewAIChannel(sessionId) {
     return `interview:ai:${sessionId}`
 }
 
-function extractJSON(rawText) {
-    if (!rawText) throw new Error('Empty AI response')
+const scorecardSchema = z
+    .object({
+        overallScore: z.coerce.number().min(0).max(100),
+        strengths: z.array(z.string().trim()),
+        weaknesses: z.array(z.string().trim()),
+        recommendation: z.enum(['hire', 'maybe', 'no_hire']).catch('maybe'),
+        // Legacy mapping compatibility
+        communicationScore: z.coerce.number().optional(),
+        codeQualityScore: z.coerce.number().optional(),
+        codingPerformanceScore: z.coerce.number().optional(),
+        problemSolvingScore: z.coerce.number().optional(),
+        approachScore: z.coerce.number().optional(),
+        technicalAccuracyScore: z.coerce.number().optional(),
+        aiSummary: z.string().trim().optional(),
+        recommendations: z.array(z.string().trim()).optional(),
+    })
+    .strip()
+
+function parseScorecard(rawText) {
+    if (!rawText || rawText.length > 10000) throw new Error('Payload empty or exceeds 10KB limit')
 
     // Find the first occurrence of '{' and the last occurrence of '}'
     const startIndex = rawText.indexOf('{')
     const endIndex = rawText.lastIndexOf('}')
 
     if (startIndex === -1 || endIndex === -1) {
-        console.error('[extractJSON] Raw text with no JSON object:', rawText)
+        console.error('[parseScorecard] Raw text with no JSON object:', rawText)
         throw new Error('No valid JSON object found in AI response')
     }
 
-    const jsonCandidate = rawText.substring(startIndex, endIndex + 1).trim()
+    const clean = rawText.substring(startIndex, endIndex + 1).trim()
 
     try {
-        return JSON.parse(jsonCandidate)
-    } catch (parseError) {
-        console.error('[extractJSON] Parse failed for candidate:', jsonCandidate)
-        // Try one more thing: strip backticks if they somehow leaked into the candidate
-        const ultraClean = jsonCandidate.replace(/`/g, '').trim()
-        try {
-            return JSON.parse(ultraClean)
-        } catch (e) {
-            throw new Error(`Failed to parse JSON: ${parseError.message}`)
-        }
+        const parsed = JSON.parse(clean)
+        return scorecardSchema.parse(parsed)
+    } catch (err) {
+        throw new Error(`Validation failed: ${err.message}`)
     }
 }
 
@@ -215,13 +228,74 @@ export function initInterviewAIWorker() {
                         fullResponse += chunk
                     }
 
-                    // Robust JSON extraction
+                    // Strict Zod JSON Extraction
                     console.log('[InterviewAI Worker] Raw AI Response length:', fullResponse.length)
-                    const scorecardData = extractJSON(fullResponse)
-                    console.log(
-                        '[InterviewAI Worker] Parsed scorecard successfully. Overall Score:',
-                        scorecardData.overallScore
-                    )
+                    let scorecardData
+
+                    try {
+                        scorecardData = parseScorecard(fullResponse)
+                        console.log(
+                            '[InterviewAI Worker] Parsed scorecard successfully. Overall Score:',
+                            scorecardData.overallScore
+                        )
+                    } catch (validationErr) {
+                        console.warn(
+                            `[InterviewAI Worker] Scorecard Validation Failed: ${validationErr.message}. Attempting ONE correction...`
+                        )
+                        console.warn(
+                            '[InterviewAI Worker] Raw malformed response:',
+                            fullResponse.substring(0, 200) + '...'
+                        )
+
+                        // 1. Retry Strategy
+                        const correctionPrompt = `The JSON you returned was invalid. Return ONLY a valid JSON object matching this schema:
+{
+  "overallScore": number (0-100),
+  "strengths": ["string", ...],
+  "weaknesses": ["string", ...],
+  "recommendation": "hire" | "maybe" | "no_hire",
+  "aiSummary": "string",
+  "communicationScore": number (0-100),
+  "codeQualityScore": number (0-100),
+  "problemSolvingScore": number (0-100),
+  "approachScore": number (0-100)
+}
+Do NOT include markdown, explanations, or extra text. ONLY raw JSON.`
+
+                        messages.push({ role: 'assistant', content: fullResponse })
+                        messages.push({ role: 'user', content: correctionPrompt })
+
+                        const correctionStream = generateInterviewChatResponse({
+                            systemPrompt,
+                            messages,
+                            model,
+                            phase: 'completed',
+                            jobType: job.name,
+                        })
+
+                        let correctionResponse = ''
+                        for await (const chunk of correctionStream) {
+                            correctionResponse += chunk
+                        }
+
+                        // 2. Final Fallback (FAIL-SAFE)
+                        try {
+                            scorecardData = parseScorecard(correctionResponse)
+                            console.log('[InterviewAI Worker] Correction succeeded.')
+                        } catch (fatalErr) {
+                            console.error(
+                                '[InterviewAI Worker] Correction failed too. Triggering Fallback logic.',
+                                fatalErr
+                            )
+                            scorecardData = {
+                                overallScore: 0,
+                                strengths: [],
+                                weaknesses: [],
+                                recommendation: 'maybe',
+                                error: 'parse_failure',
+                            }
+                        }
+                    }
 
                     // a. Update result document
                     const result = await InterviewResult.findOneAndUpdate(
@@ -244,6 +318,7 @@ export function initInterviewAIWorker() {
                             strengths: scorecardData.strengths || [],
                             weaknesses: scorecardData.weaknesses || [],
                             recommendations: scorecardData.recommendations || [],
+                            recommendation: scorecardData.recommendation || 'maybe',
                             createdAt: new Date(),
                             error: false, // Ensure error flag is false on success
                         },
@@ -428,7 +503,19 @@ export function initInterviewAIWorker() {
                 .sort({ ts: -1 })
                 .lean()
 
-            // Build prompt
+            // --- Background Summarization Context ---
+            let fetchedSummary = null
+            try {
+                const { redisClient } = await import('@/lib/redis')
+                fetchedSummary = await redisClient.get(`session:summary:${sessionId}`)
+            } catch (err) {
+                console.warn('[InterviewAI Worker] Redis summary fetch failed:', err.message)
+            }
+
+            // Build prompt — apply sliding window cap when summary context is available
+            const rawHistory = job.name === 'process-chat' ? history.slice(0, -1) : history
+            const cappedHistory = fetchedSummary ? rawHistory.slice(-12) : rawHistory
+
             const { systemPrompt, messages } = buildPrompt({
                 problemDescription: problem.description,
                 currentCode: code || lastSnapshot?.code || '',
@@ -436,8 +523,9 @@ export function initInterviewAIWorker() {
                 phase: job.name === 'process-submission-analysis' ? 'evaluation' : currentPhase,
                 submissionVerdict: submissionVerdict || null,
                 userMessage: adjustedContent || '',
-                history: job.name === 'process-chat' ? history.slice(0, -1) : history, // exclude the just-saved user turn if it was a chat job
+                history: cappedHistory,
                 evaluationMetadata,
+                summaryContext: fetchedSummary,
             })
 
             // 3. Stream AI response and publish each chunk to Redis
@@ -525,6 +613,44 @@ export function initInterviewAIWorker() {
                 content: fullResponse,
                 ts: new Date(),
             })
+
+            // --- Background Summarization Trigger ---
+            try {
+                const currentMessageCount = await InterviewMessage.countDocuments({ sessionId })
+                if (currentMessageCount > 20 && currentMessageCount % 10 === 0) {
+                    const { redisClient } = await import('@/lib/redis')
+                    const metaKey = `session:summary:meta:${sessionId}`
+                    const metaRaw = await redisClient.get(metaKey)
+                    const meta = metaRaw ? JSON.parse(metaRaw) : { lastSummarizedIndex: -1 }
+
+                    const fromIndex = meta.lastSummarizedIndex + 1
+                    const toIndex = currentMessageCount - 12
+
+                    if (toIndex > fromIndex) {
+                        const { getInterviewSummarizeQueue } = await import('@/lib/queue')
+                        const summarizeQueue = getInterviewSummarizeQueue()
+
+                        await summarizeQueue.add(
+                            'summarize',
+                            { sessionId, fromIndex, toIndex },
+                            { jobId: `summarize-${sessionId}-${toIndex}` } // Queue-level idempotency
+                        )
+
+                        console.log(
+                            `[InterviewAI Worker] Enqueued summarization for ${sessionId} [${fromIndex} -> ${toIndex}]`
+                        )
+
+                        // Optimistically update meta to prevent duplicate enqueues for this step
+                        await redisClient.set(
+                            metaKey,
+                            JSON.stringify({ lastSummarizedIndex: toIndex }),
+                            { EX: 8 * 60 * 60 }
+                        )
+                    }
+                }
+            } catch (sumErr) {
+                console.error('[InterviewAI Worker] Failed to enqueue summarization:', sumErr)
+            }
 
             // 6. Update session phase if it was a submission
             if (job.name === 'process-submission-analysis') {
