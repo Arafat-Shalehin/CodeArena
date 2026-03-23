@@ -79,6 +79,11 @@ const interviewResultSchema = new mongoose.Schema(
                 type: String,
             },
         ],
+        recommendation: {
+            type: String,
+            enum: ['hire', 'maybe', 'no_hire'],
+            default: 'maybe',
+        },
         createdAt: {
             type: Date,
             default: Date.now,
