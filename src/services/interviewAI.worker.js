@@ -22,6 +22,7 @@ import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewResult } from '@/models/InterviewResult.model'
 import { UserInterviewStats } from '@/models/UserInterviewStats.model'
+import { UserAggregateStats } from '@/models/UserAggregateStats.model'
 import { buildPrompt, buildScorecardPrompt, selectModel } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
 import { z } from 'zod'
@@ -394,11 +395,39 @@ Do NOT include markdown, explanations, or extra text. ONLY raw JSON.`
                             { $setOnInsert: statsPayload },
                             { upsert: true }
                         )
-                        console.log(
-                            `[InterviewAI Worker] Idempotent stats insert successful for ${sessionId}`
+
+                        // --- 2. Update UserAggregateStats (Idempotent & Cached) ---
+                        // Ensure we only increment once per session, even on worker retries.
+                        const weaknessIncrements = {}
+                        if (scorecardData.weaknesses) {
+                            scorecardData.weaknesses.forEach((w) => {
+                                // Sanitize key: MongoDB Map keys cannot contain . or $
+                                const safeKey = w.replace(/[.$]/g, '_')
+                                weaknessIncrements[`weaknessFrequency.${safeKey}`] = 1
+                            })
+                        }
+
+                        const aggregateUpdate = await UserAggregateStats.updateOne(
+                            { userId, processedSessions: { $ne: sessionId } },
+                            {
+                                $addToSet: { processedSessions: sessionId },
+                                $inc: { totalSessions: 1, ...weaknessIncrements },
+                                $set: { lastUpdated: new Date() },
+                            },
+                            { upsert: true }
                         )
 
-                        // Invalidate the user stats cache
+                        if (aggregateUpdate.modifiedCount === 0 && !aggregateUpdate.upsertedCount) {
+                            console.log(
+                                `[Stats] Skipping idempotent update for session: ${sessionId}`
+                            )
+                        } else {
+                            console.log(
+                                `[Stats] Aggregate stats updated successfully for user ${userId}`
+                            )
+                        }
+
+                        // Invalidate the legacy user stats cache (if still used)
                         try {
                             const { redisClient } = await import('@/lib/redis')
                             await redisClient.del(`user:stats:${userId}`)
@@ -617,35 +646,54 @@ Do NOT include markdown, explanations, or extra text. ONLY raw JSON.`
             // --- Background Summarization Trigger ---
             try {
                 const currentMessageCount = await InterviewMessage.countDocuments({ sessionId })
+
+                // Trigger check: every 10 messages after the initial 20
                 if (currentMessageCount > 20 && currentMessageCount % 10 === 0) {
                     const { redisClient } = await import('@/lib/redis')
-                    const metaKey = `session:summary:meta:${sessionId}`
-                    const metaRaw = await redisClient.get(metaKey)
-                    const meta = metaRaw ? JSON.parse(metaRaw) : { lastSummarizedIndex: -1 }
+                    const cursorKey = `session:summary:cursor:${sessionId}`
+                    const lockKey = `session:summary:lock:${sessionId}`
 
-                    const fromIndex = meta.lastSummarizedIndex + 1
-                    const toIndex = currentMessageCount - 12
+                    // 1. Get current progress cursor
+                    const cursorId = await redisClient.get(cursorKey)
 
-                    if (toIndex > fromIndex) {
-                        const { getInterviewSummarizeQueue } = await import('@/lib/queue')
-                        const summarizeQueue = getInterviewSummarizeQueue()
+                    // 2. Find unsummarized messages after the cursor
+                    const query = { sessionId }
+                    if (cursorId) {
+                        query._id = { $gt: cursorId }
+                    }
 
-                        await summarizeQueue.add(
-                            'summarize',
-                            { sessionId, fromIndex, toIndex },
-                            { jobId: `summarize-${sessionId}-${toIndex}` } // Queue-level idempotency
-                        )
+                    // Get the first 10 unsummarized messages to determine the range
+                    const unsummarized = await InterviewMessage.find(query)
+                        .sort({ _id: 1 })
+                        .limit(10)
+                        .select('_id')
+                        .lean()
 
-                        console.log(
-                            `[InterviewAI Worker] Enqueued summarization for ${sessionId} [${fromIndex} -> ${toIndex}]`
-                        )
+                    // Only proceed if we have a significant batch (at least 10 messages)
+                    if (unsummarized.length >= 10) {
+                        const fromId = unsummarized[0]._id
+                        const toId = unsummarized[unsummarized.length - 1]._id
 
-                        // Optimistically update meta to prevent duplicate enqueues for this step
-                        await redisClient.set(
-                            metaKey,
-                            JSON.stringify({ lastSummarizedIndex: toIndex }),
-                            { EX: 8 * 60 * 60 }
-                        )
+                        // 3. Acquire Safe Mutex (10-minute TTL to handle extreme LLM latency)
+                        const acquired = await redisClient.set(lockKey, '1', { NX: true, EX: 600 })
+                        if (acquired) {
+                            const { getInterviewSummarizeQueue } = await import('@/lib/queue')
+                            const summarizeQueue = getInterviewSummarizeQueue()
+
+                            await summarizeQueue.add(
+                                'summarize',
+                                { sessionId, fromId, toId },
+                                { jobId: `summarize:${sessionId}:${toId}` } // Job-level idempotency
+                            )
+
+                            console.log(
+                                `[InterviewAI Worker] Mutex acquired. Enqueued summarization for ${sessionId} [${fromId} -> ${toId}]`
+                            )
+                        } else {
+                            console.log(
+                                `[InterviewAI Worker] Summarization lock active for ${sessionId}, skipping enqueue.`
+                            )
+                        }
                     }
                 }
             } catch (sumErr) {

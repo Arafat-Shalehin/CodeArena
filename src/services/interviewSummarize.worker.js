@@ -13,30 +13,37 @@ export function initInterviewSummarizeWorker() {
     const worker = new Worker(
         'interview-summarize',
         async (job) => {
-            const { sessionId, fromIndex, toIndex } = job.data
+            const { sessionId, fromId, toId } = job.data
 
-            console.log(`[Summarize Worker] Processing ${sessionId} [${fromIndex} -> ${toIndex}]`)
+            console.log(`[Summarize Worker] Processing ${sessionId} [${fromId} -> ${toId}]`)
 
             const { redisClient } = await import('@/lib/redis')
             const lockKey = `session:summary:lock:${sessionId}`
-
-            // 1. Acquire Lock to prevent overlapping merges
-            const acquired = await redisClient.set(lockKey, 'locked', { NX: true, EX: 60 })
-            if (!acquired) {
-                console.warn(`[Summarize Worker] Skipped ${sessionId} - Lock active`)
-                return { skipped: true, reason: 'locked' }
-            }
+            const cursorKey = `session:summary:cursor:${sessionId}`
+            const summaryKey = `session:summary:${sessionId}`
 
             try {
+                // 1. Idempotency Guard: Skip if this range (or a later one) is already processed
+                const existingCursor = await redisClient.get(cursorKey)
+                if (existingCursor && existingCursor >= toId) {
+                    console.log(
+                        `[Summarize Worker] Index ${toId} already summarized for ${sessionId}, skipping.`
+                    )
+                    return { skipped: true, reason: 'already_processed' }
+                }
+
                 await dbConnect()
 
-                // 2. Fetch Messages incrementally
-                const messages = await InterviewMessage.find({ sessionId })
-                    .sort({ ts: 1 })
-                    .skip(fromIndex)
-                    .limit(toIndex - fromIndex + 1)
+                // 2. Fetch Messages in the specific range
+                const messages = await InterviewMessage.find({
+                    sessionId,
+                    _id: { $gte: fromId, $lte: toId },
+                }).sort({ _id: 1 })
 
                 if (!messages || messages.length === 0) {
+                    console.warn(
+                        `[Summarize Worker] No messages found in range ${fromId} -> ${toId}`
+                    )
                     return { skipped: true, reason: 'no_messages' }
                 }
 
@@ -75,9 +82,7 @@ RULES:
                 }
 
                 // 5. Append Merge into existing Redis state
-                const summaryKey = `session:summary:${sessionId}`
                 const existingSummary = await redisClient.get(summaryKey)
-
                 const finalSummary = existingSummary
                     ? existingSummary + '\n\n---\n\n' + summaryBlock.trim()
                     : summaryBlock.trim()
@@ -85,21 +90,29 @@ RULES:
                 // Save with TTL (8 hours)
                 await redisClient.set(summaryKey, finalSummary, { EX: 8 * 60 * 60 })
 
+                // 6. LATE COMMIT: Only advance cursor after successful persistence
+                await redisClient.set(cursorKey, toId, { EX: 24 * 60 * 60 })
+
                 console.log(
-                    `[Summarize Worker] Successfully summarized ${messages.length} messages. Payload size: ${finalSummary.length} chars`
+                    `[Summarize Worker] Successfully summarized ${messages.length} messages for ${sessionId}. Cursor -> ${toId}`
                 )
 
                 return {
                     success: true,
                     messagesSummarized: messages.length,
-                    size: finalSummary.length,
+                    toId,
                 }
             } catch (err) {
-                console.error(`[Summarize Worker] Fault: ${err.message}`)
-                throw err
+                console.error(
+                    `[Summarize Worker] Fatal processing error for ${sessionId}:`,
+                    err.message
+                )
+                throw err // Trigger BullMQ retry
             } finally {
-                // Release Concurrency Lock
-                await redisClient.del(lockKey)
+                // 7. FAIL-SAFE: Always release the mutex lock
+                await redisClient.del(lockKey).catch((delErr) => {
+                    console.error('[Summarize Worker] Lock release failed:', delErr.message)
+                })
             }
         },
         { connection }

@@ -20,14 +20,42 @@ import { interviewExecutionChannel } from '@/services/interviewExecution.worker'
 import { createClient } from 'redis'
 import { redisClient } from '@/lib/redis'
 
-async function isSessionActive(client, sessionId) {
+async function isSessionActive(sessionId) {
+    const redisKey = `session:active:${sessionId}`
+
+    // Tier 1: Redis Check
     try {
-        const status = await client.get(`session:status:${sessionId}`)
-        return status === 'active'
+        if (redisClient.isOpen) {
+            const cachedStatus = await redisClient.get(redisKey)
+            if (cachedStatus !== null) {
+                return cachedStatus === '1'
+            }
+        }
     } catch (err) {
-        // Redis failure fallback: DO NOT block user actions
-        console.warn(`[Redis] Failed to check status for ${sessionId}:`, err.message)
-        return true
+        console.warn(
+            `[Interview NS] Redis check failed for session ${sessionId}, falling back to DB:`,
+            err.message
+        )
+    }
+
+    // Tier 2: DB Fallback
+    try {
+        await dbConnect()
+        const session = await InterviewSession.findById(sessionId).select('status').lean()
+        const isActive = session?.status === 'active'
+
+        // Backfill Redis if active
+        if (isActive && redisClient.isOpen) {
+            await redisClient.set(redisKey, '1', { EX: 3600 }).catch(() => {})
+        }
+
+        return isActive
+    } catch (dbErr) {
+        console.error(
+            `[Interview NS] Critical: Both Redis and DB failed for session ${sessionId}:`,
+            dbErr.message
+        )
+        return false // Fail Closed
     }
 }
 
@@ -46,95 +74,121 @@ const redisConfig = redisUrl
           password: process.env.REDIS_PASSWORD || undefined,
       }
 
-// sessionId → Set of socketIds
+// ── Singleton Redis Pattern Subscriber (Production-Grade) ───────────────────
 const sessionSockets = new Map()
-
-// sessionId → boolean (subscription active status)
-const sessionSubscribed = new Map()
-
 let sharedSubscriber = null
-
-// Expose the namespace globally so the strict-reference redis listener can invoke it
-let globalInterviewNs = null
+let subscriberPromise = null
+let isSubscribed = false
 
 /**
- * Global message handler for all Redis subscriptions.
- * Dispatches messages to the correct Socket.io room based on the channel name.
+ * Initializes a single Redis pattern subscriber for the entire namespace.
+ * Uses a promise-based singleton pattern to prevent duplicate clients under load.
  */
-function handleRedisMessage(message, channel) {
-    if (!globalInterviewNs) return
+async function getSharedSubscriber(io) {
+    if (sharedSubscriber && isSubscribed) return sharedSubscriber
+    if (subscriberPromise) return subscriberPromise
 
+    subscriberPromise = (async () => {
+        try {
+            console.log('[RedisSubscriber] Initializing singleton pattern subscriber...')
+            const sub = createClient(redisConfig)
+
+            sub.on('error', (err) => {
+                console.error('[RedisSubscriber] Fatal connection error:', err)
+                // Reset singleton so it can be re-initialized on the next attempt
+                sharedSubscriber = null
+                subscriberPromise = null
+                isSubscribed = false
+            })
+
+            sub.on('reconnecting', () => {
+                console.warn('[RedisSubscriber] Connection lost, reconnecting...')
+            })
+
+            sub.on('ready', async () => {
+                console.log(
+                    '[RedisSubscriber] Connection ready, establishing pattern subscriptions...'
+                )
+                try {
+                    // IDEMPOTENCY GUARD: Ensure we don't stack subscriptions on flapping connections
+                    if (isSubscribed) {
+                        console.log('[RedisSubscriber] Already subscribed, skipping pSubscribe.')
+                        return
+                    }
+
+                    await sub.pSubscribe('interview:ai:*', (message, channel) => {
+                        handleSharedMessage(io, message, channel, 'ai')
+                    })
+                    await sub.pSubscribe('interview:execution:*', (message, channel) => {
+                        handleSharedMessage(io, message, channel, 'execution')
+                    })
+
+                    isSubscribed = true
+                    console.log('[RedisSubscriber] Global pattern subscriptions active.')
+                } catch (subErr) {
+                    console.error(
+                        '[RedisSubscriber] Failed to establish pattern subscriptions:',
+                        subErr
+                    )
+                }
+            })
+
+            await sub.connect()
+            sharedSubscriber = sub
+            return sub
+        } catch (err) {
+            console.error('[RedisSubscriber] Initialization failed:', err)
+            subscriberPromise = null
+            throw err
+        }
+    })()
+
+    return subscriberPromise
+}
+
+/**
+ * Unified message dispatcher for the singleton subscriber.
+ * Extracts sessionId from the Redis channel and emits to the correct Socket.IO room.
+ */
+function handleSharedMessage(io, message, channel, type) {
     try {
         const parsed = JSON.parse(message)
         const parts = channel.split(':')
-        const targetSessionId = parts[parts.length - 1]
-        const targetRoom = `interview:${targetSessionId}`
+        const targetSessionId = parts[parts.length - 1] // Channel format: interview:type:sessionId
 
-        const isAiChannel = channel.includes(':ai:')
-        const isExecChannel = channel.includes(':execution:')
-
-        if (isAiChannel) {
+        if (type === 'ai') {
             if (parsed.type === 'error') {
-                globalInterviewNs.to(targetRoom).emit('interview:ai_error', parsed)
-                return
+                io.to(targetSessionId).emit('interview:ai_error', parsed)
             } else if (parsed.analysis) {
-                globalInterviewNs.to(targetRoom).emit('interview:ai_analysis', parsed)
+                io.to(targetSessionId).emit('interview:ai_analysis', parsed)
             } else if (parsed.scorecard) {
-                globalInterviewNs.to(targetRoom).emit('interview:scorecard', parsed.scorecard)
+                io.to(targetSessionId).emit('interview:scorecard', parsed.scorecard)
             } else if (parsed.phase) {
-                globalInterviewNs.to(targetRoom).emit('interview:phase_change', parsed.phase)
+                io.to(targetSessionId).emit('interview:phase_change', parsed.phase)
             } else if (parsed.chunk !== undefined) {
-                globalInterviewNs.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
+                io.to(targetSessionId).emit('interview:ai_stream_chunk', parsed)
             }
-        } else if (isExecChannel) {
+        } else if (type === 'execution') {
             if (parsed.jobType === 'run') {
-                globalInterviewNs.to(targetRoom).emit('interview:run_result', parsed.result)
+                io.to(targetSessionId).emit('interview:run_result', parsed.result)
             } else if (parsed.jobType === 'submit') {
-                globalInterviewNs.to(targetRoom).emit('interview:submission_result', parsed.result)
+                io.to(targetSessionId).emit('interview:submission_result', parsed.result)
             }
         }
     } catch (err) {
-        console.error('[Interview NS] Message parsing error:', err)
+        console.error('[Interview NS] Pattern message parsing error:', err)
     }
 }
 
-async function getSharedSubscriber() {
-    if (sharedSubscriber) return sharedSubscriber
-    const client = createClient(redisConfig)
-    client.on('error', (err) => console.error('[Interview NS] Redis shared sub error:', err))
-    await client.connect()
-    sharedSubscriber = client
-    return sharedSubscriber
-}
-
-async function registerSessionSocket(sessionId, socketId, interviewNs) {
+/**
+ * Transitioning away from per-socket subscriptions to global singleton pattern.
+ * These helpers are now largely for socket tracking within the process.
+ */
+async function registerSessionSocket(sessionId, socketId) {
     if (!sessionSockets.has(sessionId)) {
         sessionSockets.set(sessionId, new Set())
     }
-
-    const sockets = sessionSockets.get(sessionId)
-    sockets.add(socketId)
-
-    // Ensure we only have 1 active Redis subscriber per session across all tabs
-    if (!sessionSubscribed.get(sessionId)) {
-        try {
-            const sub = await getSharedSubscriber()
-
-            const aiChannel = interviewAIChannel(sessionId)
-            const execChannel = interviewExecutionChannel(sessionId)
-
-            // node-redis v4/v5 requires the EXACT listener reference for stable garbage collection.
-            await sub.subscribe(aiChannel, handleRedisMessage)
-            await sub.subscribe(execChannel, handleRedisMessage)
-
-            sessionSubscribed.set(sessionId, true)
-            console.log(`[Interview NS] Subscribed to session ${sessionId}`)
-        } catch (err) {
-            console.error('[Interview NS] Redis subscribe error:', err)
-        }
-    } else {
-        console.log(`[Interview NS] Reusing existing subscription for session ${sessionId}`)
-    }
+    sessionSockets.get(sessionId).add(socketId)
 }
 
 async function unregisterSessionSocket(sessionId, socketId) {
@@ -142,24 +196,9 @@ async function unregisterSessionSocket(sessionId, socketId) {
     if (!sockets) return
 
     sockets.delete(socketId)
-
-    // Only unsubscribe from Redis when the absolute last browser tab closes
     if (sockets.size === 0) {
-        try {
-            const sub = await getSharedSubscriber()
-            const aiChannel = interviewAIChannel(sessionId)
-            const execChannel = interviewExecutionChannel(sessionId)
-
-            // Explicitly pass the matching reference to cleanly splice the internal emitter arrays
-            await sub.unsubscribe(aiChannel, handleRedisMessage)
-            await sub.unsubscribe(execChannel, handleRedisMessage)
-            console.log(`[Interview NS] Unsubscribed from session ${sessionId}`)
-        } catch (err) {
-            console.error(`[Interview NS] Redis unsubscribe error for ${sessionId}:`, err)
-        }
-
         sessionSockets.delete(sessionId)
-        sessionSubscribed.delete(sessionId)
+        console.log(`[Interview NS] Last local client left session ${sessionId}`)
     }
 }
 
@@ -167,7 +206,14 @@ async function unregisterSessionSocket(sessionId, socketId) {
 
 export function registerInterviewNamespace(io) {
     const interviewNs = io.of('/interview')
-    globalInterviewNs = interviewNs
+
+    // Initialize singleton subscriber at startup
+    getSharedSubscriber(interviewNs).catch((err) => {
+        console.error(
+            '[Interview NS] Critical: Redis subscriber failed to initialize:',
+            err.message
+        )
+    })
 
     // Middleware for authentication
     interviewNs.use(async (socket, next) => {
@@ -192,7 +238,7 @@ export function registerInterviewNamespace(io) {
 
     interviewNs.on('connection', async (socket) => {
         const sessionId = socket.sessionId
-        const roomName = `interview:${sessionId}`
+        const roomName = sessionId // Consistent with io.to(sessionId) emits
 
         console.log(
             `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
@@ -211,7 +257,27 @@ export function registerInterviewNamespace(io) {
 
         // Force connection into room and register the socket to the Singleton
         socket.join(roomName)
-        await registerSessionSocket(sessionId, socket.id, interviewNs)
+        await registerSessionSocket(sessionId, socket.id)
+
+        // --- Intro Phase Sim-Streaming (Execution optimization) ---
+        // If this is a fresh session (only 1 message: the intro), sim-stream it to trigger UI animations
+        try {
+            const messages = await InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(2)
+            if (
+                messages.length === 1 &&
+                messages[0].phase === 'intro' &&
+                messages[0].role === 'ai'
+            ) {
+                const greeting = messages[0].content
+                socket.emit('interview:ai_stream_chunk', { chunk: greeting, done: false })
+                socket.emit('interview:ai_stream_chunk', { done: true })
+                console.log(
+                    `[Intro] Sim-streamed greeting for user ${socket.userId} in session ${sessionId}`
+                )
+            }
+        } catch (err) {
+            console.error('[Intro] Sim-streaming failed:', err.message)
+        }
 
         // 1. Client joins their dedicated session room (redundant due to ^ but kept for backwards comp)
         socket.on('interview:join', async () => {
@@ -221,7 +287,7 @@ export function registerInterviewNamespace(io) {
 
         // 2. Client sends a code snapshot (for playback/history)
         socket.on('interview:code_snapshot', async (payload) => {
-            if (!(await isSessionActive(redisClient, sessionId))) {
+            if (!(await isSessionActive(sessionId))) {
                 console.warn(`[Guard Blocked] code_snapshot on session ${sessionId}`)
                 return
             }
@@ -245,7 +311,7 @@ export function registerInterviewNamespace(io) {
 
         // 3. Client attempts to run code (Refactored to Background Worker)
         socket.on('interview:run', async (payload) => {
-            if (!(await isSessionActive(redisClient, sessionId))) {
+            if (!(await isSessionActive(sessionId))) {
                 console.warn(`[Guard Blocked] run on session ${sessionId}`)
                 socket.emit('interview:error', {
                     code: 'SESSION_ENDED',
@@ -280,7 +346,7 @@ export function registerInterviewNamespace(io) {
 
         // 4. Client attempts to submit code (Refactored to Background Worker)
         socket.on('interview:submit', async (payload) => {
-            if (!(await isSessionActive(redisClient, sessionId))) {
+            if (!(await isSessionActive(sessionId))) {
                 console.warn(`[Guard Blocked] submit on session ${sessionId}`)
                 socket.emit('interview:error', {
                     code: 'SESSION_ENDED',
@@ -326,7 +392,7 @@ export function registerInterviewNamespace(io) {
 
         // 5. Client sends a chat message → enqueue AI job
         socket.on('interview:chat_message', async (payload) => {
-            if (!(await isSessionActive(redisClient, sessionId))) {
+            if (!(await isSessionActive(sessionId))) {
                 console.warn(`[Guard Blocked] chat_message on session ${sessionId}`)
                 socket.emit('interview:error', {
                     code: 'SESSION_ENDED',
