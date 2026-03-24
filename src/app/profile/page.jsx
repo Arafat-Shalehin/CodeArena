@@ -39,6 +39,8 @@ export default function ProfilePage() {
     const [hasMoreSubmissions, setHasMoreSubmissions] = useState(true)
     const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false)
 
+    const userId = user?.id || user?._id
+
     useEffect(() => {
         if (!isLoading && !user) {
             router.replace('/login?error=unauthorized')
@@ -46,12 +48,12 @@ export default function ProfilePage() {
     }, [user, isLoading, router])
 
     useEffect(() => {
-        if (user) {
+        if (userId) {
             fetchSubmissions(5, 0, true)
             // Background sync to ensure stats/heatmap are up to date
             syncUser?.()
         }
-    }, [user, syncUser])
+    }, [userId, syncUser])
 
     const fetchSubmissions = async (limit = 5, offset = 0, reset = false) => {
         if (!user) return
@@ -84,7 +86,7 @@ export default function ProfilePage() {
         fetchSubmissions(100, 0, true)
     }
 
-    if (isLoading || (!user && !isLoading)) {
+    if (isLoading) {
         return (
             <div className="bg-bg-page flex min-h-screen items-center justify-center">
                 <Loader2 className="text-accent h-12 w-12 animate-spin" />

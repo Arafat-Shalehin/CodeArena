@@ -2,9 +2,21 @@ import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
 import { protect } from '@/middlewares/auth.middleware'
 import { NextResponse } from 'next/server'
-import { getRecommendedProblems, getDiscoveryProblems } from '@/services/recommendation.service'
+import { recommendationService } from '@/services/recommendation.service'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * A/B Testing: Hash User ID to a bucket (0-99)
+ */
+function hashUserId(userIdStr) {
+    let hash = 0
+    for (let i = 0; i < userIdStr.length; i++) {
+        hash = (hash << 5) - hash + userIdStr.charCodeAt(i)
+        hash |= 0 // Convert to 32bit integer
+    }
+    return Math.abs(hash)
+}
 
 /**
  * GET /api/user/recommendations
@@ -24,26 +36,36 @@ export async function GET(request) {
             return NextResponse.json({
                 success: true,
                 data: {
-                    weakTags: [],
                     recommendations: [],
-                    discoveryProblems: [],
-                    discoveryTags: [],
-                    userLevel: 'easy',
                 },
             })
         }
 
-        // Use the centralized recommendation service
-        const [recommendationResult, discoveryResult] = await Promise.all([
-            getRecommendedProblems(userAuth.id, 3),
-            getDiscoveryProblems(userAuth.id, 2),
-        ])
+        // Feature flags / A/B Testing Configuration
+        const userBucket = hashUserId(userAuth.id.toString()) % 100
+
+        // Roll out new ML engine to 50% of users to test
+        const useNewEngine = userBucket < 50
+
+        let recommendations = []
+        let engineUsed = ''
+
+        if (useNewEngine) {
+            engineUsed = 'ml-multi-signal'
+            // Use the centralized recommendation service we built
+            recommendations = await recommendationService.getRecommendations(userAuth.id, 6)
+        } else {
+            engineUsed = 'legacy-rule-based'
+            // Fallback to basic random discovery logic as placeholder for A/B testing
+            recommendations = await recommendationService.getDiscoveryProblems(userAuth.id, 6)
+        }
 
         return NextResponse.json({
             success: true,
+            engine: engineUsed,
+            bucket: userBucket,
             data: {
-                ...recommendationResult,
-                ...discoveryResult,
+                recommendations,
             },
         })
     } catch (error) {

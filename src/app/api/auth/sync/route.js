@@ -28,7 +28,7 @@ export async function POST(request) {
             .lean()
 
         if (!user) {
-            // ... (user creation logic remains same as restored)
+            // Check if name is taken
             let baseUsername = displayName
                 ? displayName.toLowerCase().replace(/[^a-z0-9]/g, '')
                 : email.split('@')[0].replace(/[^a-z0-9]/g, '')
@@ -42,14 +42,14 @@ export async function POST(request) {
             }
 
             try {
-                user = await User.create({
+                const newUser = await User.create({
                     email,
                     name: uniqueName,
                     authProvider: body.authProvider || 'firebase',
                     role: 'user',
                     avatarSeed: photoURL || uniqueName,
                 })
-                user = user.toObject()
+                user = newUser.toObject()
             } catch (createErr) {
                 if (createErr.code === 11000) {
                     user = await User.findOne({ email }).lean()

@@ -60,12 +60,12 @@ export default function ProfileHero({ user: userProp }) {
     const [isFollowing, setIsFollowing] = useState(checkIsFollowing(displayUser))
     const [friendsModalType, setFriendsModalType] = useState(null) // 'followers' | 'following' | null
 
-    // Sync state if displayUser changes from network fetch
+    // Sync follow state if displayUser changes from network fetch
     useEffect(() => {
         setFollowersCount(displayUser?.followers?.length || 0)
         setFollowingCount(displayUser?.following?.length || 0)
         setIsFollowing(checkIsFollowing(displayUser))
-    }, [displayUser, currentUserId])
+    }, [displayUser?.followers?.length, displayUser?.following?.length, currentUserId])
 
     const handleFollowToggle = async () => {
         if (!authUser) {
@@ -148,7 +148,10 @@ export default function ProfileHero({ user: userProp }) {
                     <div className="flex max-w-[400px] flex-col items-center space-y-4 md:items-start">
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                                <h1 className="text-text-primary text-3xl font-bold tracking-tight drop-shadow-sm">
+                                <h1
+                                    suppressHydrationWarning
+                                    className="text-text-primary text-3xl font-bold tracking-tight drop-shadow-sm"
+                                >
                                     {name}
                                 </h1>
                                 <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold tracking-wider uppercase">
@@ -183,7 +186,10 @@ export default function ProfileHero({ user: userProp }) {
                             </div>
 
                             {bio ? (
-                                <p className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left">
+                                <p
+                                    suppressHydrationWarning
+                                    className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left"
+                                >
                                     {bio}
                                 </p>
                             ) : isOwnProfile ? (
