@@ -492,5 +492,22 @@ export async function syncUserStats(userId) {
         await redisClient.del(`user:${userId}:profile`).catch(console.error)
     }
 
+    // 7. Notify leaderboard of score change via Redis Pub/Sub
+    try {
+        if (redisClient.isOpen) {
+            await redisClient.publish(
+                'leaderboard_updates',
+                JSON.stringify({
+                    type: 'score_changed',
+                    userId: updatedUser._id,
+                    newScore: calculatedScore,
+                    timestamp: new Date(),
+                })
+            )
+        }
+    } catch (pubErr) {
+        console.warn('[User Service] Failed to publish leaderboard update:', pubErr.message)
+    }
+
     return updatedUser
 }

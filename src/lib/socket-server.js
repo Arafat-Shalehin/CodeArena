@@ -29,6 +29,8 @@ export async function initSocketServer() {
                     origin: '*',
                     methods: ['GET', 'POST'],
                 },
+                pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL || '20000'),
+                pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT || '10000'),
             })
 
             // Setup Redis Adapter for multi-node scaling
@@ -190,34 +192,20 @@ export async function initSocketServer() {
                         console.error('[Socket.IO] Failed to parse notification Redis message', e)
                     }
                 })
+                // Subscribe to leaderboard updates (Replaces expensive MongoDB Watch)
+                await redisSubClient.subscribe('leaderboard_updates', (message) => {
+                    try {
+                        const data = JSON.parse(message)
+                        if (data.type === 'score_changed') {
+                            serverIo.emit('rank_update', data)
+                        }
+                    } catch (e) {
+                        console.error('[Socket.IO] Failed to parse leaderboard update', e)
+                    }
+                })
             } catch (e) {
                 console.error('[Socket.IO] Failed to connect Redis subscriber', e)
             }
-
-            // Leaderboard Change Stream
-            dbConnect()
-                .then(() => {
-                    const userChangeStream = User.watch([], { fullDocument: 'updateLookup' })
-                    userChangeStream.on('change', (change) => {
-                        if (
-                            change.operationType === 'update' ||
-                            change.operationType === 'replace'
-                        ) {
-                            const statsChanged =
-                                change.updateDescription?.updatedFields?.stats ||
-                                change.updateDescription?.updatedFields?.['stats.score']
-
-                            if (statsChanged) {
-                                serverIo.emit('rank_update', {
-                                    type: 'score_changed',
-                                    userId: change.documentKey._id,
-                                    timestamp: new Date(),
-                                })
-                            }
-                        }
-                    })
-                })
-                .catch((e) => console.error(e))
 
             io = global._io
             return io

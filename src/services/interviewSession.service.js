@@ -10,6 +10,7 @@ import { getInterviewAIQueue } from '../lib/queue.js'
 import { buildPrompt, selectModel } from './aiConversation.service.js'
 import { generateInterviewChatResponse } from '../lib/ai/interviewGroqClient.js'
 import { redisClient } from '../lib/redis.js'
+import { generateIntro } from './intro.service.js'
 
 /**
  * Valid phases enforcing strict order transitions if necessary
@@ -94,95 +95,16 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
     }
 
     try {
-        // 5. Generate AI greeting synchronously
-        // This prevents the race condition where the socket connects after the greeting is published.
-
-        const FALLBACK_INTRO =
-            "Hello! I'm Alex, your interviewer today. Let's get started — I'll walk you through the problem shortly."
-        const problem = chosenProblem
-        const cacheKey = `intro:cache:${problem._id.toString()}`
-        let fullGreeting = ''
-
-        // --- Cache Lookup (Read-Through Strategy) ---
-        try {
-            const cachedIntro = await redisClient.get(cacheKey)
-            if (cachedIntro) {
-                fullGreeting = cachedIntro
-            }
-        } catch (err) {
-            console.warn('[createSession] Redis read failed for intro cache:', err.message)
-        }
-
-        // --- Cache Miss: Generate via Groq ---
-        if (!fullGreeting) {
-            const introPrompt =
-                'Introduce yourself as Alex and start the interview. Explain the rules (Conceptual then Coding) and ask the first conceptual question.'
-
-            const { systemPrompt, messages } = buildPrompt({
-                problemDescription: problem.description,
-                currentCode: problem.defaultCode?.python || '',
-                language: 'python',
-                phase: 'intro',
-                userMessage: introPrompt,
-                history: [],
-                evaluationMetadata: {
-                    correctAnswer: problem.correctAnswer,
-                    expectedConcepts: problem.expectedConcepts,
-                    evaluationCriteria: problem.evaluationCriteria,
-                },
-            })
-
-            const model = selectModel('intro', 'session-init')
-            const aiStream = generateInterviewChatResponse({
-                systemPrompt,
-                messages,
-                model,
-                phase: 'intro',
-                jobType: 'session-init',
-            })
-
-            // Wrap the greeting stream with a timeout to prevent blocking the UI for too long
-            const greetingTimeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Greeting timeout')), 8000)
-            )
-
-            try {
-                await Promise.race([
-                    (async () => {
-                        for await (const chunk of aiStream) {
-                            fullGreeting += chunk
-                        }
-                    })(),
-                    greetingTimeout,
-                ])
-
-                // --- Cache Write Rules ---
-                if (fullGreeting && fullGreeting !== FALLBACK_INTRO) {
-                    try {
-                        await redisClient.set(cacheKey, fullGreeting, { EX: 86400 })
-                    } catch (err) {
-                        console.warn(
-                            '[createSession] Redis write failed for intro cache:',
-                            err.message
-                        )
-                    }
-                }
-            } catch (err) {
-                // Fallback greeting if AI is slow or fails
-                fullGreeting = FALLBACK_INTRO
-                console.warn(
-                    '[createSession] Greeting timeout or error — using fallback:',
-                    err.message
-                )
-            }
-        }
+        // --- Generate Templated Intro (Alex Persona) ---
+        const greetingContent = generateIntro(chosenProblem.title, chosenProblem.difficulty)
+        console.log(`[Intro] Generated templated greeting for session: ${session._id}`)
 
         // 6. Save greeting to DB
         const greetingMessage = await InterviewMessage.create({
             sessionId: session._id,
             role: 'ai',
             phase: 'intro',
-            content: fullGreeting,
+            content: greetingContent,
             ts: new Date(),
         })
 
