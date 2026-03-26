@@ -55,7 +55,9 @@ export async function initSocketServer() {
 
             // Register Namespaces
             const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
+            const { registerVoiceNamespace } = await import('@/socket/namespaces/voice')
             registerInterviewNamespace(serverIo)
+            registerVoiceNamespace(serverIo)
 
             // Handle client connections
             serverIo.on('connection', (socket) => {

@@ -28,14 +28,14 @@ async function dbConnect() {
             .connect(MONGODB_URI)
             .then((mongoose) => {
                 // Import logger lazily to avoid circular dependency at module load time
-                import('@/lib/logger').then(({ logger }) => {
-                    logger.database.info('MongoDB connected successfully.')
+                import('@/lib/logger').then(({ loggers }) => {
+                    loggers.database.info('MongoDB connected successfully.')
                 })
                 return mongoose
             })
             .catch(async (err) => {
-                const { logger } = await import('@/lib/logger')
-                await logger.database.error('MongoDB connection failed.', {
+                const { loggers } = await import('@/lib/logger')
+                loggers.database.error('MongoDB connection failed.', {
                     message: err.message,
                 })
                 cached.promise = null
