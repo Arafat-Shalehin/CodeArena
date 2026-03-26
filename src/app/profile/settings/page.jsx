@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,6 +19,11 @@ import { useAuth } from '@/context/AuthContext'
 import SettingsSidebar from '@/features/profile/components/SettingsSidebar'
 import PersonalInfoForm from '@/features/profile/components/PersonalInfoForm'
 import SocialProfilesForm from '@/features/profile/components/SocialProfilesForm'
+import AccountSection from '@/features/profile/components/settings/AccountSection'
+import PreferencesSection from '@/features/profile/components/settings/PreferencesSection'
+import NotificationsSection from '@/features/profile/components/settings/NotificationsSection'
+import PrivacySection from '@/features/profile/components/settings/PrivacySection'
+import SubscriptionSection from '@/features/profile/components/settings/SubscriptionSection'
 import { Button } from '@/components/ui/button'
 import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
 import Navbar from '@/components/layout/Navbar'
@@ -26,16 +32,42 @@ import Navbar from '@/components/layout/Navbar'
 const editProfileSchema = z.object({
     name: z
         .string()
-        .min(2, 'Display name must be at least 2 characters')
-        .max(50, 'Display name must be at most 50 characters'),
+        .min(3, 'Username must be at least 3 characters')
+        .max(25, 'Username must be at most 25 characters')
+        .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
     bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
     location: z.string().max(100, 'Location is too long').optional().or(z.literal('')),
-    website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+    country: z.string().optional(),
+    website: z
+        .string()
+        .refine(
+            (val) =>
+                !val ||
+                val.startsWith('http://') ||
+                val.startsWith('https://') ||
+                val.includes('.'),
+            'Must be a valid URL (e.g., https://example.com)'
+        )
+        .optional()
+        .or(z.literal('')),
+    avatarSeed: z.string().optional(),
     socials: z
         .object({
-            github: z.string().optional().or(z.literal('')),
-            linkedin: z.string().optional().or(z.literal('')),
-            twitter: z.string().optional().or(z.literal('')),
+            github: z
+                .string()
+                .optional()
+                .or(z.literal(''))
+                .refine((val) => !val || /^[a-zA-Z0-9-]+$/.test(val), 'Invalid GitHub username'),
+            linkedin: z
+                .string()
+                .optional()
+                .or(z.literal(''))
+                .refine((val) => !val || /^[a-zA-Z0-9-_]+$/.test(val), 'Invalid LinkedIn ID'),
+            twitter: z
+                .string()
+                .optional()
+                .or(z.literal(''))
+                .refine((val) => !val || /^@?[a-zA-Z0-9_]+$/.test(val), 'Invalid Twitter handle'),
         })
         .optional(),
 })
@@ -56,10 +88,48 @@ const PREDEFINED_AVATARS = [
     'barbarian',
     'fighter',
     'wizard',
+    'ninja',
+    'pirate',
+    'cowboy',
+    'alien',
+    'robot',
 ]
 
+const COUNTRIES = [
+    { code: 'AE', name: 'United Arab Emirates' },
+    { code: 'AR', name: 'Argentina' },
+    { code: 'AU', name: 'Australia' },
+    { code: 'BD', name: 'Bangladesh' },
+    { code: 'BR', name: 'Brazil' },
+    { code: 'CA', name: 'Canada' },
+    { code: 'CH', name: 'Switzerland' },
+    { code: 'CN', name: 'China' },
+    { code: 'DE', name: 'Germany' },
+    { code: 'EG', name: 'Egypt' },
+    { code: 'ES', name: 'Spain' },
+    { code: 'FR', name: 'France' },
+    { code: 'GB', name: 'United Kingdom' },
+    { code: 'IN', name: 'India' },
+    { code: 'IT', name: 'Italy' },
+    { code: 'JP', name: 'Japan' },
+    { code: 'KR', name: 'South Korea' },
+    { code: 'MX', name: 'Mexico' },
+    { code: 'NG', name: 'Nigeria' },
+    { code: 'NL', name: 'Netherlands' },
+    { code: 'PK', name: 'Pakistan' },
+    { code: 'PL', name: 'Poland' },
+    { code: 'RU', name: 'Russia' },
+    { code: 'SE', name: 'Sweden' },
+    { code: 'SG', name: 'Singapore' },
+    { code: 'TH', name: 'Thailand' },
+    { code: 'TR', name: 'Turkey' },
+    { code: 'US', name: 'United States' },
+    { code: 'VN', name: 'Vietnam' },
+    { code: 'ZA', name: 'South Africa' },
+].sort((a, b) => a.name.localeCompare(b.name))
+
 export default function SettingsPage() {
-    const { user, updateProfile: updateLocalContext, isLoading: authLoading, syncUser } = useAuth()
+    const { user, isLoading: authLoading, syncUser } = useAuth()
     const [activeSection, setActiveSection] = useState('profile')
 
     const {
@@ -75,105 +145,104 @@ export default function SettingsPage() {
             name: '',
             bio: '',
             location: '',
+            country: '',
             website: '',
+            avatarSeed: '',
             socials: { github: '', linkedin: '', twitter: '' },
         },
     })
 
-    // Hydrate form once user data is available
+    // Hydrate form once user data is available (after auth loading completes)
     useEffect(() => {
-        if (user) {
+        if (user && !authLoading) {
             reset({
                 name: user.name || '',
                 bio: user.bio || '',
                 location: user.location || '',
+                country: user.country || '',
                 website: user.website || '',
+                avatarSeed: user.avatarSeed || user.name || PREDEFINED_AVATARS[0],
                 socials: {
                     github: user.socials?.github || '',
                     linkedin: user.socials?.linkedin || '',
                     twitter: user.socials?.twitter || '',
                 },
             })
-            if (!watch('avatarSeed')) {
-                setValue('avatarSeed', user.avatarSeed || user.name || PREDEFINED_AVATARS[0])
-            }
         }
-    }, [user, reset, setValue])
+    }, [user, authLoading, reset])
 
     const avatarSeed = watch('avatarSeed')
 
     const onSubmit = async (data) => {
-        // First, update the MongoDB database
         const userId = user?.id || user?._id
+
         console.log('User object:', user)
         console.log('Extracted userId:', userId)
 
-        if (userId) {
-            try {
-                const userIdString = userId.toString()
-                const payload = {
-                    name: data.name,
-                    bio: data.bio || '',
-                    location: data.location || '',
-                    website: data.website || '',
-                    socials: data.socials || { github: '', linkedin: '', twitter: '' },
-                    avatarSeed,
-                }
-                console.log('Sending profile update:', { userId: userIdString, payload })
-
-                const res = await fetch(`/api/users/${userIdString}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                })
-
-                const responseData = await res.json()
-                console.log('Profile update response:', { status: res.status, data: responseData })
-
-                if (!res.ok) {
-                    throw new Error(responseData.message || 'Failed to update profile')
-                }
-            } catch (error) {
-                console.error('Database profile sync failed:', error)
-                toast.error(error.message || 'Failed to save profile. Please try again.')
-                return // Stop here - don't update local context or show success
-            }
-        } else {
-            console.error('No user ID found:', user)
+        if (!userId) {
             toast.error('Unable to update profile. Please log in again.')
             return
         }
 
-        // Update Firebase display name
-        if (auth.currentUser) {
-            try {
-                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
-            } catch (e) {
-                console.error('Firebase profile sync failed:', e)
-                toast.error('Failed to sync name with Firebase auth.')
-            }
-        }
-
-        // Update local auth context (which also handles localStorage caching mapping)
-        updateLocalContext({
-            name: data.name,
-            bio: data.bio || '',
-            location: data.location || '',
-            website: data.website || '',
-            socials: data.socials,
-            avatarSeed,
-        })
-
-        // Sync with server to get fresh data
         try {
-            await syncUser()
-        } catch (syncError) {
-            console.error('Sync failed:', syncError)
-        }
+            const userIdString = userId.toString()
+            const payload = {
+                name: data.name,
+                bio: data.bio || '',
+                location: data.location || '',
+                country: data.country || '',
+                website: data.website || '',
+                socials: {
+                    github: data.socials?.github?.trim() || '',
+                    linkedin: data.socials?.linkedin?.trim() || '',
+                    twitter: data.socials?.twitter?.trim() || '',
+                },
+                avatarSeed: data.avatarSeed,
+            }
 
-        toast.success('Changes saved successfully!')
+            console.log('Sending payload:', payload)
+            console.log('Fetching:', `/api/users/${userIdString}`)
+
+            const res = await fetch(`/api/users/${userIdString}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            })
+
+            console.log('Response status:', res.status)
+            console.log('Response headers:', res.headers)
+
+            const responseText = await res.text()
+            let responseData = {}
+            try {
+                responseData = JSON.parse(responseText)
+            } catch (e) {
+                console.error('Failed to parse response:', e, 'Response text:', responseText)
+                throw new Error(
+                    `Server error (${res.status}): ${responseText || 'No response body'}`
+                )
+            }
+
+            if (!res.ok) {
+                throw new Error(responseData.message || `Failed to update profile (${res.status})`)
+            }
+
+            // Sync Firebase displayName
+            if (auth.currentUser) {
+                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name }).catch(
+                    (e) => console.error('Firebase profile sync failed:', e)
+                )
+            }
+
+            // Sync with server to get fresh DB data as the single source of truth
+            await syncUser()
+
+            toast.success('Changes saved successfully!')
+        } catch (error) {
+            console.error('Profile update failed:', error)
+            toast.error(error.message || 'Failed to save profile. Please try again.')
+        }
     }
 
     if (authLoading) {
@@ -221,15 +290,42 @@ export default function SettingsPage() {
                                     register={register}
                                     errors={errors}
                                     bioValue={watch('bio')}
+                                    watch={watch}
+                                    setValue={setValue}
+                                    countries={COUNTRIES}
                                 />
-                                <SocialProfilesForm register={register} errors={errors} />
+                                <SocialProfilesForm
+                                    register={register}
+                                    errors={errors}
+                                    watch={watch}
+                                    setValue={setValue}
+                                />
 
                                 <div className="border-border flex items-center justify-end gap-4 border-t pt-4">
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         className="text-text-secondary font-semibold"
-                                        onClick={() => user && reset()}
+                                        onClick={() => {
+                                            if (user) {
+                                                reset({
+                                                    name: user.name || '',
+                                                    bio: user.bio || '',
+                                                    location: user.location || '',
+                                                    country: user.country || '',
+                                                    website: user.website || '',
+                                                    avatarSeed:
+                                                        user.avatarSeed ||
+                                                        user.name ||
+                                                        PREDEFINED_AVATARS[0],
+                                                    socials: {
+                                                        github: user.socials?.github || '',
+                                                        linkedin: user.socials?.linkedin || '',
+                                                        twitter: user.socials?.twitter || '',
+                                                    },
+                                                })
+                                            }
+                                        }}
                                         disabled={isSubmitting}
                                     >
                                         Cancel
@@ -253,14 +349,11 @@ export default function SettingsPage() {
                             </form>
                         )}
 
-                        {/* Coming Soon Placeholder */}
-                        {activeSection !== 'profile' && (
-                            <div className="bg-bg-subtle border-border text-text-muted rounded-lg border p-12 text-center">
-                                <p className="text-sm font-medium">
-                                    This settings section is coming soon.
-                                </p>
-                            </div>
-                        )}
+                        {activeSection === 'account' && <AccountSection user={user} />}
+                        {activeSection === 'preferences' && <PreferencesSection user={user} />}
+                        {activeSection === 'notifications' && <NotificationsSection user={user} />}
+                        {activeSection === 'privacy' && <PrivacySection user={user} />}
+                        {activeSection === 'subscription' && <SubscriptionSection user={user} />}
                     </div>
                 </div>
             </main>

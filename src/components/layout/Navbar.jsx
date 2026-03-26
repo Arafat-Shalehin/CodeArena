@@ -86,17 +86,17 @@ export default function Navbar() {
                                         <Link
                                             href={link.href}
                                             aria-current={isActive ? 'page' : undefined}
-                                            className={`relative flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                                            className={`relative flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
                                                 isActive
                                                     ? 'text-text-primary bg-bg-subtle'
-                                                    : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
+                                                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-subtle'
                                             }`}
                                         >
                                             {link.name}
                                             {link.subLinks && (
                                                 <ChevronDown
                                                     size={12}
-                                                    className="opacity-50 transition-transform group-hover:rotate-180"
+                                                    className="text-text-muted transition-transform group-hover:rotate-180"
                                                 />
                                             )}
                                             {isActive && (
@@ -111,7 +111,7 @@ export default function Navbar() {
                                                     <Link
                                                         key={sub.name}
                                                         href={sub.href}
-                                                        className="text-text-secondary hover:text-text-primary hover:bg-bg-subtle flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all"
+                                                        className="text-text-secondary hover:text-text-primary hover:bg-bg-subtle flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-all"
                                                     >
                                                         {sub.name}
                                                     </Link>
@@ -140,7 +140,7 @@ export default function Navbar() {
                         <>
                             <Link
                                 href="/login"
-                                className="text-text-muted hover:text-text-primary px-3 py-2 text-sm font-bold transition-colors"
+                                className="text-text-secondary hover:text-text-primary px-3 py-2 text-sm font-semibold transition-colors"
                             >
                                 Sign in
                             </Link>

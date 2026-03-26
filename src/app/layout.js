@@ -1,4 +1,4 @@
-import { Inter, Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
+import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { CodeEditorProvider } from '@/context/CodeEditorContext'
@@ -7,15 +7,9 @@ import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
     subsets: ['latin'],
-    variable: '--font-inter',
-    display: 'swap',
-})
-
-const bricolage = Bricolage_Grotesque({
-    subsets: ['latin'],
-    variable: '--font-bricolage',
+    variable: '--font-jakarta',
     display: 'swap',
 })
 
@@ -46,7 +40,7 @@ export default function RootLayout({ children }) {
         <html
             lang="en"
             suppressHydrationWarning
-            className={`${inter.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}
+            className={`${jakarta.variable} ${jetbrainsMono.variable}`}
         >
             <body
                 suppressHydrationWarning={true}

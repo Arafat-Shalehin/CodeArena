@@ -60,7 +60,7 @@ export default function RecentProblemsSection() {
                     Array.from({ length: 3 }).map((_, i) => (
                         <div
                             key={i}
-                            className="bg-bg-subtle border-border h-[320px] w-full animate-pulse rounded-3xl border"
+                            className="bg-bg-subtle border-border h-[320px] w-full animate-pulse rounded-md border"
                         />
                     ))
                 ) : problems.length > 0 ? (
@@ -100,7 +100,7 @@ export default function RecentProblemsSection() {
                     <Button
                         variant="outline"
                         size="lg"
-                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-14 min-w-[200px] rounded-full transition-all duration-300"
+                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-14 min-w-[200px] rounded-md transition-all duration-300"
                     >
                         Explore Study Plans
                         <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

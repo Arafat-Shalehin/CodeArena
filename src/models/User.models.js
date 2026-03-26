@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Name is required for creating a account'],
             unique: [true, 'Name already exists.'],
+            trim: true,
+            minlength: [3, 'Name must be at least 3 characters'],
+            maxlength: [25, 'Name must be at most 25 characters'],
+            match: [/^[a-zA-Z0-9_]+$/, 'Name can only contain letters, numbers, and underscores'],
         },
         password: {
             type: String,
@@ -45,6 +49,10 @@ const userSchema = new mongoose.Schema(
             default: '',
         },
         location: {
+            type: String,
+            default: '',
+        },
+        country: {
             type: String,
             default: '',
         },
@@ -128,6 +136,50 @@ const userSchema = new mongoose.Schema(
         lockUntil: {
             type: Number,
             default: 0,
+        },
+        preferences: {
+            language: { type: String, default: 'en' },
+            timezone: { type: String, default: 'UTC' },
+            theme: { type: String, default: 'system' },
+            weeklyGoal: { type: Number, default: 10 },
+        },
+        notificationSettings: {
+            emailSubmissions: { type: Boolean, default: true },
+            emailContests: { type: Boolean, default: true },
+            emailFollowers: { type: Boolean, default: true },
+            emailWeekly: { type: Boolean, default: false },
+            pushSubmissions: { type: Boolean, default: true },
+            pushContests: { type: Boolean, default: true },
+            pushFollowers: { type: Boolean, default: false },
+            notifyAchievements: { type: Boolean, default: true },
+            notifyMentions: { type: Boolean, default: true },
+            notifyComments: { type: Boolean, default: true },
+        },
+        privacySettings: {
+            profileVisibility: {
+                type: String,
+                enum: ['public', 'followers', 'private'],
+                default: 'public',
+            },
+            showStats: { type: Boolean, default: true },
+            showSubmissions: { type: Boolean, default: true },
+            showContestHistory: { type: Boolean, default: true },
+            showFollowers: { type: Boolean, default: true },
+            allowMessaging: { type: Boolean, default: true },
+            indexProfile: { type: Boolean, default: true },
+        },
+        subscription: {
+            plan: { type: String, enum: ['free', 'pro', 'teams'], default: 'free' },
+            status: {
+                type: String,
+                enum: ['active', 'cancelled', 'cancelling', 'past_due'],
+                default: 'active',
+            },
+            stripeCustomerId: { type: String, default: null },
+            stripeSubscriptionId: { type: String, default: null },
+            currentPeriodStart: { type: Date, default: null },
+            currentPeriodEnd: { type: Date, default: null },
+            cancelAtPeriodEnd: { type: Boolean, default: false },
         },
     },
     { timestamps: true }

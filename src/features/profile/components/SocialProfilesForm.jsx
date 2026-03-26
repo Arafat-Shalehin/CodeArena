@@ -2,9 +2,19 @@ import React from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Github, Linkedin, Twitter } from 'lucide-react'
+import { Github, Linkedin, Twitter, X } from 'lucide-react'
 
-export default function SocialProfilesForm({ register, errors }) {
+export default function SocialProfilesForm({ register, errors, watch, setValue }) {
+    const githubValue = watch ? watch('socials.github') || '' : ''
+    const linkedinValue = watch ? watch('socials.linkedin') || '' : ''
+    const twitterValue = watch ? watch('socials.twitter') || '' : ''
+
+    const handleClear = (field) => {
+        if (setValue) {
+            setValue(`socials.${field}`, '', { shouldValidate: true })
+        }
+    }
+
     return (
         <Card className="p-6">
             <h3 className="text-text-primary mb-6 text-lg font-semibold">Social Profiles</h3>
@@ -25,9 +35,19 @@ export default function SocialProfilesForm({ register, errors }) {
                         <Input
                             id="github"
                             {...register('socials.github')}
-                            className="pl-10"
+                            className="pr-10 pl-10"
                             placeholder="username"
                         />
+                        {githubValue && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear('github')}
+                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                                title="Remove GitHub"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
                     {errors.socials?.github && (
                         <p className="text-error text-xs font-medium">
@@ -52,9 +72,19 @@ export default function SocialProfilesForm({ register, errors }) {
                         <Input
                             id="linkedin"
                             {...register('socials.linkedin')}
-                            className="pl-10"
+                            className="pr-10 pl-10"
                             placeholder="profile-id"
                         />
+                        {linkedinValue && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear('linkedin')}
+                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                                title="Remove LinkedIn"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
                     {errors.socials?.linkedin && (
                         <p className="text-error text-xs font-medium">
@@ -79,9 +109,19 @@ export default function SocialProfilesForm({ register, errors }) {
                         <Input
                             id="twitter"
                             {...register('socials.twitter')}
-                            className="pl-10"
+                            className="pr-10 pl-10"
                             placeholder="@handle"
                         />
+                        {twitterValue && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear('twitter')}
+                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                                title="Remove Twitter"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
                     {errors.socials?.twitter && (
                         <p className="text-error text-xs font-medium">

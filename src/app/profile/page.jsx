@@ -59,8 +59,7 @@ export default function ProfilePage() {
         if (!user) return
         setIsSubmissionsLoading(true)
         try {
-            const queryId = user._id || user.id
-            const queryUrl = `/api/submissions?userId=${queryId}&limit=${limit}&offset=${offset}`
+            const queryUrl = `/api/submissions?userId=${userId}&limit=${limit}&offset=${offset}`
             const res = await fetch(queryUrl)
             const data = await res.json()
             if (data.success) {
@@ -86,16 +85,12 @@ export default function ProfilePage() {
         fetchSubmissions(100, 0, true)
     }
 
-    if (isLoading) {
+    if (isLoading || !user) {
         return (
             <div className="bg-bg-page flex min-h-screen items-center justify-center">
                 <Loader2 className="text-accent h-12 w-12 animate-spin" />
             </div>
         )
-    }
-
-    if (!user) {
-        return null
     }
 
     const sortedLanguages = getLanguageStats(user.stats)

@@ -29,7 +29,7 @@ export default function LeaderboardPreviewSection() {
                         <div className="bg-bg-muted h-6 w-full animate-pulse rounded-xl" />
                         <div className="bg-bg-muted h-6 w-2/3 animate-pulse rounded-xl" />
                     </div>
-                    <div className="bg-bg-subtle border-border h-80 animate-pulse rounded-3xl border" />
+                    <div className="bg-bg-subtle border-border h-80 animate-pulse rounded-md border" />
                 </div>
             </section>
         )
@@ -90,7 +90,7 @@ export default function LeaderboardPreviewSection() {
                     {/* Background Glow */}
                     <div className="from-accent/10 dark:from-accent/5 absolute -inset-4 bg-gradient-to-tr to-transparent blur-3xl" />
 
-                    <Card className="matte-surface border-border/50 relative overflow-hidden rounded-[2rem] shadow-2xl backdrop-blur-xl">
+                    <Card className="matte-surface border-border/50 relative overflow-hidden rounded-md shadow-sm backdrop-blur-xl">
                         <div className="border-border bg-bg-subtle/50 border-b px-8 py-6">
                             <h3 className="text-text-primary flex items-center gap-2 text-xs font-bold tracking-tight uppercase">
                                 <span className="bg-accent flex h-2 w-2 animate-pulse rounded-full" />
@@ -138,7 +138,7 @@ function LeaderboardRow({ user, rank, index }) {
             viewport={{ once: true }}
             transition={{ delay: shouldReduceMotion ? 0 : index * 0.1 }}
             className={cn(
-                'group relative flex items-center justify-between rounded-2xl p-5 transition-all duration-300',
+                'group relative flex items-center justify-between rounded-md p-5 transition-all duration-300',
                 isFirst ? 'bg-accent/10 dark:bg-accent/[0.07] shadow-sm' : 'hover:bg-bg-muted/50'
             )}
         >
@@ -147,7 +147,7 @@ function LeaderboardRow({ user, rank, index }) {
                 <div className="relative">
                     <div
                         className={cn(
-                            'flex size-10 items-center justify-center rounded-xl font-mono text-sm font-black',
+                            'flex size-10 items-center justify-center rounded-sm font-mono text-sm font-black',
                             isFirst
                                 ? 'bg-accent shadow-accent-glow rotate-[-4deg] text-white'
                                 : 'bg-bg-muted text-text-muted'
@@ -198,7 +198,7 @@ function LeaderboardRow({ user, rank, index }) {
 
             {/* Shimmer Effect for 1st Place */}
             {isFirst && !shouldReduceMotion && (
-                <div className="border-accent/20 pointer-events-none absolute inset-0 overflow-hidden rounded-2xl border-2">
+                <div className="border-accent/20 pointer-events-none absolute inset-0 overflow-hidden rounded-md border-2">
                     <motion.div
                         animate={{
                             x: ['-100%', '200%'],
