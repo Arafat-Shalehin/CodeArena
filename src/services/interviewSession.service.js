@@ -1,6 +1,6 @@
 import { InterviewSession } from '../models/InterviewSession.model.js'
 import { InterviewMessage } from '../models/InterviewMessage.model.js'
-import { getRecommendedProblems } from './recommendation.service.js'
+import { recommendationService } from './recommendation.service.js'
 import {
     setInterviewState,
     deleteInterviewState,
@@ -50,7 +50,7 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
 
     // 3. Select a problem using the existing recommendation engine
     // Fetch a larger pool to allow random selection
-    const { recommendedProblems } = await getRecommendedProblems(userId, 10)
+    const recommendedProblems = await recommendationService.getRecommendations(userId, 10)
     if (!recommendedProblems || recommendedProblems.length === 0) {
         throw new Error('No appropriate problem found for this session')
     }

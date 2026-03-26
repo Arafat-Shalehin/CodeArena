@@ -25,8 +25,8 @@ body,
 
     /* Text */
     --ca-text-primary: #111827;
-    --ca-text-secondary: #4b5563;
-    --ca-text-muted: #9ca3af;
+    --ca-text-secondary: #374151;
+    --ca-text-muted: #6b7280;
     --ca-text-inverse: #ffffff;
 
     /* Brand Accent (HackerRank green) */
@@ -86,9 +86,12 @@ body,
    * TYPOGRAPHY
    * ---------------------------------------------------------- */
 
-    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-jakarta), system-ui, sans-serif;
     --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+    /* Acid Green Gradient */
+    --ca-acid-gradient: linear-gradient(90deg, #10b981 0%, #047857 100%);
 
     /* ----------------------------------------------------------
    * SHADOWS
@@ -154,8 +157,8 @@ body,
     --ca-site-grad-2: rgba(2, 186, 76, 0.1);
 
     --ca-text-primary: #f0f6fc;
-    --ca-text-secondary: #8b949e;
-    --ca-text-muted: #484f58;
+    --ca-text-secondary: #a8b2c1;
+    --ca-text-muted: #6e7681;
     --ca-text-inverse: #0f1117;
 
     --ca-accent: #02ba4c;
@@ -274,8 +277,8 @@ body,
     --color-background-dark: #111621;
 
     /* ── FONTS ──────────────────────────────── */
-    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-jakarta), system-ui, sans-serif;
     --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
 
     /* ── RADIUS ─────────────────────────────── */
@@ -535,7 +538,10 @@ body,
 
     /* Gradient text (accent) */
     .text-gradient {
-        background: linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover));
+        background: var(
+            --ca-acid-gradient,
+            linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover))
+        );
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;

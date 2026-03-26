@@ -155,7 +155,7 @@ export async function getUserById(id) {
 }
 
 /**
- * Deletes a user by ID.
+ * Deletes a user by ID and cleans up all references in other users.
  * @param {string} id - User ID.
  * @returns {Promise<Object>} The deleted user object.
  * @throws {Error} If user is not found.
@@ -167,6 +167,12 @@ export async function deleteUser(id) {
         err.status = 404
         throw err
     }
+
+    // Cleanup references in other users
+    await User.updateMany(
+        { $or: [{ followers: id }, { following: id }] },
+        { $pull: { followers: id, following: id } }
+    )
 
     // Invalidate cache
     if (redisClient.isOpen) {
@@ -185,7 +191,7 @@ export async function deleteUser(id) {
  */
 export async function updateUser(id, updateData) {
     // Only allow updating specific profile fields to prevent privilege escalation
-    const allowedFields = ['name', 'bio', 'location', 'website', 'socials', 'avatarSeed']
+    const allowedFields = ['name', 'bio', 'location', 'country', 'website', 'socials', 'avatarSeed']
     const safeData = {}
 
     console.log('updateUser called with:', { id, updateData, allowedFields })
@@ -193,6 +199,16 @@ export async function updateUser(id, updateData) {
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
             safeData[field] = updateData[field]
+        }
+    }
+
+    // Handle username (name) change - check for uniqueness
+    if (safeData.name) {
+        const existingUser = await User.findOne({ name: safeData.name })
+        if (existingUser && existingUser._id.toString() !== id.toString()) {
+            const err = new Error('Username is already taken. Please choose another one.')
+            err.status = 400
+            throw err
         }
     }
 
@@ -244,7 +260,9 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
         throw err
     }
 
-    const isFollowing = currentUser.following.includes(targetUserId)
+    const isFollowing = currentUser.following.some(
+        (id) => id.toString() === targetUserId.toString()
+    )
 
     if (isFollowing) {
         // Unfollow
@@ -260,10 +278,19 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
+
+        // Invalidate Redis cache
+        if (redisClient.isOpen) {
+            await Promise.all([
+                redisClient.del(`user:${currentUserId}:profile`),
+                redisClient.del(`user:${targetUserId}:profile`),
+            ]).catch(console.error)
+        }
+
         return {
             following: false,
             followersCount: updatedTargetUser.followers.length,
-            followingCount: updatedTargetUser.following.length, // Returns target user's stats
+            followingCount: updatedTargetUser.following.length,
         }
     } else {
         // Follow
@@ -279,6 +306,14 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
+
+        // Invalidate Redis cache
+        if (redisClient.isOpen) {
+            await Promise.all([
+                redisClient.del(`user:${currentUserId}:profile`),
+                redisClient.del(`user:${targetUserId}:profile`),
+            ]).catch(console.error)
+        }
 
         // NEW: Follower Notification
         const { sendNotification } = await import('@/services/notification.service')
@@ -422,8 +457,18 @@ export async function syncUserStats(userId) {
         })
     })
 
-    // 6. Update User Record
-    const user = await User.findByIdAndUpdate(
+    // 6. Final Clean up of followers/following (Ensure no orphan IDs)
+    const currentUser = await User.findById(userId).select('followers following')
+    const [freshFollowers, freshFollowing] = await Promise.all([
+        User.find({ _id: { $in: currentUser?.followers || [] } }).select('_id'),
+        User.find({ _id: { $in: currentUser?.following || [] } }).select('_id'),
+    ])
+
+    const validFollowerIds = freshFollowers.map((f) => f._id)
+    const validFollowingIds = freshFollowing.map((f) => f._id)
+
+    // Update User Record
+    const updatedUser = await User.findByIdAndUpdate(
         userId,
         {
             $set: {
@@ -435,10 +480,17 @@ export async function syncUserStats(userId) {
                 'stats.solvedDistribution': solvedDistribution,
                 'stats.activityCalendar': Object.fromEntries(activityCalendar),
                 performanceStats: finalPerformanceStats,
+                followers: validFollowerIds,
+                following: validFollowingIds,
             },
         },
         { new: true }
     ).select('-password')
+
+    // Invalidate cache
+    if (redisClient.isOpen) {
+        await redisClient.del(`user:${userId}:profile`).catch(console.error)
+    }
 
     // 7. Notify leaderboard of score change via Redis Pub/Sub
     try {
@@ -447,7 +499,7 @@ export async function syncUserStats(userId) {
                 'leaderboard_updates',
                 JSON.stringify({
                     type: 'score_changed',
-                    userId: user._id,
+                    userId: updatedUser._id,
                     newScore: calculatedScore,
                     timestamp: new Date(),
                 })
@@ -457,5 +509,5 @@ export async function syncUserStats(userId) {
         console.warn('[User Service] Failed to publish leaderboard update:', pubErr.message)
     }
 
-    return user
+    return updatedUser
 }

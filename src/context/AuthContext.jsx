@@ -35,15 +35,22 @@ export function AuthProvider({ children }) {
 
     // 2. Core Firebase state listener (Runs once on mount)
     useEffect(() => {
+        let abortController = null
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 // IMPORTANT: Prevent premature redirects by keeping isLoading true until sync finishes
                 setIsLoading(true)
                 try {
                     // Sync Firebase User with our Backend (and set httpOnly cookie)
+                    // Add a 10s timeout to the sync fetch to prevent infinite loading
+                    abortController = new AbortController()
+                    const timeoutId = setTimeout(() => abortController.abort(), 10000)
+
                     const syncRes = await fetch('/api/auth/sync', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        signal: abortController.signal,
                         body: JSON.stringify({
                             uid: firebaseUser.uid,
                             email: firebaseUser.email,
@@ -52,6 +59,7 @@ export function AuthProvider({ children }) {
                             authProvider: 'firebase',
                         }),
                     })
+                    clearTimeout(timeoutId)
 
                     const syncData = await syncRes.json()
 
@@ -59,24 +67,37 @@ export function AuthProvider({ children }) {
                         const dbUser = syncData.data?.user || syncData.user
                         const userId = dbUser._id?.toString()
 
+                        // Ensure DB data is the source of truth, removing stale local preferences
                         setUser((prev) => ({
                             ...dbUser,
                             id: userId,
                             _id: userId,
                             firebaseUid: firebaseUser.uid,
-                            // Ensure local preferences are applied if already loaded
-                            ...prev?.localPreferences,
                         }))
+                        setLocalPreferences({})
+                        localStorage.removeItem(STORAGE_KEY)
                     } else {
                         setUser({
                             firebaseUid: firebaseUser.uid,
                             email: firebaseUser.email,
                             name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                            ...localPreferences,
                         })
                     }
                 } catch (error) {
                     console.error('Error during auth init/sync:', error)
-                    toast.error('Session sync failed. Please try logging in again.')
+                    if (error.name === 'AbortError') {
+                        toast.error('Session sync timed out. Retrying in background.')
+                    } else {
+                        toast.error('Session sync failed. Please try logging in again.')
+                    }
+                    // Fallback to minimal user object to unblock the UI if sync hangs
+                    setUser({
+                        firebaseUid: firebaseUser.uid,
+                        email: firebaseUser.email,
+                        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                        ...localPreferences,
+                    })
                 } finally {
                     setIsLoading(false)
                 }
@@ -86,15 +107,14 @@ export function AuthProvider({ children }) {
             }
         })
 
-        return () => unsubscribe()
-    }, [])
-
-    // 3. Merging Preferences when they change (Independent of Auth listener)
-    useEffect(() => {
-        if (user && Object.keys(localPreferences).length > 0) {
-            setUser((prev) => ({ ...prev, ...localPreferences }))
+        return () => {
+            // Abort any pending fetch request before unsubscribing
+            if (abortController) {
+                abortController.abort()
+            }
+            unsubscribe()
         }
-    }, [localPreferences])
+    }, [])
 
     const logout = useCallback(async () => {
         setIsLoading(true)
@@ -116,51 +136,50 @@ export function AuthProvider({ children }) {
     }, [])
 
     const updateProfile = useCallback((updatedData) => {
-        setLocalPreferences((prev) => {
-            const newPrefs = { ...prev, ...updatedData }
-            delete newPrefs.stats // Never persist dynamic stats in local preferences
-            return newPrefs
-        })
-
-        // Persist to localStorage outside of the setState updater
-        const currentPrefs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-        const merged = { ...currentPrefs, ...updatedData }
-        delete merged.stats // Never persist dynamic stats
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
-
         setUser((prevUser) => {
             if (!prevUser) return null
-            return { ...prevUser, ...updatedData }
+            const newUser = { ...prevUser, ...updatedData }
+
+            // Sync with localPreferences for persistence
+            setLocalPreferences((prevPrefs) => {
+                const newPrefs = { ...prevPrefs, ...updatedData }
+                delete newPrefs.stats
+
+                // Persist to localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newPrefs))
+
+                return newPrefs
+            })
+
+            return newUser
         })
     }, [])
 
     const syncUser = useCallback(async () => {
+        const userId = user?.id || user?._id
+        if (!userId) return null
+
         try {
-            setIsLoading(true)
-            const res = await fetch('/api/auth/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ authProvider: 'firebase' }),
-            })
+            const res = await fetch(`/api/users/${userId}`)
             const data = await res.json()
             if (data.success) {
-                const dbUser = data.data?.user || data.user
-                const userId = dbUser._id?.toString()
+                const dbUser = data.data
+                const normalizedId = dbUser._id?.toString() || dbUser.id
                 setUser((prev) => ({
                     ...prev,
                     ...dbUser,
-                    id: userId,
-                    _id: userId,
-                    ...localPreferences,
+                    id: normalizedId,
+                    _id: normalizedId,
                 }))
+                // Clear local preferences because DB is now authoritative
+                setLocalPreferences({})
+                localStorage.removeItem(STORAGE_KEY)
                 return dbUser
             }
         } catch (error) {
             console.error('Failed to sync user:', error)
-        } finally {
-            setIsLoading(false)
         }
-    }, [localPreferences])
+    }, [user?.id, user?._id])
 
     return (
         <AuthContext.Provider

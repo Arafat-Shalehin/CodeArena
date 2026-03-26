@@ -22,9 +22,11 @@ import { RealtimeProvider, useRealtime } from '@/context/RealtimeContext'
 import { CacheProvider, useCache } from '@/context/CacheContext'
 import { toast } from 'sonner'
 import { useSubmissionRealtime } from '@/features/problem-solve/hooks/useSubmissionRealtime'
+import { logger } from '@/lib/logger'
 
 const ProblemSolveContext = createContext()
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const VALID_LEFT_TABS = new Set([
     'description',
     'editorial',
@@ -32,6 +34,11 @@ const VALID_LEFT_TABS = new Set([
     'submissions',
     'submission-result',
 ])
+
+const SUBMISSION_TIMEOUT_MS = 20000 // 20 seconds client-side timeout
+const SUBMISSION_POLL_DELAY_MS = 30000 // 30 seconds before polling if no verdict
+const SOCKET_JOIN_MAX_ATTEMPTS = 50
+const SOCKET_JOIN_RETRY_DELAY_MS = 100
 
 const getLeftTabStorageKey = (problemId) => `codearena_left_tab_${problemId}`
 
@@ -48,6 +55,9 @@ const readSavedLeftTab = (problemId) => {
 
 // Re-export for backward compatibility
 export { STARTER_CODES, LANG_LABELS }
+
+// Logger for ProblemSolveContext
+const log = logger.child('ProblemSolve')
 
 // Inner component that uses all sub-contexts
 function ProblemSolveProviderInner({ children, problemId, initialCode, problem, contestId }) {
@@ -98,18 +108,16 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         // Skip reset on initial render
         if (prevProblemIdRef.current === null) {
             prevProblemIdRef.current = problemId
-            console.log('[ProblemContext] Initial problem set:', problemId)
+            log.debug('Initial problem set', { problemId })
             return
         }
 
         // Only reset if problemId actually changed
         if (prevProblemIdRef.current !== problemId) {
-            console.log(
-                '[ProblemContext] Problem changed from',
-                prevProblemIdRef.current,
-                'to',
-                problemId
-            )
+            log.info('Problem changed', {
+                from: prevProblemIdRef.current,
+                to: problemId,
+            })
             // Clear execution state for new problem
             execution.setIsRunning(false)
             execution.setIsSubmitting(false)
@@ -146,11 +154,13 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
     // ─── Run Code (Direct Execution - No Submission Record) ───────────────────
     const runCode = useCallback(async () => {
         if (!problem) return
-        console.log('[FRONTEND] RUN CODE BUTTON CLICKED')
-        console.log('[FRONTEND] Problem ID:', problem._id)
-        console.log('[FRONTEND] Code length:', codeEditor.code.length)
-        console.log('[FRONTEND] Language:', codeEditor.language)
-        console.log('[FRONTEND] Custom input:', execution.testInput)
+
+        log.info('Run code button clicked', {
+            problemId: problem._id,
+            codeLength: codeEditor.code.length,
+            language: codeEditor.language,
+            hasCustomInput: !!execution.testInput,
+        })
 
         // 🔥 STORE THE RUN CODE FOR AI ANALYSIS
         execution.setLastSubmittedCode(codeEditor.code)
@@ -166,7 +176,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         })
 
         try {
-            console.log('[FRONTEND] Sending POST /api/execute (direct execution, no submission)')
+            log.info('Sending POST /api/execute (direct execution, no submission)')
             const res = await fetch('/api/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -180,10 +190,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             })
             const data = await res.json()
 
-            console.log('[FRONTEND] Execution Response:', data)
+            log.debug('Execution Response', data)
 
             if (!data.success) {
-                console.error('[FRONTEND] Execution failed:', data.message)
+                log.error('Execution failed', data.message)
                 execution.setTestResult({
                     status: 'error',
                     error: data.message || 'Execution failed',
@@ -205,10 +215,10 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 
                 // 🚀 CACHE THE RESULT for Submit optimization
                 cache.setCachedExecution(codeEditor.code, result)
-                console.log('[FRONTEND] Code execution completed (not saved as submission)')
+                log.success('Code execution completed (not saved as submission)')
             }
         } catch (err) {
-            console.error('[FRONTEND] RUN CODE ERROR:', err)
+            log.error('Run code error', err)
             execution.setTestResult({ status: 'error', error: err.message })
             execution.setIsRunning(false)
         }
@@ -217,11 +227,13 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
     // ─── Submit Code (Full Judge via BullMQ) ───────────────────────────────
     const submitCode = useCallback(async () => {
         if (!problem) return
-        console.log('[FRONTEND] SUBMIT CODE BUTTON CLICKED')
-        console.log('[FRONTEND] Problem ID:', problem._id)
-        console.log('[FRONTEND] Problem testCaseCount:', problem.testCaseCount)
-        console.log('[FRONTEND] Code length:', codeEditor.code.length)
-        console.log('[FRONTEND] Language:', codeEditor.language)
+
+        log.info('Submit code button clicked', {
+            problemId: problem._id,
+            testCaseCount: problem.testCaseCount,
+            codeLength: codeEditor.code.length,
+            language: codeEditor.language,
+        })
 
         // 🔥 STORE THE SUBMITTED CODE FOR AI ANALYSIS
         execution.setLastSubmittedCode(codeEditor.code)
@@ -232,7 +244,6 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         setIsConsoleOpen(true)
 
         const totalTestCases = problem.testCaseCount || 0
-        console.log('[FRONTEND] Total test cases:', totalTestCases)
 
         execution.setTestResult({
             status: 'running',
@@ -256,17 +267,14 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 execution.setIsSubmitting(false)
                 toast.error('Submission timeout')
             }
-        }, 20000)
+        }, SUBMISSION_TIMEOUT_MS)
 
         try {
             // 🚀 CHECK CACHE: If code hasn't changed since last Run, use cached result
             const currentCodeHash = cache.generateCodeHash(codeEditor.code)
-            console.log('[FRONTEND] Current code hash:', currentCodeHash)
-            console.log('[FRONTEND] Cached code hash:', cache.cachedCodeHash)
-            console.log('[FRONTEND] Cache exists?', !!cache.cachedResult)
 
             if (cache.cachedCodeHash === currentCodeHash && cache.cachedResult) {
-                console.log('[FRONTEND] 🚀 CACHE HIT! Using cached execution result')
+                log.success('Cache hit! Using cached execution result')
 
                 execution.setTestResult({
                     ...cache.cachedResult,
@@ -294,22 +302,19 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 })
                 const data = await res.json()
 
-                console.log('[FRONTEND] API Response (cached):', {
+                log.info('API Response (cached)', {
                     success: data.success,
                     submissionId: data.data?._id,
                 })
 
                 if (!data.success) {
-                    console.error('[FRONTEND] Submission failed:', data.message)
+                    log.error('Submission failed', data.message)
                     toast.error(data.message || 'Submission failed')
                     execution.setTestResult({ status: 'error', error: data.message })
                     execution.setIsSubmitting(false)
                 } else {
                     const submissionId = data.data._id || data.data.id
-                    console.log(
-                        '[FRONTEND] Submission created (from cache), joining room:',
-                        `submission_${submissionId}`
-                    )
+                    log.success('Submission created (from cache), joining room', { submissionId })
                     // 💾 Save submission ID to Zustand for persistence
                     zustandStore.setSubmissionId(submissionId)
                     zustandStore.setSubmissionViewId(submissionId)
@@ -319,30 +324,28 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 
                     // Join submission room with retry logic and latest socket instance.
                     let joinAttempts = 0
-                    const maxAttempts = 50
                     const attemptJoinRoom = () => {
                         joinAttempts++
                         const socket = realtimeSocketRef.current
                         const socketConnected = Boolean(socket?.connected)
                         const socketId = socket?.id
 
-                        console.log(
-                            `[FRONTEND] Join attempt ${joinAttempts} (cached): socket.connected=${socketConnected}, socket.id=${socketId}, roomId=${roomId}`
-                        )
+                        log.debug(`Join attempt ${joinAttempts} (cached)`, {
+                            socketConnected,
+                            socketId,
+                            roomId,
+                        })
 
                         if (socketConnected && socket) {
-                            console.log(
-                                '[FRONTEND] Socket connected (cached), emitting join_room event'
-                            )
+                            log.success('Socket connected (cached), emitting join_room event')
                             if (activeSubmissionRoomRef.current) {
-                                console.log(
-                                    '[FRONTEND] Leaving previous room (cached):',
-                                    activeSubmissionRoomRef.current
-                                )
+                                log.info('Leaving previous room (cached)', {
+                                    room: activeSubmissionRoomRef.current,
+                                })
                                 socket.emit('leave_room', activeSubmissionRoomRef.current)
                             }
 
-                            console.log('[FRONTEND] Emitting join_room for (cached):', roomId)
+                            log.info('Emitting join_room for (cached)', { roomId })
                             socket.emit('join_room', roomId)
                             activeSubmissionRoomRef.current = roomId
                             finalVerdictHandledRef.current = false
@@ -350,21 +353,19 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                             return
                         }
 
-                        if (joinAttempts < maxAttempts) {
-                            setTimeout(attemptJoinRoom, 100)
+                        if (joinAttempts < SOCKET_JOIN_MAX_ATTEMPTS) {
+                            setTimeout(attemptJoinRoom, SOCKET_JOIN_RETRY_DELAY_MS)
                             return
                         }
 
-                        console.error(
-                            '[FRONTEND] Failed to join submission room (cached) after',
-                            maxAttempts,
-                            'attempts. Socket state:',
-                            {
+                        log.error('Failed to join submission room (cached) after max attempts', {
+                            attempts: SOCKET_JOIN_MAX_ATTEMPTS,
+                            socketState: {
                                 socketExists: Boolean(socket),
                                 socketConnected,
                                 socketId,
-                            }
-                        )
+                            },
+                        })
                     }
                     attemptJoinRoom()
                     execution.setIsSubmitting(false)
@@ -373,7 +374,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             }
 
             // CACHE MISS: Execute fresh submission
-            console.log('[FRONTEND] 🔄 CACHE MISS! Code has changed, executing fresh submission')
+            log.info('Cache miss! Code has changed, executing fresh submission')
             const res = await fetch('/api/submissions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -388,22 +389,21 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             })
             const data = await res.json()
 
-            console.log('[FRONTEND] API Response:', {
+            log.info('API Response', {
                 success: data.success,
                 submissionId: data.data?._id,
             })
 
             if (!data.success) {
-                console.error('[FRONTEND] Submission failed:', data.message)
+                log.error('Submission failed', data.message)
                 toast.error(data.message || 'Submission failed')
                 execution.setTestResult({ status: 'error', error: data.message })
                 execution.setIsSubmitting(false)
             } else {
                 const submissionId = data.data._id || data.data.id
-                console.log(
-                    '[FRONTEND] Submission created, joining room:',
-                    `submission_${submissionId}`
-                )
+                log.success('Submission created, joining room', {
+                    roomId: `submission_${submissionId}`,
+                })
                 // 💾 Save submission ID to Zustand for persistence
                 zustandStore.setSubmissionId(submissionId)
                 zustandStore.setSubmissionViewId(submissionId)
@@ -413,45 +413,44 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 
                 // Join submission room with retry logic using socket.connected
                 let joinAttempts = 0
-                const maxAttempts = 50
                 const attemptJoinRoom = () => {
                     joinAttempts++
                     const socket = realtimeSocketRef.current
                     const socketConnected = Boolean(socket?.connected)
                     const socketId = socket?.id
-                    console.log(
-                        `[FRONTEND] Join attempt ${joinAttempts}: socket.connected=${socketConnected}, socket.id=${socketId}, roomId=${roomId}`
-                    )
+
+                    log.debug(`Join attempt ${joinAttempts}`, {
+                        socketConnected,
+                        socketId,
+                        roomId,
+                    })
 
                     if (socketConnected && socket) {
-                        console.log('[FRONTEND] Socket connected, emitting join_room event')
+                        log.success('Socket connected, emitting join_room event')
                         if (activeSubmissionRoomRef.current) {
-                            console.log(
-                                '[FRONTEND] Leaving previous room:',
-                                activeSubmissionRoomRef.current
-                            )
+                            log.info('Leaving previous room', {
+                                room: activeSubmissionRoomRef.current,
+                            })
                             socket.emit('leave_room', activeSubmissionRoomRef.current)
                         }
-                        console.log('[FRONTEND] Emitting join_room for:', roomId)
+                        log.info('Emitting join_room for', { roomId })
                         socket.emit('join_room', roomId)
                         activeSubmissionRoomRef.current = roomId
                         finalVerdictHandledRef.current = false
                         lastFinalSubmissionIdRef.current = null
                         return
-                    } else if (joinAttempts < maxAttempts) {
-                        setTimeout(attemptJoinRoom, 100)
+                    } else if (joinAttempts < SOCKET_JOIN_MAX_ATTEMPTS) {
+                        setTimeout(attemptJoinRoom, SOCKET_JOIN_RETRY_DELAY_MS)
                         return
                     } else {
-                        console.error(
-                            '[FRONTEND] Failed to join submission room after',
-                            maxAttempts,
-                            'attempts. Socket state:',
-                            {
+                        log.error('Failed to join submission room after max attempts', {
+                            attempts: SOCKET_JOIN_MAX_ATTEMPTS,
+                            socketState: {
                                 socketExists: Boolean(socket),
                                 socketConnected,
                                 socketId,
-                            }
-                        )
+                            },
+                        })
                     }
                 }
                 attemptJoinRoom()
@@ -459,17 +458,16 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 // 🔄 FALLBACK: Poll submission status after 30 seconds if no final verdict received
                 setTimeout(() => {
                     if (!finalVerdictHandledRef.current) {
-                        console.log(
-                            '[FRONTEND] No final verdict received within 30s, polling status for submission:',
-                            submissionId
-                        )
+                        log.info('No final verdict received within timeout, polling status', {
+                            submissionId,
+                        })
                         fetch(`/api/submissions/${submissionId}`)
                             .then((res) => res.json())
                             .then((pollData) => {
                                 if (pollData.success && pollData.data) {
                                     const s = pollData.data
                                     const verdict = (s.verdict || '').toUpperCase()
-                                    console.log('[FRONTEND] Polled submission status:', verdict)
+                                    log.info('Polled submission status', { verdict })
 
                                     if (verdict && verdict !== 'PENDING') {
                                         // Update testResult with the actual verdict
@@ -495,12 +493,12 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                                     }
                                 }
                             })
-                            .catch((err) => console.error('[FRONTEND] Status poll error:', err))
+                            .catch((err) => log.error('Status poll error', err))
                     }
-                }, 30000)
+                }, SUBMISSION_POLL_DELAY_MS)
             }
         } catch (err) {
-            console.error('[FRONTEND] SUBMIT CODE ERROR:', err)
+            log.error('Submit code error', err)
             clearTimeout(submissionTimeout)
             execution.setTestResult({ status: 'error', error: err.message })
             execution.setIsSubmitting(false)
@@ -537,8 +535,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 execution.testResultData?.aiFeedback &&
                 !execution.testResultData.aiFeedback.error
             ) {
-                console.log(
-                    '[FRONTEND] AI feedback already analyzed for this code submission, showing cached result'
+                log.info(
+                    'AI feedback already analyzed for this code submission, showing cached result'
                 )
                 if (options.switchTab) {
                     execution.setConsoleTab('ai')
@@ -546,7 +544,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 return
             }
 
-            console.log('[FRONTEND] New code detected, analyzing...')
+            log.info('New code detected, analyzing...')
             execution.setIsAiLoading(true)
             try {
                 const res = await fetch('/api/evaluation/analyze', {
@@ -577,7 +575,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     })
                 }
             } catch (err) {
-                console.error('AI feedback error:', err)
+                log.error('AI feedback error', err)
                 execution.setTestResultData({ aiFeedback: { error: err.message } })
             } finally {
                 execution.setIsAiLoading(false)
@@ -658,7 +656,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                     }
                 }
             } catch (err) {
-                console.error('Failed to fetch submission details:', err)
+                log.error('Failed to fetch submission details', err)
             } finally {
                 execution.setIsSubmitting(false)
                 execution.setIsRunning(false)

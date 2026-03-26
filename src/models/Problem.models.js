@@ -66,6 +66,15 @@ const problemSchema = new mongoose.Schema(
         totalSubmissions: { type: Number, default: 0 },
         acceptedSubmissions: { type: Number, default: 0 },
 
+        trendingScore: { type: Number, default: 0 },
+        lastSubmissionDate: { type: Date, default: null },
+        commonMistakes: [
+            {
+                description: String,
+                frequency: Number,
+            },
+        ],
+
         // Reaction counts — synced from Redis periodically
         reactionCounts: {
             type: Map,

@@ -81,6 +81,9 @@ function InnerLayout({
     })
 
     const [showProblemList, setShowProblemList] = useState(false)
+    // Mobile: Track active panel (for mobile tab switching)
+    const [mobileActivePanel, setMobileActivePanel] =
+        (useState < 'description') | 'editor' | ('console' > 'description')
 
     /** Toggle maximize for a panel — if already maximized, restore */
     const toggleMaximize = useCallback((panel) => {
@@ -124,77 +127,88 @@ function InnerLayout({
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-4">
+            <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-2 sm:px-4">
                 {/* Left */}
                 <div className="flex items-center gap-1">
                     <AreanaLogo
                         href="/feed"
-                        className="mr-4 scale-90 transition-transform hover:scale-95"
+                        className="mr-2 scale-90 transition-transform hover:scale-95 sm:mr-4"
                     />
-                    <div className="bg-border mr-2 h-6 w-px" />
+                    <div className="bg-border mr-2 hidden h-6 w-px sm:block" />
                     <button
                         onClick={() => setShowProblemList(true)}
-                        className="hover:bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors"
+                        className="hover:bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors sm:px-3"
+                        aria-label="Open problem list"
                     >
                         <List size={16} />
-                        <span className="font-semibold">Problem List</span>
+                        <span className="hidden font-semibold sm:inline">Problem List</span>
                     </button>
-                    <div className="bg-border mx-2 h-4 w-px" />
+                    <div className="bg-border mx-2 hidden h-4 w-px sm:block" />
                     <button
                         onClick={() => navigateProblem(-1)}
                         className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                        aria-label="Previous problem"
                     >
                         <ChevronLeft size={20} />
                     </button>
                     <button
                         onClick={() => navigateProblem(1)}
                         className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                        aria-label="Next problem"
                     >
                         <ChevronRight size={20} />
                     </button>
                     <button
                         onClick={randomProblem}
                         className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                        aria-label="Random problem"
                     >
                         <Shuffle size={18} />
                     </button>
                 </div>
-                {/* Center */}
-                <div className="flex items-center gap-2">
+                {/* Center - Run/Submit buttons */}
+                <div className="flex items-center gap-1 sm:gap-2">
                     <button
                         onClick={runCode}
                         disabled={isRunning}
-                        className="flex items-center gap-1.5 rounded-md bg-[#333] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#444] disabled:opacity-50"
+                        className="flex items-center gap-1 rounded-md bg-[#333] px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#444] disabled:opacity-50 sm:gap-1.5 sm:px-4"
+                        aria-label="Run code"
                     >
                         {isRunning ? (
                             <Loader2 size={14} className="animate-spin" />
                         ) : (
                             <Play size={14} />
                         )}
-                        Run
+                        <span className="hidden sm:inline">Run</span>
                     </button>
                     <button
                         onClick={submitCode}
                         disabled={isSubmitting}
-                        className="flex items-center gap-1.5 rounded-md bg-[#2cbb5d] px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50"
+                        className="flex items-center gap-1 rounded-md bg-[#2cbb5d] px-2 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50 sm:gap-1.5 sm:px-4"
+                        aria-label="Submit code"
                     >
                         {isSubmitting ? (
                             <Loader2 size={14} className="animate-spin" />
                         ) : (
                             <CheckCircle2 size={14} />
                         )}
-                        Submit
+                        <span className="hidden sm:inline">Submit</span>
                     </button>
                 </div>
                 {/* Right */}
-                <div className="flex items-center gap-2 text-gray-400">
-                    <button className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors">
-                        <Settings2 size={18} />
+                <div className="flex items-center gap-1 text-gray-400 sm:gap-2">
+                    <button
+                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
+                        aria-label="Settings"
+                    >
+                        <Settings2 size={16} className="sm:size-18" />
                     </button>
 
-                    <div className="bg-border h-6 w-px" />
+                    <div className="bg-border hidden h-6 w-px sm:block" />
 
-                    <NotificationBell />
+                    <div className="hidden sm:block">
+                        <NotificationBell />
+                    </div>
 
                     <Link
                         href={isAuthenticated ? '/profile' : '/login'}
@@ -503,6 +517,67 @@ function InnerLayout({
                         </div>
                     </>
                 )}
+            </div>
+
+            {/* ═══ Mobile Tab Bar (Bottom Navigation for Panels) ═══ */}
+            <div className="border-border bg-bg-subtle fixed right-0 bottom-0 left-0 flex h-14 shrink-0 items-center justify-around border-t px-2 sm:hidden">
+                <button
+                    onClick={() => setMobileActivePanel('description')}
+                    className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition-colors ${
+                        mobileActivePanel === 'description'
+                            ? 'bg-bg-muted text-accent'
+                            : 'text-text-muted'
+                    }`}
+                    aria-label="Show description panel"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                    </svg>
+                    <span className="text-[10px] font-medium">Problem</span>
+                </button>
+                <button
+                    onClick={() => setMobileActivePanel('editor')}
+                    className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition-colors ${
+                        mobileActivePanel === 'editor'
+                            ? 'bg-bg-muted text-accent'
+                            : 'text-text-muted'
+                    }`}
+                    aria-label="Show code editor"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                        />
+                    </svg>
+                    <span className="text-[10px] font-medium">Code</span>
+                </button>
+                <button
+                    onClick={() => setMobileActivePanel('console')}
+                    className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition-colors ${
+                        mobileActivePanel === 'console'
+                            ? 'bg-bg-muted text-accent'
+                            : 'text-text-muted'
+                    }`}
+                    aria-label="Show console"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                        />
+                    </svg>
+                    <span className="text-[10px] font-medium">Console</span>
+                </button>
             </div>
         </div>
     )

@@ -30,7 +30,49 @@ export default function ProfileHero({ user: userProp }) {
     const displayUser = userProp || authUser
     const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
 
-    const { bio = '', avatarSeed = name, stats, location, website, socials } = displayUser || {}
+    const {
+        bio = '',
+        avatarSeed = name,
+        stats,
+        location,
+        country,
+        website,
+        socials,
+    } = displayUser || {}
+
+    const countryFlags = {
+        AE: '🇦🇪',
+        AR: '🇦🇷',
+        AU: '🇦🇺',
+        BD: '🇧🇩',
+        BR: '🇧🇷',
+        CA: '🇨🇦',
+        CH: '🇨🇭',
+        CN: '🇨🇳',
+        DE: '🇩🇪',
+        EG: '🇪🇬',
+        ES: '🇪🇸',
+        FR: '🇫🇷',
+        GB: '🇬🇧',
+        IN: '🇮🇳',
+        IT: '🇮🇹',
+        JP: '🇯🇵',
+        KR: '🇰🇷',
+        MX: '🇲🇽',
+        NG: '🇳🇬',
+        NL: '🇳🇱',
+        PK: '🇵🇰',
+        PL: '🇵🇱',
+        RU: '🇷🇺',
+        SE: '🇸🇪',
+        SG: '🇸🇬',
+        TH: '🇹🇭',
+        TR: '🇹🇷',
+        US: '🇺🇸',
+        VN: '🇻🇳',
+        ZA: '🇿🇦',
+    }
+    const countryFlag = country ? countryFlags[country] || '' : ''
 
     const isOwnProfile =
         authUser &&
@@ -60,12 +102,12 @@ export default function ProfileHero({ user: userProp }) {
     const [isFollowing, setIsFollowing] = useState(checkIsFollowing(displayUser))
     const [friendsModalType, setFriendsModalType] = useState(null) // 'followers' | 'following' | null
 
-    // Sync state if displayUser changes from network fetch
+    // Sync follow state if displayUser changes from network fetch
     useEffect(() => {
         setFollowersCount(displayUser?.followers?.length || 0)
         setFollowingCount(displayUser?.following?.length || 0)
         setIsFollowing(checkIsFollowing(displayUser))
-    }, [displayUser, currentUserId])
+    }, [displayUser?.followers?.length, displayUser?.following?.length, currentUserId])
 
     const handleFollowToggle = async () => {
         if (!authUser) {
@@ -92,6 +134,9 @@ export default function ProfileHero({ user: userProp }) {
                 // Read truth from server to ensure sync
                 if (data.data?.followersCount !== undefined) {
                     setFollowersCount(data.data.followersCount)
+                }
+                if (data.data?.followingCount !== undefined) {
+                    setFollowingCount(data.data.followingCount)
                 }
                 setIsFollowing(data.data.following)
                 toast.success(data.data.following ? `Following ${name}` : `Unfollowed ${name}`)
@@ -148,7 +193,10 @@ export default function ProfileHero({ user: userProp }) {
                     <div className="flex max-w-[400px] flex-col items-center space-y-4 md:items-start">
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                                <h1 className="text-text-primary text-3xl font-bold tracking-tight drop-shadow-sm">
+                                <h1
+                                    suppressHydrationWarning
+                                    className="text-text-primary text-3xl font-bold tracking-tight drop-shadow-sm"
+                                >
                                     {name}
                                 </h1>
                                 <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold tracking-wider uppercase">
@@ -183,7 +231,10 @@ export default function ProfileHero({ user: userProp }) {
                             </div>
 
                             {bio ? (
-                                <p className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left">
+                                <p
+                                    suppressHydrationWarning
+                                    className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left"
+                                >
                                     {bio}
                                 </p>
                             ) : isOwnProfile ? (
@@ -193,16 +244,20 @@ export default function ProfileHero({ user: userProp }) {
                             ) : null}
                         </div>
 
-                        {/* Quick info: Location & Website */}
-                        {(location || website) && (
+                        {/* Quick info: City & Country & Website */}
+                        {(location || country || website) && (
                             <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-sm md:justify-start">
-                                {location && (
+                                {(location || country) && (
                                     <div
                                         className="hover:text-text-primary flex items-center gap-1.5 transition-colors"
                                         title="Location"
                                     >
                                         <MapPin size={16} className="text-accent/70" />
-                                        <span>{location}</span>
+                                        <span>
+                                            {location}
+                                            {location && country && ', '}
+                                            {countryFlag}
+                                        </span>
                                     </div>
                                 )}
                                 {safeWebsiteUrl && (
@@ -217,7 +272,7 @@ export default function ProfileHero({ user: userProp }) {
                                             rel="noopener noreferrer"
                                             className="hover:underline"
                                         >
-                                            {website.replace(/^https?:\/\//, '')}
+                                            {website?.replace(/^https?:\/\//, '') || website}
                                         </a>
                                     </div>
                                 )}
@@ -262,9 +317,11 @@ export default function ProfileHero({ user: userProp }) {
                     </div>
 
                     {/* Social Icons only */}
-                    {(socials?.github || socials?.linkedin || socials?.twitter) && (
+                    {(socials?.github?.trim() ||
+                        socials?.linkedin?.trim() ||
+                        socials?.twitter?.trim()) && (
                         <div className="flex items-center justify-center gap-4 md:justify-end">
-                            {socials?.github && (
+                            {socials?.github?.trim() && (
                                 <a
                                     href={`https://github.com/${socials.github}`}
                                     target="_blank"
@@ -275,7 +332,7 @@ export default function ProfileHero({ user: userProp }) {
                                     <Github size={20} />
                                 </a>
                             )}
-                            {socials?.linkedin && (
+                            {socials?.linkedin?.trim() && (
                                 <a
                                     href={`https://linkedin.com/in/${socials.linkedin}`}
                                     target="_blank"
@@ -286,7 +343,7 @@ export default function ProfileHero({ user: userProp }) {
                                     <Linkedin size={20} />
                                 </a>
                             )}
-                            {socials?.twitter && (
+                            {socials?.twitter?.trim() && (
                                 <a
                                     href={`https://twitter.com/${socials.twitter.replace('@', '')}`}
                                     target="_blank"

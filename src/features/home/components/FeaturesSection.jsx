@@ -112,11 +112,11 @@ export default function FeaturesSection() {
                                 }}
                                 className="w-full max-w-[500px]"
                             >
-                                <Card className="bg-bg-subtle/98 border-border/60 border-t-accent/20 relative flex flex-col items-start overflow-hidden rounded-[2rem] border-t p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.4)] backdrop-blur-2xl md:p-10">
+                                <Card className="bg-bg-subtle/98 border-border relative flex flex-col items-start overflow-hidden rounded-md border p-8 shadow-sm backdrop-blur-2xl md:p-10">
                                     {/* Inner Glow */}
                                     <div className="via-accent/50 absolute top-0 left-1/2 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent to-transparent" />
 
-                                    <div className="bg-bg-page border-border group mb-8 flex size-14 items-center justify-center rounded-2xl border shadow-inner">
+                                    <div className="bg-bg-page border-border group mb-8 flex size-14 items-center justify-center rounded-sm border shadow-inner">
                                         <div className="text-accent transition-transform group-hover:scale-110 [&_svg]:size-7">
                                             {feature.icon}
                                         </div>

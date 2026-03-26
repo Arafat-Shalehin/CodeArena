@@ -67,7 +67,7 @@ export default function Hero() {
     const shouldReduceMotion = useSafeReducedMotion()
 
     return (
-        <section className="hero-gradient relative overflow-hidden pt-12 pb-0 transition-all duration-700">
+        <section className="hero-gradient relative overflow-hidden pt-4 pb-0 transition-all duration-700">
             {/* Background Animations: Interactive Tiles */}
             <div className="absolute inset-0 z-0 opacity-10">
                 <Tiles rows={40} cols={20} tileSize="md" />
@@ -76,7 +76,7 @@ export default function Hero() {
             {/* Falling Light Data Animation */}
             <FallingLight />
 
-            <div className="relative z-10 mx-auto -mt-20 flex max-w-7xl flex-col items-center px-4 lg:-mt-24">
+            <div className="relative z-10 mx-auto -mt-4 flex max-w-7xl flex-col items-center px-4 lg:-mt-6">
                 {/* Top Section: Content */}
                 <motion.div
                     initial={shouldReduceMotion ? 'visible' : 'hidden'}
@@ -94,8 +94,8 @@ export default function Hero() {
                     className="mb-6 text-center"
                 >
                     {/* Headline */}
-                    <div className="mt-20 mb-2 overflow-visible">
-                        <h1 className="text-text-primary pt-12 pb-2 font-sans text-6xl leading-[1.1] font-extrabold tracking-[-0.04em] sm:text-7xl lg:text-8xl">
+                    <div className="mt-6 mb-2 overflow-visible">
+                        <h1 className="text-text-primary font-display pt-4 pb-2 text-6xl leading-[1.05] font-black tracking-[-0.04em] sm:text-7xl lg:text-[7.5rem]">
                             <motion.span
                                 variants={{
                                     hidden: { y: 60, opacity: 0 },
@@ -107,7 +107,7 @@ export default function Hero() {
                                 }}
                                 className="mr-[0.2em] inline-block"
                             >
-                                Master
+                                Compete.
                             </motion.span>
                             <br className="sm:hidden" />
                             <motion.span
@@ -116,12 +116,33 @@ export default function Hero() {
                                     visible: {
                                         y: 0,
                                         opacity: 1,
-                                        transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                                        transition: {
+                                            duration: 0.8,
+                                            ease: [0.16, 1, 0.3, 1],
+                                            delay: 0.1,
+                                        },
                                     },
                                 }}
-                                className="text-accent inline-block font-serif italic drop-shadow-[0_0_15px_rgba(0,200,83,0.3)]"
+                                className="mr-[0.2em] inline-block"
                             >
-                                Algorithms.
+                                Build.
+                            </motion.span>
+                            <motion.span
+                                variants={{
+                                    hidden: { y: 60, opacity: 0 },
+                                    visible: {
+                                        y: 0,
+                                        opacity: 1,
+                                        transition: {
+                                            duration: 0.8,
+                                            ease: [0.16, 1, 0.3, 1],
+                                            delay: 0.2,
+                                        },
+                                    },
+                                }}
+                                className="text-gradient inline-block"
+                            >
+                                Win.
                             </motion.span>
                         </h1>
                     </div>
@@ -133,13 +154,14 @@ export default function Hero() {
                             visible: {
                                 opacity: 1,
                                 y: 0,
-                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.3 },
                             },
                         }}
-                        className="text-text-secondary mx-auto mb-8 max-w-2xl text-lg leading-relaxed md:text-xl"
+                        className="text-text-secondary mx-auto mb-10 max-w-2xl text-lg leading-relaxed font-medium md:text-xl"
                     >
                         Level up your coding skills and ace your next technical interview. Join the
-                        world's fastest-growing competitive programming arena.
+                        world's fastest-growing competitive programming arena
+                        <span className="text-accent animate-pulse font-mono">_</span>
                     </motion.p>
 
                     {/* CTA Buttons */}
@@ -149,30 +171,32 @@ export default function Hero() {
                             visible: {
                                 opacity: 1,
                                 y: 0,
-                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.4 },
                             },
                         }}
-                        className="flex flex-col justify-center gap-4 pt-2 sm:flex-row"
+                        className="flex flex-col items-center justify-center pt-2"
                     >
-                        <Link href="/problems" className="w-full sm:w-auto">
-                            <Button
-                                variant="default"
-                                size="lg"
-                                className="bg-accent hover:bg-accent-hover h-12 w-full px-8 text-base transition-all hover:scale-105 active:scale-95"
-                            >
-                                Start Solving
-                                <ArrowRight className="ml-2 size-4" />
-                            </Button>
-                        </Link>
-                        <Link href="/contests" className="w-full sm:w-auto">
-                            <Button
-                                variant="secondary"
-                                size="lg"
-                                className="bg-bg-page hover:bg-bg-subtle border-border hover:border-accent/40 h-12 w-full border px-8 text-base transition-all"
-                            >
-                                View Contests
-                            </Button>
-                        </Link>
+                        <div className="flex w-full flex-col justify-center gap-4 sm:w-auto sm:flex-row">
+                            <Link href="/problems" className="w-full sm:w-auto">
+                                <Button
+                                    variant="default"
+                                    size="lg"
+                                    className="bg-accent hover:bg-accent-hover duration-normal h-14 w-full rounded-md px-10 text-lg font-bold text-white transition-colors"
+                                >
+                                    Start Solving
+                                    <ArrowRight className="ml-2 size-5" />
+                                </Button>
+                            </Link>
+                            <Link href="/contests" className="w-full sm:w-auto">
+                                <Button
+                                    variant="secondary"
+                                    size="lg"
+                                    className="bg-bg-subtle hover:bg-bg-muted text-text-primary border-border duration-normal h-14 w-full rounded-md border px-10 text-lg font-bold transition-colors"
+                                >
+                                    View Contests
+                                </Button>
+                            </Link>
+                        </div>
                     </motion.div>
 
                     {/* Language Support Showcase */}
