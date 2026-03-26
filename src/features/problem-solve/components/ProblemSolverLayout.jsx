@@ -82,8 +82,7 @@ function InnerLayout({
 
     const [showProblemList, setShowProblemList] = useState(false)
     // Mobile: Track active panel (for mobile tab switching)
-    const [mobileActivePanel, setMobileActivePanel] =
-        (useState < 'description') | 'editor' | ('console' > 'description')
+    const [mobileActivePanel, setMobileActivePanel] = useState('description')
 
     /** Toggle maximize for a panel — if already maximized, restore */
     const toggleMaximize = useCallback((panel) => {
