@@ -39,7 +39,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+ENV PORT=7860
 ENV HOSTNAME=0.0.0.0
 # Default process; Railway worker service overrides this to WORKER.
 ENV PROCESS_TYPE=API
@@ -52,11 +52,15 @@ COPY --from=builder /app/.next/standalone ./.next/standalone
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/scripts/start-process.js ./scripts/start-process.js
+COPY --from=builder /app/scripts/worker-boot.js ./scripts/worker-boot.js
+COPY --from=builder /app/scripts/alias-loader.mjs ./scripts/alias-loader.mjs
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 7860
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 	CMD wget -qO- "http://127.0.0.1:${PORT}/api/health" > /dev/null || exit 1

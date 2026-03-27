@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const requiredEnvVars = ['MONGODB_URI', 'REDIS_URL', 'JWT_SECRET']
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET']
 
 function parseEnvLine(line) {
     const trimmed = line.trim()
@@ -62,6 +62,17 @@ const missingOrEmptyVars = requiredEnvVars.filter((key) => {
     const value = process.env[key]
     return typeof value !== 'string' || value.trim() === ''
 })
+
+const hasRedisUrl = typeof process.env.REDIS_URL === 'string' && process.env.REDIS_URL.trim() !== ''
+const hasRedisHostPort =
+    typeof process.env.REDIS_HOST === 'string' &&
+    process.env.REDIS_HOST.trim() !== '' &&
+    typeof process.env.REDIS_PORT === 'string' &&
+    process.env.REDIS_PORT.trim() !== ''
+
+if (!hasRedisUrl && !hasRedisHostPort) {
+    missingOrEmptyVars.push('REDIS_URL or REDIS_HOST+REDIS_PORT')
+}
 
 if (missingOrEmptyVars.length > 0) {
     console.error('[Preflight] Missing or empty required environment variables:')

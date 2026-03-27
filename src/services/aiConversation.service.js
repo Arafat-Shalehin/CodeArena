@@ -396,7 +396,4 @@ export {
     injectSubmissionVerdict,
     injectUserMessage,
     loadPrompt as getPhaseInstructions, // Alias for backwards compatibility with tests
-    buildScorecardPrompt,
-    selectModel,
-    MODELS,
 }
