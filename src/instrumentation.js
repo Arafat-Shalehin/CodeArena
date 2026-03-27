@@ -1,9 +1,12 @@
 // Store workers globally to prevent garbage collection
+import { isWorkerProcess, getProcessType } from '@/lib/process-type'
+
 let globalWorkers = {
     submission: null,
     stats: null,
     ai: null,
     interviewAI: null,
+    interviewExecution: null,
     plagiarism: null,
     interviewSummarize: null,
 }
@@ -11,6 +14,7 @@ let globalWorkers = {
 export async function register() {
     console.log('[INSTRUMENTATION] register() called')
     console.log('[INSTRUMENTATION] NEXT_RUNTIME:', process.env.NEXT_RUNTIME)
+    console.log('[INSTRUMENTATION] PROCESS_TYPE:', getProcessType())
 
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         const isBuild =
@@ -22,6 +26,11 @@ export async function register() {
             return
         }
 
+        if (!isWorkerProcess()) {
+            console.log('[INSTRUMENTATION] PROCESS_TYPE is API. Skipping worker initialization.')
+            return
+        }
+
         console.log('[INSTRUMENTATION] Running in Node.js runtime, initializing workers...')
         try {
             console.log('[INSTRUMENTATION] Importing submission worker...')
@@ -29,6 +38,8 @@ export async function register() {
             const { initStatsWorker } = await import('@/services/stats.worker')
             const { initAIWorker } = await import('@/services/ai.worker')
             const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
+            const { initInterviewExecutionWorker } =
+                await import('@/services/interviewExecution.worker')
             const { initPlagiarismWorker } = await import('@/services/plagiarism.worker')
             const { initInterviewSummarizeWorker } =
                 await import('@/services/interviewSummarize.worker')
@@ -49,6 +60,10 @@ export async function register() {
             if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
             globalWorkers.interviewAI = initInterviewAIWorker()
 
+            console.log('[INSTRUMENTATION] Calling initInterviewExecutionWorker...')
+            if (globalWorkers.interviewExecution) await globalWorkers.interviewExecution.close()
+            globalWorkers.interviewExecution = initInterviewExecutionWorker()
+
             console.log('[INSTRUMENTATION] Calling initPlagiarismWorker...')
             if (globalWorkers.plagiarism) await globalWorkers.plagiarism.close()
             globalWorkers.plagiarism = initPlagiarismWorker()
@@ -59,7 +74,7 @@ export async function register() {
 
             globalThis._workersInitialized = true
             console.log(
-                '>>> CodeArena Workers v2.2 Initialized (Submission, Stats, AI, InterviewAI, Plagiarism, InterviewSummarize)'
+                '>>> CodeArena Workers v2.3 Initialized (Submission, Stats, AI, InterviewAI, InterviewExecution, Plagiarism, InterviewSummarize)'
             )
         } catch (err) {
             console.error('[CRITICAL] Failed to initialize Workers:', err.message)
