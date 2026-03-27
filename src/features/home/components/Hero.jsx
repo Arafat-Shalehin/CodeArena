@@ -94,7 +94,7 @@ export default function Hero() {
                     className="mb-6 text-center"
                 >
                     {/* Headline */}
-                    <div className="mt-6 mb-2 overflow-visible">
+                    <div className="mt-15 mb-2 overflow-visible">
                         <h1 className="text-text-primary font-display pt-4 pb-2 text-6xl leading-[1.05] font-black tracking-[-0.04em] sm:text-7xl lg:text-[7.5rem]">
                             <motion.span
                                 variants={{
@@ -157,7 +157,7 @@ export default function Hero() {
                                 transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.3 },
                             },
                         }}
-                        className="text-text-secondary mx-auto mb-10 max-w-2xl text-lg leading-relaxed font-medium md:text-xl"
+                        className="text-text-secondary mx-auto mt-4 mb-10 max-w-2xl text-lg leading-relaxed font-medium md:text-xl"
                     >
                         Level up your coding skills and ace your next technical interview. Join the
                         world's fastest-growing competitive programming arena

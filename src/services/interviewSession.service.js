@@ -44,7 +44,7 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
         startedAt: { $gte: oneHourAgo },
     })
 
-    if (recentSessionsCount >= 5) {
+    if (recentSessionsCount >= 5 && process.env.SESSION_LIMIT_BYPASS !== 'true') {
         throw new Error('Rate limit exceeded: Maximum 5 interview sessions per hour')
     }
 

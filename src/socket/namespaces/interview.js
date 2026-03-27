@@ -19,45 +19,7 @@ import { interviewAIChannel } from '@/services/interviewAI.worker'
 import { interviewExecutionChannel } from '@/services/interviewExecution.worker'
 import { createClient } from 'redis'
 import { redisClient } from '@/lib/redis'
-
-async function isSessionActive(sessionId) {
-    const redisKey = `session:active:${sessionId}`
-
-    // Tier 1: Redis Check
-    try {
-        if (redisClient.isOpen) {
-            const cachedStatus = await redisClient.get(redisKey)
-            if (cachedStatus !== null) {
-                return cachedStatus === '1'
-            }
-        }
-    } catch (err) {
-        console.warn(
-            `[Interview NS] Redis check failed for session ${sessionId}, falling back to DB:`,
-            err.message
-        )
-    }
-
-    // Tier 2: DB Fallback
-    try {
-        await dbConnect()
-        const session = await InterviewSession.findById(sessionId).select('status').lean()
-        const isActive = session?.status === 'active'
-
-        // Backfill Redis if active
-        if (isActive && redisClient.isOpen) {
-            await redisClient.set(redisKey, '1', { EX: 3600 }).catch(() => {})
-        }
-
-        return isActive
-    } catch (dbErr) {
-        console.error(
-            `[Interview NS] Critical: Both Redis and DB failed for session ${sessionId}:`,
-            dbErr.message
-        )
-        return false // Fail Closed
-    }
-}
+import { isSessionActive } from '@/services/sessionGuard'
 
 // ── Dedicated subscriber factory ───────────────────────────────────────────────
 // Each connected socket gets its own subscriber client so it can subscribe to
@@ -258,6 +220,14 @@ export function registerInterviewNamespace(io) {
         // Force connection into room and register the socket to the Singleton
         socket.join(roomName)
         await registerSessionSocket(sessionId, socket.id)
+
+        // --- Voice Mode Sync ---
+        socket.on('voice:mode_activated', () => {
+            socket.data.voiceMode = true
+            console.log(
+                `[Interview NS] Voice mode activated for user ${socket.userId} in session ${sessionId}`
+            )
+        })
 
         // --- Intro Phase Sim-Streaming (Execution optimization) ---
         // If this is a fresh session (only 1 message: the intro), sim-stream it to trigger UI animations

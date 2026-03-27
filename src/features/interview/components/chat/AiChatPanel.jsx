@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Bot, User as UserIcon, Loader2, AlertCircle, Send } from 'lucide-react'
+import { Bot, User as UserIcon, Loader2, AlertCircle, Send, Mic, MicOff } from 'lucide-react'
+import { useInterview } from '../../context/InterviewContext'
+import { useVoiceInput } from '../../hooks/useVoiceInput'
 
 export default function AiChatPanel({
     messages,
@@ -9,6 +11,20 @@ export default function AiChatPanel({
     socket,
     setIsAiTyping,
 }) {
+    const { sessionId, wsToken, socket: interviewSocket } = useInterview()
+    const {
+        isListening,
+        transcript,
+        transcriptStatus,
+        error: voiceError,
+        toggleListening,
+        setTranscript,
+    } = useVoiceInput({
+        wsToken,
+        sessionId,
+        interviewSocket,
+    })
+
     const [draft, setDraft] = useState('')
     const [error, setError] = useState(null)
     const bottomRef = useRef(null)
@@ -30,6 +46,19 @@ export default function AiChatPanel({
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, isAiTyping, error])
+
+    useEffect(() => {
+        if (transcript) {
+            setDraft((prev) => {
+                const trimmedPrev = prev.trim()
+                const space = trimmedPrev ? ' ' : ''
+                return `${trimmedPrev}${space}${transcript}`
+            })
+            // Clear the transcript in the hook so it doesn't double-append
+            // and allows setTranscript to be actually useful!
+            setTranscript('')
+        }
+    }, [transcript, setTranscript])
 
     const submit = () => {
         const trimmed = draft.trim()
@@ -161,18 +190,43 @@ export default function AiChatPanel({
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         onKeyDown={handleKey}
-                        placeholder="Ask the AI or explain your approach…"
-                        className="text-text-primary placeholder:text-text-muted flex-1 resize-none bg-transparent text-[13px] outline-none"
+                        placeholder={
+                            isListening ? 'Listening...' : 'Ask the AI or explain your approach…'
+                        }
+                        className={`text-text-primary placeholder:text-text-muted flex-1 resize-none bg-transparent text-[13px] outline-none ${isListening ? 'animate-pulse' : ''}`}
                         style={{ maxHeight: 100 }}
                     />
-                    <button
-                        onClick={submit}
-                        disabled={!draft.trim() || isAiTyping}
-                        className="text-accent hover:bg-accent/10 flex-shrink-0 rounded-lg p-1.5 transition-colors disabled:opacity-40"
-                    >
-                        <Send size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={toggleListening}
+                            title={isListening ? 'Stop Voice Input' : 'Start Voice Input'}
+                            className={`flex-shrink-0 rounded-lg p-1.5 transition-all ${
+                                isListening
+                                    ? 'animate-pulse bg-red-500/20 text-red-400'
+                                    : 'text-text-muted hover:text-text-primary hover:bg-white/5'
+                            }`}
+                        >
+                            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                        </button>
+                        <button
+                            onClick={submit}
+                            disabled={!draft.trim() || isAiTyping || isListening}
+                            className="text-accent hover:bg-accent/10 flex-shrink-0 rounded-lg p-1.5 transition-colors disabled:opacity-40"
+                        >
+                            <Send size={16} />
+                        </button>
+                    </div>
                 </div>
+                {transcriptStatus === 'uncertain' && (
+                    <p className="mt-1 text-center text-[10px] font-medium text-yellow-500">
+                        Transcript uncertain. Please review before sending.
+                    </p>
+                )}
+                {voiceError && (
+                    <p className="mt-1 text-center text-[10px] font-medium text-red-500">
+                        {voiceError}
+                    </p>
+                )}
                 <p className="text-text-muted mt-1.5 text-center text-[10px]">
                     Enter to send · Shift+Enter for newline
                 </p>
