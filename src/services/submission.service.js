@@ -169,6 +169,48 @@ export async function createSubmission(data) {
             }
         } catch (queueError) {
             console.error('[SERVICE] Failed to add submission to queue:', queueError)
+
+            const queueFailureMessage = `FAILED_TO_QUEUE: ${queueError?.message || 'Unknown queue error'}`
+
+            // Ensure submission is not left in pending forever if enqueue fails.
+            const failedSubmission = await Submission.findByIdAndUpdate(
+                submission._id,
+                {
+                    status: 'error',
+                    verdict: 'SYSTEM_ERROR',
+                    error: queueFailureMessage,
+                },
+                { new: true }
+            )
+
+            if (redisClient.isOpen) {
+                redisClient
+                    .publish(
+                        'submission_updates',
+                        JSON.stringify({
+                            type: 'submission_failed_to_queue',
+                            event: 'SUBMISSION_STATUS',
+                            userId,
+                            submissionId: submission._id,
+                            problemId,
+                            stage: 'queue_failed',
+                            status: 'error',
+                            verdict: 'SYSTEM_ERROR',
+                            progress: 0,
+                            message: 'Failed to queue submission. Please retry.',
+                            error: queueFailureMessage,
+                            current: 0,
+                            total: Number(problem?.testCaseCount) || 0,
+                        })
+                    )
+                    .catch(console.error)
+            }
+
+            console.warn(
+                '[SERVICE] Submission marked as error due to queue failure:',
+                submission._id
+            )
+            return failedSubmission || submission
         }
     } else {
         // 🚀 CACHED RESULT: Publish submission_evaluated event immediately
