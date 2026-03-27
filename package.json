@@ -4,8 +4,11 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "preflight": "node scripts/preflight-check.js",
+        "predev": "node scripts/preflight-check.js",
         "dev": "next dev",
         "build": "next build",
+        "prestart": "node scripts/preflight-check.js",
         "start": "next start",
         "lint": "eslint",
         "prepare": "husky install",

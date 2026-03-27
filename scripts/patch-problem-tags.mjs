@@ -6,8 +6,7 @@
  */
 import mongoose from 'mongoose'
 
-const MONGODB_URI =
-    'mongodb+srv://CodeArenaAdmin:CSb7y4KBtTSA0kKc@crud-server.b5xdndi.mongodb.net/CodeArena?appName=Crud-Server'
+const MONGODB_URI = process.env.MONGODB_URI
 
 const TAG_MAP = {
     'The Lone Guard': ['Array', 'Bit Manipulation', 'XOR'],
@@ -23,6 +22,10 @@ const TAG_MAP = {
 }
 
 async function main() {
+    if (!MONGODB_URI) {
+        throw new Error('Missing required environment variable: MONGODB_URI')
+    }
+
     console.log('🔗 Connecting to MongoDB...')
     await mongoose.connect(MONGODB_URI)
 
