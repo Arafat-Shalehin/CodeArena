@@ -23,6 +23,7 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
     }, [transcriptStatus])
 
     const startRecording = useCallback(async () => {
+        if (mediaRecorderRef.current?.state === 'recording') return
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
@@ -39,14 +40,15 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
                 setError(null)
             }
 
-            mediaRecorderRef.current.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    if (voiceSocketRef.current?.connected) {
-                        voiceSocketRef.current.emit('voice:audio_chunk', event.data)
-                    } else {
-                        console.warn('[useVoiceInput] Socket not connected, dropping chunk')
-                    }
+            mediaRecorderRef.current.ondataavailable = async (event) => {
+                if (event.data.size === 0) return
+                if (!voiceSocketRef.current?.connected) {
+                    console.warn('[useVoiceInput] Socket not connected, dropping chunk')
+                    return
                 }
+                // Convert Blob → ArrayBuffer to ensure proper Node.js Buffer serialization
+                const buf = await event.data.arrayBuffer()
+                voiceSocketRef.current.emit('voice:audio_chunk', buf)
             }
 
             mediaRecorderRef.current.onerror = (event) => {
@@ -77,6 +79,11 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
         }
     }, [isListening, startRecording, stopRecording])
 
+    // 1.5 Cleanup recorder on unmount
+    useEffect(() => {
+        return () => stopRecording()
+    }, [stopRecording])
+
     // 2. Stable Socket Lifecycle
     useEffect(() => {
         if (!wsToken || !sessionId) return
@@ -84,6 +91,7 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
         const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'
         const socket = io(`${socketUrl}/voice`, {
             auth: { token: wsToken },
+            query: { sessionId }, // Pass sessionId for early validation
             reconnection: true,
             reconnectionDelayMax: 5000,
         })
@@ -92,13 +100,18 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
 
         socket.on('connect', () => {
             console.log('[Voice] Socket connected')
+            setError(null)
         })
 
         socket.on('disconnect', (reason) => {
             console.warn('[Voice] Socket disconnected:', reason)
+            if (reason !== 'io client disconnect') {
+                setError('Voice connection lost. Reconnecting...')
+            }
         })
 
         socket.on('voice:transcript_confirmed', (data) => {
+            if (!data.transcript || !data.transcript.trim()) return
             console.log('[useVoiceInput] Received confirmed transcript:', data.transcript)
             setTranscript(data.transcript)
             setTranscriptStatus('idle')

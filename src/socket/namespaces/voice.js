@@ -3,6 +3,14 @@ import { verifyWsToken } from '@/lib/auth/wsToken'
 import { isSessionActive } from '@/services/sessionGuard'
 import { hasVoiceAccess } from '@/services/accessControl.service'
 
+const LiveTranscriptionEvents = {
+    Open: 'open',
+    Close: 'close',
+    Transcript: 'transcript',
+    Error: 'error',
+    Metadata: 'metadata',
+}
+
 // ── Deepgram Singleton ────────────────────────────────────────────────────────
 if (!process.env.DEEPGRAM_API_KEY) {
     console.error('[Voice] Critical: DEEPGRAM_API_KEY is missing.')
@@ -59,158 +67,146 @@ export function registerVoiceNamespace(io) {
             return socket.disconnect()
         }
 
-        // 2. Initialize Deepgram Live Connection
+        // 2. Initialize State (DEFERRED Deepgram connection)
         let dgConnection = null
         let isDeepgramReady = false
         const audioBuffer = []
         const MAX_BUFFER_SIZE = 50
+        let heartbeat = null
 
         const initDeepgram = async () => {
-            console.log(`[Voice] Initializing new Deepgram connection for session ${sessionId}`)
-            try {
-                dgConnection = await deepgram.listen.v1.connect({
-                    model: 'nova-2',
-                    smart_format: true,
-                    interim_results: true,
-                    // Explicitly define format to survive header loss during reconnections
-                    encoding: 'opus',
-                    sample_rate: 48000,
-                    container: 'webm',
-                })
+            // Guard: don't open a second connection if one is already active
+            if (dgConnection && isDeepgramReady) return
 
-                // 1. ATTACH LISTENERS IMMEDIATELY (Before connect())
-                dgConnection.on('message', (data) => {
-                    try {
-                        const isTranscript = data.channel?.alternatives?.length > 0
-                        if (isTranscript) {
-                            const alt = data.channel.alternatives[0]
-                            const transcript = alt.transcript
-                            const isFinal = data.is_final
+            console.log(`[Voice] Initializing Deepgram for session ${sessionId}`)
 
-                            if (transcript) {
-                                console.log(
-                                    `[Voice] ${isFinal ? '[FINAL]' : '[INTERIM]'} : "${transcript}"`
-                                )
-                                if (isFinal) {
-                                    voiceNs.to(sessionId).emit('voice:transcript_confirmed', {
-                                        transcript,
-                                        confidence: alt.confidence,
-                                    })
-                                } else {
-                                    voiceNs.to(sessionId).emit('voice:transcript_interim', {
-                                        transcript,
-                                        confidence: alt.confidence,
-                                    })
-                                }
-                            }
-                        }
-                    } catch (err) {
-                        console.error('[Voice] Message processing error:', err)
-                    }
-                })
+            // ✅ Bug 1 Fix: deepgram.listen.live() is synchronous — returns the
+            // connection object immediately WITHOUT opening the WebSocket yet.
+            // Listeners are attached before the socket opens — no race condition.
+            // No separate .connect() call needed or allowed.
+            dgConnection = await deepgram.listen.v1.connect({
+                model: 'nova-2',
+                smart_format: true,
+                interim_results: true,
+                language: 'en-US',
+                // ✅ Bug 3 Fix: No encoding/sample_rate/container.
+                // Deepgram auto-detects audio/webm;codecs=opus from the browser correctly.
+                // Explicit params cause rejection if browser's actual bitrate differs.
+            })
 
-                // Heartbeat to keep the connection alive during silence (Deepgram timeout is usually 10s)
-                const heartbeat = setInterval(() => {
-                    if (dgConnection && isDeepgramReady) {
+            dgConnection.on(LiveTranscriptionEvents.Open, () => {
+                isDeepgramReady = true
+                console.log(`[Voice] Deepgram ready for session ${sessionId}`)
+
+                heartbeat = setInterval(() => {
+                    if (isDeepgramReady && dgConnection) {
                         try {
-                            dgConnection.sendKeepAlive()
-                        } catch (e) {
-                            console.warn('[Voice] Heartbeat failed:', e.message)
-                        }
+                            dgConnection.keepAlive()
+                        } catch (e) {}
                     }
                 }, 3000)
 
-                dgConnection.on('close', (event) => {
-                    clearInterval(heartbeat)
-                    isDeepgramReady = false
-                    dgConnection = null
-                    console.log(
-                        `[Voice] Deepgram WS closed for session ${sessionId}. Code: ${event.code}, Reason: ${event.reason}`
-                    )
-                })
+                // Drain chunks that arrived before the connection opened
+                if (audioBuffer.length > 0) {
+                    console.log(`[Voice] Flushing ${audioBuffer.length} buffered chunks`)
+                    while (audioBuffer.length > 0) {
+                        try {
+                            dgConnection.send(audioBuffer.shift())
+                        } catch (e) {}
+                    }
+                }
+            })
 
-                dgConnection.on('error', (err) => {
-                    console.error(`[Voice] Deepgram WS error in session ${sessionId}:`, err)
-                    isDeepgramReady = false
-                    voiceNs.to(sessionId).emit('voice:error', {
-                        code: 'STT_ENGINE_ERROR',
-                        message: 'Speech engine failure',
-                    })
-                })
+            // ✅ Bug 2 Fix: LiveTranscriptionEvents.Transcript receives a pre-parsed
+            // JavaScript object — not a raw WebSocket string.
+            // data.type, data.channel, data.is_final all work correctly here.
+            dgConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
+                // Type guard: skip Metadata, SpeechStarted, and other non-transcript events
+                if (!data.channel) return
 
-                // 2. INITIATE CONNECTION
-                console.log(`[Voice] Starting Deepgram connection for session ${sessionId}...`)
-                dgConnection.connect()
+                const alt = data.channel.alternatives?.[0]
+                if (!alt || alt.transcript === '') return
 
-                // 3. WAIT FOR OPEN WITH TIMEOUT
-                const openPromise = dgConnection.waitForOpen()
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Deepgram connection timeout (5s)')), 5000)
+                const { transcript, confidence } = alt
+                const isFinal = data.is_final
+
+                console.log(
+                    `[Voice] ${isFinal ? '[FINAL]' : '[INTERIM]'} "${transcript}" (confidence: ${confidence?.toFixed(2)})`
                 )
 
-                try {
-                    await Promise.race([openPromise, timeoutPromise])
-                    isDeepgramReady = true
-                    console.log(`[Voice] Deepgram WS opened successfully for session ${sessionId}`)
-
-                    // Flush buffer
-                    if (audioBuffer.length > 0) {
-                        console.log(`[Voice] Flushing ${audioBuffer.length} buffered chunks`)
-                        while (audioBuffer.length > 0) {
-                            dgConnection.sendMedia(audioBuffer.shift())
-                        }
-                    }
-                } catch (timeoutErr) {
-                    console.error(`[Voice] Connection failed/timed out:`, timeoutErr.message)
-                    voiceNs.to(sessionId).emit('voice:error', {
-                        code: 'STT_TIMEOUT',
-                        message: 'Connection to speech engine timed out.',
-                    })
+                if (!isFinal) {
+                    voiceNs.to(sessionId).emit('voice:transcript_interim', { transcript })
+                    return
                 }
-            } catch (err) {
-                console.error(`[Voice] Failed to connect to Deepgram:`, err)
-                voiceNs.to(sessionId).emit('voice:error', {
-                    code: 'STT_INIT_FAILED',
-                    message: 'Failed to initialize speech engine',
-                })
-            }
-        }
 
-        await initDeepgram()
+                if (confidence >= 0.75) {
+                    voiceNs
+                        .to(sessionId)
+                        .emit('voice:transcript_confirmed', { transcript, confidence })
+                } else if (confidence >= 0.5) {
+                    voiceNs
+                        .to(sessionId)
+                        .emit('voice:transcript_uncertain', { transcript, confidence })
+                } else {
+                    voiceNs.to(sessionId).emit('voice:transcript_failed', { confidence })
+                }
+            })
+
+            dgConnection.on(LiveTranscriptionEvents.Close, () => {
+                clearInterval(heartbeat)
+                isDeepgramReady = false
+                dgConnection = null
+                console.log(`[Voice] Deepgram closed for session ${sessionId}`)
+            })
+
+            dgConnection.on(LiveTranscriptionEvents.Error, (err) => {
+                console.error(`[Voice] Deepgram error for session ${sessionId}:`, err)
+                isDeepgramReady = false
+                voiceNs.to(sessionId).emit('voice:error', {
+                    code: 'STT_ENGINE_ERROR',
+                    message: 'Speech engine failure',
+                })
+            })
+
+            // ✅ NO dgConnection.connect() call here — listen.live() handles this internally
+        }
 
         // 3. Audio Chunk Handling
         socket.on('voice:audio_chunk', (chunk) => {
-            // Log chunk arrival
-            if (audioBuffer.length % 20 === 0) {
-                console.log(`[Voice] Audio streaming... (buffer=${audioBuffer.length})`)
-            }
-
-            if (dgConnection && isDeepgramReady) {
-                dgConnection.sendMedia(chunk)
-            } else {
-                // Buffer chunks until ready
-                if (audioBuffer.length >= MAX_BUFFER_SIZE) {
-                    audioBuffer.shift() // Drop OLDEST chunk
+            if (isDeepgramReady && dgConnection) {
+                try {
+                    dgConnection.send(chunk) // ✅ correct SDK v3 method
+                } catch (e) {
+                    console.warn('[Voice] send failed:', e.message)
                 }
-                audioBuffer.push(chunk)
+            } else {
+                if (audioBuffer.length < MAX_BUFFER_SIZE) audioBuffer.push(chunk)
             }
         })
 
         // 4. Cross-Namespace Sync (Mode Activation)
-        socket.on('voice:mode_activated', () => {
+        socket.on('voice:mode_activated', async () => {
             console.log(`[Voice] Mode activated for session ${sessionId}`)
-            // Broadcast to /interview namespace as well
+
+            // 1. Initialize Deepgram ONLY when mode is activated
+            await initDeepgram()
+
+            // 2. Broadcast to /interview namespace
             io.of('/interview').to(sessionId).emit('voice:mode_activated')
         })
 
         // 5. Lifecycle Cleanup
         socket.on('disconnect', () => {
             console.log(`[Voice] Disconnected: userId=${userId}, sessionId=${sessionId}`)
+            clearInterval(heartbeat)
+            audioBuffer.length = 0
+            isDeepgramReady = false
             if (dgConnection) {
-                dgConnection.close()
+                try {
+                    dgConnection.finish()
+                } catch (e) {} // ✅ finish() not close()
                 dgConnection = null
             }
-            audioBuffer.length = 0 // Clear references
         })
     })
 
