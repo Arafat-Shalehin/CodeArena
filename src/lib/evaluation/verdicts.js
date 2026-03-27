@@ -12,6 +12,7 @@ export const VERDICTS = {
     JUDGING: 'JUDGING',
     SYSTEM_ERROR: 'SYSTEM_ERROR',
     SECURITY_ERROR: 'SECURITY_ERROR',
+    FEATURE_UNSUPPORTED_IN_CLOUD: 'FEATURE_UNSUPPORTED_IN_CLOUD',
 }
 
 // Meta information for UI display
@@ -91,6 +92,13 @@ export const VERDICT_META = {
         name: 'Security Error',
         description: 'Code contains unsafe operations',
         color: 'red',
+        score: 0,
+    },
+    [VERDICTS.FEATURE_UNSUPPORTED_IN_CLOUD]: {
+        code: 'FUC',
+        name: 'Feature Unsupported In Cloud',
+        description: 'This judge feature is not available in cloud fallback mode',
+        color: 'purple',
         score: 0,
     },
 }

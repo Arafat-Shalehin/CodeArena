@@ -71,6 +71,7 @@ export function getVerdictColor(verdict) {
         RUNTIME_ERROR: 'text-red-600 bg-red-100',
         CE: 'text-red-600 bg-red-100',
         COMPILATION_ERROR: 'text-red-600 bg-red-100',
+        FEATURE_UNSUPPORTED_IN_CLOUD: 'text-purple-600 bg-purple-100',
         SE: 'text-purple-600 bg-purple-100',
         SYSTEM_ERROR: 'text-purple-600 bg-purple-100',
         PD: 'text-gray-600 bg-gray-100',
