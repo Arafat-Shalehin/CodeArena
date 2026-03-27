@@ -183,7 +183,7 @@ function InnerLayout({
                     <button
                         onClick={submitCode}
                         disabled={isSubmitting}
-                        className="flex items-center gap-1 rounded-md bg-[#2cbb5d] px-2 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50 sm:gap-1.5 sm:px-4"
+                        className="flex items-center gap-0.5 rounded-md bg-[#2cbb5d] px-2 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50 sm:gap-0.5 sm:px-4"
                         aria-label="Submit code"
                     >
                         {isSubmitting ? (
@@ -195,7 +195,7 @@ function InnerLayout({
                     </button>
                 </div>
                 {/* Right */}
-                <div className="flex items-center gap-1 text-gray-400 sm:gap-2">
+                <div className="flex items-center gap-0.5 text-gray-400 sm:gap-0.5">
                     <ThemeToggle className="scale-90" />
 
                     <div className="bg-border hidden h-6 w-px sm:block" />
@@ -227,7 +227,7 @@ function InnerLayout({
             </nav>
 
             {/* ═══ Workspace Area ═══ */}
-            <div ref={hSplit.containerRef} className="flex flex-1 gap-1.5 overflow-hidden p-1.5">
+            <div ref={hSplit.containerRef} className="flex flex-1 gap-0.5 overflow-hidden p-1">
                 {/* ── Maximized: Show maximized panel + other panels as collapsed headers ── */}
                 {maximizedPanel ? (
                     <>
@@ -269,7 +269,7 @@ function InnerLayout({
                         )}
 
                         {/* Right side: Editor+Console or their stubs */}
-                        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
+                        <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
                             {/* Editor or stub */}
                             {maximizedPanel === 'editor' ? (
                                 <div className="border-border bg-bg-subtle flex flex-1 flex-col overflow-hidden rounded-xl border">
@@ -394,7 +394,7 @@ function InnerLayout({
                                 }
                                 hSplit.onMouseDown(e)
                             }}
-                            className="bg-bg-page hover:bg-accent/40 flex w-2 cursor-col-resize items-center justify-center transition-colors"
+                            className="bg-bg-page hover:bg-accent/40 flex w-1.5 cursor-col-resize items-center justify-center transition-colors"
                         >
                             <GripVertical size={12} className="text-text-muted" />
                         </div>
@@ -407,7 +407,7 @@ function InnerLayout({
                                     : `${(1 - hSplit.ratio) * 100}%`,
                             }}
                             ref={vSplit.containerRef}
-                            className="flex flex-1 flex-col gap-1.5 overflow-hidden"
+                            className="flex flex-1 flex-col gap-0.5 overflow-hidden"
                         >
                             {/* Editor or collapsed stub */}
                             {collapsedPanels.editor ? (
@@ -461,7 +461,7 @@ function InnerLayout({
                                         setCollapsedPanels((p) => ({ ...p, console: false }))
                                     vSplit.onMouseDown(e)
                                 }}
-                                className="bg-bg-page hover:bg-accent/40 flex h-2 cursor-row-resize items-center justify-center transition-colors"
+                                className="bg-bg-page hover:bg-accent/40 flex h-1.5 cursor-row-resize items-center justify-center transition-colors"
                             >
                                 <GripHorizontal size={12} className="text-text-muted" />
                             </div>
