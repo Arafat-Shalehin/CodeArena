@@ -1,7 +1,6 @@
 import mongoose from 'mongoose'
-import * as dotenv from 'dotenv'
-import path from 'path'
-import { fileURLToPath } from 'url'
+
+const MONGODB_URI = process.env.MONGODB_URI
 
 // Mock models
 const userSchema = new mongoose.Schema({
@@ -31,10 +30,12 @@ const problemSchema = new mongoose.Schema(
 
 async function run() {
     try {
+        if (!MONGODB_URI) {
+            throw new Error('Missing required environment variable: MONGODB_URI')
+        }
+
         console.log('Connecting to MongoDB...')
-        await mongoose.connect(
-            'mongodb+srv://CodeArenaAdmin:CSb7y4KBtTSA0kKc@crud-server.b5xdndi.mongodb.net/CodeArena?appName=Crud-Server'
-        )
+        await mongoose.connect(MONGODB_URI)
         console.log('Connected.')
 
         const User = mongoose.models.User || mongoose.model('User', userSchema)

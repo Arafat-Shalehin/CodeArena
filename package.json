@@ -4,9 +4,16 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "next dev",
+        "preflight": "node scripts/preflight-check.js",
+        "predev": "node scripts/preflight-check.js",
+        "dev": "node scripts/dev-all.js",
+        "dev:api": "node scripts/dev-process.js API",
+        "dev:worker": "node scripts/dev-process.js WORKER 3004",
         "build": "next build",
+        "prestart": "node scripts/preflight-check.js",
         "start": "next start",
+        "start:api": "node scripts/start-process.js API",
+        "start:worker": "node scripts/start-process.js WORKER",
         "lint": "eslint",
         "prepare": "husky install",
         "docker:build": "bash docker/scripts/build-images.sh"
