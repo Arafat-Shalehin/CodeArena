@@ -39,24 +39,21 @@ export default function ProfileDropdown({ user, onLogout }) {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="hover:bg-bg-subtle group flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors"
+                className="hover:bg-bg-subtle group flex items-center gap-1 rounded-full p-0.5 pr-1.5 transition-colors"
                 aria-label="User menu"
             >
                 <Avatar className="border-accent/30 size-9 border-2 shadow-sm">
                     <AvatarImage
-                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.username}`}
-                        alt={user.username}
+                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                        alt={user.name || 'User'}
                     />
                     <AvatarFallback className="bg-accent/10 text-accent text-xs font-bold">
-                        {user.username.substring(0, 2).toUpperCase()}
+                        {(user.name || user.email || 'U').substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
-                <span className="text-text-primary max-w-[120px] truncate text-sm font-semibold">
-                    {user.username}
-                </span>
                 <ChevronDown
-                    size={14}
-                    className={`text-text-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    size={12}
+                    className={`text-text-muted group-hover:text-text-primary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                 />
             </button>
 

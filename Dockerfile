@@ -1,22 +1,22 @@
-# Multi-stage Dockerfile for Next.js
+# Multi-stage Dockerfile for Next.js with API/Worker process split.
 
-# Stage 1: Dependencies
+# Stage 1: dependencies
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Disable husky in Docker
 ENV HUSKY=0
 RUN npm ci || (echo "npm ci failed, falling back to npm install" && npm install)
 
-# Stage 2: Builder
+# Stage 2: build
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Disable telemetry during build
-ENV NEXT_TELEMETRY_DISABLED 1
-# Environment variables for build time (Next.js inlines NEXT_PUBLIC_ variables)
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build-time NEXT_PUBLIC_* values
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
 ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
@@ -30,27 +30,40 @@ ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
 ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
 ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
 ENV NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+
 RUN npm run build
 
-# Stage 3: Runner
+# Stage 3: runtime
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=7860
+ENV HOSTNAME=0.0.0.0
+# Default process; Railway worker service overrides this to WORKER.
+ENV PROCESS_TYPE=API
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
+# Keep standalone bundle in .next/standalone so scripts/start-process.js can detect it.
+COPY --from=builder /app/.next/standalone ./.next/standalone
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/scripts/start-process.js ./scripts/start-process.js
+COPY --from=builder /app/scripts/worker-boot.js ./scripts/worker-boot.js
+COPY --from=builder /app/scripts/alias-loader.mjs ./scripts/alias-loader.mjs
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 7860
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+	CMD wget -qO- "http://127.0.0.1:${PORT}/api/health" > /dev/null || exit 1
 
-CMD ["node", "server.js"]
+# PROCESS_TYPE controls the entry command.
+CMD ["sh", "-c", "if [ \"${PROCESS_TYPE}\" = \"WORKER\" ]; then npm run start:worker; else npm run start:api; fi"]

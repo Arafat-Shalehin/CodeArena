@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 export default function GlobalError({ error, reset }) {
     return (
         <html>
-            <body className="bg-bg-page flex min-h-screen items-center justify-center p-4">
+            <body className="bg-bg-page site-gradient flex min-h-screen items-center justify-center p-4">
                 <div className="w-full max-w-md space-y-6 text-center">
                     <div className="space-y-2">
                         <h2 className="font-display text-text-primary text-3xl font-bold">

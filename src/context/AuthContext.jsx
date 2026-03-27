@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { auth } from '@/lib/firebase/config'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { toast } from 'sonner'
 
 /**
  * @typedef {Object} AuthContextValue
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
     // Hydrate user profile changes (like avatarSeed) from localStorage to overlay on top of DB user
     const [localPreferences, setLocalPreferences] = useState({})
 
+    // 1. Initial hydration of preferences from localStorage
     useEffect(() => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY)
@@ -31,77 +33,155 @@ export function AuthProvider({ children }) {
         } catch {}
     }, [])
 
+    // 2. Core Firebase state listener (Runs once on mount)
     useEffect(() => {
+        let abortController = null
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
+                // IMPORTANT: Prevent premature redirects by keeping isLoading true until sync finishes
+                setIsLoading(true)
                 try {
-                    const username =
-                        firebaseUser.displayName?.toLowerCase().replace(/\s+/g, '_') ||
-                        firebaseUser.email.split('@')[0]
+                    // Sync Firebase User with our Backend (and set httpOnly cookie)
+                    // Add a 10s timeout to the sync fetch to prevent infinite loading
+                    abortController = new AbortController()
+                    const timeoutId = setTimeout(() => abortController.abort(), 10000)
+
+                    const syncRes = await fetch('/api/auth/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        signal: abortController.signal,
+                        body: JSON.stringify({
+                            uid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            displayName: firebaseUser.displayName,
+                            photoURL: firebaseUser.photoURL,
+                            authProvider: 'firebase',
+                        }),
+                    })
+                    clearTimeout(timeoutId)
+
+                    const syncData = await syncRes.json()
+
+                    if (syncData.success) {
+                        const dbUser = syncData.data?.user || syncData.user
+                        const userId = dbUser._id?.toString()
+
+                        // Ensure DB data is the source of truth, removing stale local preferences
+                        setUser((prev) => ({
+                            ...dbUser,
+                            id: userId,
+                            _id: userId,
+                            firebaseUid: firebaseUser.uid,
+                        }))
+                        setLocalPreferences({})
+                        localStorage.removeItem(STORAGE_KEY)
+                    } else {
+                        setUser({
+                            firebaseUid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                            ...localPreferences,
+                        })
+                    }
+                } catch (error) {
+                    if (error?.name === 'AbortError') return
+
+                    console.error('Error during auth init/sync:', error)
+                    toast.error('Session sync failed. Please try logging in again.')
+                    // Fallback to minimal user object to unblock the UI if sync hangs
                     setUser({
                         firebaseUid: firebaseUser.uid,
                         email: firebaseUser.email,
-                        name: firebaseUser.displayName || username,
-                        role: 'user',
-                        username,
-                        bio: '',
-                        avatarSeed: firebaseUser.photoURL || username,
-                        stats: {
-                            rating: 0,
-                            problemsSolved: { easy: 0, medium: 0, hard: 0, total: 0 },
-                            accuracy: 0,
-                            globalRank: null,
-                            languageStats: {},
-                            contributions: [],
-                            achievements: [],
-                        },
+                        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
                         ...localPreferences,
                     })
-                } catch (error) {
-                    console.error('Error during auth init:', error)
-                    setUser(null)
+                } finally {
+                    setIsLoading(false)
                 }
             } else {
                 setUser(null)
+                setIsLoading(false)
             }
-            setIsLoading(false)
         })
 
-        return () => unsubscribe()
-    }, [localPreferences])
+        return () => {
+            // Abort any pending fetch request before unsubscribing
+            if (abortController) {
+                abortController.abort()
+            }
+            unsubscribe()
+        }
+    }, [])
 
     const logout = useCallback(async () => {
         setIsLoading(true)
         try {
+            // Logout API endpoint to clear httpOnly cookie
+            await fetch('/api/auth/logout', { method: 'POST' })
+
             await signOut(auth)
             setUser(null)
+            setLocalPreferences({})
+            localStorage.removeItem(STORAGE_KEY)
+            toast.success('Logged out successfully')
         } catch (error) {
             console.error('Error logging out:', error)
+            toast.error('Failed to logout. Please try again.')
         } finally {
             setIsLoading(false)
         }
     }, [])
 
     const updateProfile = useCallback((updatedData) => {
-        setLocalPreferences((prev) => {
-            const newPrefs = { ...prev, ...updatedData }
-            return newPrefs
-        })
-
-        // Persist to localStorage outside of the setState updater (no side effects in updater)
-        const currentPrefs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-        const merged = { ...currentPrefs, ...updatedData }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
-
         setUser((prevUser) => {
             if (!prevUser) return null
-            return { ...prevUser, ...updatedData }
+            const newUser = { ...prevUser, ...updatedData }
+
+            // Sync with localPreferences for persistence
+            setLocalPreferences((prevPrefs) => {
+                const newPrefs = { ...prevPrefs, ...updatedData }
+                delete newPrefs.stats
+
+                // Persist to localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newPrefs))
+
+                return newPrefs
+            })
+
+            return newUser
         })
     }, [])
 
+    const syncUser = useCallback(async () => {
+        const userId = user?.id || user?._id
+        if (!userId) return null
+
+        try {
+            const res = await fetch(`/api/users/${userId}`)
+            const data = await res.json()
+            if (data.success) {
+                const dbUser = data.data
+                const normalizedId = dbUser._id?.toString() || dbUser.id
+                setUser((prev) => ({
+                    ...prev,
+                    ...dbUser,
+                    id: normalizedId,
+                    _id: normalizedId,
+                }))
+                // Clear local preferences because DB is now authoritative
+                setLocalPreferences({})
+                localStorage.removeItem(STORAGE_KEY)
+                return dbUser
+            }
+        } catch (error) {
+            console.error('Failed to sync user:', error)
+        }
+    }, [user?.id, user?._id])
+
     return (
         <AuthContext.Provider
-            value={{ user, isAuthenticated: !!user, logout, updateProfile, isLoading }}
+            value={{ user, isAuthenticated: !!user, logout, updateProfile, syncUser, isLoading }}
         >
             {children}
         </AuthContext.Provider>

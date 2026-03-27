@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { leaderboardStats } from '../data/leaderboard.data'
+import { Users, Upload, Trophy, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
  * DESIGN NOTES
@@ -16,10 +17,10 @@ import { leaderboardStats } from '../data/leaderboard.data'
  * Keep in sync with leaderboardStats array order.
  */
 const STAT_ICONS = [
-    'group', // Total Participants
-    'upload_2', // Submissions Today
-    'trophy', // Active Contests
-    'check_circle', // Avg. Solve Rate
+    <Users key="users" size={16} />,
+    <Upload key="upload" size={16} />,
+    <Trophy key="trophy" size={16} />,
+    <CheckCircle key="check" size={16} />,
 ]
 
 /**
@@ -34,28 +35,46 @@ const SPARKLINES = [
 ]
 
 /* ── Tiny SVG Sparkline ──────────────────────────────────── */
-function Sparkline({ data, positive, stable }) {
+export function Sparkline({ data, positive, stable }) {
+    if (!data || data.length === 0) return null
+
     const width = 64
     const height = 24
     const pad = 2
     const w = width - pad * 2
     const h = height - pad * 2
 
+    // Normalize data internally to 0-1 range for mapping
+    const min = Math.min(...data)
+    const max = Math.max(...data)
+    const range = max - min
+
     const points = data
         .map((v, i) => {
-            const x = pad + (i / (data.length - 1)) * w
-            const y = pad + (1 - v) * h
+            const x = pad + (i / (data.length - 1 || 1)) * w
+            // Map to middle (0.5) if all values are same
+            const normalizedV = range === 0 ? 0.5 : (v - min) / range
+            const y = pad + (1 - normalizedV) * h
             return `${x},${y}`
         })
         .join(' ')
 
-    // Area fill path
-    const first = `${pad},${pad + (1 - data[0]) * h}`
-    const last = `${pad + w},${pad + (1 - data[data.length - 1]) * h}`
-    const area = `M ${first} L ${points.split(' ').join(' L ')} L ${last} L ${pad + w},${pad + h} L ${pad},${pad + h} Z`
+    // Terminal dot coordinates
+    const lastV = data[data.length - 1]
+    const lastNormalizedV = range === 0 ? 0.5 : (lastV - min) / range
+    const terminalX = pad + w
+    const terminalY = pad + (1 - lastNormalizedV) * h
+
+    // Construct area fill path
+    const polyPoints = points.split(' ')
+    const firstPoint = polyPoints[0]
+    const areaPath =
+        `M ${firstPoint} ` +
+        polyPoints.map((p) => `L ${p}`).join(' ') +
+        ` L ${pad + w},${pad + h} L ${pad},${pad + h} Z`
 
     const color = stable
-        ? 'var(--color-tx-muted)'
+        ? 'var(--color-text-muted)'
         : positive
           ? 'var(--color-accent)'
           : 'var(--color-error)'
@@ -69,7 +88,7 @@ function Sparkline({ data, positive, stable }) {
             aria-hidden="true"
         >
             {/* Area fill */}
-            <path d={area} fill={color} opacity="0.10" />
+            <path d={areaPath} fill={color} opacity="0.10" />
             {/* Line */}
             <polyline
                 points={points}
@@ -80,7 +99,7 @@ function Sparkline({ data, positive, stable }) {
                 strokeLinejoin="round"
             />
             {/* Terminal dot */}
-            <circle cx={pad + w} cy={pad + (1 - data[data.length - 1]) * h} r="2.5" fill={color} />
+            <circle cx={terminalX} cy={terminalY} r="2.5" fill={color} />
         </svg>
     )
 }
@@ -147,7 +166,7 @@ function StatCard({ stat, icon, sparkline, index }) {
           : 'var(--color-error)'
 
     const trendColour = isStable
-        ? 'var(--color-tx-muted)'
+        ? 'var(--color-text-muted)'
         : isPositive
           ? 'var(--color-accent)'
           : 'var(--color-error)'
@@ -191,23 +210,14 @@ function StatCard({ stat, icon, sparkline, index }) {
                 {/* Top row: icon + label */}
                 <div className="mb-3 flex items-center gap-2">
                     <div
-                        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md"
+                        className="text-text-secondary flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md"
                         style={{ background: 'var(--color-bg-muted)' }}
                     >
-                        <span
-                            className="material-symbols-outlined"
-                            style={{
-                                fontSize: '16px',
-                                color: 'var(--color-tx-secondary)',
-                                fontVariationSettings: "'FILL' 0",
-                            }}
-                        >
-                            {icon}
-                        </span>
+                        {icon}
                     </div>
                     <p
                         className="text-xs leading-none font-semibold tracking-wider uppercase"
-                        style={{ color: 'var(--color-tx-muted)' }}
+                        style={{ color: 'var(--color-text-muted)' }}
                     >
                         {stat.label}
                     </p>
@@ -216,7 +226,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                 {/* Value */}
                 <div
                     className="mb-3 font-mono text-2xl leading-none font-bold tracking-tight"
-                    style={{ color: 'var(--color-tx-primary)' }}
+                    style={{ color: 'var(--color-text-primary)' }}
                     aria-label={`${stat.label}: ${stat.value}`}
                 >
                     <AnimatedValue raw={stat.value} delay={index * 60 + 100} />
@@ -230,11 +240,8 @@ function StatCard({ stat, icon, sparkline, index }) {
                         style={{ background: trendBg, color: trendColour }}
                     >
                         {!isStable && (
-                            <span
-                                className="material-symbols-outlined"
-                                style={{ fontSize: '13px' }}
-                            >
-                                {isPositive ? 'trending_up' : 'trending_down'}
+                            <span className="flex items-center">
+                                {isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
                             </span>
                         )}
                         <span>{stat.trend}</span>
@@ -250,33 +257,80 @@ function StatCard({ stat, icon, sparkline, index }) {
 
 /* ── Public Component ────────────────────────────────────── */
 
-/**
- * @component PlatformStats
- * @description Displays platform-wide statistics with sparklines,
- * animated counters, trend pills, and colour-coded health indicators.
- *
- * Layout:
- * - Mobile:  2-column grid
- * - Desktop: 4-column grid
- *
- * Design tokens used (never hardcoded):
- *   --color-bg-subtle, --color-bg-muted, --color-border,
- *   --color-tx-primary, --color-tx-secondary, --color-tx-muted,
- *   --color-accent, --color-accent-light,
- *   --color-error, --color-error-light
- *
- * @returns {JSX.Element}
- */
 export function PlatformStats() {
+    const [stats, setStats] = useState(null)
+    const [loading, setLoading] = useState(true)
+    console.log(stats)
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/stats/platform')
+                const json = await res.json()
+                // console.log(json)
+                if (json.success) {
+                    const mappedStats = [
+                        {
+                            label: 'Total Participants',
+                            value: json.data.totalParticipants.toLocaleString(),
+                            trend: `${json.data.participantsTrend >= 0 ? '+' : ''}${json.data.participantsTrend}%`,
+                            trendUp: json.data.participantsTrendUp,
+                            history: json.data.participantsHistory,
+                        },
+                        {
+                            label: 'Submissions Today',
+                            value: json.data.submissionsToday.toLocaleString(),
+                            trend: `${json.data.submissionsTrend >= 0 ? '+' : ''}${json.data.submissionsTrend}%`,
+                            trendUp: json.data.submissionsTrendUp,
+                            history: json.data.submissionsHistory,
+                        },
+                        {
+                            label: 'Active Contests',
+                            value: json.data.activeContests.toString(),
+                            trend: `${json.data.contestsTrend >= 0 ? '+' : ''}${json.data.contestsTrend}%`,
+                            trendUp: json.data.contestsTrendUp,
+                            history: json.data.contestsHistory,
+                        },
+                        {
+                            label: 'Avg. Solve Rate',
+                            value: json.data.avgSolveRate,
+                            trend: `${json.data.solveRateTrend >= 0 ? '+' : ''}${json.data.solveRateTrend}%`,
+                            trendUp: json.data.solveRateTrendUp,
+                            history: json.data.solveRateHistory,
+                        },
+                    ]
+                    setStats(mappedStats)
+                }
+            } catch (err) {
+                console.error('[PlatformStats] Failed to fetch stats:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchStats()
+    }, [])
+
+    if (loading || !stats) {
+        return (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <div
+                        key={i}
+                        className="bg-bg-subtle border-border h-32 animate-pulse rounded-xl border"
+                    />
+                ))}
+            </div>
+        )
+    }
+
     return (
         <section aria-label="Platform statistics">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {leaderboardStats.map((stat, idx) => (
+                {stats.map((stat, idx) => (
                     <StatCard
                         key={stat.label}
                         stat={stat}
                         icon={STAT_ICONS[idx]}
-                        sparkline={SPARKLINES[idx]}
+                        sparkline={stat.history}
                         index={idx}
                     />
                 ))}

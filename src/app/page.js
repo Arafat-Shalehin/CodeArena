@@ -5,6 +5,8 @@ import FeaturesSection from '@/features/home/components/FeaturesSection'
 import HowItWorksSection from '@/features/home/components/HowItWorksSection'
 import RecentProblemsSection from '@/features/home/components/RecentProblemsSection'
 import LeaderboardPreviewSection from '@/features/home/components/LeaderboardPreviewSection'
+import TrustedBySection from '@/features/home/components/TrustedBySection'
+import SkillShiftSection from '@/features/home/components/SkillShiftSection'
 
 import ErrorBoundary from '@/components/ui/error-boundary'
 
@@ -23,12 +25,20 @@ import ErrorBoundary from '@/components/ui/error-boundary'
  */
 export default function Home() {
     return (
-        <div className="text-text-primary bg-bg-page flex min-h-screen flex-col font-sans">
+        <div className="text-text-primary bg-bg-page site-gradient flex min-h-screen flex-col font-sans">
             <Navbar />
 
             <main className="flex-grow">
                 <ErrorBoundary>
                     <Hero />
+                </ErrorBoundary>
+
+                <ErrorBoundary>
+                    <TrustedBySection />
+                </ErrorBoundary>
+
+                <ErrorBoundary>
+                    <SkillShiftSection />
                 </ErrorBoundary>
 
                 <ErrorBoundary>

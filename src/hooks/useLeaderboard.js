@@ -1,39 +1,57 @@
-'use client'
-
 import useSWR from 'swr'
-import { leaderboardUsers, leaderboardStats } from '@/features/leaderboard/data/leaderboard.data'
+
+const ITEMS_PER_PAGE = 10
+const fetcher = (url) => fetch(url).then((res) => res.json())
 
 /**
- * Fetcher that returns mock data directly.
- * Replace with a real API call (e.g. fetch('/api/leaderboard')) when the backend endpoint is ready.
+ * @hook useLeaderboard
+ * Fetches the top users from /api/leaderboard and returns them in the
+ * shape expected by LeaderboardPreviewSection.
+ *
+ * @returns {{ users: Array, isLoading: boolean, error: string|null }}
  */
-const rankingsFetcher = () => Promise.resolve(leaderboardUsers)
-const statsFetcher = () => Promise.resolve(leaderboardStats)
+export function useLeaderboard({
+    page = 1,
+    limit = ITEMS_PER_PAGE,
+    search = '',
+    league = 'all',
+    timeframe = 'all_time',
+} = {}) {
+    const params = new URLSearchParams()
+    params.set('page', page)
+    params.set('limit', limit)
+    params.set('league', league)
+    params.set('timeframe', timeframe)
+    if (search) params.set('search', search)
 
-/**
- * Custom hook to fetch leaderboard rankings.
- * @returns {Object} { users, isLoading, error }
- */
-export function useLeaderboard() {
-    const { data, error, isLoading } = useSWR('mock/leaderboard/rankings', rankingsFetcher)
+    const { data, error, isLoading } = useSWR(`/api/leaderboard?${params.toString()}`, fetcher)
+
+    const users = data?.success
+        ? data.data.map((u, index) => ({
+              _id: u._id,
+              rank: (page - 1) * limit + index + 1,
+              score: u.stats?.score || 0,
+              submissions: u.stats?.accepted || 0,
+              userId: {
+                  _id: u._id,
+                  username: u.username || u.name || 'Anonymous',
+                  email: u.email,
+                  stats: u.stats,
+              },
+              title:
+                  u.stats?.score > 5000
+                      ? 'Supreme Architect'
+                      : u.stats?.score > 1000
+                        ? 'Elite Engineer'
+                        : 'Code Warrior',
+              country: 'Global',
+              streak: 0,
+          }))
+        : []
 
     return {
-        users: data || [],
+        users,
         isLoading,
-        error,
-    }
-}
-
-/**
- * Custom hook to fetch platform stats.
- * @returns {Object} { stats, isLoading, error }
- */
-export function useStats() {
-    const { data, error, isLoading } = useSWR('mock/leaderboard/stats', statsFetcher)
-
-    return {
-        stats: data || [],
-        isLoading,
-        error,
+        error: error || (data && !data.success ? data.error : null),
     }
 }

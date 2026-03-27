@@ -1,3 +1,5 @@
+import dbConnect from '@/lib/mongodb'
+import { TestCase } from '@/models/TestCase.models'
 import {
     getAllProblems,
     getProblemById,
@@ -17,6 +19,10 @@ export async function fetchProblems(req) {
         limit: searchParams.get('limit'),
         difficulty: searchParams.get('difficulty'),
         search: searchParams.get('search'),
+        tag: searchParams.get('tag'),
+        status: searchParams.get('status'),
+        sortBy: searchParams.get('sortBy'),
+        userId: req.user?._id,
     }
 
     const result = await getAllProblems(query)
@@ -33,11 +39,19 @@ export async function fetchProblems(req) {
  */
 export async function fetchProblemById(req, { params }) {
     const { id } = params
+    await dbConnect()
     const problem = await getProblemById(id)
 
+    // Get test case count for frontend to display progress
+    const testCaseCount = await TestCase.countDocuments({ problemId: id })
+
+    const response = problem.toObject ? problem.toObject() : problem
     return Response.json({
         success: true,
-        data: problem,
+        data: {
+            ...response,
+            testCaseCount: testCaseCount,
+        },
     })
 }
 

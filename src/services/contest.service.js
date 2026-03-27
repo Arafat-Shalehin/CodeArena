@@ -1,5 +1,6 @@
 import { Contest } from '@/models/Contest.models'
 import { logger } from '@/lib/logger'
+import { redisClient } from '@/lib/redis'
 
 /**
  * Helper to validate contest dates
@@ -40,6 +41,11 @@ export async function createContest(data) {
         status,
     })
 
+    if (redisClient.isOpen) {
+        const listKeys = await redisClient.keys('contest:list:*')
+        if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
+    }
+
     return contest
 }
 
@@ -51,22 +57,22 @@ export async function getAllContests(query) {
     const limit = parseInt(query.limit) || 10
     const skip = (page - 1) * limit
 
-    const filter = {}
-    if (query.status) filter.status = query.status
+    const cacheKey = `contest:list:p:${page}:l:${limit}:s:${query.status || 'all'}`
 
-    // FUTURE_ENHANCEMENT: Auto-update status before returning
-    // Uncomment the block below to auto-sync contest status on read.
-    // This works for low-traffic scenarios but should be replaced with
-    // a cron job (e.g., via Vercel Cron or a background worker) in production.
-    //
-    // await Contest.updateMany(
-    //   { startTime: { $lte: new Date() }, status: 'upcoming' },
-    //   { status: 'active' }
-    // );
-    // await Contest.updateMany(
-    //   { endTime: { $lte: new Date() }, status: 'active' },
-    //   { status: 'completed' }
-    // );
+    try {
+        if (redisClient.isOpen) {
+            const cached = await redisClient.get(cacheKey)
+            if (cached) {
+                console.log(`[Cache Hit] Contest list: ${cacheKey}`)
+                return JSON.parse(cached)
+            }
+        }
+    } catch (err) {
+        console.error('Redis read error in getAllContests:', err)
+    }
+
+    const filter = { isDeleted: false }
+    if (query.status) filter.status = query.status
 
     const contests = await Contest.find(filter)
         .sort({ startTime: -1 })
@@ -76,16 +82,45 @@ export async function getAllContests(query) {
 
     const total = await Contest.countDocuments(filter)
 
-    return {
+    const result = {
         contests,
         pagination: { total, page, limit, pages: Math.ceil(total / limit) },
     }
+
+    try {
+        if (redisClient.isOpen) {
+            // Cache for 2 minutes
+            await redisClient.set(cacheKey, JSON.stringify(result), { EX: 120 })
+        }
+    } catch (err) {
+        console.error('Redis write error in getAllContests:', err)
+    }
+
+    return result
 }
 
 /**
  * Get contest by ID
  */
 export async function getContestById(id, options = { problemLimit: 50, isAdmin: false }) {
+    // Only cache if it's a standard public request
+    const isStandardRequest = !options.isAdmin && options.problemLimit === 50
+    const cacheKey = isStandardRequest ? `contest:${id}:detail` : null
+
+    if (cacheKey) {
+        try {
+            if (redisClient.isOpen) {
+                const cached = await redisClient.get(cacheKey)
+                if (cached) {
+                    console.log(`[Cache Hit] Contest detail: ${id}`)
+                    return JSON.parse(cached)
+                }
+            }
+        } catch (err) {
+            console.error('Redis read error in getContestById:', err)
+        }
+    }
+
     const contest = await Contest.findOne({ _id: id, isDeleted: false })
 
     if (!contest) {
@@ -106,6 +141,17 @@ export async function getContestById(id, options = { problemLimit: 50, isAdmin: 
         })
     }
 
+    if (cacheKey) {
+        try {
+            if (redisClient.isOpen) {
+                // Cache for 5 minutes
+                await redisClient.set(cacheKey, JSON.stringify(contest), { EX: 300 })
+            }
+        } catch (err) {
+            console.error('Redis write error in getContestById:', err)
+        }
+    }
+
     return contest
 }
 
@@ -116,6 +162,8 @@ export async function updateContest(id, data) {
     if (data.startTime && data.endTime) {
         validateDates(data.startTime, data.endTime)
     }
+
+    const previousContest = await Contest.findById(id)
 
     const contest = await Contest.findByIdAndUpdate(id, data, {
         new: true,
@@ -132,6 +180,47 @@ export async function updateContest(id, data) {
         contestId: contest._id,
         updatedFields: Object.keys(data),
     })
+
+    // --- Post-Contest Plagiarism Sweep ---
+    if (
+        previousContest &&
+        previousContest.status !== 'completed' &&
+        contest.status === 'completed'
+    ) {
+        try {
+            const { Submission } = await import('@/models/Submission.models')
+            const { getPlagiarismQueue } = await import('@/lib/queue')
+            const plagiarismQueue = getPlagiarismQueue()
+
+            const submissions = await Submission.find({
+                contestId: contest._id,
+                verdict: 'ACCEPTED',
+            }).select('_id')
+
+            for (const sub of submissions) {
+                await plagiarismQueue.add(
+                    'check-plagiarism',
+                    { submissionId: sub._id.toString() },
+                    {
+                        jobId: `plagiarism-sweep-${sub._id}`,
+                        attempts: 2,
+                        backoff: { type: 'fixed', delay: 5000 },
+                    }
+                )
+            }
+            console.log(
+                `[CONTEST SERVICE] Enqueued ${submissions.length} plagiarism sweep jobs for contest ${contest._id}`
+            )
+        } catch (err) {
+            console.error('[CONTEST SERVICE] Failed to enqueue plagiarism sweep job', err)
+        }
+    }
+
+    if (redisClient.isOpen) {
+        const listKeys = await redisClient.keys('contest:list:*')
+        if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
+        await redisClient.del(`contest:${id}:detail`).catch(() => {})
+    }
 
     return contest
 }
@@ -152,6 +241,12 @@ export async function deleteContest(id) {
         contestId: contest._id,
         title: contest.title,
     })
+
+    if (redisClient.isOpen) {
+        const listKeys = await redisClient.keys('contest:list:*')
+        if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
+        await redisClient.del(`contest:${id}:detail`).catch(() => {})
+    }
 
     return contest
 }

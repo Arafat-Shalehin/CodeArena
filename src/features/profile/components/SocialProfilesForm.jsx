@@ -2,41 +2,17 @@ import React from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Github, Linkedin, Twitter } from 'lucide-react'
+import { Github, Linkedin, Twitter, X } from 'lucide-react'
 
-/**
- * SocialProfilesForm Component
- * * A form section dedicated to managing a user's social media handles.
- * This component handles nested state updates for social media fields
- * (GitHub, LinkedIn, Twitter) and renders them in a responsive grid.
- * * @component
- * @param {Object} props - The component props.
- * @param {Object} props.socials - An object containing the current social media handles.
- * @param {string} [props.socials.github] - The user's GitHub username.
- * @param {string} [props.socials.linkedin] - The user's LinkedIn profile ID.
- * @param {string} [props.socials.twitter] - The user's Twitter/X handle.
- * @param {Function} props.onChange - A callback function to update the parent state.
- * Expected to handle an event-like object containing the updated 'socials' object.
- * * @returns {React.JSX.Element} The rendered social profiles form card.
- */
-export default function SocialProfilesForm({ socials, onChange }) {
-    /**
-     * Intercepts local input changes and packages them into a format
-     * compatible with the parent's centralized `handleChange` logic.
-     * * @param {React.ChangeEvent<HTMLInputElement>} e - The input change event.
-     * @returns {void}
-     */
-    const handleChange = (e) => {
-        const { name, value } = e.target
-        onChange({
-            target: {
-                name: 'socials',
-                value: {
-                    ...socials,
-                    [name]: value,
-                },
-            },
-        })
+export default function SocialProfilesForm({ register, errors, watch, setValue }) {
+    const githubValue = watch ? watch('socials.github') || '' : ''
+    const linkedinValue = watch ? watch('socials.linkedin') || '' : ''
+    const twitterValue = watch ? watch('socials.twitter') || '' : ''
+
+    const handleClear = (field) => {
+        if (setValue) {
+            setValue(`socials.${field}`, '', { shouldValidate: true })
+        }
     }
 
     return (
@@ -58,13 +34,26 @@ export default function SocialProfilesForm({ socials, onChange }) {
                         />
                         <Input
                             id="github"
-                            name="github"
-                            value={socials.github}
-                            onChange={handleChange}
-                            className="pl-10"
+                            {...register('socials.github')}
+                            className="pr-10 pl-10"
                             placeholder="username"
                         />
+                        {githubValue && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear('github')}
+                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                                title="Remove GitHub"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
+                    {errors.socials?.github && (
+                        <p className="text-error text-xs font-medium">
+                            {errors.socials.github.message}
+                        </p>
+                    )}
                 </div>
 
                 {/* LinkedIn Input */}
@@ -82,13 +71,26 @@ export default function SocialProfilesForm({ socials, onChange }) {
                         />
                         <Input
                             id="linkedin"
-                            name="linkedin"
-                            value={socials.linkedin}
-                            onChange={handleChange}
-                            className="pl-10"
+                            {...register('socials.linkedin')}
+                            className="pr-10 pl-10"
                             placeholder="profile-id"
                         />
+                        {linkedinValue && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear('linkedin')}
+                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                                title="Remove LinkedIn"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
+                    {errors.socials?.linkedin && (
+                        <p className="text-error text-xs font-medium">
+                            {errors.socials.linkedin.message}
+                        </p>
+                    )}
                 </div>
 
                 {/* Twitter Input */}
@@ -106,13 +108,26 @@ export default function SocialProfilesForm({ socials, onChange }) {
                         />
                         <Input
                             id="twitter"
-                            name="twitter"
-                            value={socials.twitter}
-                            onChange={handleChange}
-                            className="pl-10"
+                            {...register('socials.twitter')}
+                            className="pr-10 pl-10"
                             placeholder="@handle"
                         />
+                        {twitterValue && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear('twitter')}
+                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                                title="Remove Twitter"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
+                    {errors.socials?.twitter && (
+                        <p className="text-error text-xs font-medium">
+                            {errors.socials.twitter.message}
+                        </p>
+                    )}
                 </div>
             </div>
         </Card>

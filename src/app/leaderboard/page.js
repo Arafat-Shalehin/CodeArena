@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 
 // Leaderboard Components
 import { LeaderboardHeader } from '@/features/leaderboard/components/LeaderboardHeader'
@@ -12,10 +11,10 @@ import { PlatformStats } from '@/features/leaderboard/components/PlatformStats'
 import { TopThreePodium } from '@/features/leaderboard/components/TopThreePodium'
 import { FilterBar } from '@/features/leaderboard/components/FilterBar'
 import { RankingTable } from '@/features/leaderboard/components/RankingTable'
-import { Pagination } from '@/features/leaderboard/components/Pagination'
+import { Pagination } from '@/shared/components/ui/Pagination'
 
-// Data
-import { leaderboardUsers } from '@/features/leaderboard/data/leaderboard.data'
+// UI Components
+import { Skeleton } from '@/components/ui/skeleton'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -34,142 +33,202 @@ import { useAuth } from '@/context/AuthContext'
  * - Pagination: Navigation controls
  */
 export default function LeaderboardPage() {
-    // TODO: Implement state management for search, filters, pagination
     // State for filters and pagination
-    const [searchQuery, setSearchQuery] = useState('')
-    const [leagueFilter, setLeagueFilter] = useState('all')
-    const [timeframeFilter, setTimeframeFilter] = useState('all_time')
     const [currentPage, setCurrentPage] = useState(1)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
+    const [league, setLeague] = useState('all')
+    const [timeframe, setTimeframe] = useState('all_time')
     const { user } = useAuth()
 
-    const ITEMS_PER_PAGE = 30
+    const ITEMS_PER_PAGE = 100
 
-    // Filter users based on search, league, and timeframe
-    // Note: In a real app, this would likely be server-side filtering
-    const filterUsers = () => {
-        let filtered = [...leaderboardUsers]
+    // Real API State
+    const [users, setUsers] = useState([])
+    const [pagination, setPagination] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [socket, setSocket] = useState(null)
 
-        // 1. Search Filter
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase()
-            filtered = filtered.filter(
-                (user) =>
-                    user.userId.username.toLowerCase().includes(query) ||
-                    user.country.toLowerCase().includes(query)
-            )
-        }
+    /**
+     * Fetch real leaderboard data from the API
+     * Uses AbortController to prevent race conditions.
+     */
+    const fetchLeaderboard = useCallback(
+        async (page = 1, search = '', league = 'all', timeframe = 'all_time', signal) => {
+            setIsLoading(true)
+            setError(null)
+            try {
+                const params = new URLSearchParams()
+                params.set('page', page)
+                params.set('limit', ITEMS_PER_PAGE)
+                params.set('league', league)
+                params.set('timeframe', timeframe)
+                if (search) params.set('search', search)
+                if (user?._id || user?.id) params.set('currentUserId', user._id || user.id)
 
-        // 2. League Filter (Mock Logic)
-        if (leagueFilter !== 'all') {
-            if (leagueFilter === 'friends') {
-                // Mock: Show users with odd indices as "friends"
-                filtered = filtered.filter((_, index) => index % 3 === 0)
-            } else if (leagueFilter === 'company') {
-                // Mock: Show users from top tech hubs as "company"
-                const techHubs = ['USA', 'China', 'India', 'Germany', 'UK', 'Canada']
-                filtered = filtered.filter((user) => techHubs.includes(user.country))
+                const res = await fetch(`/api/leaderboard?${params.toString()}`, { signal })
+                const json = await res.json()
+                console.log(json)
+
+                if (json.success) {
+                    // Transform API User objects to match the expected leaderboard format
+                    const transformed = json.data.map((u, index) => ({
+                        _id: u._id,
+                        rank: (page - 1) * ITEMS_PER_PAGE + index + 1,
+                        score: u.stats?.score || 0,
+                        submissions: u.stats?.accepted || 0,
+                        userId: {
+                            _id: u._id,
+                            username: u.username || u.name || 'Anonymous',
+                            email: u.email,
+                            stats: u.stats,
+                        },
+                        title:
+                            u.stats?.score > 40
+                                ? 'Supreme Architect'
+                                : u.stats?.score > 10
+                                  ? 'Elite Engineer'
+                                  : 'Code Warrior',
+                        country: 'Global',
+                        streak: 0,
+                    }))
+                    setUsers(transformed)
+                    setPagination(json.pagination)
+
+                    // Dynamically connect to the Socket.IO server provided by the API
+                    if (json.livePort && !socket) {
+                        const socketUrl = `${window.location.protocol}//${window.location.hostname}:${json.livePort}`
+                        const { io } = await import('socket.io-client')
+                        const newSocket = io(socketUrl)
+                        setSocket(newSocket)
+                        console.log(`[Socket.IO] Connecting to ${socketUrl}`)
+                    }
+                } else {
+                    throw new Error(json.error || 'Failed to fetch rankings')
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') return
+                console.error('[LeaderboardPage] Error:', err)
+                setError(err.message)
+            } finally {
+                setIsLoading(false)
             }
+        },
+        [socket]
+    )
+
+    // Listen for socket updates
+    useEffect(() => {
+        if (!socket) return
+
+        const handleUpdate = (update) => {
+            console.log('[Socket.IO] Rank update received:', update)
+            // Trigger a silent refetch (no loading state for better UX)
+            fetchLeaderboard(currentPage, debouncedSearch, league, timeframe)
         }
 
-        // 3. Timeframe Filter (Mock Logic)
-        // Since data is static, we'll sort differently to simulate timeframes
-        if (timeframeFilter === 'weekly') {
-            // Mock: Weekly based on 'streak' (assuming high streak active this week)
-            filtered.sort((a, b) => b.streak - a.streak)
-        } else if (timeframeFilter === 'monthly') {
-            // Mock: Monthly based on 'solved' counts (partial correlation)
-            filtered.sort((a, b) => b.submissions - a.submissions)
-        } else {
-            // Default: All Time (based on points/score)
-            filtered.sort((a, b) => b.score - a.score)
+        socket.on('rank_update', handleUpdate)
+        return () => {
+            socket.off('rank_update', handleUpdate)
         }
+    }, [socket, currentPage, debouncedSearch, league, timeframe, fetchLeaderboard])
 
-        return filtered
-    }
+    // Debounce search input
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery)
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [searchQuery])
 
-    const allFilteredUsers = filterUsers()
+    // Load data when page, search, or filters change
+    useEffect(() => {
+        const controller = new AbortController()
 
-    // Remove top 3 from the table view ONLY if we are in 'all' league and 'all_time' timeframe
-    // AND if we are on the first page.
-    // Actually, traditionally top 3 are always separate in leaderboard UI.
-    // Let's keep them separate but include them in search results if they match.
-    // However, the design has a dedicated Top 3 component.
-    // If a user searches for #1, should they appear in the table? Usually yes in search results.
-    // But for default view, they are in the podium.
-    // Logic: If isFiltering (search or filters active), show all matching users in table.
-    // If default view (no filters), exclude top 3 from table (they are in podium).
-    const isFiltering = searchQuery || leagueFilter !== 'all' || timeframeFilter !== 'all_time'
+        fetchLeaderboard(currentPage, debouncedSearch, league, timeframe, controller.signal)
 
-    // For specific requirement: "show 30"
-    // If not filtering, we skip top 3, so we start from index 3.
-    // If filtering, we might include them.
-    // To keep it simple and consistent with podium presence:
-    // We will always display the Podium for top 3 of 'all_time' global.
-    // The table will display the rest.
-    // If filters change, the podium might not be relevant (e.g. "Weekly" podium?)
-    // For now, let's keep podium static as "All Time Global" and stick to table filtering.
-    // So we slice the first 3 OFF only if we are in standard mode.
-    // Actually, better UX: effectively hide podium if filtering?
-    // Let's sticking to: Table shows data. Podium shows top 3 global all time.
+        return () => controller.abort()
+    }, [currentPage, debouncedSearch, league, timeframe, fetchLeaderboard])
 
-    // Adjusted Logic:
-    // Table DataSource = allFilteredUsers
-    // If (default view), slice(3).
-    // If (filtered), keep all. (So you can see where your friend is, even if #1)
+    const isFiltering = !!debouncedSearch || league !== 'all' || timeframe !== 'all_time'
 
-    const tableDataRaw = !isFiltering ? allFilteredUsers.slice(3) : allFilteredUsers
+    // Optimized data computation for Podium vs Table
+    const currentTableData = useMemo(() => {
+        return users
+    }, [users])
 
-    const totalPages = Math.ceil(tableDataRaw.length / ITEMS_PER_PAGE)
-
-    // Pagination Logic
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-    const currentTableData = tableDataRaw.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+    const totalPages = pagination?.pages || 1
 
     // Handlers
     const handleSearch = (value) => {
         setSearchQuery(value)
-        setCurrentPage(1) // Reset to page 1 on search
+        setCurrentPage(1) // Reset to first page on new search
     }
 
     const handleFilterChange = (type, value) => {
-        if (type === 'league') setLeagueFilter(value)
-        if (type === 'timeframe') setTimeframeFilter(value)
-        setCurrentPage(1) // Reset to page 1 on filter change
+        if (type === 'league') setLeague(value)
+        if (type === 'timeframe') setTimeframe(value)
+        setCurrentPage(1)
     }
 
     return (
-        <div className="bg-bg-page text-text-primary flex min-h-screen flex-col">
+        <div className="bg-bg-page site-gradient text-text-primary flex min-h-screen flex-col">
             <Navbar />
 
             <main className="mx-auto w-full max-w-7xl flex-grow space-y-12 px-4 py-12">
                 <LeaderboardHeader />
                 <PlatformStats />
 
-                {/* Only show Podium in default view */}
-                {!isFiltering && <TopThreePodium />}
+                {/* Only show Podium in default view on page 1 */}
+                {!isLoading && !error && !isFiltering && currentPage === 1 && users.length >= 3 && (
+                    <TopThreePodium users={users.slice(0, 3)} />
+                )}
 
                 <FilterBar
                     searchQuery={searchQuery}
+                    league={league}
+                    timeframe={timeframe}
                     onSearchChange={handleSearch}
                     onFilterChange={handleFilterChange}
                 />
 
-                <RankingTable
-                    data={currentTableData}
-                    currentUser={user}
-                    startIndex={startIndex + (isFiltering ? 0 : 3) + 1} // Correct rank display
-                />
+                {/* Content Area */}
+                {isLoading ? (
+                    <div className="space-y-4">
+                        {[...Array(10)].map((_, i) => (
+                            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                        ))}
+                    </div>
+                ) : error ? (
+                    <div className="bg-error/10 border-error/20 text-error rounded-xl border p-8 text-center">
+                        <p className="text-lg font-bold">Oops! Something went wrong.</p>
+                        <p className="text-sm opacity-80">{error}</p>
+                    </div>
+                ) : users.length > 0 ? (
+                    <>
+                        <RankingTable
+                            data={currentTableData}
+                            currentUser={user?.username || user?.name}
+                        />
 
-                {currentTableData.length > 0 && (
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={Math.max(1, totalPages)}
-                        onPageChange={setCurrentPage}
-                    />
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={Math.max(1, totalPages)}
+                            onPageChange={setCurrentPage}
+                        />
+                    </>
+                ) : (
+                    <div className="text-text-muted py-20 text-center">
+                        <p className="text-xl font-medium">No legends found here yet.</p>
+                        <p className="text-sm">
+                            {isFiltering
+                                ? 'Try adjusting your filters or search query.'
+                                : 'The arena is waiting for its first champions.'}
+                        </p>
+                    </div>
                 )}
             </main>
-
-            <Footer />
         </div>
     )
 }

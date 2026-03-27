@@ -1,55 +1,112 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
+import PropTypes from 'prop-types'
+import { useRecentProblems } from '@/hooks/useRecentProblems'
 
 // Feature Components
-import ProblemCard from '@/features/problems/components/ProblemCard'
+import ProblemCard from '@/shared/components/ProblemCard'
 
 // Data
-import { problemsData } from '@/features/problems/data/problems.data'
+import { normalizeDifficulty } from '@/features/problems/data/problems.data'
+import { formatAcceptanceRate } from '@/lib/utils'
 
 /**
  * @component RecentProblemsSection
- * @description Displays a grid of curated coding problems to spark interest.
- * Fetches data from the shared `problemsData` source.
- *
- * @returns {JSX.Element} The rendered Recent Problems section.
+ * @description Displays a grid of curated coding problems with entrance animations.
  */
 export default function RecentProblemsSection() {
+    const shouldReduceMotion = useSafeReducedMotion()
+    const { problems, isLoading, error } = useRecentProblems(3)
+
+    if (error) {
+        return (
+            <div className="text-error py-12 text-center">
+                Failed to load recent problems. Please try again later.
+            </div>
+        )
+    }
+
     return (
-        <section className="mx-auto max-w-7xl px-4 py-24">
+        <section className="mx-auto max-w-7xl px-4 py-12">
             {/* Section Header */}
-            <div className="border-border mb-12 flex flex-col justify-between border-b pb-8 sm:flex-row sm:items-end">
-                <div className="max-w-xl">
-                    <h2 className="font-display text-text-primary mb-4 text-4xl font-bold tracking-tight md:text-5xl">
-                        Curated <span className="text-accent italic">challenges.</span>
+            <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
+                className="border-border mb-16 border-b pb-12 text-center"
+            >
+                <div className="mx-auto max-w-2xl">
+                    <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
+                        Guided <span className="text-accent italic">Study Plans.</span>
                     </h2>
-                    <p className="text-text-muted text-sm leading-relaxed">
-                        A hand-picked selection of problems designed to sharpen your algorithmic
-                        intuition. No fluff, just pure logic.
+                    <p className="text-text-muted text-lg leading-relaxed">
+                        Targeted learning paths curated for technical interviews. Ace the coding
+                        rounds at top tech companies with structured practice.
                     </p>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Problems Grid */}
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {problemsData.map((problem, idx) => (
-                    <ProblemCard key={idx} {...problem} />
-                ))}
+            <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                        <div
+                            key={i}
+                            className="bg-bg-subtle border-border h-[320px] w-full animate-pulse rounded-md border"
+                        />
+                    ))
+                ) : problems.length > 0 ? (
+                    problems.map((problem, idx) => (
+                        <motion.div
+                            key={problem._id}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: shouldReduceMotion ? 0 : idx * 0.1 }}
+                        >
+                            <ProblemCard
+                                problem={{
+                                    ...problem,
+                                    difficulty: normalizeDifficulty(problem.difficulty),
+                                }}
+                                variant="detailed"
+                            />
+                        </motion.div>
+                    ))
+                ) : (
+                    <div className="text-text-muted col-span-full py-12 text-center">
+                        No problems found.
+                    </div>
+                )}
             </div>
 
-            {/* View All Problems Button (Moved below grid) */}
-            <div className="mt-12 text-center">
-                <Button
-                    variant="outline"
-                    size="lg"
-                    className="bg-bg-page hover:bg-bg-subtle border-border text-text-secondary hover:text-accent hover:border-accent/20 group w-full transition-all duration-300 sm:w-auto"
-                >
-                    All problems
-                    <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </Button>
-            </div>
+            {/* View All Problems Button */}
+            <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: shouldReduceMotion ? 0 : 0.4 }}
+                className="mt-20 text-center"
+            >
+                <Link href="/problems">
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-14 min-w-[200px] rounded-md transition-all duration-300"
+                    >
+                        Explore Study Plans
+                        <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </Button>
+                </Link>
+            </motion.div>
         </section>
     )
 }

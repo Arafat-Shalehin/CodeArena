@@ -1,22 +1,28 @@
+import { Blocks, Terminal, ShieldCheck, Trophy } from 'lucide-react'
+
 export const stepsData = [
     {
         step: 1,
-        title: 'Create Your Developer Profile',
-        desc: 'Register your account, customize your profile, and select your preferred programming languages.',
+        title: 'Choose a Challenge',
+        desc: 'Select from hundreds of algorithm challenges across various difficulty levels.',
+        icon: <Blocks />,
     },
     {
         step: 2,
-        title: 'Select Algorithmic Challenges',
-        desc: 'Filter through thousands of curated coding problems ranging from introductory logic to advanced dynamic programming.',
+        title: 'Code & Optimize',
+        desc: 'Write your solution in our interactive editor and optimize for performance.',
+        icon: <Terminal />,
     },
     {
         step: 3,
-        title: 'Develop & Optimize',
-        desc: 'Write your solutions in our fully integrated, advanced browser-based IDE featuring syntax highlighting and real-time linting.',
+        title: 'Run & Verify',
+        desc: 'Execute your code against hidden test cases to ensure edge-case coverage.',
+        icon: <ShieldCheck />,
     },
     {
         step: 4,
-        title: 'Submit & Climb the Ranks',
-        desc: 'Pass comprehensive test suites to earn rating points, unlock achievements, and climb the global developer leaderboard.',
+        title: 'Compete & Climb',
+        desc: 'Earn points, unlock achievements, and see your rank rise on the leaderboard.',
+        icon: <Trophy />,
     },
 ]

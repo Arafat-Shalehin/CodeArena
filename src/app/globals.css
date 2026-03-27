@@ -1,24 +1,15 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:is(.dark *));
-
-/*
- * ============================================================
- * CodeArena Design Tokens
- * ============================================================
- * THIS IS THE SINGLE SOURCE OF TRUTH for all visual values.
- *
- * HOW TO USE:
- *   - Never hardcode a color like #02BA4C directly in a component.
- *   - Always use the Tailwind class that maps to these variables.
- *   - This way, if the brand color changes, you update it HERE,
- *     and it automatically updates everywhere on the site.
- *
- * NOTE: Variables use the --ca-* prefix ("CodeArena") to avoid
- * circular references with Tailwind v4's @theme block, which
- * writes its own --color-* vars to :root.
- * ============================================================
- */
+/* Enhanced transitions for theme switching */
+body,
+.site-gradient,
+#root,
+#__next {
+    transition:
+        background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 :root {
     /* ----------------------------------------------------------
@@ -29,11 +20,13 @@
     --ca-bg-page: #ffffff;
     --ca-bg-subtle: #f7f8fa;
     --ca-bg-muted: #edeef0;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.08);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.05);
 
     /* Text */
     --ca-text-primary: #111827;
-    --ca-text-secondary: #4b5563;
-    --ca-text-muted: #9ca3af;
+    --ca-text-secondary: #374151;
+    --ca-text-muted: #6b7280;
     --ca-text-inverse: #ffffff;
 
     /* Brand Accent (HackerRank green) */
@@ -49,18 +42,40 @@
     /* Feedback — Success */
     --ca-success: #16a34a;
     --ca-success-light: #dcfce7;
+    --ca-success-text: #166534;
 
     /* Feedback — Error */
     --ca-error: #dc2626;
     --ca-error-light: #fee2e2;
+    --ca-error-text: #991b1b;
 
     /* Feedback — Warning */
     --ca-warning: #d97706;
     --ca-warning-light: #fef3c7;
+    --ca-warning-text: #92400e;
 
     /* Feedback — Info */
     --ca-info: #2563eb;
     --ca-info-light: #dbeafe;
+    --ca-info-text: #1e40af;
+
+    /* RGB variants for opacity support */
+    --ca-bg-page-rgb: 255, 255, 255;
+    --ca-border-rgb: 229, 231, 235;
+    --ca-accent-rgb: 2, 186, 76;
+    --ca-gold-rgb: 245, 158, 11;
+    --ca-silver-rgb: 156, 163, 175;
+    --ca-bronze-rgb: 217, 119, 6;
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
 
     /* Competitive ranking colors */
     --ca-rank-gold: #f59e0b;
@@ -71,9 +86,12 @@
    * TYPOGRAPHY
    * ---------------------------------------------------------- */
 
-    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-jakarta), system-ui, sans-serif;
     --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+    /* Acid Green Gradient */
+    --ca-acid-gradient: linear-gradient(90deg, #10b981 0%, #047857 100%);
 
     /* ----------------------------------------------------------
    * SHADOWS
@@ -84,8 +102,8 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
-    --shadow-accent-glow: 0 0 20px rgba(2, 186, 76, 0.25);
-    --shadow-gold-glow: 0 0 20px rgba(245, 158, 11, 0.25);
+    --shadow-accent-glow: 0 0 20px rgba(var(--ca-accent-rgb), 0.25);
+    --shadow-gold-glow: 0 0 20px rgba(var(--ca-gold-rgb), 0.25);
 
     /* ----------------------------------------------------------
    * TRANSITIONS
@@ -118,6 +136,9 @@
 
     /* Border Radius */
     --radius: 0.5rem;
+
+    /* Interactive Tiles */
+    --tile: var(--ca-accent);
 }
 
 /* ----------------------------------------------------------
@@ -132,10 +153,12 @@
     --ca-bg-page: #0f1117;
     --ca-bg-subtle: #161b22;
     --ca-bg-muted: #21262d;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.16);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.1);
 
     --ca-text-primary: #f0f6fc;
-    --ca-text-secondary: #8b949e;
-    --ca-text-muted: #484f58;
+    --ca-text-secondary: #a8b2c1;
+    --ca-text-muted: #6e7681;
     --ca-text-inverse: #0f1117;
 
     --ca-accent: #02ba4c;
@@ -147,9 +170,13 @@
     --ca-border-strong: #30363d;
 
     --ca-success-light: #0d2818;
+    --ca-success-text: #4ade80;
     --ca-error-light: #2d1117;
+    --ca-error-text: #fecaca;
     --ca-warning-light: #2d1b00;
+    --ca-warning-text: #fbbf24;
     --ca-info-light: #0d1f47;
+    --ca-info-text: #93c5fd;
 }
 
 /**
@@ -197,12 +224,16 @@
     /* ── FEEDBACK ───────────────────────────── */
     --color-success: var(--ca-success);
     --color-success-light: var(--ca-success-light);
+    --color-success-text: var(--ca-success-text);
     --color-error: var(--ca-error);
     --color-error-light: var(--ca-error-light);
+    --color-error-text: var(--ca-error-text);
     --color-warning: var(--ca-warning);
     --color-warning-light: var(--ca-warning-light);
+    --color-warning-text: var(--ca-warning-text);
     --color-info: var(--ca-info);
     --color-info-light: var(--ca-info-light);
+    --color-info-text: var(--ca-info-text);
 
     /* ── RANKING ────────────────────────────── */
     --color-rank-gold: var(--ca-rank-gold);
@@ -246,8 +277,8 @@
     --color-background-dark: #111621;
 
     /* ── FONTS ──────────────────────────────── */
-    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-jakarta), system-ui, sans-serif;
     --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
 
     /* ── RADIUS ─────────────────────────────── */
@@ -262,13 +293,12 @@
  * ============================================================ */
 @layer base {
     html {
-        scroll-behavior: smooth;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
 
     body {
-        @apply bg-bg-page text-text-primary font-sans antialiased;
+        @apply bg-bg-page text-text-primary font-sans antialiased transition-colors duration-500;
     }
 
     /* Headings */
@@ -508,7 +538,10 @@
 
     /* Gradient text (accent) */
     .text-gradient {
-        background: linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover));
+        background: var(
+            --ca-acid-gradient,
+            linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover))
+        );
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -523,53 +556,190 @@
 
     /* Glassmorphism / Matte */
     .matte-surface {
-        @apply border border-white/20 bg-white/80 backdrop-blur-md;
+        @apply border border-white/40 bg-white/70 backdrop-blur-md;
+    }
+
+    .dark .matte-surface {
+        @apply bg-bg-subtle/40 border-border/50;
+    }
+
+    /* Refined Glass Card */
+    .glass-card {
+        @apply border border-white/20 bg-white/40 backdrop-blur-xl;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .dark .glass-card {
+        @apply bg-bg-page/40 border-border/40;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    /* View Transition API - Premium Theme Switch */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+        display: block;
+    }
+
+    ::view-transition-old(root) {
+        z-index: 1;
+    }
+
+    ::view-transition-new(root) {
+        z-index: 999;
+    }
+
+    /* Premium Theme Toggle Switch Styles - Token Optimized */
+    .theme-switch .slider {
+        background-color: var(--ca-bg-muted);
+        box-shadow: 0 0 0 rgba(var(--ca-border-rgb), 0);
+    }
+
+    .theme-switch:hover .slider {
+        box-shadow: 0 0 15px rgba(var(--ca-border-rgb), 0.6);
+    }
+
+    .theme-switch .slider::before {
+        position: absolute;
+        content: '';
+        height: 1.4em;
+        width: 1.4em;
+        border-radius: 50%;
+        left: 10%;
+        bottom: 15%;
+        /* Sun */
+        box-shadow: inset 15px -4px 0px 15px var(--ca-rank-gold);
+        background-color: #28096b; /* Fallback for night sky */
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: center;
+    }
+
+    .theme-switch:hover .slider::before {
+        transform: rotate(45deg);
+    }
+
+    .theme-switch .clouds_stars {
+        background-color: var(--ca-bg-page);
+        box-shadow:
+            -12px 0 0 0 var(--ca-bg-page),
+            -6px 0 0 1.6px var(--ca-bg-page),
+            0.3px 16px 0 var(--ca-bg-page),
+            -6.5px 16px 0 var(--ca-bg-page);
+        filter: blur(0.55px);
+    }
+
+    .theme-switch input:checked ~ .clouds_stars {
+        transform: translateX(-20px);
+        height: 2px;
+        width: 2px;
+        left: 80%;
+        top: 15%;
+        background-color: var(--ca-text-inverse);
+        box-shadow:
+            -7px 10px 0 var(--ca-text-inverse),
+            8px 15px 0 var(--ca-text-inverse),
+            -17px 1px 0 var(--ca-text-inverse),
+            -20px 10px 0 var(--ca-text-inverse),
+            -7px 23px 0 var(--ca-text-inverse),
+            -15px 25px 0 var(--ca-text-inverse);
+        filter: none;
+        animation: twinkle 2s infinite;
+    }
+
+    .theme-switch input:checked + .slider {
+        background-color: var(--ca-accent) !important;
+    }
+
+    .theme-switch input:checked + .slider::before {
+        transform: translateX(100%);
+        /* Moon */
+        box-shadow: inset 8px -4px 0 0 var(--ca-text-primary);
+        background-color: transparent;
+    }
+
+    .theme-switch input:checked + .slider:hover::before {
+        transform: translateX(100%) rotate(-45deg);
+    }
+
+    @keyframes twinkle {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    /* View Transition - Circular Reveal Base */
+    ::view-transition-image-pair(root) {
+        isolation: auto;
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+        display: block;
     }
 
     /* Hero gradient */
     .hero-gradient {
-        background:
-            radial-gradient(circle at 15% 50%, rgba(2, 186, 76, 0.08) 0%, transparent 25%),
-            radial-gradient(circle at 85% 30%, rgba(2, 186, 76, 0.05) 0%, transparent 25%);
+        background: none;
+    }
+
+    /* Shared page gradient for synchronized backgrounds across routes */
+    .site-gradient {
+        background-image: none;
+        background-repeat: no-repeat;
     }
 
     /* ── Leaderboard-specific utilities ── */
     .podium-gradient-1 {
-        background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0) 100%);
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-gold-rgb), 0.2) 0%,
+            rgba(var(--ca-gold-rgb), 0) 100%
+        );
     }
 
     .podium-gradient-2 {
         background: linear-gradient(
             180deg,
-            rgba(192, 192, 192, 0.2) 0%,
-            rgba(192, 192, 192, 0) 100%
+            rgba(var(--ca-silver-rgb), 0.2) 0%,
+            rgba(var(--ca-silver-rgb), 0) 100%
         );
     }
 
     .podium-gradient-3 {
-        background: linear-gradient(180deg, rgba(205, 127, 50, 0.2) 0%, rgba(205, 127, 50, 0) 100%);
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-bronze-rgb), 0.2) 0%,
+            rgba(var(--ca-bronze-rgb), 0) 100%
+        );
     }
 
     .glass-effect {
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(var(--ca-bg-page-rgb, 255, 255, 255), 0.03);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(var(--ca-border-rgb, 229, 231, 235), 0.05);
     }
 
     .gold-glow {
-        box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
+        box-shadow: 0 0 30px rgba(var(--ca-gold-rgb), 0.2);
     }
 
     .silver-glow {
-        box-shadow: 0 0 25px rgba(156, 163, 175, 0.15);
+        box-shadow: 0 0 25px rgba(var(--ca-silver-rgb), 0.15);
     }
 
     .bronze-glow {
-        box-shadow: 0 0 20px rgba(217, 119, 6, 0.15);
+        box-shadow: 0 0 20px rgba(var(--ca-bronze-rgb), 0.15);
     }
 
     .champion-badge-bg {
-        background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
+        background: linear-gradient(180deg, var(--ca-rank-gold) 0%, var(--ca-rank-bronze) 100%);
     }
 
     /* ── Custom Animations ── */
@@ -588,11 +758,11 @@
     @keyframes soft-pulse {
         0%,
         100% {
-            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+            box-shadow: 0 0 0 0 rgba(var(--ca-gold-rgb), 0);
         }
 
         50% {
-            box-shadow: 0 0 0 8px rgba(245, 159, 11, 0.2);
+            box-shadow: 0 0 0 8px rgba(var(--ca-gold-rgb), 0.2);
         }
     }
 
@@ -602,6 +772,26 @@
 
     .animate-soft-pulse {
         animation: soft-pulse 2.5s ease-in-out infinite;
+    }
+
+    /* ── Advanced Background Patterns ── */
+    .bg-dot-matrix {
+        background-color: var(--ca-bg-page);
+        background-image: radial-gradient(var(--ca-border) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .dark .bg-dot-matrix {
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+
+    /* ── Modern Glow Effects ── */
+    .glow-accent {
+        box-shadow: 0 0 20px rgba(var(--ca-accent-rgb), 0.15);
+    }
+
+    .glow-accent-strong {
+        box-shadow: 0 0 40px rgba(var(--ca-accent-rgb), 0.25);
     }
 
     /* ── Auth Vector Animations ── */
@@ -641,4 +831,165 @@
     .animate-spin-slow {
         animation: spin-slow 20s linear infinite;
     }
+
+    /* ── Markdown / Prose Styling ── */
+    .prose-markdown {
+        color: var(--ca-text-secondary);
+        font-family: var(--font-sans);
+        line-height: 1.75;
+    }
+
+    .prose-markdown h1,
+    .prose-markdown h2,
+    .prose-markdown h3 {
+        color: var(--ca-text-primary);
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .prose-markdown h1 {
+        font-size: 1.875rem;
+    }
+
+    .prose-markdown h2 {
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--ca-border);
+        padding-bottom: 0.5rem;
+    }
+
+    .prose-markdown h3 {
+        font-size: 1.25rem;
+    }
+
+    .prose-markdown p {
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown ul,
+    .prose-markdown ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+    }
+
+    .prose-markdown ul {
+        list-style-type: disc;
+    }
+
+    .prose-markdown ol {
+        list-style-type: decimal;
+    }
+
+    .prose-markdown li {
+        margin-bottom: 0.5rem;
+    }
+
+    .prose-markdown code {
+        background-color: var(--ca-bg-muted);
+        color: var(--ca-accent-text);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+    }
+
+    .prose-markdown pre {
+        background-color: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown pre code {
+        background-color: transparent;
+        color: var(--ca-text-primary);
+        padding: 0;
+        font-size: 0.9em;
+    }
+
+    .prose-markdown blockquote {
+        border-left: 4px solid var(--ca-accent);
+        padding-left: 1rem;
+        font-style: italic;
+        color: var(--ca-text-muted);
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown th,
+    .prose-markdown td {
+        border: 1px solid var(--ca-border);
+        padding: 0.75rem;
+        text-align: left;
+    }
+
+    .prose-markdown th {
+        background-color: var(--ca-bg-subtle);
+        font-weight: 600;
+        color: var(--ca-text-primary);
+    }
+
+    /* ── Utility Classes ── */
+    .matte-surface {
+        background: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+    }
+
+    .bg-glass {
+        background: rgba(var(--ca-bg-subtle-rgb), 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* Interview Landing Page animation */
+/* Import KaTeX CSS */
+@import 'katex/dist/katex.min.css';
+/* ── Hero Mesh Gradient ── */
+@keyframes mesh {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(5%, 5%) scale(1.1);
+    }
+    66% {
+        transform: translate(-5%, 2%) scale(0.9);
+    }
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+.animate-mesh {
+    animation: mesh 20s ease-in-out infinite;
+}
+
+/* ── Floating Animation ── */
+@keyframes floating {
+    0%,
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+    }
+}
+
+.animate-floating {
+    animation: floating 6s ease-in-out infinite;
+}
+
+/* ── Step Progress Line ── */
+.step-line-shadow {
+    filter: drop-shadow(0 0 8px var(--ca-accent));
 }

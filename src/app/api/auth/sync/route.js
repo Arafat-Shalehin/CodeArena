@@ -1,7 +1,10 @@
-export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import connectToDatabase from '@/lib/mongodb'
+import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
+import { Submission } from '@/models/Submission.models'
+import { Problem } from '@/models/Problem.models'
+import { signToken } from '@/lib/jwt'
+import { createResponseWithCookie } from '@/lib/cookie'
 
 export async function POST(request) {
     try {
@@ -15,54 +18,63 @@ export async function POST(request) {
             )
         }
 
-        await connectToDatabase()
+        await dbConnect()
 
         // Check if user already exists
         let user = await User.findOne({ email })
+            .select(
+                'name email username bio location website socials avatarSeed stats role performanceStats followers following'
+            )
+            .lean()
 
         if (!user) {
-            // Extract a base username from email or displayName if not provided
+            // Check if name is taken
             let baseUsername = displayName
                 ? displayName.toLowerCase().replace(/[^a-z0-9]/g, '')
                 : email.split('@')[0].replace(/[^a-z0-9]/g, '')
 
-            // Ensure username is unique to avoid MongoDB E11000 errors
-            let existingName = await User.findOne({ name: baseUsername })
-            while (existingName) {
-                baseUsername = baseUsername + Math.floor(Math.random() * 1000)
-                existingName = await User.findOne({ name: baseUsername })
+            let existingUser = await User.findOne({ name: baseUsername })
+            let counter = 1
+            let uniqueName = baseUsername
+            while (existingUser) {
+                uniqueName = `${baseUsername}${counter++}`
+                existingUser = await User.findOne({ name: uniqueName })
             }
 
             try {
-                // Create new user in MongoDB
-                user = await User.create({
+                const newUser = await User.create({
                     email,
-                    name: baseUsername,
+                    name: uniqueName,
                     authProvider: body.authProvider || 'firebase',
                     role: 'user',
-                    // we can store uid if we modify schema, but for now email is the unique link
+                    avatarSeed: photoURL || uniqueName,
                 })
+                user = newUser.toObject()
             } catch (createErr) {
-                // If another concurrent request just created the user, we'll get a duplicate key error (11000)
-                if (
-                    createErr.code === 11000 &&
-                    createErr.keyPattern &&
-                    createErr.keyPattern.email
-                ) {
-                    user = await User.findOne({ email })
+                if (createErr.code === 11000) {
+                    user = await User.findOne({ email }).lean()
                 } else {
-                    console.error('MongoDB creation error:', createErr)
                     throw createErr
                 }
             }
         }
 
-        // We can return the mongodb user object to the client
-        return NextResponse.json({ success: true, user })
+        // --- FETCH MINIMAL STATS (Optional) ---
+        if (!user.stats) user.stats = {}
+
+        // --- AUTH BRIDGE: Issue JWT for our protected APIs ---
+        const token = signToken({ id: user._id, role: user.role, email: user.email })
+
+        // Return user data and set httpOnly cookie
+        return createResponseWithCookie({ success: true, data: { user } }, token)
     } catch (error) {
         console.error('Error in /api/auth/sync:', error)
         return NextResponse.json(
-            { success: false, error: 'An unexpected error occurred.' },
+            {
+                success: false,
+                error: error.message || 'An unexpected error occurred.',
+                stack: error.stack,
+            },
             { status: 500 }
         )
     }
