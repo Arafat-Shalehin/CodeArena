@@ -12,7 +12,6 @@ import {
     Maximize2,
     Minimize2,
     CheckCircle2,
-    Settings2,
     List,
     GripVertical,
     GripHorizontal,
@@ -31,6 +30,7 @@ import { useProblemSolveStore } from '@/store/problemSolveStore'
 import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
 import NotificationBell from '@/components/layout/NotificationBell'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 import DescriptionPanel from './DescriptionPanel'
 import CodeEditorPanel from './CodeEditorPanel'
@@ -196,12 +196,7 @@ function InnerLayout({
                 </div>
                 {/* Right */}
                 <div className="flex items-center gap-1 text-gray-400 sm:gap-2">
-                    <button
-                        className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors"
-                        aria-label="Settings"
-                    >
-                        <Settings2 size={16} className="sm:size-18" />
-                    </button>
+                    <ThemeToggle className="scale-90" />
 
                     <div className="bg-border hidden h-6 w-px sm:block" />
 
@@ -380,7 +375,7 @@ function InnerLayout({
                         ) : (
                             <div
                                 style={{ width: `${hSplit.ratio * 100}%` }}
-                                className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
+                                className="border-border bg-bg-subtle flex min-h-0 flex-col overflow-hidden rounded-xl border"
                             >
                                 <DescriptionPanel
                                     problem={problem}
@@ -504,7 +499,7 @@ function InnerLayout({
                                             ? '100%'
                                             : `${(1 - vSplit.ratio) * 100}%`,
                                     }}
-                                    className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
+                                    className="border-border bg-bg-subtle flex min-h-0 flex-col overflow-hidden rounded-xl border"
                                 >
                                     <ExecutionConsole
                                         onMaximize={() => toggleMaximize('console')}
@@ -644,13 +639,14 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
 
                 if (isMounted) setIsLoading(false)
             } catch (err) {
+                if (err?.name === 'AbortError') {
+                    console.log('[ProblemSolver] Fetch aborted')
+                    return
+                }
+
                 console.error('[ProblemSolver] Fetch error:', err)
                 if (isMounted) {
-                    if (err?.name === 'AbortError') {
-                        setError('Request timeout. Please retry.')
-                    } else {
-                        setError('Network error')
-                    }
+                    setError('Network error')
                     setIsLoading(false)
                 }
             } finally {

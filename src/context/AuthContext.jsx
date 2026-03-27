@@ -85,12 +85,10 @@ export function AuthProvider({ children }) {
                         })
                     }
                 } catch (error) {
+                    if (error?.name === 'AbortError') return
+
                     console.error('Error during auth init/sync:', error)
-                    if (error.name === 'AbortError') {
-                        toast.error('Session sync timed out. Retrying in background.')
-                    } else {
-                        toast.error('Session sync failed. Please try logging in again.')
-                    }
+                    toast.error('Session sync failed. Please try logging in again.')
                     // Fallback to minimal user object to unblock the UI if sync hangs
                     setUser({
                         firebaseUid: firebaseUser.uid,
