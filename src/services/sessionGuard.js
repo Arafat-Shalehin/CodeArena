@@ -3,6 +3,28 @@ import dbConnect from '@/lib/mongodb'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { User } from '@/models/User.models'
 
+const LOCAL_ACTIVE_CACHE_TTL_MS = 15_000
+const localSessionActiveCache = new Map()
+
+function getLocalSessionState(sessionId) {
+    const cached = localSessionActiveCache.get(sessionId)
+    if (!cached) return null
+
+    if (cached.expiresAt <= Date.now()) {
+        localSessionActiveCache.delete(sessionId)
+        return null
+    }
+
+    return cached.value
+}
+
+function setLocalSessionState(sessionId, value, ttlMs = LOCAL_ACTIVE_CACHE_TTL_MS) {
+    localSessionActiveCache.set(sessionId, {
+        value,
+        expiresAt: Date.now() + ttlMs,
+    })
+}
+
 /**
  * Checks if an interview session is currently active.
  * Fail-closed implementation with Redis-first strategy.
@@ -14,12 +36,20 @@ export async function isSessionActive(sessionId) {
     if (!sessionId) return false
     const redisKey = `session:active:${sessionId}`
 
+    // Tier 0: in-process short-lived cache to avoid hammering Redis in hot socket paths.
+    const localState = getLocalSessionState(sessionId)
+    if (localState !== null) {
+        return localState
+    }
+
     // Tier 1: Redis Check
     try {
         if (redisClient.isOpen) {
             const cachedStatus = await redisClient.get(redisKey)
             if (cachedStatus !== null) {
-                return cachedStatus === '1'
+                const isActive = cachedStatus === '1'
+                setLocalSessionState(sessionId, isActive)
+                return isActive
             }
         }
     } catch (err) {
@@ -39,6 +69,8 @@ export async function isSessionActive(sessionId) {
         if (isActive && redisClient.isOpen) {
             await redisClient.set(redisKey, '1', { EX: 3600 }).catch(() => {})
         }
+
+        setLocalSessionState(sessionId, isActive)
 
         return isActive
     } catch (dbErr) {

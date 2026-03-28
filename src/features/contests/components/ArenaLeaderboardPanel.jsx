@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { Trophy, Medal, Award } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 const fetcher = (url) => fetch(url).then((r) => r.json())
 
@@ -14,13 +15,26 @@ function RankIcon({ rank }) {
 
 /**
  * @component ArenaLeaderboardPanel
- * Live auto-refreshing leaderboard that polls /api/contests/[id]/leaderboard/live every 5s.
+ * Live auto-refreshing leaderboard that polls /api/contests/[id]/leaderboard/live.
+ * Polling interval: 10s when tab is visible, 30s when hidden.
  */
 export default function ArenaLeaderboardPanel({ contestId, currentUserId }) {
+    const [refreshInterval, setRefreshInterval] = useState(10000)
+
+    // Handle visibility changes to adjust polling interval
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            setRefreshInterval(document.visibilityState === 'visible' ? 10000 : 30000)
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }, [])
+
     const { data, isLoading } = useSWR(
         contestId ? `/api/contests/${contestId}/leaderboard/live` : null,
         fetcher,
-        { refreshInterval: 5000 }
+        { refreshInterval }
     )
 
     const participants = data?.data || []
@@ -91,7 +105,7 @@ export default function ArenaLeaderboardPanel({ contestId, currentUserId }) {
                                                     />
                                                 )}
                                                 <span
-                                                    className={`max-w-[100px] truncate font-medium ${isCurrentUser ? 'text-accent-text' : 'text-text-primary'}`}
+                                                    className={`max-w-25 truncate font-medium ${isCurrentUser ? 'text-accent-text' : 'text-text-primary'}`}
                                                 >
                                                     {isCurrentUser
                                                         ? 'You'
