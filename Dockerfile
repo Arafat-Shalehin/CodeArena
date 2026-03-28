@@ -15,6 +15,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PROCESS_TYPE=API
 
 # Build-time NEXT_PUBLIC_* values
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
