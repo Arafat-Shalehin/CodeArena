@@ -54,8 +54,13 @@ export default function LoginForm() {
         if (urlError === 'unauthorized' && !hasShownUrlError.current) {
             toast.error('Session expired or unauthorized. Please log in again.')
             hasShownUrlError.current = true
+
+            const nextPath = redirectTo
+                ? `/login?redirect=${encodeURIComponent(redirectTo)}`
+                : '/login'
+            router.replace(nextPath)
         }
-    }, [urlError])
+    }, [redirectTo, router, urlError])
 
     // Redirect after auth sync completes (user is set in context)
     useEffect(() => {
