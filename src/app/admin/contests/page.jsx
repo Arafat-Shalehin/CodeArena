@@ -183,7 +183,62 @@ export default function AdminContestsPage() {
                     </div>
                 </div>
             </div>
+{/* VIEW MODAL */}
+            {isViewModalOpen && selectedContest && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="border-b border-border flex items-center justify-between p-6 bg-bg-page/30">
+                            <h2 className="text-xl font-black uppercase italic text-accent flex items-center gap-2">
+                                <Trophy size={20} /> Contest Details
+                            </h2>
+                            <button 
+                                onClick={() => setIsViewModalOpen(false)} 
+                                className="text-text-muted hover:text-red-500 transition-colors"
+                            >
+                                <X />
+                            </button>
+                        </div>
+                        
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-text-muted ml-1">Contest Name</label>
+                                    <p className="bg-bg-page/50 p-3 rounded-xl font-black border border-border">{selectedContest.title}</p>
+                                </div>
+                                
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-text-muted ml-1">Description</label>
+                                    <div className="bg-bg-page/50 p-4 rounded-xl text-sm font-medium border border-border min-h-[80px]">
+                                        {selectedContest.description || "No description provided."}
+                                    </div>
+                                </div>
 
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-text-muted ml-1">Start Time</label>
+                                        <p className="bg-bg-page/50 p-3 rounded-xl text-xs font-bold border border-border">
+                                            {new Date(selectedContest.startTime).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-text-muted ml-1">End Time</label>
+                                        <p className="bg-bg-page/50 p-3 rounded-xl text-xs font-bold border border-border">
+                                            {new Date(selectedContest.endTime).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button 
+                                onClick={() => setIsViewModalOpen(false)} 
+                                className="bg-black h-12 w-full rounded-xl font-black text-white uppercase shadow-lg mt-4"
+                            >
+                                Close Preview
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* EDIT MODAL */}
             {isEditModalOpen && selectedContest && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
