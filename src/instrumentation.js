@@ -26,59 +26,67 @@ export async function register() {
             return
         }
 
-        if (!isWorkerProcess()) {
-            console.log('[INSTRUMENTATION] PROCESS_TYPE is API. Skipping worker initialization.')
-            return
+        if (isWorkerProcess()) {
+            console.log('[INSTRUMENTATION] PROCESS_TYPE is WORKER. Initializing workers...')
+            try {
+                console.log('[INSTRUMENTATION] Importing submission worker...')
+                const { initSubmissionWorker } = await import('@/services/submission.worker')
+                const { initStatsWorker } = await import('@/services/stats.worker')
+                const { initAIWorker } = await import('@/services/ai.worker')
+                const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
+                const { initInterviewExecutionWorker } =
+                    await import('@/services/interviewExecution.worker')
+                const { initPlagiarismWorker } = await import('@/services/plagiarism.worker')
+                const { initInterviewSummarizeWorker } =
+                    await import('@/services/interviewSummarize.worker')
+
+                console.log('[INSTRUMENTATION] Calling initSubmissionWorker...')
+                if (globalWorkers.submission) await globalWorkers.submission.close()
+                globalWorkers.submission = initSubmissionWorker()
+
+                console.log('[INSTRUMENTATION] Calling initStatsWorker...')
+                if (globalWorkers.stats) await globalWorkers.stats.close()
+                globalWorkers.stats = initStatsWorker()
+
+                console.log('[INSTRUMENTATION] Calling initAIWorker...')
+                if (globalWorkers.ai) await globalWorkers.ai.close()
+                globalWorkers.ai = initAIWorker()
+
+                console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
+                if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
+                globalWorkers.interviewAI = initInterviewAIWorker()
+
+                console.log('[INSTRUMENTATION] Calling initInterviewExecutionWorker...')
+                if (globalWorkers.interviewExecution) await globalWorkers.interviewExecution.close()
+                globalWorkers.interviewExecution = initInterviewExecutionWorker()
+
+                console.log('[INSTRUMENTATION] Calling initPlagiarismWorker...')
+                if (globalWorkers.plagiarism) await globalWorkers.plagiarism.close()
+                globalWorkers.plagiarism = initPlagiarismWorker()
+
+                console.log('[INSTRUMENTATION] Calling initInterviewSummarizeWorker...')
+                if (globalWorkers.interviewSummarize) await globalWorkers.interviewSummarize.close()
+                globalWorkers.interviewSummarize = initInterviewSummarizeWorker()
+
+                globalThis._workersInitialized = true
+                console.log(
+                    '>>> CodeArena Workers v2.3 Initialized (Submission, Stats, AI, InterviewAI, InterviewExecution, Plagiarism, InterviewSummarize)'
+                )
+            } catch (err) {
+                console.error('[CRITICAL] Failed to initialize Workers:', err.message)
+                console.error('[CRITICAL] Error stack:', err.stack)
+            }
         }
 
-        console.log('[INSTRUMENTATION] Running in Node.js runtime, initializing workers...')
-        try {
-            console.log('[INSTRUMENTATION] Importing submission worker...')
-            const { initSubmissionWorker } = await import('@/services/submission.worker')
-            const { initStatsWorker } = await import('@/services/stats.worker')
-            const { initAIWorker } = await import('@/services/ai.worker')
-            const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
-            const { initInterviewExecutionWorker } =
-                await import('@/services/interviewExecution.worker')
-            const { initPlagiarismWorker } = await import('@/services/plagiarism.worker')
-            const { initInterviewSummarizeWorker } =
-                await import('@/services/interviewSummarize.worker')
-
-            console.log('[INSTRUMENTATION] Calling initSubmissionWorker...')
-            if (globalWorkers.submission) await globalWorkers.submission.close()
-            globalWorkers.submission = initSubmissionWorker()
-
-            console.log('[INSTRUMENTATION] Calling initStatsWorker...')
-            if (globalWorkers.stats) await globalWorkers.stats.close()
-            globalWorkers.stats = initStatsWorker()
-
-            console.log('[INSTRUMENTATION] Calling initAIWorker...')
-            if (globalWorkers.ai) await globalWorkers.ai.close()
-            globalWorkers.ai = initAIWorker()
-
-            console.log('[INSTRUMENTATION] Calling initInterviewAIWorker...')
-            if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
-            globalWorkers.interviewAI = initInterviewAIWorker()
-
-            console.log('[INSTRUMENTATION] Calling initInterviewExecutionWorker...')
-            if (globalWorkers.interviewExecution) await globalWorkers.interviewExecution.close()
-            globalWorkers.interviewExecution = initInterviewExecutionWorker()
-
-            console.log('[INSTRUMENTATION] Calling initPlagiarismWorker...')
-            if (globalWorkers.plagiarism) await globalWorkers.plagiarism.close()
-            globalWorkers.plagiarism = initPlagiarismWorker()
-
-            console.log('[INSTRUMENTATION] Calling initInterviewSummarizeWorker...')
-            if (globalWorkers.interviewSummarize) await globalWorkers.interviewSummarize.close()
-            globalWorkers.interviewSummarize = initInterviewSummarizeWorker()
-
-            globalThis._workersInitialized = true
-            console.log(
-                '>>> CodeArena Workers v2.3 Initialized (Submission, Stats, AI, InterviewAI, InterviewExecution, Plagiarism, InterviewSummarize)'
-            )
-        } catch (err) {
-            console.error('[CRITICAL] Failed to initialize Workers:', err.message)
-            console.error('[CRITICAL] Error stack:', err.stack)
+        if (!isWorkerProcess()) {
+            console.log('[INSTRUMENTATION] PROCESS_TYPE is API. Initializing Socket server...')
+            try {
+                const { initSocketServer } = await import('@/lib/socket-server')
+                await initSocketServer()
+                console.log('>>> CodeArena Socket Server Initialized')
+            } catch (err) {
+                console.error('[CRITICAL] Failed to initialize Socket Server:', err.message)
+            }
         }
 
         // Start Reaction Sync Worker (runs every 5 minutes)

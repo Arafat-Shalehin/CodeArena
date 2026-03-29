@@ -24,10 +24,6 @@ function setLocalLeaderboard(cacheKey, value, ttlMs = LOCAL_LEADERBOARD_CACHE_TT
     })
 }
 
-if (process.env.NODE_ENV !== 'production') {
-    initSocketServer().catch(console.error)
-}
-
 /**
  * GET /api/leaderboard
  *
