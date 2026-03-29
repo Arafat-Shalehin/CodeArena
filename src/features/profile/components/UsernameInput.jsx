@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
  * @param {boolean} props.disabled - Disabled state
  */
 export default function UsernameInput({ value, register, errors, disabled = false }) {
+    const [showUsernameChange, setShowUsernameChange] = useState(false)
     const [availability, setAvailability] = useState({
         status: 'idle', // 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
         message: '',
@@ -31,6 +32,11 @@ export default function UsernameInput({ value, register, errors, disabled = fals
 
     // Debounced username availability check
     useEffect(() => {
+        if (!showUsernameChange) {
+            setAvailability({ status: 'idle', message: '' })
+            return
+        }
+
         if (!value || value.length < 3) {
             setAvailability({ status: 'idle', message: '' })
             return
@@ -72,10 +78,10 @@ export default function UsernameInput({ value, register, errors, disabled = fals
                     message: 'Unable to check. Please try again.',
                 })
             }
-        }, 800)
+        }, 1200) // Increased debounce to 1.2s
 
         return () => clearTimeout(timeoutId)
-    }, [value])
+    }, [value, showUsernameChange])
 
     const getAvailabilityIcon = () => {
         switch (availability.status) {
@@ -107,6 +113,7 @@ export default function UsernameInput({ value, register, errors, disabled = fals
     }
 
     const getBorderColor = () => {
+        if (!showUsernameChange) return ''
         if (availability.status === 'available')
             return 'border-success focus:border-success focus:ring-success/20'
         if (availability.status === 'taken')
@@ -118,25 +125,50 @@ export default function UsernameInput({ value, register, errors, disabled = fals
 
     return (
         <div className="space-y-1.5">
-            <Label htmlFor="name" className="text-text-primary text-sm font-medium">
-                Username / Handle
-            </Label>
+            <div className="flex items-center justify-between">
+                <Label htmlFor="name" className="text-text-primary text-sm font-medium">
+                    Username / Handle
+                </Label>
+                {!showUsernameChange && (
+                    <button
+                        type="button"
+                        onClick={() => setShowUsernameChange(true)}
+                        className="text-accent hover:text-accent/80 text-xs font-bold underline-offset-4 hover:underline"
+                    >
+                        Change Username
+                    </button>
+                )}
+            </div>
             <div className="relative">
                 <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <AtSign size={16} />
                 </div>
                 <Input
                     id="name"
-                    className={cn('h-11 pr-10 pl-10', getBorderColor())}
+                    className={cn(
+                        'h-11 pr-10 pl-10',
+                        !showUsernameChange && 'bg-bg-muted cursor-not-allowed opacity-70',
+                        getBorderColor()
+                    )}
                     placeholder="your_unique_handle"
                     disabled={disabled}
+                    readOnly={!showUsernameChange}
                     {...register('name')}
                 />
-                <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                    {getAvailabilityIcon()}
+                <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-2">
+                    {showUsernameChange && getAvailabilityIcon()}
+                    {showUsernameChange && (
+                        <button
+                            type="button"
+                            onClick={() => setShowUsernameChange(false)}
+                            className="text-text-muted hover:text-text-primary transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
-            {availability.message && (
+            {showUsernameChange && availability.message && (
                 <p className={cn('text-xs font-medium', getAvailabilityColor())}>
                     {availability.message}
                 </p>

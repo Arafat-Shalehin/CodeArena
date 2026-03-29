@@ -15,6 +15,9 @@ function ToggleSwitch({ checked, onChange, label, description }) {
             </div>
             <button
                 type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
                 onClick={() => onChange(!checked)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     checked ? 'bg-accent' : 'bg-bg-muted'
@@ -68,6 +71,7 @@ export default function NotificationsSection({ user }) {
             const res = await fetch(`/api/users/${user._id}/notifications`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(notifications),
             })
 

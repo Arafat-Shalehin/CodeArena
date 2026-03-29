@@ -64,6 +64,7 @@ export default function PreferencesSection({ user, onSave }) {
             const res = await fetch(`/api/users/${user._id}/preferences`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(preferences),
             })
 
@@ -101,6 +102,8 @@ export default function PreferencesSection({ user, onSave }) {
                         {['light', 'dark', 'system'].map((themeOption) => (
                             <button
                                 key={themeOption}
+                                type="button"
+                                aria-pressed={preferences.theme === themeOption}
                                 onClick={() =>
                                     setPreferences({ ...preferences, theme: themeOption })
                                 }
@@ -171,12 +174,15 @@ export default function PreferencesSection({ user, onSave }) {
                 </div>
 
                 <div className="space-y-3">
-                    <Label>Problems per week: {preferences.weeklyGoal}</Label>
+                    <Label htmlFor="weeklyGoal">Problems per week: {preferences.weeklyGoal}</Label>
                     <input
+                        id="weeklyGoal"
                         type="range"
                         min="1"
                         max="50"
                         value={preferences.weeklyGoal}
+                        aria-label="Weekly problem goal"
+                        aria-valuetext={`${preferences.weeklyGoal} problems per week`}
                         onChange={(e) =>
                             setPreferences({ ...preferences, weeklyGoal: parseInt(e.target.value) })
                         }
