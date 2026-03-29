@@ -30,10 +30,10 @@ const COMPANY_LINKS = [
     { name: 'Contact', href: '#' },
 ]
 const RESOURCES_LINKS = [
-    { name: 'Documentation', href: '#' },
-    { name: 'Help Center', href: '#' },
-    { name: 'Community', href: '#' },
-    { name: 'Guidelines', href: '#' },
+    { name: 'Documentation', href: '/documentation' },
+    { name: 'Help Center', href: '/help' },
+    { name: 'Community', href: '/community' },
+    { name: 'Guidelines', href: '/guidelines' },
 ]
 
 /**
