@@ -9,21 +9,108 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
 
     const mediaRecorderRef = useRef(null)
     const voiceSocketRef = useRef(null)
+    const recognitionRef = useRef(null)
+    const useBrowserSttRef = useRef(false)
+    const lastFinalTranscriptRef = useRef({ text: '', ts: 0 })
+    const isListeningRef = useRef(false)
+
+    useEffect(() => {
+        isListeningRef.current = isListening
+    }, [isListening])
+
+    const stopBrowserRecognition = useCallback(() => {
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.stop()
+            } catch (e) {}
+            recognitionRef.current = null
+        }
+    }, [])
+
+    const startBrowserRecognition = useCallback(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        if (!SpeechRecognition) {
+            setError('Voice STT is unavailable on this browser.')
+            setTranscriptStatus('error')
+            setIsListening(false)
+            return
+        }
+
+        const recognition = new SpeechRecognition()
+        recognition.lang = 'en-US'
+        recognition.interimResults = true
+        recognition.continuous = true
+        recognition.maxAlternatives = 1
+
+        recognition.onstart = () => {
+            setIsListening(true)
+            setTranscriptStatus('listening')
+            setError(null)
+        }
+
+        recognition.onresult = (event) => {
+            let finalTranscript = ''
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const result = event.results[i]
+                const text = result[0]?.transcript?.trim()
+                if (result.isFinal && text) finalTranscript += `${text} `
+            }
+
+            const normalized = finalTranscript.trim()
+            if (normalized) {
+                const now = Date.now()
+                const last = lastFinalTranscriptRef.current
+                // Some engines may emit duplicate final chunks back-to-back.
+                if (last.text === normalized && now - last.ts < 2500) return
+
+                lastFinalTranscriptRef.current = { text: normalized, ts: now }
+                setTranscript(normalized)
+                setTranscriptStatus('idle')
+            }
+        }
+
+        recognition.onerror = (event) => {
+            setError(
+                event.error === 'not-allowed'
+                    ? 'Microphone permission denied.'
+                    : 'Speech recognition error.'
+            )
+            setTranscriptStatus('error')
+            setIsListening(false)
+        }
+
+        recognition.onend = () => {
+            setIsListening(false)
+            setTranscriptStatus((prev) => (prev === 'listening' ? 'idle' : prev))
+        }
+
+        recognitionRef.current = recognition
+        recognition.start()
+    }, [])
 
     // 1. MediaRecorder Logic (Define callbacks FIRST to avoid TDZ errors)
     const stopRecording = useCallback(() => {
+        stopBrowserRecognition()
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop()
             mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
         }
         setIsListening(false)
-        if (transcriptStatus === 'listening') {
-            setTranscriptStatus('idle')
-        }
-    }, [transcriptStatus])
+        setTranscriptStatus((prev) => (prev === 'listening' ? 'idle' : prev))
+    }, [stopBrowserRecognition])
 
     const startRecording = useCallback(async () => {
         if (mediaRecorderRef.current?.state === 'recording') return
+
+        if (
+            useBrowserSttRef.current ||
+            !voiceSocketRef.current?.connected ||
+            voiceSocketRef.current?.disconnected
+        ) {
+            startBrowserRecognition()
+            return
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
@@ -66,10 +153,11 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
             interviewSocket?.emit('voice:mode_activated')
         } catch (err) {
             console.error('[Voice] Failed to start recording:', err)
-            setError('Microphone permission denied or not found.')
-            setIsListening(false)
+            // Fallback to browser STT when media streaming/socket path fails.
+            useBrowserSttRef.current = true
+            startBrowserRecognition()
         }
-    }, [interviewSocket, stopRecording])
+    }, [interviewSocket, startBrowserRecognition, stopRecording])
 
     const toggleListening = useCallback(() => {
         if (isListening) {
@@ -100,20 +188,27 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
 
         socket.on('connect', () => {
             console.log('[Voice] Socket connected')
+            useBrowserSttRef.current = false
             setError(null)
         })
 
         socket.on('disconnect', (reason) => {
             console.warn('[Voice] Socket disconnected:', reason)
-            if (reason !== 'io client disconnect') {
+            if (reason !== 'io client disconnect' && !useBrowserSttRef.current) {
                 setError('Voice connection lost. Reconnecting...')
             }
         })
 
         socket.on('voice:transcript_confirmed', (data) => {
             if (!data.transcript || !data.transcript.trim()) return
-            console.log('[useVoiceInput] Received confirmed transcript:', data.transcript)
-            setTranscript(data.transcript)
+            const normalized = data.transcript.trim()
+            const now = Date.now()
+            const last = lastFinalTranscriptRef.current
+            if (last.text === normalized && now - last.ts < 2500) return
+
+            console.log('[useVoiceInput] Received confirmed transcript:', normalized)
+            lastFinalTranscriptRef.current = { text: normalized, ts: now }
+            setTranscript(normalized)
             setTranscriptStatus('idle')
         })
 
@@ -122,8 +217,32 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
         })
 
         socket.on('voice:error', (err) => {
-            console.error('[Voice] Socket Error:', err)
-            setError(err.message || 'STT Service Error')
+            const hasPayload =
+                !!err &&
+                (typeof err !== 'object' || err.message || err.code || Object.keys(err).length > 0)
+
+            if (!hasPayload) {
+                // Some socket transports emit empty error payloads on disconnect/reconnect races.
+                return
+            }
+
+            if (err?.code === 'UNAUTHORIZED' || err?.code === 'STT_ENGINE_ERROR') {
+                useBrowserSttRef.current = true
+                setError(null)
+                socket.io.opts.reconnection = false
+                if (socket.connected) {
+                    socket.disconnect()
+                }
+                if (isListeningRef.current) {
+                    stopRecording()
+                    setTimeout(() => startBrowserRecognition(), 100)
+                }
+                return
+            }
+
+            console.warn('[Voice] Socket warning:', err)
+
+            setError(err?.message || 'STT Service Error')
             setTranscriptStatus('error')
         })
 
@@ -131,7 +250,7 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
             console.log('[Voice] Component unmounting, disconnecting socket...')
             socket.disconnect()
         }
-    }, [wsToken, sessionId])
+    }, [sessionId, startBrowserRecognition, stopRecording, wsToken])
 
     // 3. Stream Reconnection Logic
     useEffect(() => {
