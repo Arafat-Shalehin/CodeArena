@@ -232,7 +232,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
             </div>
 
             {/* Content */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5" data-lenis-prevent>
                 {leftTab === 'description' ? (
                     <ProblemDescription problem={problem} />
                 ) : leftTab === 'submissions' ? (

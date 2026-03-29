@@ -2,9 +2,20 @@ import { Queue } from 'bullmq'
 
 // Same env strategy as redis.js — Railway injects REDIS_URL; locally we leave it blank.
 const redisUrl = process.env.REDIS_URL || ''
+const isRedisTls = redisUrl.startsWith('rediss://')
+const allowInsecureTls = process.env.REDIS_TLS_INSECURE === 'true'
 
 const connection = redisUrl
-    ? { url: redisUrl }
+    ? {
+          url: redisUrl,
+          ...(isRedisTls
+              ? {
+                    tls: {
+                        ...(allowInsecureTls ? { rejectUnauthorized: false } : {}),
+                    },
+                }
+              : {}),
+      }
     : {
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT || '6379'),

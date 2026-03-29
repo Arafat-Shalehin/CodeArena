@@ -161,6 +161,7 @@ export const loggers = {
     profile: createLogger('Profile'),
     problem: createLogger('Problem'),
     submission: createLogger('Submission'),
+    database: createLogger('Database'),
 }
 
 export default createLogger

@@ -42,20 +42,11 @@ export async function initSocketServer() {
             global._io = serverIo
             console.log(`[Socket.IO] Real-time server started on port ${port}`)
 
-            // Ensure submission worker is running in the same long-lived process.
-            if (!global._submissionWorker) {
-                try {
-                    const { initSubmissionWorker } = await import('@/services/submission.worker')
-                    global._submissionWorker = initSubmissionWorker()
-                    console.log('[Socket.IO] Submission worker initialized from socket server')
-                } catch (workerErr) {
-                    console.error('[Socket.IO] Failed to initialize submission worker:', workerErr)
-                }
-            }
-
             // Register Namespaces
             const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
+            const { registerVoiceNamespace } = await import('@/socket/namespaces/voice')
             registerInterviewNamespace(serverIo)
+            registerVoiceNamespace(serverIo)
 
             // Handle client connections
             serverIo.on('connection', (socket) => {

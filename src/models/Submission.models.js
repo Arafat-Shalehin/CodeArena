@@ -60,6 +60,7 @@ const submissionSchema = new mongoose.Schema(
                 'COMPILATION_ERROR',
                 'SYSTEM_ERROR',
                 'SECURITY_ERROR',
+                'FEATURE_UNSUPPORTED_IN_CLOUD',
                 'PENDING',
                 'JUDGING',
             ],

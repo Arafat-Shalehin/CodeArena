@@ -43,146 +43,153 @@ async function getPublisher() {
 
 export const interviewExecutionChannel = (sessionId) => `interview:execution:${sessionId}`
 
-const worker = new Worker(
-    'interview-execution',
-    async (job) => {
-        const { sessionId, userId, code, language, problemId, jobType } = job.data
-        console.log(
-            `[Execution Worker] Processing ${jobType} for user ${userId}, session ${sessionId}`
-        )
+export function initInterviewExecutionWorker() {
+    const worker = new Worker(
+        'interview-execution',
+        async (job) => {
+            const { sessionId, userId, code, language, problemId, jobType } = job.data
+            console.log(
+                `[Execution Worker] Processing ${jobType} for user ${userId}, session ${sessionId}`
+            )
 
-        try {
-            await dbConnect()
-            const problem = await Problem.findById(problemId)
-            if (!problem) throw new Error('Problem not found')
+            try {
+                await dbConnect()
+                const problem = await Problem.findById(problemId)
+                if (!problem) throw new Error('Problem not found')
 
-            let result = null
+                let result = null
 
-            if (jobType === 'run') {
-                // ── Run Case: Single sample test case ────────────────────────
-                const input = problem.sampleTestCases?.[0]?.input || ''
-                const expectedOutput = problem.sampleTestCases?.[0]?.output || ''
+                if (jobType === 'run') {
+                    // ── Run Case: Single sample test case ────────────────────────
+                    const input = problem.sampleTestCases?.[0]?.input || ''
+                    const expectedOutput = problem.sampleTestCases?.[0]?.output || ''
 
-                result = await executeCode({
-                    code,
-                    language,
-                    input,
-                    expectedOutput,
-                    timeLimit: problem.timeLimit,
-                    memoryLimit: problem.memoryLimit,
-                })
-            } else {
-                // ── Submit Case: Run all test cases ─────────────────────────
-                const testCases = [...(problem.sampleTestCases || []), ...(problem.testCases || [])]
-
-                let overallResult = {
-                    success: true,
-                    verdict: 'SUCCESS',
-                    passedCount: 0,
-                    totalCount: testCases.length,
-                }
-
-                let firstFailure = null
-                for (const tc of testCases) {
-                    const res = await executeCode({
+                    result = await executeCode({
                         code,
                         language,
-                        input: tc.input,
-                        expectedOutput: tc.output,
+                        input,
+                        expectedOutput,
                         timeLimit: problem.timeLimit,
                         memoryLimit: problem.memoryLimit,
                     })
+                } else {
+                    // ── Submit Case: Run all test cases ─────────────────────────
+                    const testCases = [
+                        ...(problem.sampleTestCases || []),
+                        ...(problem.testCases || []),
+                    ]
 
-                    if (res.success && res.verdict === 'SUCCESS') {
-                        overallResult.passedCount++
-                    } else if (!firstFailure) {
-                        firstFailure = res
-                    }
-                }
-
-                if (firstFailure) {
-                    overallResult = {
-                        ...firstFailure,
-                        passedCount: overallResult.passedCount,
+                    let overallResult = {
+                        success: true,
+                        verdict: 'SUCCESS',
+                        passedCount: 0,
                         totalCount: testCases.length,
                     }
+
+                    let firstFailure = null
+                    for (const tc of testCases) {
+                        const res = await executeCode({
+                            code,
+                            language,
+                            input: tc.input,
+                            expectedOutput: tc.output,
+                            timeLimit: problem.timeLimit,
+                            memoryLimit: problem.memoryLimit,
+                        })
+
+                        if (res.success && res.verdict === 'SUCCESS') {
+                            overallResult.passedCount++
+                        } else if (!firstFailure) {
+                            firstFailure = res
+                        }
+                    }
+
+                    if (firstFailure) {
+                        overallResult = {
+                            ...firstFailure,
+                            passedCount: overallResult.passedCount,
+                            totalCount: testCases.length,
+                        }
+                    }
+                    result = overallResult
+
+                    // Persist snapshot for submissions
+                    await InterviewSnapshot.create({
+                        sessionId,
+                        problemId,
+                        language,
+                        code,
+                        snapshotType: 'submit',
+                        verdict: result.verdict,
+                        passedCount: result.passedCount,
+                        totalCount: result.totalCount,
+                        ts: new Date(),
+                    })
+
+                    // b. Trigger AI analysis if submission was processed
+                    const aiQueue = getInterviewAIQueue()
+                    await aiQueue.add('process-submission-analysis', {
+                        sessionId,
+                        userId,
+                        submissionVerdict: result,
+                        code,
+                        lang: language,
+                    })
+
+                    if (result.success && result.verdict === 'SUCCESS') {
+                        await transitionPhase(sessionId, 'evaluation')
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ phase: 'evaluation' })
+                        )
+                    }
                 }
-                result = overallResult
 
-                // Persist snapshot for submissions
-                await InterviewSnapshot.create({
-                    sessionId,
-                    problemId,
-                    language,
-                    code,
-                    snapshotType: 'submit',
-                    verdict: result.verdict,
-                    passedCount: result.passedCount,
-                    totalCount: result.totalCount,
-                    ts: new Date(),
-                })
-
-                // b. Trigger AI analysis if submission was processed
-                const aiQueue = getInterviewAIQueue()
-                await aiQueue.add('process-submission-analysis', {
-                    sessionId,
-                    userId,
-                    submissionVerdict: result,
-                    code,
-                    lang: language,
-                })
-
-                if (result.success && result.verdict === 'SUCCESS') {
-                    await transitionPhase(sessionId, 'evaluation')
-                    const pub = await getPublisher()
-                    await pub.publish(
-                        interviewAIChannel(sessionId),
-                        JSON.stringify({ phase: 'evaluation' })
-                    )
-                }
-            }
-
-            // Publish result back to Redis
-            const pub = await getPublisher()
-            await pub.publish(
-                interviewExecutionChannel(sessionId),
-                JSON.stringify({
-                    jobType,
-                    result,
-                    userId, // Optional: helps client distinguish if needed
-                })
-            )
-
-            return { success: true }
-        } catch (error) {
-            console.error(`[Execution Worker] Error in job ${job.id}:`, error)
-
-            // Notify failure via Redis if possible
-            const pub = await getPublisher()
-            await pub
-                .publish(
+                // Publish result back to Redis
+                const pub = await getPublisher()
+                await pub.publish(
                     interviewExecutionChannel(sessionId),
                     JSON.stringify({
                         jobType,
-                        result: {
-                            success: false,
-                            verdict: 'SYSTEM_ERROR',
-                            error: error.message,
-                        },
+                        result,
+                        userId, // Optional: helps client distinguish if needed
                     })
                 )
-                .catch(() => {})
 
-            throw error
-        }
-    },
-    { connection, concurrency: 5 }
-)
+                return { success: true }
+            } catch (error) {
+                console.error(`[Execution Worker] Error in job ${job.id}:`, error)
 
-worker.on('failed', (job, err) => {
-    console.error(`[Execution Worker] Job ${job.id} failed:`, err)
-})
+                // Notify failure via Redis if possible
+                const pub = await getPublisher()
+                await pub
+                    .publish(
+                        interviewExecutionChannel(sessionId),
+                        JSON.stringify({
+                            jobType,
+                            result: {
+                                success: false,
+                                verdict: 'SYSTEM_ERROR',
+                                error: error.message,
+                            },
+                        })
+                    )
+                    .catch(() => {})
 
-console.log('[Execution Worker] Started and listening on "interview-execution"')
+                throw error
+            }
+        },
+        { connection, concurrency: 5 }
+    )
 
-export default worker
+    worker.on('failed', (job, err) => {
+        console.error(`[Execution Worker] Job ${job.id} failed:`, err)
+    })
+
+    console.log('[Execution Worker] Started and listening on "interview-execution"')
+
+    return worker
+}
+
+export default initInterviewExecutionWorker

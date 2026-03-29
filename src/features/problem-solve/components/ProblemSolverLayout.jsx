@@ -12,7 +12,6 @@ import {
     Maximize2,
     Minimize2,
     CheckCircle2,
-    Settings2,
     List,
     GripVertical,
     GripHorizontal,
@@ -31,6 +30,7 @@ import { useProblemSolveStore } from '@/store/problemSolveStore'
 import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
 import NotificationBell from '@/components/layout/NotificationBell'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 import DescriptionPanel from './DescriptionPanel'
 import CodeEditorPanel from './CodeEditorPanel'
@@ -141,7 +141,7 @@ function InnerLayout({
             />
 
             {/* ═══ Workspace Area ═══ */}
-            <div ref={hSplit.containerRef} className="flex flex-1 gap-1.5 overflow-hidden p-1.5">
+            <div ref={hSplit.containerRef} className="flex flex-1 gap-0.5 overflow-hidden p-1">
                 {/* ── Maximized: Show maximized panel + other panels as collapsed headers ── */}
                 {maximizedPanel ? (
                     <>
@@ -183,7 +183,7 @@ function InnerLayout({
                         )}
 
                         {/* Right side: Editor+Console or their stubs */}
-                        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
+                        <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
                             {/* Editor or stub */}
                             {maximizedPanel === 'editor' ? (
                                 <div className="border-border bg-bg-subtle flex flex-1 flex-col overflow-hidden rounded-xl border">
@@ -289,7 +289,7 @@ function InnerLayout({
                         ) : (
                             <div
                                 style={{ width: `${hSplit.ratio * 100}%` }}
-                                className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
+                                className="border-border bg-bg-subtle flex min-h-0 flex-col overflow-hidden rounded-xl border"
                             >
                                 <DescriptionPanel
                                     problem={problem}
@@ -308,7 +308,7 @@ function InnerLayout({
                                 }
                                 hSplit.onMouseDown(e)
                             }}
-                            className="bg-bg-page hover:bg-accent/40 flex w-2 cursor-col-resize items-center justify-center transition-colors"
+                            className="bg-bg-page hover:bg-accent/40 flex w-1.5 cursor-col-resize items-center justify-center transition-colors"
                         >
                             <GripVertical size={12} className="text-text-muted" />
                         </div>
@@ -321,7 +321,7 @@ function InnerLayout({
                                     : `${(1 - hSplit.ratio) * 100}%`,
                             }}
                             ref={vSplit.containerRef}
-                            className="flex flex-1 flex-col gap-1.5 overflow-hidden"
+                            className="flex flex-1 flex-col gap-0.5 overflow-hidden"
                         >
                             {/* Editor or collapsed stub */}
                             {collapsedPanels.editor ? (
@@ -375,7 +375,7 @@ function InnerLayout({
                                         setCollapsedPanels((p) => ({ ...p, console: false }))
                                     vSplit.onMouseDown(e)
                                 }}
-                                className="bg-bg-page hover:bg-accent/40 flex h-2 cursor-row-resize items-center justify-center transition-colors"
+                                className="bg-bg-page hover:bg-accent/40 flex h-1.5 cursor-row-resize items-center justify-center transition-colors"
                             >
                                 <GripHorizontal size={12} className="text-text-muted" />
                             </div>
@@ -413,7 +413,7 @@ function InnerLayout({
                                             ? '100%'
                                             : `${(1 - vSplit.ratio) * 100}%`,
                                     }}
-                                    className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
+                                    className="border-border bg-bg-subtle flex min-h-0 flex-col overflow-hidden rounded-xl border"
                                 >
                                     <ExecutionConsole
                                         onMaximize={() => toggleMaximize('console')}
@@ -498,13 +498,14 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
 
                 if (isMounted) setIsLoading(false)
             } catch (err) {
+                if (err?.name === 'AbortError') {
+                    console.log('[ProblemSolver] Fetch aborted')
+                    return
+                }
+
                 console.error('[ProblemSolver] Fetch error:', err)
                 if (isMounted) {
-                    if (err?.name === 'AbortError') {
-                        setError('Request timeout. Please retry.')
-                    } else {
-                        setError('Network error')
-                    }
+                    setError('Network error')
                     setIsLoading(false)
                 }
             } finally {

@@ -3,7 +3,7 @@ import { Readable, PassThrough } from 'stream'
 import path from 'path'
 import { getLanguageConfig } from './languages.js'
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
-import { executeCodeWithJudge0, checkJudge0Availability } from '../judge0-executor.js'
+import { executeCodeWithJudge0 } from '../judge0-executor.js'
 
 const dockerOptions = {}
 
@@ -38,17 +38,81 @@ if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDock
 
 let docker = null
 let dockerInitError = null
+let dockerUnavailableReason = null
+let dockerReachabilityCacheUntil = 0
+
+const DOCKER_REACHABILITY_CACHE_MS = 15000
+const CLOUD_FALLBACK_LOG_PREFIX =
+    '[EXECUTOR][CLOUD_FALLBACK] Docker socket is not reachable. Falling back to Judge0.'
 
 try {
     docker = new Docker(dockerOptions)
 } catch (err) {
     // Docker unavailable (e.g., in Railway production without Docker socket)
     dockerInitError = err
+    dockerUnavailableReason = err?.message || 'Docker initialization failed'
     console.warn('⚠️  Docker not available for code execution:', err.message)
 } finally {
     // Restore it after initialization
     if (originalDockerHost) {
         process.env.DOCKER_HOST = originalDockerHost
+    }
+}
+
+function getErrorMessage(errorOrMessage) {
+    if (!errorOrMessage) return ''
+    if (typeof errorOrMessage === 'string') return errorOrMessage
+    return errorOrMessage.message || String(errorOrMessage)
+}
+
+function isDockerSocketUnreachable(errorOrMessage) {
+    const message = getErrorMessage(errorOrMessage).toLowerCase()
+    if (!message) return false
+
+    return [
+        'enoent',
+        'econnrefused',
+        'eacces',
+        'epipe',
+        'docker socket',
+        'cannot connect to the docker daemon',
+        'connect: no such file or directory',
+        'permission denied',
+        'npipe',
+        '/var/run/docker.sock',
+    ].some((token) => message.includes(token))
+}
+
+function markDockerUnavailable(errorOrMessage) {
+    dockerUnavailableReason = getErrorMessage(errorOrMessage) || 'Docker socket unreachable'
+    docker = null
+    dockerReachabilityCacheUntil = 0
+    console.warn(`${CLOUD_FALLBACK_LOG_PREFIX} reason=${dockerUnavailableReason}`)
+}
+
+async function isDockerReachable() {
+    if (!docker) {
+        return false
+    }
+
+    const now = Date.now()
+    if (now < dockerReachabilityCacheUntil) {
+        return true
+    }
+
+    try {
+        await docker.ping()
+        dockerReachabilityCacheUntil = now + DOCKER_REACHABILITY_CACHE_MS
+        return true
+    } catch (error) {
+        if (isDockerSocketUnreachable(error)) {
+            markDockerUnavailable(error)
+        } else {
+            console.warn(
+                `[EXECUTOR] Docker ping failed, using Judge0 fallback for this execution: ${getErrorMessage(error)}`
+            )
+        }
+        return false
     }
 }
 
@@ -82,7 +146,7 @@ export async function executeCode({
         console.log(`[EXECUTOR] executeCode called: language=${language}, codeLength=${code.length}, inputLength=${input.length}, isPlayground=${isPlayground}`)
 
         // Check if Docker is available
-        if (docker) {
+        if (await isDockerReachable()) {
             // Docker is available - try to use it with retry logic
             console.log('[EXECUTOR] Using Docker for code execution')
             let lastError = null
@@ -114,6 +178,12 @@ export async function executeCode({
                         return result
                     }
 
+                    // If Docker socket itself is unavailable, stop retrying and fall back to Judge0.
+                    if (isDockerSocketUnreachable(result.error)) {
+                        markDockerUnavailable(result.error)
+                        break
+                    }
+
                     // Store error for potential retry
                     lastError = result.error
 
@@ -126,6 +196,11 @@ export async function executeCode({
                     console.error(`[EXECUTOR] Docker error on attempt ${attempt}:`, error.message)
                     lastError = error.message
 
+                    if (isDockerSocketUnreachable(error)) {
+                        markDockerUnavailable(error)
+                        break
+                    }
+
                     if (attempt < maxRetries) {
                         await new Promise(resolve => setTimeout(resolve, 500))
                     }
@@ -136,7 +211,9 @@ export async function executeCode({
             console.error('[EXECUTOR] Docker execution failed after retries:', lastError)
             console.log('[EXECUTOR] Falling back to Judge0 API')
         } else {
-            console.log('[EXECUTOR] Docker not available, using Judge0 directly')
+            console.log(
+                `[EXECUTOR] Docker not available, using Judge0 directly (${dockerUnavailableReason || dockerInitError?.message || 'no docker instance'})`
+            )
         }
 
         // Docker not available or failed - fallback to Judge0
@@ -161,8 +238,8 @@ export async function executeCode({
             return {
                 ...judge0Result,
                 success: false,
-                verdict: 'EXECUTOR_UNAVAILABLE',
-                error: 'Special judge not supported in this execution environment',
+                verdict: 'FEATURE_UNSUPPORTED_IN_CLOUD',
+                error: 'Special judge is not supported in cloud fallback mode (Judge0).',
             }
         }
 
@@ -232,6 +309,11 @@ export async function executeMultipleInputs({
             effectiveOutputLimit
         )
     } catch (err) {
+        if (isDockerSocketUnreachable(err)) {
+            markDockerUnavailable(err)
+            return null
+        }
+
         console.error('[EXECUTOR] executeMultipleInputs: container creation failed:', err.message)
         return inputs.map(() => ({
             success: false,
@@ -949,8 +1031,15 @@ async function cleanupContainer(container) {
  */
 export async function checkDockerAvailability() {
     try {
-        await docker.ping()
-        return { available: true }
+        const available = await isDockerReachable()
+        if (available) {
+            return { available: true }
+        }
+
+        return {
+            available: false,
+            error: dockerUnavailableReason || dockerInitError?.message || 'Docker unavailable',
+        }
     } catch (error) {
         return { available: false, error: error.message }
     }

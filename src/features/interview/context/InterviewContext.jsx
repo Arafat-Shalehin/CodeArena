@@ -308,6 +308,7 @@ export function InterviewProvider({
         <InterviewContext.Provider
             value={{
                 sessionId,
+                wsToken: wsTokenState,
                 problem: problemState,
                 messages,
                 code,
