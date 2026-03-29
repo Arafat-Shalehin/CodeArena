@@ -65,6 +65,19 @@ const submissionSchema = new mongoose.Schema(
             ],
         },
         likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        comments: [
+            {
+                userId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'User',
+                },
+                text: String,
+                createdAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
         executionTime: { type: Number }, // ms
         memoryUsed: { type: Number }, // KB
         error: { type: String }, // Compilation or Runtime error details

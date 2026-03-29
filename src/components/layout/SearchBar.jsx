@@ -4,9 +4,9 @@ import { Search, Loader2, ArrowRight, User, Trophy, Code2 } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 const DIFFICULTY_STYLES = {
-    easy: 'text-[#2cbb5d]',
-    medium: 'text-[#ffc01e]',
-    hard: 'text-[#ff375f]',
+    easy: 'text-success',
+    medium: 'text-warning',
+    hard: 'text-error',
 }
 
 /**
@@ -119,6 +119,10 @@ export default function SearchBar() {
                     onKeyDown={handleKeyDown}
                     placeholder="Search problems, users, contests..."
                     autoComplete="off"
+                    role="combobox"
+                    aria-expanded={!!showDropdown}
+                    aria-controls="search-dropdown"
+                    aria-autocomplete="list"
                     className="bg-bg-subtle border-border focus:bg-bg-page focus:border-accent/20 focus:ring-accent/5 placeholder:text-text-muted w-full rounded-xl border py-2 pr-20 pl-10 text-sm transition-all focus:ring-4 focus:outline-none"
                 />
                 {!query && (
@@ -134,7 +138,10 @@ export default function SearchBar() {
             </div>
 
             {showDropdown && (
-                <div className="border-border bg-bg-subtle absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border shadow-2xl">
+                <div
+                    id="search-dropdown"
+                    className="border-border bg-bg-subtle absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border shadow-2xl"
+                >
                     {results.length > 0 ? (
                         <ul role="listbox" className="py-1">
                             {results.map((item, idx) => (

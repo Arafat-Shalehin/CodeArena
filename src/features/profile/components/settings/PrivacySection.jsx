@@ -16,6 +16,9 @@ function ToggleSwitch({ checked, onChange, label, description }) {
             </div>
             <button
                 type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
                 onClick={() => onChange(!checked)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     checked ? 'bg-accent' : 'bg-bg-muted'
@@ -32,9 +35,20 @@ function ToggleSwitch({ checked, onChange, label, description }) {
 }
 
 function RadioOption({ selected, onChange, value, label, description }) {
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onChange(value)
+        }
+    }
+
     return (
         <div
+            role="radio"
+            aria-checked={selected}
+            tabIndex={0}
             onClick={() => onChange(value)}
+            onKeyDown={handleKeyDown}
             className={`cursor-pointer rounded-lg border p-4 transition-colors ${
                 selected ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
             }`}
@@ -93,6 +107,7 @@ export default function PrivacySection({ user }) {
             const res = await fetch(`/api/users/${user._id}/privacy`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(privacy),
             })
 

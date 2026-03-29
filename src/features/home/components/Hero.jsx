@@ -148,21 +148,29 @@ export default function Hero() {
                     </div>
 
                     {/* Subheadline */}
-                    <motion.p
-                        variants={{
-                            hidden: { opacity: 0, y: 30 },
-                            visible: {
-                                opacity: 1,
-                                y: 0,
-                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.3 },
-                            },
-                        }}
-                        className="text-text-secondary mx-auto mb-10 max-w-2xl text-lg leading-relaxed font-medium md:text-xl"
-                    >
-                        Level up your coding skills and ace your next technical interview. Join the
-                        world's fastest-growing competitive programming arena
-                        <span className="text-accent animate-pulse font-mono">_</span>
-                    </motion.p>
+                    <div className="mx-auto mb-10 max-w-3xl text-center">
+                        <motion.p
+                            variants={{
+                                hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
+                                visible: {
+                                    opacity: 1,
+                                    y: 0,
+                                    filter: 'blur(0px)',
+                                    transition: {
+                                        duration: 0.8,
+                                        ease: [0.16, 1, 0.3, 1],
+                                        delay: 0.25,
+                                    },
+                                },
+                            }}
+                            className="text-text-secondary font-display text-lg leading-relaxed font-medium md:text-2xl"
+                        >
+                            Where developers stop learning and start{' '}
+                            <span className="text-gradient">competing.</span>
+                            <br className="hidden md:block" />
+                            Solve what matters. Prove it in real time.
+                        </motion.p>
+                    </div>
 
                     {/* CTA Buttons */}
                     <motion.div
@@ -181,7 +189,7 @@ export default function Hero() {
                                 <Button
                                     variant="default"
                                     size="lg"
-                                    className="bg-accent hover:bg-accent-hover duration-normal h-14 w-full rounded-md px-10 text-lg font-bold text-white transition-colors"
+                                    className="btn-primary h-14 w-full px-10 text-lg transition-colors"
                                 >
                                     Start Solving
                                     <ArrowRight className="ml-2 size-5" />
@@ -191,7 +199,7 @@ export default function Hero() {
                                 <Button
                                     variant="secondary"
                                     size="lg"
-                                    className="bg-bg-subtle hover:bg-bg-muted text-text-primary border-border duration-normal h-14 w-full rounded-md border px-10 text-lg font-bold transition-colors"
+                                    className="btn-secondary h-14 w-full px-10 text-lg transition-colors"
                                 >
                                     View Contests
                                 </Button>

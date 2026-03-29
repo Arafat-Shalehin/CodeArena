@@ -9,6 +9,7 @@ import { User, LogOut, Search, ChevronRight } from 'lucide-react'
 const NAV_LINKS = [
     { name: 'Feed', href: '/feed' },
     { name: 'Problems', href: '/problems' },
+    { name: 'Practice', href: '/practice' },
     {
         name: 'AI Interview',
         href: '/interview',

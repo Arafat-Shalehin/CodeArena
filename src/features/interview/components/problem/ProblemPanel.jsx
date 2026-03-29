@@ -2,9 +2,9 @@ import React from 'react'
 import { Clock, Tag, Star, Loader2 } from 'lucide-react'
 
 const DIFFICULTY_STYLES = {
-    easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
-    medium: 'text-[#ffc01e] bg-[#ffc01e]/10',
-    hard: 'text-[#ff375f] bg-[#ff375f]/10',
+    easy: 'text-success bg-success/10',
+    medium: 'text-warning bg-warning/10',
+    hard: 'text-error bg-error/10',
 }
 
 function ProblemPanel({ problem }) {

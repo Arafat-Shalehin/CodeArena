@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,6 +27,8 @@ import SubscriptionSection from '@/features/profile/components/settings/Subscrip
 import { Button } from '@/components/ui/button'
 import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
 import Navbar from '@/components/layout/Navbar'
+import { Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // Schema
 const editProfileSchema = z.object({
@@ -131,6 +133,8 @@ const COUNTRIES = [
 export default function SettingsPage() {
     const { user, isLoading: authLoading, syncUser } = useAuth()
     const [activeSection, setActiveSection] = useState('profile')
+    const [isSaved, setIsSaved] = useState(false)
+    const abortRef = useRef(null)
 
     const {
         register,
@@ -176,13 +180,14 @@ export default function SettingsPage() {
     const onSubmit = async (data) => {
         const userId = user?.id || user?._id
 
-        console.log('User object:', user)
-        console.log('Extracted userId:', userId)
-
         if (!userId) {
             toast.error('Unable to update profile. Please log in again.')
             return
         }
+
+        // Cancel any previous in-flight submit
+        abortRef.current?.abort()
+        abortRef.current = new AbortController()
 
         try {
             const userIdString = userId.toString()
@@ -200,25 +205,19 @@ export default function SettingsPage() {
                 avatarSeed: data.avatarSeed,
             }
 
-            console.log('Sending payload:', payload)
-            console.log('Fetching:', `/api/users/${userIdString}`)
-
             const res = await fetch(`/api/users/${userIdString}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
+                signal: abortRef.current.signal,
                 body: JSON.stringify(payload),
             })
-
-            console.log('Response status:', res.status)
-            console.log('Response headers:', res.headers)
 
             const responseText = await res.text()
             let responseData = {}
             try {
                 responseData = JSON.parse(responseText)
-            } catch (e) {
-                console.error('Failed to parse response:', e, 'Response text:', responseText)
+            } catch {
                 throw new Error(
                     `Server error (${res.status}): ${responseText || 'No response body'}`
                 )
@@ -238,9 +237,11 @@ export default function SettingsPage() {
             // Sync with server to get fresh DB data as the single source of truth
             await syncUser()
 
+            setIsSaved(true)
             toast.success('Changes saved successfully!')
+            setTimeout(() => setIsSaved(false), 3000)
         } catch (error) {
-            console.error('Profile update failed:', error)
+            if (error.name === 'AbortError') return
             toast.error(error.message || 'Failed to save profile. Please try again.')
         }
     }
@@ -278,7 +279,7 @@ export default function SettingsPage() {
                     />
 
                     {/* Content Section */}
-                    <div className="lg:col-span-9">
+                    <div className="min-h-[600px] lg:col-span-9">
                         {activeSection === 'profile' && (
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                                 <ProfilePictureCard
@@ -332,14 +333,24 @@ export default function SettingsPage() {
                                     </Button>
                                     <Button
                                         type="submit"
-                                        variant="default"
-                                        className="shadow-accent-glow px-8"
+                                        variant={isSaved ? 'outline' : 'default'}
+                                        className={cn(
+                                            'px-8 transition-all duration-300',
+                                            !isSaved && 'shadow-accent-glow',
+                                            isSaved &&
+                                                'border-success text-success hover:bg-success/5'
+                                        )}
                                         disabled={isSubmitting}
                                     >
                                         {isSubmitting ? (
                                             <span className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 Saving...
+                                            </span>
+                                        ) : isSaved ? (
+                                            <span className="animate-in fade-in zoom-in flex items-center gap-2 duration-300">
+                                                <Check className="h-4 w-4" />
+                                                Saved Changes
                                             </span>
                                         ) : (
                                             'Save Changes'
