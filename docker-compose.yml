@@ -1,0 +1,111 @@
+services:
+    # MongoDB Database
+    mongodb:
+        image: mongo:latest
+        container_name: codearena-mongodb
+        init: true
+        restart: always
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
+            MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+        ports:
+            - '27017:27017'
+        volumes:
+            - mongodb_data:/data/db
+        networks:
+            - codearena-network
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Redis Cache
+    redis:
+        image: redis:7
+        container_name: codearena-redis
+        restart: unless-stopped
+        ports:
+            - '6379:6379'
+        command: >
+            sh -c "redis-server
+            --appendonly yes
+            --requirepass $${REDIS_PASSWORD:-SuperStrongRedisPassword}
+            --maxmemory 256mb
+            --maxmemory-policy noeviction"
+        volumes:
+            - redis_data:/data
+        networks:
+            - codearena-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "-a", "$${REDIS_PASSWORD:-SuperStrongRedisPassword}", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Main Application
+    app:
+        build:
+            context: .
+            args:
+                - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
+                - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+                - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+                - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+                - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+                - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+        init: true
+        container_name: codearena-app
+        restart: always
+        depends_on:
+            mongodb:
+                condition: service_healthy
+            docker-proxy:
+                condition: service_started
+        environment:
+            - MONGODB_URI=${MONGODB_URI}
+            - DOCKER_HOST=http://docker-proxy:2375
+            - NODE_ENV=${NODE_ENV:-production}
+            - JWT_SECRET=${JWT_SECRET}
+            - REDIS_URL=${REDIS_URL}
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - REDIS_PASSWORD=${REDIS_PASSWORD}
+        ports:
+            - '3001:3000'
+        networks:
+            - codearena-network
+
+    # Docker API Proxy (Security Hardened)
+    # This service allows the 'app' to talk to Docker safely
+    docker-proxy:
+        image: tecnativa/docker-socket-proxy
+        container_name: codearena-docker-proxy
+        privileged: true
+        ports:
+            - '127.0.0.1:2376:2375'
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        environment:
+            - CONTAINERS=1
+            - IMAGES=1
+            - POST=1
+            - EXEC=1
+            # DELETE and BUILD are disabled for extra security
+            - DELETE=0
+            - BUILD=0
+        networks:
+            - codearena-network
+        restart: unless-stopped
+
+networks:
+    codearena-network:
+        driver: bridge
+
+volumes:
+    mongodb_data:
+        driver: local
+    executor-cache:
+        driver: local
+    redis_data:
+        driver: local

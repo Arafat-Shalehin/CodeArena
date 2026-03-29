@@ -1,0 +1,989 @@
+@import 'tailwindcss';
+
+/* Enhanced transitions for theme switching */
+body,
+.site-gradient,
+#root,
+#__next {
+    transition:
+        background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root {
+    /* ----------------------------------------------------------
+   * COLORS
+   * ---------------------------------------------------------- */
+
+    /* Backgrounds */
+    --ca-bg-page: #ffffff;
+    --ca-bg-subtle: #f7f8fa;
+    --ca-bg-muted: #edeef0;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.08);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.05);
+
+    /* Text */
+    --ca-text-primary: #111827;
+    --ca-text-secondary: #4b5563;
+    --ca-text-muted: #9ca3af;
+    --ca-text-inverse: #ffffff;
+
+    /* Brand Accent (HackerRank green) */
+    --ca-accent: #02ba4c;
+    --ca-accent-hover: #029e40;
+    --ca-accent-light: #e6f9ed;
+    --ca-accent-text: #016b2c;
+
+    /* Borders */
+    --ca-border: #e5e7eb;
+    --ca-border-strong: #d1d5db;
+
+    /* Feedback — Success */
+    --ca-success: #16a34a;
+    --ca-success-light: #dcfce7;
+    --ca-success-text: #166534;
+
+    /* Feedback — Error */
+    --ca-error: #dc2626;
+    --ca-error-light: #fee2e2;
+    --ca-error-text: #991b1b;
+
+    /* Feedback — Warning */
+    --ca-warning: #d97706;
+    --ca-warning-light: #fef3c7;
+    --ca-warning-text: #92400e;
+
+    /* Feedback — Info */
+    --ca-info: #2563eb;
+    --ca-info-light: #dbeafe;
+    --ca-info-text: #1e40af;
+
+    /* RGB variants for opacity support */
+    --ca-bg-page-rgb: 255, 255, 255;
+    --ca-border-rgb: 229, 231, 235;
+    --ca-accent-rgb: 2, 186, 76;
+    --ca-gold-rgb: 245, 158, 11;
+    --ca-silver-rgb: 156, 163, 175;
+    --ca-bronze-rgb: 217, 119, 6;
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
+
+    /* Competitive ranking colors */
+    --ca-rank-gold: #f59e0b;
+    --ca-rank-silver: #9ca3af;
+    --ca-rank-bronze: #b45309;
+
+    /* ----------------------------------------------------------
+   * TYPOGRAPHY
+   * ---------------------------------------------------------- */
+
+    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+    /* ----------------------------------------------------------
+   * SHADOWS
+   * ---------------------------------------------------------- */
+
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.07);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
+    --shadow-accent-glow: 0 0 20px rgba(var(--ca-accent-rgb), 0.25);
+    --shadow-gold-glow: 0 0 20px rgba(var(--ca-gold-rgb), 0.25);
+
+    /* ----------------------------------------------------------
+   * TRANSITIONS
+   * ---------------------------------------------------------- */
+
+    --duration-fast: 100ms;
+    --duration-normal: 150ms;
+    --duration-slow: 250ms;
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ----------------------------------------------------------
+   * Z-INDEX SCALE
+   * ---------------------------------------------------------- */
+
+    --z-base: 0;
+    --z-raised: 10;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-overlay: 300;
+    --z-modal: 400;
+    --z-toast: 500;
+
+    /* ----------------------------------------------------------
+   * LAYOUT
+   * ---------------------------------------------------------- */
+
+    --container-max: 1280px;
+    --container-px: 1.5rem;
+    --container-px-lg: 2rem;
+
+    /* Border Radius */
+    --radius: 0.5rem;
+
+    /* Interactive Tiles */
+    --tile: var(--ca-accent);
+}
+
+/* ----------------------------------------------------------
+ * DARK MODE OVERRIDES
+ * ----------------------------------------------------------
+ * When the <html> element has class="dark", these override
+ * the light-mode tokens above. Components automatically
+ * adapt — they just use var(--ca-bg-page) etc.
+ * ---------------------------------------------------------- */
+
+.dark {
+    --ca-bg-page: #0f1117;
+    --ca-bg-subtle: #161b22;
+    --ca-bg-muted: #21262d;
+    --ca-site-grad-1: rgba(2, 186, 76, 0.16);
+    --ca-site-grad-2: rgba(2, 186, 76, 0.1);
+
+    --ca-text-primary: #f0f6fc;
+    --ca-text-secondary: #8b949e;
+    --ca-text-muted: #484f58;
+    --ca-text-inverse: #0f1117;
+
+    --ca-accent: #02ba4c;
+    --ca-accent-hover: #03d658;
+    --ca-accent-light: #0d2818;
+    --ca-accent-text: #4ade80;
+
+    --ca-border: #21262d;
+    --ca-border-strong: #30363d;
+
+    --ca-success-light: #0d2818;
+    --ca-success-text: #4ade80;
+    --ca-error-light: #2d1117;
+    --ca-error-text: #fecaca;
+    --ca-warning-light: #2d1b00;
+    --ca-warning-text: #fbbf24;
+    --ca-info-light: #0d1f47;
+    --ca-info-text: #93c5fd;
+}
+
+/**
+ * ============================================================
+ * CodeArena — globals.css
+ * ============================================================
+ * Loads Tailwind, imports design tokens, and maps them to
+ * the Tailwind v4 @theme system. Also provides base resets,
+ * reusable component classes, and utility helpers.
+ *
+ * RULES:
+ *   - Never hardcode colors. Always use token-based classes.
+ *   - If you need a new color, add it to :root first.
+ * ============================================================
+ */
+
+/* ============================================================
+ * @theme — Bridge :root tokens → Tailwind utility classes
+ *
+ * LHS: --color-* (Tailwind generates bg-*, text-*, border-* classes)
+ * RHS: var(--ca-*) (reads from :root tokens, NO circular reference)
+ * ============================================================ */
+@theme {
+    /* ── BACKGROUNDS ────────────────────────── */
+    --color-bg-page: var(--ca-bg-page);
+    --color-bg-subtle: var(--ca-bg-subtle);
+    --color-bg-muted: var(--ca-bg-muted);
+
+    /* ── TEXT ────────────────────────────────── */
+    --color-text-primary: var(--ca-text-primary);
+    --color-text-secondary: var(--ca-text-secondary);
+    --color-text-muted: var(--ca-text-muted);
+    --color-text-inverse: var(--ca-text-inverse);
+
+    /* ── BRAND ACCENT ───────────────────────── */
+    --color-accent: var(--ca-accent);
+    --color-accent-hover: var(--ca-accent-hover);
+    --color-accent-light: var(--ca-accent-light);
+    --color-accent-text: var(--ca-accent-text);
+
+    /* ── BORDERS ────────────────────────────── */
+    --color-border: var(--ca-border);
+    --color-border-strong: var(--ca-border-strong);
+
+    /* ── FEEDBACK ───────────────────────────── */
+    --color-success: var(--ca-success);
+    --color-success-light: var(--ca-success-light);
+    --color-success-text: var(--ca-success-text);
+    --color-error: var(--ca-error);
+    --color-error-light: var(--ca-error-light);
+    --color-error-text: var(--ca-error-text);
+    --color-warning: var(--ca-warning);
+    --color-warning-light: var(--ca-warning-light);
+    --color-warning-text: var(--ca-warning-text);
+    --color-info: var(--ca-info);
+    --color-info-light: var(--ca-info-light);
+    --color-info-text: var(--ca-info-text);
+
+    /* ── RANKING ────────────────────────────── */
+    --color-rank-gold: var(--ca-rank-gold);
+    --color-rank-silver: var(--ca-rank-silver);
+    --color-rank-bronze: var(--ca-rank-bronze);
+
+    /* ── BACKWARDS COMPAT (legacy class names) ── */
+    --color-primary: var(--ca-accent);
+    --color-primary-foreground: #ffffff;
+    --color-background: var(--ca-bg-page);
+    --color-foreground: var(--ca-text-primary);
+    --color-surface: var(--ca-bg-subtle);
+    --color-card: var(--ca-bg-page);
+    --color-card-foreground: var(--ca-text-primary);
+    --color-popover: var(--ca-bg-page);
+    --color-popover-foreground: var(--ca-text-primary);
+    --color-secondary: var(--ca-bg-subtle);
+    --color-secondary-foreground: var(--ca-text-primary);
+    --color-muted: var(--ca-bg-subtle);
+    --color-muted-foreground: var(--ca-text-secondary);
+    --color-destructive: var(--ca-error);
+    --color-destructive-foreground: #ffffff;
+    --color-input: var(--ca-border);
+    --color-ring: var(--ca-accent);
+    --color-text-main: var(--ca-text-primary);
+    --color-text-light: var(--ca-text-muted);
+    --color-border-base: var(--ca-border);
+    --color-border-highlight: var(--ca-border-strong);
+
+    /* ── LEADERBOARD LEGACY ── */
+    --color-gold: #ffd700;
+    --color-silver: #c0c0c0;
+    --color-bronze: #cd7f32;
+    --color-arena-dark: #0b1120;
+    --color-arena-card: #111827;
+    --color-arena-blue: #3b82f6;
+    --color-arena-gold: #fbbf24;
+    --color-arena-silver: #9ca3af;
+    --color-arena-bronze: #d97706;
+    --color-background-light: #f6f6f8;
+    --color-background-dark: #111621;
+
+    /* ── FONTS ──────────────────────────────── */
+    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-bricolage), system-ui, sans-serif;
+    --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
+
+    /* ── RADIUS ─────────────────────────────── */
+    --radius: 0.5rem;
+
+    /* ── MAX WIDTH ──────────────────────────── */
+    --container-max: 1280px;
+}
+
+/* ============================================================
+ * BASE LAYER — Global resets using the design tokens
+ * ============================================================ */
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+        @apply bg-bg-page text-text-primary font-sans antialiased transition-colors duration-500;
+    }
+
+    /* Headings */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        margin: 0;
+        font-weight: 600;
+        line-height: 1.25;
+        color: var(--ca-text-primary);
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Links use accent by default */
+    a {
+        color: var(--ca-accent-text);
+        text-decoration: none;
+        transition: color var(--duration-normal) var(--ease-default);
+    }
+
+    a:hover {
+        color: var(--ca-accent);
+    }
+
+    /* Code elements use mono font */
+    code,
+    pre,
+    kbd,
+    samp {
+        font-family: var(--font-mono);
+        font-size: 0.9em;
+    }
+
+    /* Inherit font on form elements */
+    button,
+    input,
+    select,
+    textarea {
+        font-family: inherit;
+        font-size: inherit;
+    }
+
+    /* Focus ring — keyboard only */
+    *:focus-visible {
+        outline: 2px solid var(--ca-accent);
+        outline-offset: 2px;
+    }
+
+    *:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    /* Horizontal rule */
+    hr {
+        border: none;
+        border-top: 1px solid var(--ca-border);
+        margin: 1.5rem 0;
+    }
+
+    /* Images don't overflow */
+    img,
+    video {
+        max-width: 100%;
+        display: block;
+    }
+}
+
+/* ============================================================
+ * COMPONENT LAYER — Reusable classes (all references to built-in
+ * Tailwind utilities only — no cross-referencing custom classes)
+ * ============================================================ */
+@layer components {
+    /* ── Page layout ── */
+    .page-container {
+        max-width: var(--container-max);
+        @apply mx-auto px-4 md:px-6;
+    }
+
+    .section-wrapper {
+        @apply py-16;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+        @apply bg-accent inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
+        transition: background-color var(--duration-normal) var(--ease-default);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--ca-accent-hover);
+    }
+
+    .btn-primary:focus-visible {
+        @apply ring-accent ring-2 ring-offset-2 outline-none;
+    }
+
+    .btn-secondary {
+        @apply bg-bg-subtle text-text-primary border-border inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
+        transition: background-color var(--duration-normal) var(--ease-default);
+    }
+
+    .btn-secondary:hover {
+        @apply bg-bg-muted;
+    }
+
+    .btn-secondary:focus-visible {
+        @apply ring-accent ring-2 ring-offset-2 outline-none;
+    }
+
+    .btn-danger {
+        @apply bg-error inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
+        transition: background-color var(--duration-normal) var(--ease-default);
+    }
+
+    .btn-danger:hover {
+        @apply bg-red-700;
+    }
+
+    .btn-danger:focus-visible {
+        @apply ring-accent ring-2 ring-offset-2 outline-none;
+    }
+
+    .btn-ghost {
+        @apply text-text-secondary inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50;
+        transition:
+            color var(--duration-normal) var(--ease-default),
+            background-color var(--duration-normal) var(--ease-default);
+    }
+
+    .btn-ghost:hover {
+        @apply text-text-primary bg-bg-subtle;
+    }
+
+    /* ── Cards ── */
+    .card {
+        @apply bg-bg-subtle border-border rounded-lg border p-6;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .card-hover {
+        @apply bg-bg-subtle border-border cursor-pointer rounded-lg border p-6;
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow var(--duration-normal) var(--ease-default);
+    }
+
+    .card-hover:hover {
+        box-shadow: var(--shadow-md);
+    }
+
+    .card-accent {
+        @apply bg-accent-light border-accent rounded-lg border p-6;
+    }
+
+    /* ── Inputs ── */
+    .input-base {
+        @apply bg-bg-page border-border text-text-primary placeholder:text-text-muted focus:ring-accent w-full rounded-md border px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:outline-none;
+        transition: border-color var(--duration-normal) var(--ease-default);
+    }
+
+    /* ── Badges ── */
+    .badge-success {
+        @apply bg-success-light text-success inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .badge-error {
+        @apply bg-error-light text-error inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .badge-warning {
+        @apply bg-warning-light text-warning inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .badge-info {
+        @apply bg-info-light text-info inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .badge-accent {
+        @apply bg-accent-light text-accent-text inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .badge-neutral {
+        @apply bg-bg-muted text-text-secondary inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    /* ── Difficulty badges (CodeArena-specific) ── */
+    .difficulty-easy {
+        @apply bg-success-light text-success inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .difficulty-medium {
+        @apply bg-warning-light text-warning inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    .difficulty-hard {
+        @apply bg-error-light text-error inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    /* ── Section headings ── */
+    .section-title {
+        @apply text-text-primary mb-1 text-2xl font-semibold;
+    }
+
+    .section-subtitle {
+        @apply text-text-secondary mb-6 text-sm;
+    }
+}
+
+/* ============================================================
+ * UTILITY LAYER — One-off helpers
+ * ============================================================ */
+@layer utilities {
+    /* Hide scrollbar but keep scroll */
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Text truncation (2-line) */
+    .truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Gradient text (accent) */
+    .text-gradient {
+        background: linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Smooth text rendering */
+    .text-rendering-optimize {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Glassmorphism / Matte */
+    .matte-surface {
+        @apply border border-white/40 bg-white/70 backdrop-blur-md;
+    }
+
+    .dark .matte-surface {
+        @apply bg-bg-subtle/40 border-border/50;
+    }
+
+    /* Refined Glass Card */
+    .glass-card {
+        @apply border border-white/20 bg-white/40 backdrop-blur-xl;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .dark .glass-card {
+        @apply bg-bg-page/40 border-border/40;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    /* View Transition API - Premium Theme Switch */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+        display: block;
+    }
+
+    ::view-transition-old(root) {
+        z-index: 1;
+    }
+
+    ::view-transition-new(root) {
+        z-index: 999;
+    }
+
+    /* Premium Theme Toggle Switch Styles - Token Optimized */
+    .theme-switch .slider {
+        background-color: var(--ca-bg-muted);
+        box-shadow: 0 0 0 rgba(var(--ca-border-rgb), 0);
+    }
+
+    .theme-switch:hover .slider {
+        box-shadow: 0 0 15px rgba(var(--ca-border-rgb), 0.6);
+    }
+
+    .theme-switch .slider::before {
+        position: absolute;
+        content: '';
+        height: 1.4em;
+        width: 1.4em;
+        border-radius: 50%;
+        left: 10%;
+        bottom: 15%;
+        /* Sun */
+        box-shadow: inset 15px -4px 0px 15px var(--ca-rank-gold);
+        background-color: #28096b; /* Fallback for night sky */
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: center;
+    }
+
+    .theme-switch:hover .slider::before {
+        transform: rotate(45deg);
+    }
+
+    .theme-switch .clouds_stars {
+        background-color: var(--ca-bg-page);
+        box-shadow:
+            -12px 0 0 0 var(--ca-bg-page),
+            -6px 0 0 1.6px var(--ca-bg-page),
+            0.3px 16px 0 var(--ca-bg-page),
+            -6.5px 16px 0 var(--ca-bg-page);
+        filter: blur(0.55px);
+    }
+
+    .theme-switch input:checked ~ .clouds_stars {
+        transform: translateX(-20px);
+        height: 2px;
+        width: 2px;
+        left: 80%;
+        top: 15%;
+        background-color: var(--ca-text-inverse);
+        box-shadow:
+            -7px 10px 0 var(--ca-text-inverse),
+            8px 15px 0 var(--ca-text-inverse),
+            -17px 1px 0 var(--ca-text-inverse),
+            -20px 10px 0 var(--ca-text-inverse),
+            -7px 23px 0 var(--ca-text-inverse),
+            -15px 25px 0 var(--ca-text-inverse);
+        filter: none;
+        animation: twinkle 2s infinite;
+    }
+
+    .theme-switch input:checked + .slider {
+        background-color: var(--ca-accent) !important;
+    }
+
+    .theme-switch input:checked + .slider::before {
+        transform: translateX(100%);
+        /* Moon */
+        box-shadow: inset 8px -4px 0 0 var(--ca-text-primary);
+        background-color: transparent;
+    }
+
+    .theme-switch input:checked + .slider:hover::before {
+        transform: translateX(100%) rotate(-45deg);
+    }
+
+    @keyframes twinkle {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    /* View Transition - Circular Reveal Base */
+    ::view-transition-image-pair(root) {
+        isolation: auto;
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+        display: block;
+    }
+
+    /* Hero gradient */
+    .hero-gradient {
+        background: none;
+    }
+
+    /* Shared page gradient for synchronized backgrounds across routes */
+    .site-gradient {
+        background-image: none;
+        background-repeat: no-repeat;
+    }
+
+    /* ── Leaderboard-specific utilities ── */
+    .podium-gradient-1 {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-gold-rgb), 0.2) 0%,
+            rgba(var(--ca-gold-rgb), 0) 100%
+        );
+    }
+
+    .podium-gradient-2 {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-silver-rgb), 0.2) 0%,
+            rgba(var(--ca-silver-rgb), 0) 100%
+        );
+    }
+
+    .podium-gradient-3 {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-bronze-rgb), 0.2) 0%,
+            rgba(var(--ca-bronze-rgb), 0) 100%
+        );
+    }
+
+    .glass-effect {
+        background: rgba(var(--ca-bg-page-rgb, 255, 255, 255), 0.03);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(var(--ca-border-rgb, 229, 231, 235), 0.05);
+    }
+
+    .gold-glow {
+        box-shadow: 0 0 30px rgba(var(--ca-gold-rgb), 0.2);
+    }
+
+    .silver-glow {
+        box-shadow: 0 0 25px rgba(var(--ca-silver-rgb), 0.15);
+    }
+
+    .bronze-glow {
+        box-shadow: 0 0 20px rgba(var(--ca-bronze-rgb), 0.15);
+    }
+
+    .champion-badge-bg {
+        background: linear-gradient(180deg, var(--ca-rank-gold) 0%, var(--ca-rank-bronze) 100%);
+    }
+
+    /* ── Custom Animations ── */
+    @keyframes fade-up {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes soft-pulse {
+        0%,
+        100% {
+            box-shadow: 0 0 0 0 rgba(var(--ca-gold-rgb), 0);
+        }
+
+        50% {
+            box-shadow: 0 0 0 8px rgba(var(--ca-gold-rgb), 0.2);
+        }
+    }
+
+    .animate-fade-up {
+        animation: fade-up 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    .animate-soft-pulse {
+        animation: soft-pulse 2.5s ease-in-out infinite;
+    }
+
+    /* ── Advanced Background Patterns ── */
+    .bg-dot-matrix {
+        background-color: var(--ca-bg-page);
+        background-image: radial-gradient(var(--ca-border) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .dark .bg-dot-matrix {
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+
+    /* ── Modern Glow Effects ── */
+    .glow-accent {
+        box-shadow: 0 0 20px rgba(var(--ca-accent-rgb), 0.15);
+    }
+
+    .glow-accent-strong {
+        box-shadow: 0 0 40px rgba(var(--ca-accent-rgb), 0.25);
+    }
+
+    /* ── Auth Vector Animations ── */
+    @keyframes float {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    @keyframes spin-slow {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .animate-float-slow {
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .animate-float-medium {
+        animation: float 5s ease-in-out infinite 1s;
+    }
+
+    .animate-float-fast {
+        animation: float 4s ease-in-out infinite 0.5s;
+    }
+
+    .animate-spin-slow {
+        animation: spin-slow 20s linear infinite;
+    }
+
+    /* ── Markdown / Prose Styling ── */
+    .prose-markdown {
+        color: var(--ca-text-secondary);
+        font-family: var(--font-sans);
+        line-height: 1.75;
+    }
+
+    .prose-markdown h1,
+    .prose-markdown h2,
+    .prose-markdown h3 {
+        color: var(--ca-text-primary);
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .prose-markdown h1 {
+        font-size: 1.875rem;
+    }
+
+    .prose-markdown h2 {
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--ca-border);
+        padding-bottom: 0.5rem;
+    }
+
+    .prose-markdown h3 {
+        font-size: 1.25rem;
+    }
+
+    .prose-markdown p {
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown ul,
+    .prose-markdown ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+    }
+
+    .prose-markdown ul {
+        list-style-type: disc;
+    }
+
+    .prose-markdown ol {
+        list-style-type: decimal;
+    }
+
+    .prose-markdown li {
+        margin-bottom: 0.5rem;
+    }
+
+    .prose-markdown code {
+        background-color: var(--ca-bg-muted);
+        color: var(--ca-accent-text);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+    }
+
+    .prose-markdown pre {
+        background-color: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown pre code {
+        background-color: transparent;
+        color: var(--ca-text-primary);
+        padding: 0;
+        font-size: 0.9em;
+    }
+
+    .prose-markdown blockquote {
+        border-left: 4px solid var(--ca-accent);
+        padding-left: 1rem;
+        font-style: italic;
+        color: var(--ca-text-muted);
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.25rem;
+    }
+
+    .prose-markdown th,
+    .prose-markdown td {
+        border: 1px solid var(--ca-border);
+        padding: 0.75rem;
+        text-align: left;
+    }
+
+    .prose-markdown th {
+        background-color: var(--ca-bg-subtle);
+        font-weight: 600;
+        color: var(--ca-text-primary);
+    }
+
+    /* ── Utility Classes ── */
+    .matte-surface {
+        background: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+    }
+
+    .bg-glass {
+        background: rgba(var(--ca-bg-subtle-rgb), 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* Interview Landing Page animation */
+/* Import KaTeX CSS */
+@import 'katex/dist/katex.min.css';
+/* ── Hero Mesh Gradient ── */
+@keyframes mesh {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(5%, 5%) scale(1.1);
+    }
+    66% {
+        transform: translate(-5%, 2%) scale(0.9);
+    }
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+.animate-mesh {
+    animation: mesh 20s ease-in-out infinite;
+}
+
+/* ── Floating Animation ── */
+@keyframes floating {
+    0%,
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+    }
+}
+
+.animate-floating {
+    animation: floating 6s ease-in-out infinite;
+}
+
+/* ── Step Progress Line ── */
+.step-line-shadow {
+    filter: drop-shadow(0 0 8px var(--ca-accent));
+}

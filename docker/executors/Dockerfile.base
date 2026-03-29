@@ -1,0 +1,21 @@
+# Base image for code execution
+FROM alpine:3.19
+
+# Install basic dependencies
+RUN apk add --no-cache \
+    bash \
+    curl \
+    ca-certificates \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for code execution
+RUN addgroup -S coderunner && adduser -S coderunner -G coderunner
+
+# Set working directory
+WORKDIR /workspace
+
+# Switch to non-root user
+USER coderunner
+
+# Default command
+CMD ["/bin/bash"]
