@@ -41,6 +41,8 @@ const sessionSockets = new Map()
 let sharedSubscriber = null
 let subscriberPromise = null
 let isSubscribed = false
+const SESSION_ACTIVE_CHECK_TTL_MS = 5_000
+const SNAPSHOT_MIN_INTERVAL_MS = 20_000
 
 /**
  * Initializes a single Redis pattern subscriber for the entire namespace.
@@ -201,6 +203,21 @@ export function registerInterviewNamespace(io) {
     interviewNs.on('connection', async (socket) => {
         const sessionId = socket.sessionId
         const roomName = sessionId // Consistent with io.to(sessionId) emits
+        let lastSessionActive = true
+        let lastSessionCheckAt = 0
+        let lastSnapshotAt = 0
+        let lastSnapshotSignature = ''
+
+        const ensureSessionActive = async () => {
+            const now = Date.now()
+            if (now - lastSessionCheckAt < SESSION_ACTIVE_CHECK_TTL_MS) {
+                return lastSessionActive
+            }
+
+            lastSessionCheckAt = now
+            lastSessionActive = await isSessionActive(sessionId)
+            return lastSessionActive
+        }
 
         console.log(
             `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
@@ -257,7 +274,7 @@ export function registerInterviewNamespace(io) {
 
         // 2. Client sends a code snapshot (for playback/history)
         socket.on('interview:code_snapshot', async (payload) => {
-            if (!(await isSessionActive(sessionId))) {
+            if (!(await ensureSessionActive())) {
                 console.warn(`[Guard Blocked] code_snapshot on session ${sessionId}`)
                 return
             }
@@ -265,6 +282,19 @@ export function registerInterviewNamespace(io) {
             try {
                 await dbConnect()
                 const { problemId, language, code, snapshotType } = payload
+                const snapshotSig = `${problemId}:${language}:${code?.length || 0}:${snapshotType || 'auto'}`
+                const now = Date.now()
+
+                // Drop duplicate or too-frequent snapshots from noisy clients.
+                if (
+                    snapshotSig === lastSnapshotSignature &&
+                    now - lastSnapshotAt < SNAPSHOT_MIN_INTERVAL_MS
+                ) {
+                    return
+                }
+
+                lastSnapshotSignature = snapshotSig
+                lastSnapshotAt = now
 
                 await InterviewSnapshot.create({
                     sessionId,
@@ -281,7 +311,7 @@ export function registerInterviewNamespace(io) {
 
         // 3. Client attempts to run code (Refactored to Background Worker)
         socket.on('interview:run', async (payload) => {
-            if (!(await isSessionActive(sessionId))) {
+            if (!(await ensureSessionActive())) {
                 console.warn(`[Guard Blocked] run on session ${sessionId}`)
                 socket.emit('interview:error', {
                     code: 'SESSION_ENDED',
@@ -316,7 +346,7 @@ export function registerInterviewNamespace(io) {
 
         // 4. Client attempts to submit code (Refactored to Background Worker)
         socket.on('interview:submit', async (payload) => {
-            if (!(await isSessionActive(sessionId))) {
+            if (!(await ensureSessionActive())) {
                 console.warn(`[Guard Blocked] submit on session ${sessionId}`)
                 socket.emit('interview:error', {
                     code: 'SESSION_ENDED',
@@ -362,7 +392,7 @@ export function registerInterviewNamespace(io) {
 
         // 5. Client sends a chat message → enqueue AI job
         socket.on('interview:chat_message', async (payload) => {
-            if (!(await isSessionActive(sessionId))) {
+            if (!(await ensureSessionActive())) {
                 console.warn(`[Guard Blocked] chat_message on session ${sessionId}`)
                 socket.emit('interview:error', {
                     code: 'SESSION_ENDED',

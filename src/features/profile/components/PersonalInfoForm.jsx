@@ -26,6 +26,7 @@ export default function PersonalInfoForm({
             setValue(field, '', { shouldValidate: true })
         }
     }
+    const [showUsernameChange, setShowUsernameChange] = useState(false)
     const [usernameAvailability, setUsernameAvailability] = useState({
         status: 'idle', // 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
         message: '',
@@ -33,8 +34,13 @@ export default function PersonalInfoForm({
 
     const usernameValue = watch ? watch('name') : ''
 
-    // Debounced username availability check
+    // Debounced username availability check - ONLY when in change mode
     useEffect(() => {
+        if (!showUsernameChange) {
+            setUsernameAvailability({ status: 'idle', message: '' })
+            return
+        }
+
         if (!usernameValue || usernameValue.length < 3) {
             setUsernameAvailability({ status: 'idle', message: '' })
             return
@@ -75,10 +81,10 @@ export default function PersonalInfoForm({
                     message: 'Unable to check. Please try again.',
                 })
             }
-        }, 800) // 800ms debounce
+        }, 1200) // Increased debounce to 1.2s
 
         return () => clearTimeout(timeoutId)
-    }, [usernameValue])
+    }, [usernameValue, showUsernameChange])
 
     const getAvailabilityIcon = () => {
         switch (usernameAvailability.status) {
@@ -114,12 +120,24 @@ export default function PersonalInfoForm({
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {/* Username / Handle */}
                 <div className="space-y-2 md:col-span-2">
-                    <Label
-                        htmlFor="name"
-                        className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                    >
-                        Username / Handle
-                    </Label>
+                    <div className="flex items-center justify-between">
+                        <Label
+                            htmlFor="name"
+                            className="text-text-muted text-xs font-bold tracking-wider uppercase"
+                        >
+                            Username / Handle
+                        </Label>
+                        {!showUsernameChange && (
+                            <button
+                                type="button"
+                                onClick={() => setShowUsernameChange(true)}
+                                className="text-accent hover:text-accent/80 text-xs font-bold underline-offset-4 hover:underline"
+                            >
+                                Change Username
+                            </button>
+                        )}
+                    </div>
+
                     <div className="relative">
                         <AtSign
                             className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
@@ -128,22 +146,36 @@ export default function PersonalInfoForm({
                         <Input
                             id="name"
                             {...register('name')}
+                            readOnly={!showUsernameChange}
                             className={cn(
                                 'pr-10 pl-10',
-                                usernameAvailability.status === 'available' &&
+                                !showUsernameChange && 'bg-bg-muted cursor-not-allowed opacity-70',
+                                showUsernameChange &&
+                                    usernameAvailability.status === 'available' &&
                                     'border-success focus:border-success focus:ring-success/20',
-                                usernameAvailability.status === 'taken' &&
+                                showUsernameChange &&
+                                    usernameAvailability.status === 'taken' &&
                                     'border-error focus:border-error focus:ring-error/20',
-                                usernameAvailability.status === 'invalid' &&
+                                showUsernameChange &&
+                                    usernameAvailability.status === 'invalid' &&
                                     'border-warning focus:border-warning focus:ring-warning/20'
                             )}
                             placeholder="your_unique_handle"
                         />
-                        <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                            {getAvailabilityIcon()}
+                        <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-2">
+                            {showUsernameChange && getAvailabilityIcon()}
+                            {showUsernameChange && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowUsernameChange(false)}
+                                    className="text-text-muted hover:text-text-primary transition-colors"
+                                >
+                                    <XIcon size={14} />
+                                </button>
+                            )}
                         </div>
                     </div>
-                    {usernameAvailability.message && (
+                    {showUsernameChange && usernameAvailability.message && (
                         <p className={cn('text-xs font-medium', getAvailabilityColor())}>
                             {usernameAvailability.message}
                         </p>

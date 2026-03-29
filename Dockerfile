@@ -15,6 +15,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PROCESS_TYPE=API
 
 # Build-time NEXT_PUBLIC_* values
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
@@ -54,6 +55,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/docker/executors/seccomp-profile.json ./docker/executors/seccomp-profile.json
+COPY --from=builder /app/docker/executors/seccomp-profile.json ./.next/standalone/docker/executors/seccomp-profile.json
 COPY --from=builder /app/scripts/start-process.js ./scripts/start-process.js
 COPY --from=builder /app/scripts/worker-boot.js ./scripts/worker-boot.js
 COPY --from=builder /app/scripts/alias-loader.mjs ./scripts/alias-loader.mjs

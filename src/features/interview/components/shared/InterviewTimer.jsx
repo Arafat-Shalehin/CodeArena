@@ -26,7 +26,7 @@ export default function InterviewTimer({ durationMins, startedAt, onTimeExpired 
     }, [remaining, onTimeExpired])
 
     const pct = remaining / totalSeconds
-    const color = pct > 0.33 ? 'text-success' : pct > 0.15 ? 'text-[#ffc01e]' : 'text-error'
+    const color = pct > 0.33 ? 'text-success' : pct > 0.15 ? 'text-warning' : 'text-error'
 
     return (
         <span className={`font-mono text-sm font-bold tabular-nums ${color}`}>

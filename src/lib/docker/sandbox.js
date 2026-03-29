@@ -5,16 +5,41 @@ import fs from 'fs'
 // Resolve path to the seccomp profile JSON
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const SECCOMP_PROFILE_PATH = path.resolve(__dirname, '../../../docker/executors/seccomp-profile.json')
+
+const SECCOMP_PROFILE_CANDIDATES = [
+    // Local development / source runtime
+    path.resolve(__dirname, '../../../docker/executors/seccomp-profile.json'),
+    // Next standalone runtime where this file lives under .next/standalone/src/...
+    path.resolve(__dirname, '../../../../docker/executors/seccomp-profile.json'),
+    // Fallback from process cwd
+    path.resolve(process.cwd(), 'docker/executors/seccomp-profile.json'),
+]
+
+function loadSeccompProfile() {
+    for (const profilePath of SECCOMP_PROFILE_CANDIDATES) {
+        try {
+            if (!fs.existsSync(profilePath)) continue
+            const raw = fs.readFileSync(profilePath, 'utf-8')
+            return { profile: JSON.parse(raw), profilePath }
+        } catch (err) {
+            console.warn(
+                `[SANDBOX] Failed to parse seccomp profile at ${profilePath}:`,
+                err.message
+            )
+        }
+    }
+    return { profile: null, profilePath: null }
+}
 
 // Load seccomp profile at module init (fail fast if missing)
-let seccompProfile = null
-try {
-    const raw = fs.readFileSync(SECCOMP_PROFILE_PATH, 'utf-8')
-    seccompProfile = JSON.parse(raw)
-} catch (err) {
-    console.warn(`[SANDBOX] Could not load seccomp profile from ${SECCOMP_PROFILE_PATH}:`, err.message)
+const { profile: seccompProfile, profilePath: loadedSeccompPath } = loadSeccompProfile()
+if (!seccompProfile) {
+    console.warn(
+        `[SANDBOX] Could not load seccomp profile. Tried: ${SECCOMP_PROFILE_CANDIDATES.join(', ')}`
+    )
     console.warn('[SANDBOX] Containers will run without a custom seccomp profile.')
+} else {
+    console.log(`[SANDBOX] Loaded seccomp profile from ${loadedSeccompPath}`)
 }
 
 // Security configurations for Docker sandbox

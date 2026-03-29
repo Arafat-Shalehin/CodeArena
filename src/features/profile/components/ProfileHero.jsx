@@ -40,39 +40,19 @@ export default function ProfileHero({ user: userProp }) {
         socials,
     } = displayUser || {}
 
-    const countryFlags = {
-        AE: '🇦🇪',
-        AR: '🇦🇷',
-        AU: '🇦🇺',
-        BD: '🇧🇩',
-        BR: '🇧🇷',
-        CA: '🇨🇦',
-        CH: '🇨🇭',
-        CN: '🇨🇳',
-        DE: '🇩🇪',
-        EG: '🇪🇬',
-        ES: '🇪🇸',
-        FR: '🇫🇷',
-        GB: '🇬🇧',
-        IN: '🇮🇳',
-        IT: '🇮🇹',
-        JP: '🇯🇵',
-        KR: '🇰🇷',
-        MX: '🇲🇽',
-        NG: '🇳🇬',
-        NL: '🇳🇱',
-        PK: '🇵🇰',
-        PL: '🇵🇱',
-        RU: '🇷🇺',
-        SE: '🇸🇪',
-        SG: '🇸🇬',
-        TH: '🇹🇭',
-        TR: '🇹🇷',
-        US: '🇺🇸',
-        VN: '🇻🇳',
-        ZA: '🇿🇦',
+    const getFlagEmoji = (countryCode) => {
+        if (!countryCode || countryCode.length !== 2) return ''
+        const codePoints = countryCode
+            .toUpperCase()
+            .split('')
+            .map((char) => 127397 + char.charCodeAt(0))
+        try {
+            return String.fromCodePoint(...codePoints)
+        } catch (e) {
+            return ''
+        }
     }
-    const countryFlag = country ? countryFlags[country] || '' : ''
+    const countryFlag = getFlagEmoji(country)
 
     const isOwnProfile =
         authUser &&
@@ -247,16 +227,19 @@ export default function ProfileHero({ user: userProp }) {
                         {/* Quick info: City & Country & Website */}
                         {(location || country || website) && (
                             <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-sm md:justify-start">
-                                {(location || country) && (
+                                {(location || countryFlag) && (
                                     <div
                                         className="hover:text-text-primary flex items-center gap-1.5 transition-colors"
                                         title="Location"
                                     >
                                         <MapPin size={16} className="text-accent/70" />
-                                        <span>
+                                        <span className="flex items-center gap-1.5">
                                             {location}
-                                            {location && country && ', '}
-                                            {countryFlag}
+                                            {countryFlag && (
+                                                <span className="text-lg leading-none">
+                                                    {countryFlag}
+                                                </span>
+                                            )}
                                         </span>
                                     </div>
                                 )}

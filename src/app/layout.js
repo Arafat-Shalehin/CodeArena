@@ -1,4 +1,4 @@
-import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { Bricolage_Grotesque, Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { CodeEditorProvider } from '@/context/CodeEditorContext'
@@ -7,9 +7,15 @@ import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
 
-const jakarta = Plus_Jakarta_Sans({
+const bricolage = Bricolage_Grotesque({
     subsets: ['latin'],
-    variable: '--font-jakarta',
+    variable: '--font-bricolage',
+    display: 'swap',
+})
+
+const inter = Inter({
+    subsets: ['latin'],
+    variable: '--font-inter',
     display: 'swap',
 })
 
@@ -19,15 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
     display: 'swap',
 })
 
-// Early theme class injection to prevent FOUC
-if (typeof window !== 'undefined') {
-    const theme = localStorage.getItem('theme')
-    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark')
-    } else {
-        document.documentElement.classList.remove('dark')
-    }
-}
+// Theme is handled securely by next-themes in ThemeProvider
 
 export const metadata = {
     title: 'CodeArena | Competitive Programming & Coding Challenges',
@@ -40,7 +38,7 @@ export default function RootLayout({ children }) {
         <html
             lang="en"
             suppressHydrationWarning
-            className={`${jakarta.variable} ${jetbrainsMono.variable}`}
+            className={`${bricolage.variable} ${inter.variable} ${jetbrainsMono.variable}`}
         >
             <body
                 suppressHydrationWarning={true}
