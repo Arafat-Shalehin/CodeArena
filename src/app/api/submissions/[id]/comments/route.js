@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { Submission } from '@/models/Submission.models'
 import { protect } from '@/middlewares/auth.middleware'
+import { resolveNotificationActorName } from '@/services/notification.service'
 
 /**
  * GET /api/submissions/[id]/comments
@@ -95,11 +96,12 @@ export async function POST(req, { params }) {
         // Notify submission owner if someone else commented
         if (submission.userId.toString() !== user._id.toString()) {
             const { sendNotification } = await import('@/services/notification.service')
+            const actorName = await resolveNotificationActorName(user)
             await sendNotification({
                 recipientId: submission.userId,
                 senderId: user._id,
                 type: 'social',
-                message: `${user.name} commented on your submission: "${text.substring(0, 40)}${text.length > 40 ? '...' : ''}"`,
+                message: `${actorName} commented on your submission: "${text.substring(0, 40)}${text.length > 40 ? '...' : ''}"`,
                 link: `/feed`,
                 metadata: { submissionId: submission._id },
             })

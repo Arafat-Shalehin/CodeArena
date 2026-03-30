@@ -1,6 +1,28 @@
 import { Notification } from '@/models/Notification.models'
 import { redisClient } from '@/lib/redis'
 
+export async function resolveNotificationActorName(user) {
+    if (user?.name?.trim()) return user.name.trim()
+
+    if (user?.email?.trim()) {
+        return user.email.split('@')[0].trim() || 'Someone'
+    }
+
+    if (user?._id || user?.id) {
+        try {
+            const { User } = await import('@/models/User.models')
+            const actor = await User.findById(user._id || user.id).select('name email').lean()
+
+            if (actor?.name?.trim()) return actor.name.trim()
+            if (actor?.email?.trim()) return actor.email.split('@')[0].trim() || 'Someone'
+        } catch (error) {
+            console.error('[NotificationService] Failed to resolve actor name:', error)
+        }
+    }
+
+    return 'Someone'
+}
+
 /**
  * Send a notification to a specific user
  * @param {Object} data - Notification data
