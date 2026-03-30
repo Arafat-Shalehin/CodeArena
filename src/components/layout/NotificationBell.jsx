@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, MessageSquare, Trophy, Code2, Sparkles, X } from 'lucide-react'
+import { Bell, MessageSquare, Trophy, Code2, Sparkles, Loader2 } from 'lucide-react'
 import { useNotification } from '@/hooks/useNotification'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 
 const TYPE_ICONS = {
     social: <MessageSquare className="h-4 w-4 text-blue-500" />,
@@ -15,7 +14,8 @@ const TYPE_ICONS = {
 }
 
 export default function NotificationBell() {
-    const { notifications, unreadCount, markAllAsRead } = useNotification()
+    const { notifications, unreadCount, hasMore, loading, loadingMore, loadMore, markAllAsRead } =
+        useNotification()
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef(null)
 
@@ -61,7 +61,11 @@ export default function NotificationBell() {
                     </div>
 
                     <div className="no-scrollbar max-h-[400px] overflow-y-auto">
-                        {notifications.length > 0 ? (
+                        {loading ? (
+                            <div className="flex items-center justify-center px-6 py-10">
+                                <Loader2 className="text-text-muted h-5 w-5 animate-spin" />
+                            </div>
+                        ) : notifications.length > 0 ? (
                             <div className="flex flex-col">
                                 {notifications.map((notif) => (
                                     <Link
@@ -90,6 +94,22 @@ export default function NotificationBell() {
                                         )}
                                     </Link>
                                 ))}
+                                {hasMore && (
+                                    <button
+                                        onClick={loadMore}
+                                        disabled={loadingMore}
+                                        className="text-accent hover:bg-bg-subtle border-border flex items-center justify-center gap-2 border-b px-4 py-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {loadingMore ? (
+                                            <>
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            'Load more'
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
