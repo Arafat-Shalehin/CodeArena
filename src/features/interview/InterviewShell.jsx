@@ -3,16 +3,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { io } from 'socket.io-client'
 import {
+    BookOpen,
+    MessageSquare,
+    Code,
+    Terminal,
+    User,
+    Settings,
+    ChevronRight,
+    Loader2,
     Clock,
     Tag,
     Star,
     Send,
     Bot,
     User as UserIcon,
-    Loader2,
     GripVertical,
     ChevronLeft,
-    ChevronRight,
     AlertCircle,
     WifiOff,
     RefreshCw,
@@ -20,6 +26,7 @@ import {
     AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { useAuth } from '@/context/AuthContext'
 import EditorPanel from './EditorPanel'
@@ -131,7 +138,7 @@ function ProblemPanel({ problem }) {
 
 // ─── AiChatPanel ─────────────────────────────────────────────────────────────
 
-function AiChatPanel({ messages, onSend, isAiTyping }) {
+function AiChatPanel({ messages, onSend, isAiTyping, currentPhase }) {
     const [draft, setDraft] = useState('')
     const bottomRef = useRef(null)
 
@@ -159,6 +166,9 @@ function AiChatPanel({ messages, onSend, isAiTyping }) {
             <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center gap-2 border-b px-4">
                 <Bot size={16} className="text-accent" />
                 <span className="text-text-primary text-xs font-bold">AI Interviewer</span>
+                <span className="bg-accent/10 border-accent/20 text-accent ml-auto rounded-full border px-2 py-0.5 text-[9px] font-black tracking-tighter uppercase">
+                    {currentPhase?.replace('_', ' ')}
+                </span>
                 {isAiTyping && (
                     <span className="text-text-muted flex items-center gap-1 text-[11px]">
                         <Loader2 size={11} className="animate-spin" /> typing…
@@ -333,16 +343,23 @@ function ErrorOverlay({ error, onRetry, onExit }) {
 
 // ─── Timer ───────────────────────────────────────────────────────────────────
 
-function InterviewTimer({ durationMins, startedAt }) {
+function InterviewTimer({ durationMins, startedAt, onTimeExpired }) {
     const totalSeconds = durationMins * 60
     const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
     const [remaining, setRemaining] = useState(Math.max(0, totalSeconds - elapsed))
+    const hasFired = useRef(false)
 
     useEffect(() => {
-        if (remaining <= 0) return
+        if (remaining <= 0) {
+            if (!hasFired.current && onTimeExpired) {
+                hasFired.current = true
+                onTimeExpired()
+            }
+            return
+        }
         const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000)
         return () => clearInterval(id)
-    }, [remaining])
+    }, [remaining, onTimeExpired])
 
     const pct = remaining / totalSeconds
     const color = pct > 0.33 ? 'text-success' : pct > 0.15 ? 'text-[#ffc01e]' : 'text-error'
@@ -372,24 +389,35 @@ export default function InterviewShell({
     wsToken,
     durationMins,
     startedAt,
+    initialMessages = [],
     onEnd,
 }) {
     const { user } = useAuth()
 
+    // ── Session Context state (Rehydratable) ──────────────────────────────────
+    const [problemState, setProblemState] = useState(problem)
+    const [wsTokenState, setWsTokenState] = useState(wsToken)
+    const [durationState, setDurationState] = useState(durationMins)
+    const [startedAtState, setStartedAtState] = useState(startedAt)
+    const [currentPhase, setCurrentPhase] = useState('intro')
+    const [sessionStatus, setSessionStatus] = useState('active')
+
     // ── Code editor state ────────────────────────────────────────────────────
-    const [code, setCode] = useState(problem?.defaultCode?.python ?? '')
+    const [code, setCode] = useState(problemState?.defaultCode?.python ?? '')
     const [language, setLanguage] = useState('python')
     const [isRunning, setIsRunning] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isRehydrating, setIsRehydrating] = useState(true)
 
     // ── Chat state ────────────────────────────────────────────────────────────
-    const [messages, setMessages] = useState([])
+    const [messages, setMessages] = useState(initialMessages)
     const [isAiTyping, setIsAiTyping] = useState(false)
 
     // ── Error & Connection state ──────────────────────────────────────────────
     const [error, setError] = useState(null)
     const [connectionStatus, setConnectionStatus] = useState('connected') // connected, disconnected, reconnecting, failed
+    const [showExitConfirm, setShowExitConfirm] = useState(false)
+    const [isTerminating, setIsTerminating] = useState(false)
 
     // ── Layout: left-panel width ratio ───────────────────────────────────────
     const [leftPct, setLeftPct] = useState(30) // % for problem description
@@ -412,11 +440,35 @@ export default function InterviewShell({
                 const json = await res.json()
 
                 if (json.success) {
-                    const { messages: history, latestCode, language: lastLang } = json.data
+                    const {
+                        messages: history,
+                        latestCode,
+                        language: lastLang,
+                        problem: p,
+                        wsToken: token,
+                        durationMins: d,
+                        startedAt: s,
+                    } = json.data
+
                     if (history?.length > 0) setMessages(history)
                     if (latestCode) setCode(latestCode)
                     if (lastLang) setLanguage(lastLang)
-                    setError(null)
+
+                    // Set session context
+                    setProblemState(p)
+                    setWsTokenState(token)
+                    setDurationState(json.data.durationMins || 60)
+                    setStartedAtState(json.data.startedAt)
+                    setCurrentPhase(json.data.currentPhase || 'intro')
+                    setSessionStatus(json.data.status || 'active')
+
+                    if (json.data.status && json.data.status !== 'active') {
+                        // If session is already finished, redirect to results
+                        window.location.href = `/interview/${sessionId}/result`
+                        return
+                    }
+
+                    if (json.data.messages) setMessages(json.data.messages)
                 } else {
                     throw new Error(json.error || 'Failed to restore session data')
                 }
@@ -437,12 +489,12 @@ export default function InterviewShell({
     }, [sessionId])
 
     useEffect(() => {
-        if (!wsToken || !sessionId || isRehydrating) return
+        if (!wsTokenState || !sessionId || isRehydrating) return
 
         const socket = io(
             `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
             {
-                auth: { token: wsToken },
+                auth: { token: wsTokenState },
                 reconnectionAttempts: 3,
             }
         )
@@ -512,6 +564,22 @@ export default function InterviewShell({
         })
 
         // Run result
+        socket.on('interview:phase_change', (newPhase) => {
+            setCurrentPhase(newPhase)
+            if (newPhase === 'coding') {
+                toast.success('Ready to code! The editor is now active.')
+            } else if (newPhase === 'evaluation' || newPhase === 'completed') {
+                toast.success(`Interview moved to ${newPhase.replace('_', ' ')} phase`)
+                if (newPhase === 'completed') {
+                    setSessionStatus('completed')
+                    // Correct redirect path: /interview/[id]/result
+                    setTimeout(() => {
+                        window.location.href = `/interview/${sessionId}/result`
+                    }, 2000)
+                }
+            }
+        })
+
         socket.on('interview:run_result', (result) => {
             setIsRunning(false)
             if (!result.success) {
@@ -543,7 +611,8 @@ export default function InterviewShell({
         })
 
         // Timer ended by server
-        socket.on('interview:ended', () => {
+        socket.on('interview:ended', ({ status } = {}) => {
+            setSessionStatus(status || 'expired')
             onEnd?.()
         })
 
@@ -572,14 +641,14 @@ export default function InterviewShell({
         (type = 'auto', customCode = null) => {
             const codeToSave = customCode !== null ? customCode : code
             socketRef.current?.emit('interview:code_snapshot', {
-                problemId: problem?._id,
+                problemId: problemState?._id,
                 language,
                 code: codeToSave,
                 snapshotType: type,
             })
             lastSavedCode.current = codeToSave
         },
-        [code, language, problem?._id]
+        [code, language, problemState?._id]
     )
 
     // Manual change handler (just updates state)
@@ -599,30 +668,62 @@ export default function InterviewShell({
 
     // ── Run ──────────────────────────────────────────────────────────────────
     const handleRun = useCallback(() => {
+        if (sessionStatus !== 'active') return
         setIsRunning(true)
-        socketRef.current?.emit('interview:run', { code, language, problemId: problem?._id })
+        socketRef.current?.emit('interview:run', { code, language, problemId: problemState?._id })
         emitSnapshot('run')
-    }, [code, language, problem?._id, emitSnapshot])
+    }, [code, language, problemState?._id, emitSnapshot, sessionStatus])
 
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = useCallback(() => {
+        if (sessionStatus !== 'active') return
         setIsSubmitting(true)
-        socketRef.current?.emit('interview:submit', { code, language, problemId: problem?._id })
+        socketRef.current?.emit('interview:submit', {
+            code,
+            language,
+            problemId: problemState?._id,
+        })
         emitSnapshot('submit')
-    }, [code, language, problem?._id, emitSnapshot])
+    }, [code, language, problemState?._id, emitSnapshot, sessionStatus])
+
+    // ── End Session ───────────────────────────────────────────────────────────
+    const handleTerminateSession = async () => {
+        if (isTerminating) return
+        setIsTerminating(true)
+        try {
+            const res = await fetch(`/api/interview/sessions/${sessionId}/end`, {
+                method: 'POST',
+            })
+            const json = await res.json()
+            if (json.success) {
+                toast.success('Session ending. Generating your scorecard...')
+                // The socket 'interview:ended' or 'interview:phase_change' will handle the redirect
+            } else {
+                throw new Error(json.error || 'Failed to terminate session')
+            }
+        } catch (err) {
+            toast.error(err.message)
+            setIsTerminating(false)
+            setShowExitConfirm(false)
+        }
+    }
 
     // ── Send chat message ─────────────────────────────────────────────────────
     const handleSendMessage = useCallback(
         (content) => {
+            if (sessionStatus !== 'active') {
+                toast.error('Cannot send message: Interview has ended')
+                return
+            }
             if (connectionStatus !== 'connected') {
                 toast.error('Cannot send message while disconnected')
                 return
             }
-            setMessages((prev) => [...prev, { role: 'user', content }])
+            setMessages((prev) => [...prev, { role: 'user', content, phase: currentPhase }])
             setIsAiTyping(true)
-            socketRef.current?.emit('interview:chat_message', { content, phase: 'coding' })
+            socketRef.current?.emit('interview:chat_message', { content, phase: currentPhase })
         },
-        [connectionStatus]
+        [connectionStatus, currentPhase, sessionStatus]
     )
 
     // ── Panel resize ──────────────────────────────────────────────────────────
@@ -724,18 +825,72 @@ export default function InterviewShell({
                 </div>
 
                 {/* Center: timer */}
-                {startedAt && <InterviewTimer durationMins={durationMins} startedAt={startedAt} />}
+                {startedAtState && (
+                    <InterviewTimer
+                        durationMins={durationState}
+                        startedAt={startedAtState}
+                        onTimeExpired={() => {
+                            if (sessionStatus !== 'active') return
+                            toast.error('Time is up! Ending interview session...')
+                            setSessionStatus('expired')
+                            onEnd?.()
+                        }}
+                    />
+                )}
 
                 {/* Right */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                    <div className="bg-border h-6 w-px" />
                     <button
-                        onClick={onEnd}
-                        className="rounded-md border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/10"
+                        onClick={() => setShowExitConfirm(true)}
+                        className="bg-error/10 text-error hover:bg-error/20 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
                     >
-                        End Session
+                        <LogOut size={14} />
+                        End Interview
                     </button>
                 </div>
             </nav>
+
+            {/* ═══ Exit Confirmation Modal ═════════════════════════════════ */}
+            {showExitConfirm && (
+                <div className="bg-bg-page/80 fixed inset-0 z-[150] flex items-center justify-center p-4 backdrop-blur-md">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="border-border bg-bg-subtle max-w-md rounded-[2rem] border p-8 shadow-2xl"
+                    >
+                        <div className="bg-error/15 text-error mb-6 flex h-14 w-14 items-center justify-center rounded-2xl">
+                            <AlertTriangle size={28} />
+                        </div>
+                        <h3 className="text-text-primary mb-2 text-2xl font-black tracking-tight">
+                            End Interview Early?
+                        </h3>
+                        <p className="text-text-secondary mb-8 text-sm leading-relaxed">
+                            Are you sure you want to finish now? We will generate your scorecard
+                            based on the current progress. You cannot resume after ending.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowExitConfirm(false)}
+                                className="border-border text-text-primary flex-1 rounded-xl border py-3 text-sm font-bold transition-colors hover:bg-white/5"
+                            >
+                                Continue Interview
+                            </button>
+                            <button
+                                onClick={handleTerminateSession}
+                                disabled={isTerminating}
+                                className="bg-error hover:bg-error/90 flex-1 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-50"
+                            >
+                                {isTerminating ? (
+                                    <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                                ) : (
+                                    'End & Evaluate'
+                                )}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
 
             {/* ═══ Three-panel workspace ══════════════════════════════════════ */}
             <div ref={containerRef} className="flex flex-1 gap-1.5 overflow-hidden p-1.5">
@@ -747,7 +902,7 @@ export default function InterviewShell({
                     <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center gap-2 border-b px-4">
                         <span className="text-text-primary text-xs font-bold">📄 Problem</span>
                     </div>
-                    <ProblemPanel problem={problem} />
+                    <ProblemPanel problem={problemState} />
                 </div>
 
                 {/* ── Left drag handle ── */}
@@ -760,18 +915,31 @@ export default function InterviewShell({
 
                 {/* ── Editor Panel ── */}
                 <div
-                    className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
+                    className="border-border bg-bg-subtle relative flex flex-col overflow-hidden rounded-xl border"
                     style={{ width: `${100 - leftPct - rightPct}%` }}
                 >
+                    {/* PART 4: Evaluation Progress Indicator */}
+                    {isSubmitting && (
+                        <div className="bg-bg-page/80 absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+                            <Loader2 className="text-accent mb-4 h-12 w-12 animate-spin" />
+                            <p className="text-text-primary text-xl font-bold">
+                                Evaluating your solution...
+                            </p>
+                            <p className="text-text-secondary mt-2 text-sm">
+                                Alex is running your code against test cases.
+                            </p>
+                        </div>
+                    )}
                     <EditorPanel
                         code={code}
                         onChange={handleCodeChange}
-                        language={language}
-                        onLanguage={setLanguage}
                         onRun={handleRun}
                         onSubmit={handleSubmit}
+                        language={language}
+                        onLanguage={setLanguage}
                         isRunning={isRunning}
                         isSubmitting={isSubmitting}
+                        isReadOnly={sessionStatus !== 'active' || currentPhase !== 'coding'}
                     />
                 </div>
 
@@ -792,6 +960,7 @@ export default function InterviewShell({
                         messages={messages}
                         onSend={handleSendMessage}
                         isAiTyping={isAiTyping}
+                        currentPhase={currentPhase}
                     />
                 </div>
             </div>

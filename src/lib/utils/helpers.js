@@ -59,6 +59,8 @@ export function getVerdictColor(verdict) {
     const colors = {
         AC: 'text-green-600 bg-green-100',
         ACCEPTED: 'text-green-600 bg-green-100',
+        EX: 'text-cyan-600 bg-cyan-100',
+        EXECUTED: 'text-cyan-600 bg-cyan-100',
         WA: 'text-red-600 bg-red-100',
         WRONG_ANSWER: 'text-red-600 bg-red-100',
         TLE: 'text-orange-600 bg-orange-100',

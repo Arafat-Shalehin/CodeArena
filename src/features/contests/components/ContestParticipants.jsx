@@ -68,7 +68,7 @@ export const ContestParticipants = ({ participants, countLabel, onViewAll, conte
 
             <Button
                 variant="outline"
-                className="border-border text-text-secondary hover:bg-bg-muted hover:text-accent h-10 w-full bg-white text-[10px] font-black tracking-widest uppercase shadow-sm transition-all"
+                className="border-border text-text-secondary hover:bg-bg-muted hover:text-accent bg-bg-page h-10 w-full text-[10px] font-black tracking-widest uppercase shadow-sm transition-all"
                 onClick={handleViewAll}
             >
                 View All Participants

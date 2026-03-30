@@ -1,111 +1,220 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { format } from 'date-fns'
+import React, { useEffect, useState, useRef } from 'react'
+import { io } from 'socket.io-client'
 import {
     Award,
     Download,
     FileText,
     ChevronLeft,
-    CheckCircle2,
     AlertCircle,
     TrendingUp,
     MessageSquare,
-    ClipboardList,
+    Trophy,
+    Lightbulb,
+    Target,
+    Code2,
+    Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 export default function ScorecardView({ sessionId }) {
     const [result, setResult] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [isSocketConnected, setIsSocketConnected] = useState(false)
+    const socketRef = useRef(null)
 
     useEffect(() => {
+        let pollTimer
+        let isUnmounted = false
+
         const fetchResult = async () => {
             try {
                 const res = await fetch(`/api/interview/sessions/${sessionId}/result`)
                 const json = await res.json()
+
+                if (isUnmounted) return
+
                 if (json.success) {
+                    if (json.status === 'pending') {
+                        // Still calculating, remain in loading state
+                        return false
+                    }
                     setResult(json.data)
+                    setLoading(false)
+                    setError(null)
+                    return true // Success
                 } else {
                     setError(json.message || 'Failed to load result')
+                    setLoading(false)
+                    return false
                 }
             } catch (err) {
-                setError('Network error. Please try again.')
-            } finally {
-                setLoading(false)
+                if (!isUnmounted) {
+                    setError('Communication error. Retrying...')
+                }
+                return false
             }
         }
-        fetchResult()
+
+        const setupSocket = async () => {
+            try {
+                // 1. Get wsToken via rehydrate
+                const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
+                const json = await res.json()
+                if (!json.success || isUnmounted) return
+
+                // 2. Connect to socket
+                const socket = io(
+                    `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
+                    {
+                        auth: { token: json.data.wsToken },
+                        reconnectionAttempts: 5,
+                    }
+                )
+                socketRef.current = socket
+
+                socket.on('connect', () => {
+                    setIsSocketConnected(true)
+                    socket.emit('interview:join')
+                })
+
+                socket.on('disconnect', () => setIsSocketConnected(false))
+
+                socket.on('interview:scorecard', async () => {
+                    if (isUnmounted) return
+                    console.log('[ScorecardView] Received Push update via socket')
+                    await fetchResult()
+                })
+            } catch (err) {
+                console.error('[ScorecardView] Socket setup failed:', err)
+            }
+        }
+
+        const runLogic = async () => {
+            const found = await fetchResult()
+            if (!found && !isUnmounted) {
+                // If not found yet, setup socket-push
+                await setupSocket()
+
+                // Fallback: Slow polling (15s) in case socket fails or message is missed
+                const fallbackPoll = async () => {
+                    if (isUnmounted || result) return
+                    const success = await fetchResult()
+                    if (!success) {
+                        pollTimer = setTimeout(fallbackPoll, 15000)
+                    }
+                }
+                pollTimer = setTimeout(fallbackPoll, 15000)
+            }
+        }
+
+        runLogic()
+
+        return () => {
+            isUnmounted = true
+            clearTimeout(pollTimer)
+            if (socketRef.current) {
+                socketRef.current.disconnect()
+            }
+        }
     }, [sessionId])
 
     const exportMarkdown = () => {
-        if (!result) return
-
-        const md = `# Interview Scorecard: ${result.problemTitle || 'Technical Interview'}
-**Date:** ${format(new Date(result.createdAt), 'PPPP')}
-**Score:** ${result.overallScore}/100
-
-## Performance Breakdown
-- **Communication:** ${result.communicationScore}/100
-- **Approach:** ${result.approachScore}/100
-- **Code Quality:** ${result.codeQualityScore}/100
-
-## AI Executive Summary
-${result.aiSummary}
-
-## Key Strengths
-${result.strengths?.map((s) => `- ${s}`).join('\n')}
-
-## Areas to Improve
-${result.areasToImprove?.map((a) => `- ${a}`).join('\n')}
-
----
-*Generated by CodeArena Live AI Interview System*
-*Session ID: ${sessionId}*
-`
-
-        const blob = new Blob([md], { type: 'text/markdown' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `Interview_Scorecard_${sessionId}.md`
-        a.click()
-        URL.revokeObjectURL(url)
+        window.location.href = `/api/interview/sessions/${sessionId}/export`
     }
 
     const exportPDF = () => {
         window.print()
     }
 
+    const getScoreTheme = (score) => {
+        if (score === 0) {
+            return {
+                colorClass: 'text-error',
+                strokeClass: 'stroke-error',
+                bgClass: 'bg-error/10',
+                borderClass: 'border-error/20',
+                heading: 'Incomplete \n Session.',
+                subheading:
+                    'Participation was insufficient to provide a technical evaluation of your skills.',
+            }
+        }
+        if (score <= 40) {
+            return {
+                colorClass: 'text-error',
+                strokeClass: 'stroke-error',
+                bgClass: 'bg-error/10',
+                borderClass: 'border-error/20',
+                heading: 'Needs \n Focus.',
+                subheading:
+                    'There are significant gaps in your implementation that need attention.',
+            }
+        }
+        if (score <= 70) {
+            return {
+                colorClass: 'text-warning',
+                strokeClass: 'stroke-yellow-500',
+                bgClass: 'bg-warning/10',
+                borderClass: 'border-warning/20',
+                heading: 'Solid \n Attempt.',
+                subheading:
+                    'You have a good foundation but missed some key optimization or edge cases.',
+            }
+        }
+        return {
+            colorClass: 'text-accent',
+            strokeClass: 'stroke-accent',
+            bgClass: 'bg-accent/10',
+            borderClass: 'border-accent/20',
+            heading: 'Exceptional \n Results.',
+            subheading:
+                'You demonstrated strong technical proficiency and clear communication throughout.',
+        }
+    }
+
+    const theme = result ? getScoreTheme(result.overallScore || 0) : null
+
     if (loading) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a]">
+            <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center">
                 <div className="relative flex h-20 w-20 items-center justify-center">
-                    <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
-                    <Award className="h-10 w-10 animate-bounce text-blue-500" />
+                    <div className="bg-accent/20 absolute inset-0 animate-ping rounded-full" />
+                    <Award className="text-accent h-10 w-10 animate-bounce" />
                 </div>
-                <p className="mt-4 font-bold tracking-tight text-slate-400">
+                <p className="text-text-secondary mt-4 font-bold tracking-tight">
                     Analysing your performance...
                 </p>
+
+                {/* Connection Status Indicator */}
+                <div className="border-border bg-bg-muted text-text-muted mt-6 flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold transition-all">
+                    <div
+                        className={`h-1.5 w-1.5 rounded-full ${isSocketConnected ? 'bg-success animate-pulse' : 'bg-text-muted'}`}
+                    />
+                    {isSocketConnected
+                        ? 'LIVE UPDATES ACTIVE'
+                        : 'CONNECTING TO REAL-TIME SERVER...'}
+                </div>
             </div>
         )
     }
 
     if (error || !result) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] p-6 text-center">
-                <div className="mb-4 rounded-full bg-red-500/10 p-4 text-red-500">
+            <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center p-6 text-center">
+                <div className="bg-error/10 text-error mb-4 rounded-full p-4">
                     <AlertCircle size={40} />
                 </div>
-                <h2 className="text-xl font-bold text-white">Results Pending</h2>
-                <p className="mt-2 max-w-sm text-slate-400">
+                <h2 className="text-text-primary text-xl font-bold">Results Pending</h2>
+                <p className="text-text-secondary mt-2 max-w-sm">
                     Your interview evaluation is still being processed. Please check back in a few
                     minutes.
                 </p>
                 <Link
-                    href="/interview/history"
-                    className="mt-8 rounded-xl bg-slate-800 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-700"
+                    href="/interview"
+                    className="bg-bg-subtle border-border text-text-primary hover:bg-bg-muted mt-8 rounded-xl border px-6 py-2.5 text-sm font-bold transition-all"
                 >
                     Back to History
                 </Link>
@@ -114,22 +223,22 @@ ${result.areasToImprove?.map((a) => `- ${a}`).join('\n')}
     }
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] pb-20 text-white selection:bg-blue-500/30">
+        <div className="bg-bg-page text-text-primary selection:bg-accent/30 min-h-screen overflow-x-hidden pb-10">
             {/* Header - Hidden on Print */}
-            <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0d0d0d]/80 px-6 py-4 backdrop-blur-xl print:hidden">
-                <div className="mx-auto flex max-w-5xl items-center justify-between">
+            <header className="border-border bg-bg-page/80 sticky top-0 z-40 border-b px-6 py-4 backdrop-blur-xl print:hidden">
+                <div className="mx-auto flex max-w-7xl items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link
                             href="/interview/history"
-                            className="group flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 bg-white/5 transition-all hover:bg-white/10"
+                            className="group border-border bg-bg-subtle hover:bg-bg-muted flex h-10 w-10 items-center justify-center rounded-xl border transition-all"
                         >
-                            <ChevronLeft className="h-5 w-5 text-slate-400 transition-transform group-hover:-translate-x-0.5" />
+                            <ChevronLeft className="text-text-secondary h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
                         </Link>
                         <div>
-                            <h1 className="text-sm font-black tracking-tight text-white uppercase sm:text-base">
+                            <h1 className="text-text-primary text-sm font-black tracking-tight uppercase sm:text-base">
                                 Scorecard
                             </h1>
-                            <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+                            <p className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
                                 {result.problemTitle || 'Session Result'}
                             </p>
                         </div>
@@ -138,14 +247,14 @@ ${result.areasToImprove?.map((a) => `- ${a}`).join('\n')}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={exportMarkdown}
-                            className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-xs font-bold transition-all hover:bg-slate-700 active:scale-95"
+                            className="bg-bg-muted hover:bg-bg-elevated flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all active:scale-95"
                         >
-                            <FileText size={14} className="text-blue-400" />
+                            <FileText size={14} className="text-accent" />
                             <span className="hidden sm:inline">Export MD</span>
                         </button>
                         <button
                             onClick={exportPDF}
-                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95"
+                            className="bg-accent shadow-accent/20 hover:bg-accent-hover flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-black shadow-lg transition-all active:scale-95"
                         >
                             <Download size={14} />
                             <span className="hidden sm:inline">Download PDF</span>
@@ -154,169 +263,336 @@ ${result.areasToImprove?.map((a) => `- ${a}`).join('\n')}
                 </div>
             </header>
 
-            {/* Main Scorecard Content */}
-            <main className="mx-auto max-w-4xl px-6 pt-12 print:pt-0">
-                {/* Hero Section: Overall Score */}
-                <section className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-slate-900 to-black p-8 shadow-2xl md:p-12">
-                    <div className="absolute top-0 right-0 h-64 w-64 bg-blue-500/5 blur-[100px]" />
-
-                    <div className="flex flex-col items-center gap-8 md:flex-row md:justify-between">
-                        <div className="space-y-4 text-center md:text-left">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5 text-[10px] font-black tracking-[0.2em] text-blue-400 uppercase">
-                                <TrendingUp size={12} />
-                                Performance Insight
+            {/* Main Scorecard Content - 12 Column Grid */}
+            <main className="mx-auto max-w-[1500px] px-8 pt-15 print:pt-0">
+                <div className="grid grid-cols-12 gap-8 lg:gap-12">
+                    {/* Overall Score Hero Card - 7 Columns */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="matte-surface relative col-span-12 flex flex-col justify-center overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-7 lg:h-[450px]"
+                    >
+                        <div className="bg-accent/10 absolute -top-24 -right-24 h-64 w-64 blur-[100px]" />
+                        <div className="relative z-10 flex flex-col items-center justify-between gap-10 md:flex-row">
+                            <div className="space-y-6 text-center md:text-left">
+                                <div
+                                    className={`${theme.bgClass} ${theme.borderClass} ${theme.colorClass} inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase`}
+                                >
+                                    <TrendingUp size={12} />
+                                    Performance Insight
+                                </div>
+                                <h2 className="text-text-primary text-5xl leading-[0.9] font-[1000] tracking-tighter md:text-7xl">
+                                    {theme.heading.split('\n').map((line, idx) => (
+                                        <React.Fragment key={idx}>
+                                            {line}
+                                            <br />
+                                        </React.Fragment>
+                                    ))}
+                                </h2>
+                                <p className="text-text-secondary max-w-sm text-base leading-relaxed font-medium opacity-80 md:text-lg">
+                                    {theme.subheading}
+                                </p>
                             </div>
-                            <h2 className="text-4xl font-black tracking-tight text-white md:text-6xl">
-                                Exceptional <br className="hidden md:block" /> Results.
-                            </h2>
-                            <p className="max-w-md text-sm leading-relaxed text-slate-400 md:text-base">
-                                You demonstrated strong technical proficiency and clear
-                                communication during this {result.problemTitle} interview.
+
+                            <div className="relative flex h-48 w-48 shrink-0 items-center justify-center">
+                                <svg className="absolute inset-0 h-full w-full -rotate-90 transform">
+                                    <circle
+                                        cx="50%"
+                                        cy="50%"
+                                        r="42%"
+                                        className="stroke-border/20 fill-none"
+                                        strokeWidth="12"
+                                    />
+                                    <motion.circle
+                                        cx="50%"
+                                        cy="50%"
+                                        r="42%"
+                                        className={`${theme.strokeClass} fill-none`}
+                                        strokeWidth="12"
+                                        strokeDasharray="264"
+                                        initial={{ strokeDashoffset: 264 }}
+                                        animate={{
+                                            strokeDashoffset:
+                                                264 - (264 * (result.overallScore || 0)) / 100,
+                                        }}
+                                        transition={{ duration: 1.5, ease: 'easeOut' }}
+                                        strokeLinecap="round"
+                                    />
+                                </svg>
+                                <div className="text-center">
+                                    <span
+                                        className={`${theme.colorClass} block text-6xl font-[1000]`}
+                                    >
+                                        {result.overallScore}
+                                    </span>
+                                    <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+                                        Final Score
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.section>
+
+                    {/* AI Review Summary Card - 5 Columns */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="matte-surface col-span-12 flex flex-col rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-5 lg:h-[450px]"
+                    >
+                        <div className="mb-8 flex shrink-0 items-center gap-4">
+                            <div className="bg-accent/10 rounded-2xl p-3 shadow-inner">
+                                <Sparkles className="text-accent h-7 w-7" />
+                            </div>
+                            <h3 className="text-text-primary text-2xl font-[900] tracking-tight">
+                                AI Review Summary
+                            </h3>
+                        </div>
+                        <div className="custom-scrollbar flex-grow overflow-y-auto pr-4">
+                            <p className="text-text-secondary text-base leading-[1.7] font-medium opacity-90 md:text-lg">
+                                {result.aiSummary}
                             </p>
                         </div>
+                    </motion.section>
 
-                        <div className="relative flex h-48 w-48 items-center justify-center rounded-full border-[10px] border-white/5 bg-slate-900/50 shadow-inner md:h-56 md:w-56">
-                            {/* Score Circle */}
-                            <svg className="absolute inset-0 h-full w-full -rotate-90 transform">
-                                <circle
-                                    cx="50%"
-                                    cy="50%"
-                                    r="44%"
-                                    className="fill-none stroke-blue-500/10"
-                                    strokeWidth="10"
-                                />
-                                <circle
-                                    cx="50%"
-                                    cy="50%"
-                                    r="44%"
-                                    className="fill-none stroke-blue-500 transition-all duration-1000 ease-out"
-                                    strokeWidth="10"
-                                    strokeDasharray="276"
-                                    strokeDashoffset={
-                                        276 - (276 * (result.overallScore || 0)) / 100
-                                    }
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                            <div className="text-center">
-                                <span className="block text-5xl font-black text-white md:text-6xl">
-                                    {result.overallScore}
-                                </span>
-                                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-                                    Final Score
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                    {/* Spacer row for visual separation */}
+                    <div className="col-span-12 hidden h-4 lg:block" />
 
-                {/* Grid: Detailed Ratings */}
-                <section className="mt-8 grid gap-6 md:grid-cols-3">
+                    {/* Category Detail Scores - Row 2 (4 cards x 3 cols) */}
                     {[
                         {
                             label: 'Communication',
                             val: result.communicationScore,
-                            color: 'text-indigo-400',
+                            color: 'text-blue-500',
+                            icon: MessageSquare,
                         },
                         {
-                            label: 'Technical Approach',
-                            val: result.approachScore,
-                            color: 'text-blue-400',
-                        },
-                        {
-                            label: 'Code Quality',
+                            label: 'Coding Performance',
                             val: result.codeQualityScore,
-                            color: 'text-emerald-400',
+                            color: 'text-emerald-500',
+                            icon: Code2,
                         },
-                    ].map((item, i) => (
-                        <div
-                            key={i}
-                            className="rounded-3xl border border-white/5 bg-[#0d0d0d] p-6 transition-all hover:bg-white/5"
+                        {
+                            label: 'Problem Solving',
+                            val: result.problemSolvingScore,
+                            color: 'text-accent',
+                            icon: Target,
+                        },
+                        {
+                            label: 'Technical Accuracy',
+                            val: result.approachScore,
+                            color: 'text-purple-500',
+                            icon: Trophy,
+                        },
+                    ].map((item, i) => {
+                        const getStatusDesc = (val) => {
+                            if (val === 0) return 'No Participation'
+                            if (val <= 40) return 'Critical Gap'
+                            if (val <= 70) return 'Needs Focus'
+                            return 'Strong Proficiency'
+                        }
+                        const statusDesc = getStatusDesc(item.val || 0)
+
+                        return (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.2 + i * 0.1 }}
+                                className="matte-surface group relative col-span-6 overflow-hidden rounded-[2.5rem] border p-8 transition-all hover:-translate-y-1 md:col-span-3"
+                            >
+                                <div className="flex flex-col items-center gap-4 text-center">
+                                    <div
+                                        className={`bg-opacity-10 mb-2 rounded-2xl bg-current p-3 transition-transform group-hover:scale-110 ${item.color}`}
+                                    >
+                                        <item.icon size={24} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex items-baseline justify-center gap-1">
+                                            <span className={`text-3xl font-black ${item.color}`}>
+                                                {item.val || 0}
+                                            </span>
+                                            <span className="text-text-muted text-[10px] font-bold">
+                                                /100
+                                            </span>
+                                        </div>
+                                        <p
+                                            className={`text-[10px] font-black tracking-widest uppercase ${item.color}`}
+                                        >
+                                            {statusDesc}
+                                        </p>
+                                    </div>
+                                    <div className="w-full space-y-2">
+                                        <p className="text-text-primary text-[10px] font-black tracking-widest uppercase">
+                                            {item.label}
+                                        </p>
+                                        <div className="bg-border/30 h-2 w-full overflow-hidden rounded-full">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${item.val || 0}%` }}
+                                                transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
+                                                className={`h-full ${item.color.replace('text-', 'bg-')}`}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )
+                    })}
+
+                    {/* Spacer row for visual separation */}
+                    <div className="col-span-12 hidden h-4 lg:block" />
+
+                    {/* Insights: Left Col (Strengths & Weaknesses) - 6 Columns */}
+                    <div className="col-span-12 space-y-6 lg:col-span-6">
+                        {/* Strengths */}
+                        <motion.section
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="matte-surface relative overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-12"
                         >
-                            <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">
-                                {item.label}
-                            </span>
-                            <div className="mt-2 flex items-baseline gap-2">
-                                <span className={`text-3xl font-black ${item.color}`}>
-                                    {item.val}
-                                </span>
-                                <span className="text-sm font-bold text-slate-700">/ 100</span>
-                            </div>
-                            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                                <div
-                                    className={`h-full transition-all duration-700 ${item.color.replace('text-', 'bg-')}`}
-                                    style={{ width: `${item.val}%` }}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </section>
-
-                {/* AI Summary */}
-                <section className="mt-12 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <MessageSquare className="h-5 w-5 text-blue-500" />
-                        <h3 className="text-sm font-black tracking-widest text-white uppercase">
-                            AI Review Summary
-                        </h3>
-                    </div>
-                    <div className="rounded-3xl border border-white/5 bg-[#0d0d0d] p-8 text-sm leading-relaxed text-slate-400 md:text-base">
-                        {result.aiSummary}
-                    </div>
-                </section>
-
-                {/* Strengths & Improvements */}
-                <section className="mt-12 grid gap-8 md:grid-cols-2">
-                    {/* Strengths */}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                            <h3 className="text-sm font-black tracking-widest text-white uppercase">
-                                Key Strengths
-                            </h3>
-                        </div>
-                        <div className="space-y-3">
-                            {result.strengths?.map((s, i) => (
-                                <div
-                                    key={i}
-                                    className="flex gap-3 rounded-2xl bg-emerald-500/5 p-4 text-sm text-emerald-400/80"
-                                >
-                                    <span className="font-mono opacity-50">
-                                        {String(i + 1).padStart(2, '0')}
-                                    </span>
-                                    {s}
+                            <div className="pointer-events-none absolute inset-0 bg-emerald-500/5" />
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center gap-3">
+                                    <Trophy className="h-6 w-6 text-emerald-500" />
+                                    <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                        Key Strengths
+                                    </h3>
                                 </div>
-                            ))}
-                        </div>
+                                <div className="space-y-4">
+                                    {result.strengths && result.strengths.length > 0 ? (
+                                        result.strengths.map((s, i) => (
+                                            <motion.div
+                                                key={i}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                whileInView={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: i * 0.1 }}
+                                                className="flex items-start gap-4 rounded-[1.5rem] border border-emerald-500/10 bg-emerald-500/5 p-5 transition-all hover:bg-emerald-500/10"
+                                            >
+                                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-500">
+                                                    {i + 1}
+                                                </span>
+                                                <p className="text-text-primary text-base leading-snug font-bold">
+                                                    {s}
+                                                </p>
+                                            </motion.div>
+                                        ))
+                                    ) : (
+                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2rem] border border-dashed py-10 text-center">
+                                            <p className="text-text-muted text-sm font-medium">
+                                                No specific strengths identified.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.section>
+
+                        {/* Weaknesses */}
+                        <motion.section
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="matte-surface relative overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-12"
+                        >
+                            <div className="bg-error/5 pointer-events-none absolute inset-0" />
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center gap-3">
+                                    <AlertCircle className="text-error h-6 w-6" />
+                                    <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                        Critical Weaknesses
+                                    </h3>
+                                </div>
+                                <div className="space-y-4">
+                                    {(result.weaknesses || result.areasToImprove) &&
+                                    (result.weaknesses || result.areasToImprove).length > 0 ? (
+                                        (result.weaknesses || result.areasToImprove).map((a, i) => (
+                                            <motion.div
+                                                key={i}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                whileInView={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: i * 0.1 }}
+                                                className="bg-error/5 border-error/10 hover:bg-error/10 flex items-start gap-4 rounded-[1.5rem] border p-5 transition-all"
+                                            >
+                                                <span className="bg-error/20 text-error flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black">
+                                                    {i + 1}
+                                                </span>
+                                                <p className="text-text-primary text-base leading-snug font-bold">
+                                                    {a}
+                                                </p>
+                                            </motion.div>
+                                        ))
+                                    ) : (
+                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2rem] border border-dashed py-10 text-center">
+                                            <p className="text-text-muted text-sm font-medium">
+                                                No specific weaknesses identified.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.section>
                     </div>
 
-                    {/* Improvements */}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <ClipboardList className="h-5 w-5 text-yellow-500" />
-                            <h3 className="text-sm font-black tracking-widest text-white uppercase">
-                                Growth Areas
-                            </h3>
+                    {/* Recommendations: Right Col - 6 Columns */}
+                    <motion.section
+                        initial={{ opacity: 0, x: 30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="matte-surface relative col-span-12 overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-12 lg:col-span-6"
+                    >
+                        <div className="pointer-events-none absolute inset-0 bg-yellow-500/5" />
+                        <div className="relative z-10 flex h-full flex-col space-y-8">
+                            <div className="flex items-center gap-3">
+                                <Lightbulb className="h-6 w-6 text-yellow-500" />
+                                <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                    Expert Recommendations
+                                </h3>
+                            </div>
+
+                            <div className="custom-scrollbar grid grid-cols-1 gap-4 overflow-y-auto pr-2">
+                                {result.recommendations?.map((r, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="matte-surface group flex flex-col gap-4 rounded-[2rem] border-yellow-500/10 p-8 shadow-inner transition-all hover:border-yellow-500/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-yellow-500/20 text-xs font-black text-yellow-500">
+                                                {i + 1}
+                                            </div>
+                                            <h4 className="text-sm font-black tracking-widest text-yellow-500 uppercase">
+                                                {r.split(':')[0] || 'Recommendation'}
+                                            </h4>
+                                        </div>
+                                        <p className="text-text-secondary text-base leading-relaxed font-bold opacity-90">
+                                            {r.includes(':')
+                                                ? r.split(':').slice(1).join(':').trim()
+                                                : r}
+                                        </p>
+                                    </motion.div>
+                                ))}
+                                {(!result.recommendations ||
+                                    result.recommendations.length === 0) && (
+                                    <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2.5rem] border border-dashed p-12 text-center">
+                                        <Target className="text-text-muted mb-4 h-12 w-12 opacity-20" />
+                                        <p className="text-text-muted text-sm font-medium">
+                                            No specific recommendations provided for this session.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            {result.areasToImprove?.map((a, i) => (
-                                <div
-                                    key={i}
-                                    className="flex gap-3 rounded-2xl bg-yellow-500/5 p-4 text-sm text-yellow-400/80"
-                                >
-                                    <span className="font-mono opacity-50">
-                                        {String(i + 1).padStart(2, '0')}
-                                    </span>
-                                    {a}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+                    </motion.section>
+                </div>
 
                 {/* Footer Credits */}
-                <footer className="text-slate-750 mt-20 border-t border-white/5 pt-8 text-center text-[10px] font-bold tracking-widest uppercase">
-                    CodeArena Artificial Intelligence • Session ID: {sessionId}
+                <footer className="border-border text-text-muted mt-20 mb-12 border-t pt-8 text-center text-[10px] font-bold tracking-widest uppercase">
+                    CodeArena Artificial Intelligence • Session Protocol 8.4 •{' '}
+                    {sessionId.toUpperCase()}
                 </footer>
             </main>
 
@@ -331,33 +607,21 @@ ${result.areasToImprove?.map((a) => `- ${a}`).join('\n')}
                         background: white !important;
                         color: black !important;
                     }
-                    .bg-\\[\\#0a0a0a\\] {
+                    .matte-surface {
                         background: white !important;
-                    }
-                    .bg-\\[\\#0d0d0d\\] {
-                        background: #f8fafc !important;
                         border: 1px solid #e2e8f0 !important;
+                        box-shadow: none !important;
+                        backdrop-filter: none !important;
                     }
-                    .text-white {
+                    .text-text-primary {
                         color: #0f172a !important;
                     }
-                    .text-slate-400,
-                    .text-slate-500 {
+                    .text-text-secondary,
+                    .text-text-muted {
                         color: #475569 !important;
                     }
-                    .border-white\\/5 {
+                    .border-border {
                         border-color: #e2e8f0 !important;
-                    }
-                    .bg-gradient-to-br {
-                        background: #f1f5f9 !important;
-                        color: #0f172a !important;
-                    }
-                    .rounded-\\[2\\.5rem\\] {
-                        border-radius: 12px !important;
-                    }
-                    .shadow-2xl,
-                    .shadow-lg {
-                        box-shadow: none !important;
                     }
                     .print\\:hidden {
                         display: none !important;
@@ -365,6 +629,19 @@ ${result.areasToImprove?.map((a) => `- ${a}`).join('\n')}
                     button {
                         display: none !important;
                     }
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: var(--ca-border);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: var(--ca-accent);
                 }
             `}</style>
         </div>

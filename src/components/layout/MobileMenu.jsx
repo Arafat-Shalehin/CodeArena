@@ -9,6 +9,11 @@ import { User, LogOut, Search, ChevronRight } from 'lucide-react'
 const NAV_LINKS = [
     { name: 'Feed', href: '/feed' },
     { name: 'Problems', href: '/problems' },
+    {
+        name: 'AI Interview',
+        href: '/interview',
+        subLinks: [{ name: 'History', href: '/interview/history' }],
+    },
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
 ]
@@ -50,15 +55,30 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                 <nav className="grid gap-1">
                     {NAV_LINKS.filter((link) => link.name !== 'Feed' || isAuthenticated).map(
                         (link) => (
-                            <Link
-                                key={link.name}
-                                href={link.href}
-                                onClick={onClose}
-                                className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
-                            >
-                                {link.name}
-                                <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
-                            </Link>
+                            <div key={link.name} className="flex flex-col">
+                                <Link
+                                    href={link.href}
+                                    onClick={onClose}
+                                    className="text-text-primary hover:bg-bg-subtle group flex items-center justify-between rounded-xl px-4 py-3 text-base font-bold transition-colors"
+                                >
+                                    {link.name}
+                                    <ChevronRight className="text-text-muted group-hover:text-accent size-5 transition-colors" />
+                                </Link>
+                                {link.subLinks && (
+                                    <div className="border-border ml-4 flex flex-col border-l pl-4">
+                                        {link.subLinks.map((sub) => (
+                                            <Link
+                                                key={sub.name}
+                                                href={sub.href}
+                                                onClick={onClose}
+                                                className="text-text-secondary hover:text-text-primary py-2 text-sm font-bold transition-colors"
+                                            >
+                                                {sub.name}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )
                     )}
                 </nav>
@@ -67,30 +87,26 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                 <div className="border-border grid gap-3 border-t pt-4">
                     {isAuthenticated && user ? (
                         <>
-                            {/* Profile Info Card */}
-                            <div className="bg-bg-subtle flex items-center gap-3 rounded-xl px-4 py-3">
-                                <Avatar className="border-accent/30 size-10 border-2">
-                                    <AvatarImage
-                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
-                                        alt={user.name || 'User'}
-                                    />
-                                    <AvatarFallback className="bg-accent/10 text-accent text-xs font-bold">
-                                        {(user.name || user.email || 'U')
-                                            .substring(0, 2)
-                                            .toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-text-primary truncate text-sm font-bold">
-                                        {user.name}
-                                    </p>
-                                    <p className="text-text-muted truncate text-xs">{user.email}</p>
-                                </div>
+                            {/* Profile Info Card - Only Avatar */}
+                            <div className="bg-bg-subtle flex items-center justify-center rounded-xl py-6">
+                                <Link href="/profile" onClick={onClose}>
+                                    <Avatar className="border-accent/30 size-20 border-2 shadow-lg transition-transform hover:scale-105">
+                                        <AvatarImage
+                                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                                            alt={user.name || 'User'}
+                                        />
+                                        <AvatarFallback className="bg-accent/10 text-accent text-2xl font-bold">
+                                            {(user.name || user.email || 'U')
+                                                .substring(0, 2)
+                                                .toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </Link>
                             </div>
 
                             <Link href="/profile" onClick={onClose}>
-                                <Button variant="secondary" size="lg" className="w-full">
-                                    <User size={16} className="mr-2" />
+                                <Button variant="secondary" size="lg" className="w-full font-bold">
+                                    <User size={18} className="mr-2" />
                                     My Profile
                                 </Button>
                             </Link>

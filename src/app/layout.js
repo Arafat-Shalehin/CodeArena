@@ -1,7 +1,11 @@
 import { Inter, Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
+import { CodeEditorProvider } from '@/context/CodeEditorContext'
 import { Toaster } from '@/components/ui/sonner'
+import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { SmoothScroll } from '@/components/providers/SmoothScroll'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -21,6 +25,16 @@ const jetbrainsMono = JetBrains_Mono({
     display: 'swap',
 })
 
+// Early theme class injection to prevent FOUC
+if (typeof window !== 'undefined') {
+    const theme = localStorage.getItem('theme')
+    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark')
+    } else {
+        document.documentElement.classList.remove('dark')
+    }
+}
+
 export const metadata = {
     title: 'CodeArena | Competitive Programming & Coding Challenges',
     description:
@@ -31,14 +45,23 @@ export default function RootLayout({ children }) {
     return (
         <html
             lang="en"
+            suppressHydrationWarning
             className={`${inter.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}
         >
             <body
                 suppressHydrationWarning={true}
-                className="bg-bg-page site-gradient text-text-primary font-sans antialiased"
+                className="bg-bg-page site-gradient text-text-primary font-sans antialiased transition-colors duration-300"
             >
-                <AuthProvider>{children}</AuthProvider>
-                <Toaster position="top-center" />
+                <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                    <SmoothScroll>
+                        <HydrationWrapper>
+                            <AuthProvider>
+                                <CodeEditorProvider>{children}</CodeEditorProvider>
+                            </AuthProvider>
+                        </HydrationWrapper>
+                        <Toaster position="top-center" />
+                    </SmoothScroll>
+                </ThemeProvider>
             </body>
         </html>
     )

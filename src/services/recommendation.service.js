@@ -2,33 +2,69 @@ import { User } from '@/models/User.models'
 import { Problem } from '@/models/Problem.models'
 
 /**
- * Detects weak tags for a user based on their performance stats.
+ * Detects weak tags for a user based on their performance stats with recency and volume weighting.
  * @param {Map} performanceStats - Map of tag strings to performance data.
- * @returns {Array<string>} List of weak tags.
+ * @returns {Array<Object>} List of tags with their weakness scores, sorted by score.
  */
-function detectWeakTags(performanceStats) {
+export function detectWeakTags(performanceStats) {
     if (!performanceStats || performanceStats.size === 0) return []
 
     const weakTags = []
+    const now = new Date()
+    const DECAY_RATE = 0.05 // Decay per day
 
     for (const [tag, stats] of performanceStats.entries()) {
-        const { attempted, solved, failed } = stats
+        const { attempted, solved, failed, lastAttemptDate, recentSolveStreak = 0 } = stats
 
         if (attempted === 0) continue
 
-        const successRate = solved / attempted
+        // Recency Decay: Older failures weigh less
+        let recencyFactor = 1
+        if (lastAttemptDate) {
+            const daysSince = Math.max(0, (now - new Date(lastAttemptDate)) / (1000 * 60 * 60 * 24))
+            recencyFactor = Math.exp(-DECAY_RATE * daysSince)
+        }
 
-        // Criteria: success rate < 50% OR many failed submissions (e.g. >= 2)
-        if (successRate < 0.5 || failed >= 2) {
-            weakTags.push(tag)
+        // Volume Weight: More attempts make the failure rate more significant
+        const volumeWeight = Math.log2(attempted + 1)
+
+        // Success Rate Penalty: (1 - successRate) = failure rate
+        const successRate = solved / attempted
+        const failureRate = 1 - successRate
+
+        // Solve streak dampening: if user is on a solving streak for this tag, reduce weakness
+        const streakDampener = 1 / (1 + recentSolveStreak * 0.3)
+
+        // Final Weakness Score
+        const weaknessScore = failureRate * volumeWeight * recencyFactor * streakDampener
+
+        if (weaknessScore > 0) {
+            weakTags.push({ tag, score: weaknessScore })
         }
     }
 
-    return weakTags
+    // Sort by weakness score descending
+    return weakTags.sort((a, b) => b.score - a.score)
 }
 
 /**
- * Recommends problems based on user's weak tags and performance level.
+ * Determines the target difficulty for the user based on their distribution of solved problems.
+ * @param {Object} stats - User stats object containing solvedDistribution.
+ * @returns {string} The calculated target difficulty.
+ */
+export function calculateTargetDifficulty(stats) {
+    const solvedDistribution = stats?.solvedDistribution || {}
+    const totalSolved = stats?.accepted || 0
+    const { easy = 0, medium = 0, hard = 0 } = solvedDistribution
+
+    // Dynamic Leveling: Progressive thresholds
+    if (totalSolved < 10 || easy < 10) return 'easy'
+    if (totalSolved < 50 || medium < 20) return 'medium'
+    return 'hard'
+}
+
+/**
+ * Recommends problems based on user's weak tags and performance level using multi-signal ranking.
  * @param {string} userId - ID of the user.
  * @param {number} limit - Number of problems to recommend.
  * @returns {Promise<Object>} Object containing weak tags and recommended problems.
@@ -37,37 +73,15 @@ export async function getRecommendedProblems(userId, limit = 6) {
     const user = await User.findById(userId)
     if (!user) throw new Error('User not found')
 
-    const weakTags = detectWeakTags(user.performanceStats)
-    const solvedProblemIds = user.stats.solvedProblems || []
+    const weaknessList = detectWeakTags(user.performanceStats)
+    const targetTags = weaknessList.slice(0, 5).map((w) => w.tag)
+    const solvedProblemIds = user.stats?.solvedProblems || []
 
-    // Identify target tags to focus on
-    let targetTags = [...weakTags]
+    // Determine user's target difficulty level
+    const targetDifficulty = calculateTargetDifficulty(user.stats)
 
-    // If no strong weaknesses, find tags with lowest success rates
-    if (targetTags.length === 0 && user.performanceStats && user.performanceStats.size > 0) {
-        targetTags = Array.from(user.performanceStats.entries())
-            .sort((a, b) => {
-                const rateA = a[1].solved / a[1].attempted || 1
-                const rateB = b[1].solved / b[1].attempted || 1
-                return rateA - rateB
-            })
-            .slice(0, 3)
-            .map(([tag]) => tag)
-    }
-
-    // Determine user's current difficulty level
-    // Heuristic: Based on total score or solved problem distribution
-    const solvedProblems = await Problem.find({ _id: { $in: solvedProblemIds } })
-    const diffCount = { easy: 0, medium: 0, hard: 0 }
-    solvedProblems.forEach((p) => {
-        if (diffCount[p.difficulty] !== undefined) diffCount[p.difficulty]++
-    })
-
-    let targetDifficulty = 'easy'
-    if (diffCount.easy >= 5) targetDifficulty = 'medium'
-    if (diffCount.medium >= 5) targetDifficulty = 'hard'
-
-    // Build query
+    // Build query for candidates (unsolved problems)
+    const candidateLimit = Math.max(limit * 5, 20)
     const query = {
         _id: { $nin: solvedProblemIds },
     }
@@ -76,73 +90,116 @@ export async function getRecommendedProblems(userId, limit = 6) {
         query.tags = { $in: targetTags }
     }
 
-    // Attempt 1: Weak tags + target difficulty
-    let recommendations = []
-    const rawRecs1 = await Problem.find({ ...query, difficulty: targetDifficulty })
-        .limit(limit)
-        .lean()
-    recommendations = rawRecs1.map((p) => ({
-        ...p,
-        reason: targetTags.some((t) => p.tags.includes(t))
-            ? `Focus on your weak area: ${p.tags.find((t) => targetTags.includes(t))}`
-            : `Challenge yourself with a ${targetDifficulty} problem`,
-    }))
+    // Fetch candidate problems
+    let candidates = await Problem.find(query).limit(candidateLimit).lean()
 
-    // Attempt 2: Weak tags + any difficulty (if still room)
-    if (recommendations.length < limit) {
-        const remaining = limit - recommendations.length
-        const rawRecs2 = await Problem.find({
-            ...query,
-            _id: { $nin: [...solvedProblemIds, ...recommendations.map((p) => p._id)] },
-        })
-            .limit(remaining)
-            .lean()
-        recommendations = [
-            ...recommendations,
-            ...rawRecs2.map((p) => ({
-                ...p,
-                reason: `Strengthen your skills in ${p.tags.find((t) => targetTags.includes(t)) || 'targeted topics'}`,
-            })),
-        ]
-    }
-
-    // Attempt 3: No weak tag restriction, just target difficulty (if still room)
-    if (recommendations.length < limit) {
-        const remaining = limit - recommendations.length
-        const rawRecs3 = await Problem.find({
-            _id: { $nin: [...solvedProblemIds, ...recommendations.map((p) => p._id)] },
+    // If too few candidates, widen the search to include any problem of target difficulty
+    if (candidates.length < limit) {
+        const additional = await Problem.find({
+            _id: { $nin: [...solvedProblemIds, ...candidates.map((p) => p._id)] },
             difficulty: targetDifficulty,
         })
-            .limit(remaining)
+            .limit(candidateLimit - candidates.length)
             .lean()
-        recommendations = [
-            ...recommendations,
-            ...rawRecs3.map((p) => ({
-                ...p,
-                reason: `Master ${targetDifficulty} level problems`,
-            })),
-        ]
+        candidates = [...candidates, ...additional]
     }
 
-    // Attempt 4: Any unsolved problem (last resort)
-    if (recommendations.length < limit) {
-        const remaining = limit - recommendations.length
-        const rawRecs4 = await Problem.find({
-            _id: { $nin: [...solvedProblemIds, ...recommendations.map((p) => p._id)] },
-        })
-            .limit(remaining)
-            .lean()
-        recommendations = [
-            ...recommendations,
-            ...rawRecs4.map((p) => ({
-                ...p,
-                reason: 'Explore something new and expand your knowledge',
-            })),
-        ]
-    }
+    // Scoring & Ranking
+    const scoredProblems = candidates.map((problem) => {
+        let score = 0
+
+        // 1. Tag Match Score (Max +50)
+        const matchedWeakness = weaknessList.find((w) => problem.tags.includes(w.tag))
+        if (matchedWeakness) {
+            score += Math.min(50, matchedWeakness.score * 10)
+        }
+
+        // 2. Difficulty Match Score (+30)
+        if (problem.difficulty === targetDifficulty) {
+            score += 30
+        } else if (
+            (targetDifficulty === 'medium' && problem.difficulty === 'easy') ||
+            (targetDifficulty === 'hard' && problem.difficulty === 'medium')
+        ) {
+            score += 15
+        }
+
+        // 3. Quality Score: Acceptance Rate (Max +20)
+        const accRate =
+            problem.totalSubmissions > 0
+                ? (problem.acceptedSubmissions / problem.totalSubmissions) * 100
+                : 50
+
+        if (accRate >= 30 && accRate <= 70) score += 20
+        else if (accRate > 70) score += 10
+        else score += 5
+
+        // 4. Popularity Score (Max +10)
+        const popularity = Math.log10((problem.totalSubmissions || 0) + 1)
+        score += Math.min(10, popularity * 2)
+
+        let reason = ''
+        if (matchedWeakness) {
+            reason = `Strengthen your skills in ${matchedWeakness.tag}`
+        } else if (problem.difficulty === targetDifficulty) {
+            reason = `Perfect for your current ${targetDifficulty} level`
+        } else {
+            reason = 'Discover new topics and broaden your knowledge'
+        }
+
+        return { ...problem, relevanceScore: score, reason }
+    })
+
+    const recommendations = scoredProblems
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, limit)
 
     return {
         weakTags: targetTags,
+        recommendations: recommendations,
         recommendedProblems: recommendations,
+        userLevel: targetDifficulty,
+    }
+}
+
+/**
+ * Recommends "discovery" problems from tags the user hasn't tried yet.
+ * @param {string} userId - ID of the user.
+ * @param {number} limit - Number of tags and problems to discover.
+ * @returns {Promise<Object>} Object containing discovery tags and problems.
+ */
+export async function getDiscoveryProblems(userId, limit = 3) {
+    const user = await User.findById(userId).select('performanceStats stats.solvedProblems')
+    if (!user) throw new Error('User not found')
+
+    const triedTags = user.performanceStats ? Array.from(user.performanceStats.keys()) : []
+    const solvedProblemIds = user.stats?.solvedProblems || []
+
+    const allTags = await Problem.distinct('tags')
+    const untouchedTags = allTags.filter((t) => !triedTags.includes(t))
+
+    if (untouchedTags.length === 0) {
+        return { discoveryTags: [], discoveryProblems: [] }
+    }
+
+    // Pick a few random untouched tags
+    const discoveryTags = untouchedTags.sort(() => 0.5 - Math.random()).slice(0, limit)
+
+    const discoveryProblems = await Problem.find({
+        tags: { $in: discoveryTags },
+        difficulty: 'easy',
+        _id: { $nin: solvedProblemIds },
+    })
+        .select('title difficulty acceptanceRate tags totalSubmissions acceptedSubmissions')
+        .sort({ acceptedSubmissions: -1 })
+        .limit(limit)
+        .lean()
+
+    return {
+        discoveryTags,
+        discoveryProblems: discoveryProblems.map((p) => ({
+            ...p,
+            reason: `Explore new topic: ${p.tags.find((t) => discoveryTags.includes(t))}`,
+        })),
     }
 }

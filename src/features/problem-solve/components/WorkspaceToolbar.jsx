@@ -41,7 +41,7 @@ export default function WorkspaceToolbar() {
             {/* Left: Language + Actions */}
             <div className="flex items-center gap-2">
                 {/* Language Selector */}
-                <div className="w-[140px]">
+                <div className="w-35">
                     <Select value={language} onValueChange={setLanguage}>
                         <SelectTrigger className="bg-bg-page hover:bg-bg-muted h-7 border-none px-2 text-xs shadow-none transition-colors focus:ring-0">
                             <SelectValue placeholder="Language" />

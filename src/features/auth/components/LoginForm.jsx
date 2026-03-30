@@ -94,12 +94,53 @@ export default function LoginForm() {
         }
     }, [router])
 
+    // const onLoginSubmit = async (data) => {
+    //     setIsLoading(true)
+    //     try {
+    //         await signInWithEmailAndPassword(auth, data.email, data.password)
+    //         toast.success('Authentication successful')
+    //         router.replace(redirectTo)
+    //     } catch (err) {
+    //         toast.error(err.message.replace('Firebase: ', ''))
+    //     } finally {
+    //         setIsLoading(false)
+    //     }
+    // }
     const onLoginSubmit = async (data) => {
         setIsLoading(true)
         try {
-            await signInWithEmailAndPassword(auth, data.email, data.password)
-            toast.success('Authentication successful')
-            router.replace(redirectTo)
+            // ১. ফায়ারবেস লগইন
+            const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password)
+            const firebaseUser = userCredential.user
+
+            // ২. আপনার ব্যাকএন্ডের সাথে সিঙ্ক করা (যাতে টোকেন এবং রোল পাওয়া যায়)
+            const syncRes = await fetch('/api/auth/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: firebaseUser.displayName,
+                    photoURL: firebaseUser.photoURL,
+                }),
+            })
+
+            const syncData = await syncRes.json()
+
+            if (syncData.success) {
+                toast.success('Authentication successful')
+
+                // ৩. রোল অনুযায়ী রিডাইরেক্ট লজিক
+                const userRole = syncData.data.user.role
+
+                if (userRole === 'admin') {
+                    router.replace('/admin/users') // অ্যাডমিন হলে এখানে যাবে
+                } else {
+                    router.replace(redirectTo) // সাধারণ ইউজার হলে /feed বা আগের পেজে যাবে
+                }
+            } else {
+                throw new Error(syncData.error || 'Sync failed')
+            }
         } catch (err) {
             toast.error(err.message.replace('Firebase: ', ''))
         } finally {

@@ -14,9 +14,17 @@ export async function submitCode(req, user) {
         const body = await req.json()
 
         // Whitelist allowed fields
-        const { problemId, code, language, contestId, type, customInput } = body
+        const { problemId, code, language, contestId, type, customInput, cachedResult } = body
+
+        console.log('[API] POST /api/submissions called')
+        console.log('[API] User ID:', userId)
+        console.log('[API] Request body keys:', Object.keys(body))
+        console.log('[API] Code received?', !!code)
+        console.log('[API] Cached result provided?', !!cachedResult)
+        console.log('[API] Request body:', { problemId, type, codeLength: code?.length, language })
 
         if (!problemId || !code || !language) {
+            console.error('[API] Missing required fields')
             return Response.json(
                 { success: false, message: 'Missing required fields.' },
                 { status: 400 }
@@ -24,12 +32,14 @@ export async function submitCode(req, user) {
         }
 
         if (code.length > 100000) {
+            console.error('[API] Code size exceeds limit')
             return Response.json(
                 { success: false, message: 'Code size exceeds limit.' },
                 { status: 400 }
             )
         }
 
+        console.log('[API] Creating submission via service...')
         const submission = await createSubmission({
             userId,
             problemId,
@@ -38,10 +48,13 @@ export async function submitCode(req, user) {
             contestId,
             type,
             customInput,
+            cachedResult,
         })
 
+        console.log('[API] Submission created successfully:', submission._id)
         return Response.json({ success: true, data: submission }, { status: 201 })
     } catch (error) {
+        console.error('[API] Submission error:', error.message)
         return Response.json(
             { success: false, message: error.message || 'Submission failed.' },
             { status: 400 }

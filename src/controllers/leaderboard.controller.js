@@ -32,11 +32,8 @@ export async function fetchLeaderboard(req, context) {
     const params = await context.params
     const contestId = params?.id
     if (!contestId) {
-        console.log("⚠️ Contest ID missing in context:", context)
-        return Response.json(
-            { success: false, message: "Contest ID missing" },
-            { status: 400 }
-        )
+        console.log('⚠️ Contest ID missing in context:', context)
+        return Response.json({ success: false, message: 'Contest ID missing' }, { status: 400 })
     }
 
     const { searchParams } = new URL(req.url)

@@ -4,7 +4,7 @@ export default async function ReplayPage({ params }) {
     const { id } = await params
 
     return (
-        <main className="h-screen overflow-hidden bg-[#0a0a0a]">
+        <main className="bg-bg-page h-screen overflow-hidden">
             <ReplayPlayer sessionId={id} />
         </main>
     )

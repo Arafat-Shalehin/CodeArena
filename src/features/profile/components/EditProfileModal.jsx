@@ -72,7 +72,8 @@ export default function EditProfileModal({ user, onSave, onClose }) {
     })
 
     // Controlled avatar seed
-    const avatarSeed = watch('avatarSeed') ?? (user?.avatarSeed || user?.name || PREDEFINED_AVATARS[0])
+    const avatarSeed =
+        watch('avatarSeed') ?? (user?.avatarSeed || user?.name || PREDEFINED_AVATARS[0])
 
     // Set initial avatarSeed into the form
     useEffect(() => {
@@ -131,10 +132,7 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                     <div className="flex-1 space-y-5 overflow-y-auto p-6">
                         {/* Unique Handle (mapped to backend 'name') */}
                         <div className="space-y-1.5">
-                            <Label
-                                htmlFor="name"
-                                className="text-text-primary text-sm font-medium"
-                            >
+                            <Label htmlFor="name" className="text-text-primary text-sm font-medium">
                                 Username / Handle
                             </Label>
                             <div className="relative">
@@ -205,10 +203,11 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                                             key={seed}
                                             type="button"
                                             onClick={() => setValue('avatarSeed', seed)}
-                                            className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${isSelected
-                                                ? 'border-accent ring-accent/20 bg-accent/5 ring-2'
-                                                : 'border-border hover:border-text-muted/50 hover:bg-bg-subtle bg-bg-page'
-                                                }`}
+                                            className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                                                isSelected
+                                                    ? 'border-accent ring-accent/20 bg-accent/5 ring-2'
+                                                    : 'border-border hover:border-text-muted/50 hover:bg-bg-subtle bg-bg-page'
+                                            }`}
                                         >
                                             <img
                                                 src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${seed}`}

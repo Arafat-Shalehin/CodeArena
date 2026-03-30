@@ -1,8 +1,7 @@
-'use client'
-
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Loader2, ArrowRight } from 'lucide-react'
+import { Search, Loader2, ArrowRight, User, Trophy, Code2 } from 'lucide-react'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 const DIFFICULTY_STYLES = {
     easy: 'text-[#2cbb5d]',
@@ -10,17 +9,9 @@ const DIFFICULTY_STYLES = {
     hard: 'text-[#ff375f]',
 }
 
-// Accent badge color per difficulty using site semantic class names
-const DIFFICULTY_BG = {
-    easy: 'bg-[#2cbb5d]/10',
-    medium: 'bg-[#ffc01e]/10',
-    hard: 'bg-[#ff375f]/10',
-}
-
 /**
  * @component SearchBar
- * @description Inline typeahead search bar. Shows a dropdown of results directly below
- * the input as the user types. Press Ctrl+K to focus.
+ * @description Universal typeahead search bar for problems, users, and contests.
  */
 export default function SearchBar() {
     const router = useRouter()
@@ -33,7 +24,6 @@ export default function SearchBar() {
     const containerRef = useRef(null)
     const debounceRef = useRef(null)
 
-    // Ctrl+K / Cmd+K focuses the input
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -45,7 +35,6 @@ export default function SearchBar() {
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
-    // Close dropdown on outside click
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -56,10 +45,9 @@ export default function SearchBar() {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    // Debounced search against /api/problems
     const search = useCallback((q) => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        if (!q.trim()) {
+        if (!q.trim() || q.trim().length < 2) {
             setResults([])
             setIsSearching(false)
             return
@@ -67,9 +55,7 @@ export default function SearchBar() {
         setIsSearching(true)
         debounceRef.current = setTimeout(async () => {
             try {
-                const res = await fetch(
-                    `/api/problems?search=${encodeURIComponent(q.trim())}&limit=6`
-                )
+                const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
                 const json = await res.json()
                 setResults(json.data || [])
             } catch {
@@ -88,11 +74,13 @@ export default function SearchBar() {
         search(val)
     }
 
-    const navigate = (id) => {
+    const navigate = (item) => {
         setIsOpen(false)
         setQuery('')
         setResults([])
-        router.push(`/problems/${id}`)
+        if (item.type === 'problem') router.push(`/problems/${item._id}`)
+        else if (item.type === 'user') router.push(`/profile/${item._id}`)
+        else if (item.type === 'contest') router.push(`/contests/${item._id}`)
     }
 
     const handleKeyDown = (e) => {
@@ -104,17 +92,17 @@ export default function SearchBar() {
             e.preventDefault()
             setSelectedIndex((i) => Math.max(i - 1, 0))
         } else if (e.key === 'Enter') {
-            if (results[selectedIndex]) navigate(results[selectedIndex]._id)
+            if (results[selectedIndex]) navigate(results[selectedIndex])
         } else if (e.key === 'Escape') {
             setIsOpen(false)
         }
     }
 
     const showDropdown =
-        isOpen && (isSearching || results.length > 0 || (query.trim() && !isSearching))
+        isOpen && (isSearching || results.length > 0 || (query.trim().length >= 2 && !isSearching))
 
     return (
-        <div ref={containerRef} className="relative hidden max-w-md flex-1 lg:block">
+        <div ref={containerRef} className="relative hidden max-w-[280px] flex-1 lg:block">
             {/* Input */}
             <div className="group relative">
                 {isSearching ? (
@@ -127,11 +115,10 @@ export default function SearchBar() {
                     type="text"
                     value={query}
                     onChange={handleChange}
-                    onFocus={() => query && setIsOpen(true)}
+                    onFocus={() => query.length >= 2 && setIsOpen(true)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Search problems..."
+                    placeholder="Search problems, users, contests..."
                     autoComplete="off"
-                    aria-label="Search problems (Ctrl+K)"
                     className="bg-bg-subtle border-border focus:bg-bg-page focus:border-accent/20 focus:ring-accent/5 placeholder:text-text-muted w-full rounded-xl border py-2 pr-20 pl-10 text-sm transition-all focus:ring-4 focus:outline-none"
                 />
                 {!query && (
@@ -146,40 +133,72 @@ export default function SearchBar() {
                 )}
             </div>
 
-            {/* Inline Dropdown */}
             {showDropdown && (
                 <div className="border-border bg-bg-subtle absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border shadow-2xl">
                     {results.length > 0 ? (
                         <ul role="listbox" className="py-1">
-                            {results.map((problem, idx) => (
+                            {results.map((item, idx) => (
                                 <li
-                                    key={problem._id}
+                                    key={`${item.type}-${item._id}`}
                                     role="option"
                                     aria-selected={idx === selectedIndex}
-                                    onMouseDown={() => navigate(problem._id)}
+                                    onMouseDown={() => navigate(item)}
                                     onMouseEnter={() => setSelectedIndex(idx)}
                                     className={`group flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors ${
                                         idx === selectedIndex ? 'bg-bg-page' : 'hover:bg-bg-page'
                                     }`}
                                 >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-text-primary truncate text-sm font-medium">
-                                            {problem.title}
-                                        </p>
-                                        <div className="mt-0.5 flex items-center gap-2 text-[11px]">
-                                            <span
-                                                className={`font-semibold capitalize ${DIFFICULTY_STYLES[problem.difficulty] || 'text-text-muted'}`}
-                                            >
-                                                {problem.difficulty}
-                                            </span>
-                                            {problem.tags?.slice(0, 2).map((tag) => (
-                                                <span
-                                                    key={tag}
-                                                    className="bg-bg-muted text-text-muted rounded px-1.5 py-0.5"
-                                                >
-                                                    {tag}
+                                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                                        {/* Icon/Avatar based on type */}
+                                        <div className="flex-shrink-0">
+                                            {item.type === 'problem' && (
+                                                <div className="bg-accent/10 flex size-8 items-center justify-center rounded-lg">
+                                                    <Code2 size={16} className="text-accent" />
+                                                </div>
+                                            )}
+                                            {item.type === 'user' && (
+                                                <Avatar className="size-8">
+                                                    <AvatarImage
+                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${item.avatarSeed || item.name}`}
+                                                    />
+                                                    <AvatarFallback className="text-[10px] uppercase">
+                                                        {(item.name || 'U').substring(0, 2)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                            {item.type === 'contest' && (
+                                                <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10">
+                                                    <Trophy size={16} className="text-amber-500" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-text-primary truncate text-sm font-medium">
+                                                {item.title || item.name}
+                                            </p>
+                                            <div className="mt-0.5 flex items-center gap-2 text-[10px]">
+                                                <span className="text-text-muted font-bold tracking-wider uppercase">
+                                                    {item.type}
                                                 </span>
-                                            ))}
+                                                {item.type === 'problem' && (
+                                                    <span
+                                                        className={`font-bold capitalize ${DIFFICULTY_STYLES[item.difficulty]}`}
+                                                    >
+                                                        • {item.difficulty}
+                                                    </span>
+                                                )}
+                                                {item.type === 'user' && item.stats?.globalRank && (
+                                                    <span className="font-bold text-amber-500">
+                                                        • Rank #{item.stats.globalRank}
+                                                    </span>
+                                                )}
+                                                {item.type === 'contest' && (
+                                                    <span className="text-accent font-bold capitalize">
+                                                        • {item.status}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     <ArrowRight className="text-text-muted group-hover:text-accent h-3.5 w-3.5 flex-shrink-0 transition-colors" />
@@ -188,9 +207,9 @@ export default function SearchBar() {
                         </ul>
                     ) : (
                         !isSearching &&
-                        query.trim() && (
+                        query.trim().length >= 2 && (
                             <p className="text-text-muted px-4 py-4 text-center text-sm">
-                                No problems found for &ldquo;{query}&rdquo;
+                                No results found for &ldquo;{query}&rdquo;
                             </p>
                         )
                     )}

@@ -1,9 +1,10 @@
 'use client'
 
 import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import { stepsData } from '../data/steps.data'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
+import { cn } from '@/lib/utils'
 
 export default function HowItWorksSection() {
     const containerRef = useRef(null)
@@ -14,51 +15,30 @@ export default function HowItWorksSection() {
     })
 
     return (
-        <section ref={containerRef} className="bg-bg-subtle/30 relative overflow-hidden py-12">
-            <div className="mx-auto max-w-7xl px-4">
+        <section ref={containerRef} className="bg-bg-page relative overflow-hidden py-24 md:py-32">
+            <div className="relative z-10 mx-auto max-w-7xl px-4">
                 {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="mb-16 text-center"
+                    className="mb-24 text-center"
                 >
-                    <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
+                    <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-6xl">
                         The{' '}
-                        <span className="text-accent italic drop-shadow-[0_0_10px_rgba(2,186,76,0.2)]">
+                        <span className="text-accent italic drop-shadow-[0_0_15px_rgba(var(--ca-accent-rgb),0.25)]">
                             Path
                         </span>{' '}
                         to Mastery
                     </h2>
-                    <p className="text-text-muted mx-auto max-w-2xl leading-relaxed md:text-lg">
-                        Our platform is designed to take you from a curious coder to an algorithm
-                        expert through a structured, rewarding process.
+                    <p className="text-text-muted mx-auto max-w-2xl leading-relaxed md:text-xl">
+                        A structured progression designed to transform your algorithmic intuition
+                        into professional-grade engineering expertise.
                     </p>
                 </motion.div>
 
-                {/* Connector Line (Desktop only) */}
-                <div className="absolute top-20 left-0 z-[-1] hidden w-full px-24 lg:block">
-                    <svg className="h-2 w-full" fill="none" viewBox="0 0 1000 8">
-                        <path
-                            d="M0 4L1000 4"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-border"
-                            strokeDasharray="8 8"
-                        />
-                        <motion.path
-                            d="M0 4L1000 4"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            className="text-accent drop-shadow-[0_0_8px_rgba(2,186,76,0.6)]"
-                            style={{ pathLength: reducedMotion ? 1 : scrollYProgress }}
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                </div>
-
                 {/* Steps Grid */}
-                <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
                     {stepsData.map((step, idx) => (
                         <StepCard
                             key={idx}
@@ -76,82 +56,80 @@ export default function HowItWorksSection() {
 }
 
 function StepCard({ step, index, progress, reducedMotion, isLast }) {
-    const activationPoint = index * 0.25
+    const activationPoint = index * 0.2
+
+    // Smooth transformations
+    const scrollOpacity = useTransform(progress, [activationPoint - 0.1, activationPoint], [0.6, 1])
+    const scrollY = useTransform(progress, [activationPoint - 0.1, activationPoint], [20, 0])
+    const scrollRotate = useTransform(progress, [activationPoint - 0.1, activationPoint], [5, 0])
+
+    // Spring physics for the card scale
+    const rawScale = useTransform(
+        progress,
+        [activationPoint - 0.05, activationPoint, activationPoint + 0.1],
+        [0.98, 1.02, 1]
+    )
+    const springScale = useSpring(rawScale, { stiffness: 200, damping: 20 })
 
     const bgTransform = useTransform(
         progress,
-        [activationPoint, activationPoint + 0.1],
-        ['#ffffff', '#00C853']
+        [activationPoint, activationPoint + 0.05],
+        ['rgba(var(--ca-bg-muted-rgb), 0.5)', 'var(--ca-accent)']
     )
     const colorTransform = useTransform(
         progress,
-        [activationPoint, activationPoint + 0.1],
-        ['#a1a1aa', '#ffffff']
+        [activationPoint, activationPoint + 0.05],
+        ['var(--ca-text-muted)', 'var(--ca-text-inverse)']
     )
-    const iconOpacity = useTransform(progress, [activationPoint, activationPoint + 0.1], [0, 1])
-
-    // Spring physics for a more aggressive "pop" when activated
-    const scaleTransform = useTransform(
-        progress,
-        [activationPoint, activationPoint + 0.1],
-        [0.95, 1.05]
-    )
-    const popScale = Object.assign(scaleTransform, { stiffness: 300, damping: 15 })
+    const iconOpacity = useTransform(progress, [activationPoint, activationPoint + 0.05], [0, 1])
 
     return (
         <motion.div
-            style={{ scale: reducedMotion ? 1 : popScale }}
-            initial={{ opacity: 0, y: 30 }}
+            style={{
+                scale: reducedMotion ? 1 : springScale,
+                opacity: reducedMotion ? 1 : scrollOpacity,
+                y: reducedMotion ? 0 : scrollY,
+                rotateX: reducedMotion ? 0 : scrollRotate,
+            }}
+            initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ delay: index * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="group relative transition-transform duration-300"
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ delay: index * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="group relative"
         >
-            {/* Mobile vertical connector */}
-            {!isLast && (
-                <div className="absolute top-20 left-1/2 flex -translate-x-1/2 flex-col items-center sm:hidden">
-                    <div className="bg-border mt-2 h-full min-h-[48px] w-px" />
-                    <svg
-                        width="10"
-                        height="6"
-                        className="text-border"
-                        viewBox="0 0 10 6"
-                        fill="none"
+            <div className="glass-card hover:border-accent/30 relative flex h-full flex-col items-center rounded-3xl p-8 transition-colors duration-500 lg:items-start">
+                {/* Mobile vertical connector */}
+                {!isLast && (
+                    <div className="from-border/50 absolute top-[100%] left-1/2 h-12 w-px -translate-x-1/2 bg-gradient-to-b to-transparent sm:hidden" />
+                )}
+
+                {/* Badge + Icon */}
+                <div className="relative mb-8 flex flex-col items-center lg:items-start">
+                    <motion.div
+                        style={{
+                            backgroundColor: reducedMotion ? 'var(--ca-accent)' : bgTransform,
+                            color: reducedMotion ? 'var(--ca-text-inverse)' : colorTransform,
+                        }}
+                        className="group-hover:shadow-accent-glow flex size-14 items-center justify-center rounded-2xl border border-white/10 font-mono text-xl font-black shadow-sm backdrop-blur-md transition-shadow duration-500"
                     >
-                        <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.5" />
-                    </svg>
+                        {step.step < 10 ? `0${step.step}` : step.step}
+                    </motion.div>
+
+                    <motion.div
+                        style={{ opacity: iconOpacity, scale: iconOpacity }}
+                        className="bg-accent ring-bg-page absolute -top-5 -right-5 flex size-10 items-center justify-center rounded-xl text-white shadow-[0_0_15px_rgba(2,186,76,0.3)] ring-4 lg:-top-6 lg:-right-6 lg:size-12"
+                    >
+                        <div className="[&_svg]:size-5 lg:[&_svg]:size-6">{step.icon}</div>
+                    </motion.div>
                 </div>
-            )}
 
-            {/* Badge + Icon */}
-            <div className="relative mx-auto mb-8 flex min-h-[96px] w-fit flex-col items-center">
-                <motion.div
-                    style={{
-                        backgroundColor: reducedMotion ? '#00C853' : bgTransform,
-                        color: reducedMotion ? '#ffffff' : colorTransform,
-                    }}
-                    className="border-border group-hover:shadow-accent-glow flex size-16 items-center justify-center rounded-2xl border font-mono text-2xl font-black shadow-sm transition-shadow duration-500"
-                >
-                    {step.step < 10 ? `0${step.step}` : step.step}
-                </motion.div>
-
-                <motion.div
-                    style={{ opacity: iconOpacity, scale: iconOpacity }}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }}
-                    className="bg-accent ring-bg-page absolute -top-4 -right-4 flex size-12 items-center justify-center rounded-xl text-white shadow-[0_0_20px_rgba(2,186,76,0.4)] ring-2"
-                >
-                    <div className="[&_svg]:size-6">{step.icon}</div>
-                </motion.div>
-            </div>
-
-            {/* Text Content */}
-            <div className="text-center lg:text-left">
-                <h3 className="text-text-primary mb-3 text-xl font-extrabold tracking-tight">
-                    {step.title}
-                </h3>
-                <p className="text-text-muted text-sm leading-relaxed">{step.desc}</p>
+                {/* Text Content */}
+                <div className="text-center lg:text-left">
+                    <h3 className="text-text-primary mb-3 text-xl font-bold tracking-tight">
+                        {step.title}
+                    </h3>
+                    <p className="text-text-secondary text-sm leading-relaxed">{step.desc}</p>
+                </div>
             </div>
         </motion.div>
     )

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { protect } from '@/middlewares/auth.middleware'
 import { InterviewSession } from '@/models/InterviewSession.model'
-import { dbConnect } from '@/lib/db'
+import dbConnect from '@/lib/mongodb'
 
 export async function GET(req) {
     await dbConnect()

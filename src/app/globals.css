@@ -1,10 +1,14 @@
 @import 'tailwindcss';
 
-@theme {
-    /* Backgrounds */
-    --color-bg-page: var(--ca-bg-page);
-    --color-bg-subtle: var(--ca-bg-subtle);
-    --color-bg-muted: var(--ca-bg-muted);
+/* Enhanced transitions for theme switching */
+body,
+.site-gradient,
+#root,
+#__next {
+    transition:
+        background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 :root {
@@ -51,9 +55,27 @@
     --ca-warning-text: #92400e;
 
     /* Feedback — Info */
-    --ca-info: #1d4ed8;
+    --ca-info: #2563eb;
     --ca-info-light: #dbeafe;
     --ca-info-text: #1e40af;
+
+    /* RGB variants for opacity support */
+    --ca-bg-page-rgb: 255, 255, 255;
+    --ca-border-rgb: 229, 231, 235;
+    --ca-accent-rgb: 2, 186, 76;
+    --ca-gold-rgb: 245, 158, 11;
+    --ca-silver-rgb: 156, 163, 175;
+    --ca-bronze-rgb: 217, 119, 6;
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
+
+    /* Enhanced transitions for theme switching */
+    --theme-transition:
+        background-color 0.3s var(--ease-default), color 0.3s var(--ease-default),
+        border-color 0.3s var(--ease-default);
 
     /* Competitive ranking colors */
     --ca-rank-gold: #f59e0b;
@@ -77,8 +99,8 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 8px 10px -6px rgba(0, 0, 0, 0.07);
-    --shadow-accent-glow: 0 0 20px rgba(2, 186, 76, 0.25);
-    --shadow-gold-glow: 0 0 20px rgba(245, 158, 11, 0.25);
+    --shadow-accent-glow: 0 0 20px rgba(var(--ca-accent-rgb), 0.25);
+    --shadow-gold-glow: 0 0 20px rgba(var(--ca-gold-rgb), 0.25);
 
     /* ----------------------------------------------------------
    * TRANSITIONS
@@ -268,13 +290,12 @@
  * ============================================================ */
 @layer base {
     html {
-        scroll-behavior: smooth;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
 
     body {
-        @apply bg-bg-page text-text-primary font-sans antialiased;
+        @apply bg-bg-page text-text-primary font-sans antialiased transition-colors duration-500;
     }
 
     /* Headings */
@@ -529,61 +550,190 @@
 
     /* Glassmorphism / Matte */
     .matte-surface {
-        @apply border border-white/20 bg-white/80 backdrop-blur-md;
+        @apply border border-white/40 bg-white/70 backdrop-blur-md;
+    }
+
+    .dark .matte-surface {
+        @apply bg-bg-subtle/40 border-border/50;
+    }
+
+    /* Refined Glass Card */
+    .glass-card {
+        @apply border border-white/20 bg-white/40 backdrop-blur-xl;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .dark .glass-card {
+        @apply bg-bg-page/40 border-border/40;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    /* View Transition API - Premium Theme Switch */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+        display: block;
+    }
+
+    ::view-transition-old(root) {
+        z-index: 1;
+    }
+
+    ::view-transition-new(root) {
+        z-index: 999;
+    }
+
+    /* Premium Theme Toggle Switch Styles - Token Optimized */
+    .theme-switch .slider {
+        background-color: var(--ca-bg-muted);
+        box-shadow: 0 0 0 rgba(var(--ca-border-rgb), 0);
+    }
+
+    .theme-switch:hover .slider {
+        box-shadow: 0 0 15px rgba(var(--ca-border-rgb), 0.6);
+    }
+
+    .theme-switch .slider::before {
+        position: absolute;
+        content: '';
+        height: 1.4em;
+        width: 1.4em;
+        border-radius: 50%;
+        left: 10%;
+        bottom: 15%;
+        /* Sun */
+        box-shadow: inset 15px -4px 0px 15px var(--ca-rank-gold);
+        background-color: #28096b; /* Fallback for night sky */
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: center;
+    }
+
+    .theme-switch:hover .slider::before {
+        transform: rotate(45deg);
+    }
+
+    .theme-switch .clouds_stars {
+        background-color: var(--ca-bg-page);
+        box-shadow:
+            -12px 0 0 0 var(--ca-bg-page),
+            -6px 0 0 1.6px var(--ca-bg-page),
+            0.3px 16px 0 var(--ca-bg-page),
+            -6.5px 16px 0 var(--ca-bg-page);
+        filter: blur(0.55px);
+    }
+
+    .theme-switch input:checked ~ .clouds_stars {
+        transform: translateX(-20px);
+        height: 2px;
+        width: 2px;
+        left: 80%;
+        top: 15%;
+        background-color: var(--ca-text-inverse);
+        box-shadow:
+            -7px 10px 0 var(--ca-text-inverse),
+            8px 15px 0 var(--ca-text-inverse),
+            -17px 1px 0 var(--ca-text-inverse),
+            -20px 10px 0 var(--ca-text-inverse),
+            -7px 23px 0 var(--ca-text-inverse),
+            -15px 25px 0 var(--ca-text-inverse);
+        filter: none;
+        animation: twinkle 2s infinite;
+    }
+
+    .theme-switch input:checked + .slider {
+        background-color: var(--ca-accent) !important;
+    }
+
+    .theme-switch input:checked + .slider::before {
+        transform: translateX(100%);
+        /* Moon */
+        box-shadow: inset 8px -4px 0 0 var(--ca-text-primary);
+        background-color: transparent;
+    }
+
+    .theme-switch input:checked + .slider:hover::before {
+        transform: translateX(100%) rotate(-45deg);
+    }
+
+    @keyframes twinkle {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    /* View Transition - Circular Reveal Base */
+    ::view-transition-image-pair(root) {
+        isolation: auto;
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+        display: block;
     }
 
     /* Hero gradient */
     .hero-gradient {
-        background:
-            radial-gradient(circle at 15% 50%, rgba(2, 186, 76, 0.08) 0%, transparent 25%),
-            radial-gradient(circle at 85% 30%, rgba(2, 186, 76, 0.05) 0%, transparent 25%);
+        background: none;
     }
 
     /* Shared page gradient for synchronized backgrounds across routes */
     .site-gradient {
-        background-image:
-            radial-gradient(circle at 15% 50%, var(--ca-site-grad-1) 0%, transparent 25%),
-            radial-gradient(circle at 85% 30%, var(--ca-site-grad-2) 0%, transparent 25%);
+        background-image: none;
         background-repeat: no-repeat;
     }
 
     /* ── Leaderboard-specific utilities ── */
     .podium-gradient-1 {
-        background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0) 100%);
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-gold-rgb), 0.2) 0%,
+            rgba(var(--ca-gold-rgb), 0) 100%
+        );
     }
 
     .podium-gradient-2 {
         background: linear-gradient(
             180deg,
-            rgba(192, 192, 192, 0.2) 0%,
-            rgba(192, 192, 192, 0) 100%
+            rgba(var(--ca-silver-rgb), 0.2) 0%,
+            rgba(var(--ca-silver-rgb), 0) 100%
         );
     }
 
     .podium-gradient-3 {
-        background: linear-gradient(180deg, rgba(205, 127, 50, 0.2) 0%, rgba(205, 127, 50, 0) 100%);
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-bronze-rgb), 0.2) 0%,
+            rgba(var(--ca-bronze-rgb), 0) 100%
+        );
     }
 
     .glass-effect {
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(var(--ca-bg-page-rgb, 255, 255, 255), 0.03);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(var(--ca-border-rgb, 229, 231, 235), 0.05);
     }
 
     .gold-glow {
-        box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
+        box-shadow: 0 0 30px rgba(var(--ca-gold-rgb), 0.2);
     }
 
     .silver-glow {
-        box-shadow: 0 0 25px rgba(156, 163, 175, 0.15);
+        box-shadow: 0 0 25px rgba(var(--ca-silver-rgb), 0.15);
     }
 
     .bronze-glow {
-        box-shadow: 0 0 20px rgba(217, 119, 6, 0.15);
+        box-shadow: 0 0 20px rgba(var(--ca-bronze-rgb), 0.15);
     }
 
     .champion-badge-bg {
-        background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
+        background: linear-gradient(180deg, var(--ca-rank-gold) 0%, var(--ca-rank-bronze) 100%);
     }
 
     /* ── Custom Animations ── */
@@ -602,11 +752,11 @@
     @keyframes soft-pulse {
         0%,
         100% {
-            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+            box-shadow: 0 0 0 0 rgba(var(--ca-gold-rgb), 0);
         }
 
         50% {
-            box-shadow: 0 0 0 8px rgba(245, 159, 11, 0.2);
+            box-shadow: 0 0 0 8px rgba(var(--ca-gold-rgb), 0.2);
         }
     }
 
@@ -631,11 +781,11 @@
 
     /* ── Modern Glow Effects ── */
     .glow-accent {
-        box-shadow: 0 0 20px rgba(2, 186, 76, 0.15);
+        box-shadow: 0 0 20px rgba(var(--ca-accent-rgb), 0.15);
     }
 
     .glow-accent-strong {
-        box-shadow: 0 0 40px rgba(2, 186, 76, 0.25);
+        box-shadow: 0 0 40px rgba(var(--ca-accent-rgb), 0.25);
     }
 
     /* ── Auth Vector Animations ── */
@@ -695,11 +845,13 @@
     .prose-markdown h1 {
         font-size: 1.875rem;
     }
+
     .prose-markdown h2 {
         font-size: 1.5rem;
         border-bottom: 1px solid var(--ca-border);
         padding-bottom: 0.5rem;
     }
+
     .prose-markdown h3 {
         font-size: 1.25rem;
     }
@@ -778,17 +930,60 @@
         color: var(--ca-text-primary);
     }
 
-    /* KaTeX overrides to match theme */
-    .katex {
-        font-size: 1.1em;
+    /* ── Utility Classes ── */
+    .matte-surface {
+        background: var(--ca-bg-subtle);
+        border: 1px solid var(--ca-border);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
     }
 
-    .katex-display {
-        margin: 1.5rem 0;
-        overflow-x: auto;
-        overflow-y: hidden;
+    .bg-glass {
+        background: rgba(var(--ca-bg-subtle-rgb), 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
 }
 
+/* Interview Landing Page animation */
 /* Import KaTeX CSS */
 @import 'katex/dist/katex.min.css';
+/* ── Hero Mesh Gradient ── */
+@keyframes mesh {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(5%, 5%) scale(1.1);
+    }
+    66% {
+        transform: translate(-5%, 2%) scale(0.9);
+    }
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+.animate-mesh {
+    animation: mesh 20s ease-in-out infinite;
+}
+
+/* ── Floating Animation ── */
+@keyframes floating {
+    0%,
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+    }
+}
+
+.animate-floating {
+    animation: floating 6s ease-in-out infinite;
+}
+
+/* ── Step Progress Line ── */
+.step-line-shadow {
+    filter: drop-shadow(0 0 8px var(--ca-accent));
+}

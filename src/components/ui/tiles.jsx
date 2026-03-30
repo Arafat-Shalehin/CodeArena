@@ -19,59 +19,35 @@ export function Tiles({ className, rows = 100, cols = 10, tileClassName, tileSiz
     const colsArray = new Array(cols).fill(1)
 
     return (
-        <motion.div
-            initial={{ x: -20, y: -20 }}
-            animate={{
-                x: [-20, 0, -20],
-                y: [-20, 0, -20],
-            }}
-            transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: 'linear',
-            }}
-            className={cn(
-                'relative z-0 flex h-[110%] w-[110%] justify-center overflow-hidden',
-                className
-            )}
-        >
+        <div className={cn('relative z-0 flex h-full w-full justify-center', className)}>
             {rowsArray.map((_, i) => (
                 <motion.div
                     key={`row-${i}`}
                     className={cn(
                         tileSizes[tileSize],
-                        'relative border-l border-neutral-200 dark:border-neutral-900',
+                        'relative border-l border-neutral-300 dark:border-neutral-800/50',
                         tileClassName
                     )}
                 >
                     {colsArray.map((_, j) => (
                         <motion.div
                             whileHover={{
-                                backgroundColor: `var(--tile)`,
+                                backgroundColor: `var(--ca-accent)`, // Using site's accent token
                                 transition: { duration: 0 },
                             }}
                             animate={{
-                                backgroundColor: [
-                                    'transparent',
-                                    Math.random() > 0.98 ? 'var(--tile)' : 'transparent',
-                                    'transparent',
-                                ],
-                                transition: {
-                                    duration: Math.random() * 5 + 5,
-                                    repeat: Infinity,
-                                    delay: Math.random() * 10,
-                                },
+                                transition: { duration: 2 },
                             }}
                             key={`col-${j}`}
                             className={cn(
                                 tileSizes[tileSize],
-                                'relative border-t border-r border-neutral-200 dark:border-neutral-900',
+                                'relative border-t border-r border-neutral-300 dark:border-neutral-800/50',
                                 tileClassName
                             )}
                         />
                     ))}
                 </motion.div>
             ))}
-        </motion.div>
+        </div>
     )
 }
