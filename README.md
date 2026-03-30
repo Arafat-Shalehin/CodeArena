@@ -202,12 +202,12 @@ chmod +x setup.sh
 
 | Role | Talent |
 |---|---|
-| 👑 **Architect / Lead** | Rabiul Islam |
-| 🛡️ **Engine / Backend** | Arafat Salehin |
+| 👑 **Lead** | Rabiul Islam |
+| 🛡️ **Architect / Engine / Backend** | Arafat Salehin |
 | ⚡ **Core Systems** | AH Muzahid |
-| 🎨 **UI / UX Master** | Shahnawas Adeel |
+| 🎨 **Architect /UI / UX Master** | Shahnawas Adeel |
 | ✨ **Creative Frontend** | Abdullah Noman |
-| 🚀 **Growth / Content** | Ummey Salma Tamanna |
+| 🚀 **Content** | Ummey Salma Tamanna |
 
 </div>
 
