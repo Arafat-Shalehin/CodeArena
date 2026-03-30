@@ -32,6 +32,20 @@ const problemSchema = new mongoose.Schema(
         ],
         testCaseCount: { type: Number, default: 0 },
 
+        // AI Interview Evaluation Helpers
+        correctAnswer: {
+            type: String,
+            default: '',
+        },
+        expectedConcepts: {
+            type: [String],
+            default: [],
+        },
+        evaluationCriteria: {
+            type: String,
+            default: '',
+        },
+
         // Judging Type
         judgeType: {
             type: String,
@@ -51,6 +65,15 @@ const problemSchema = new mongoose.Schema(
         // Submission counters — incremented by the judge on each submission
         totalSubmissions: { type: Number, default: 0 },
         acceptedSubmissions: { type: Number, default: 0 },
+
+        trendingScore: { type: Number, default: 0 },
+        lastSubmissionDate: { type: Date, default: null },
+        commonMistakes: [
+            {
+                description: String,
+                frequency: Number,
+            },
+        ],
 
         // Reaction counts — synced from Redis periodically
         reactionCounts: {

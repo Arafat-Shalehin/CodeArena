@@ -41,7 +41,7 @@ export default function WorkspaceToolbar() {
             {/* Left: Language + Actions */}
             <div className="flex items-center gap-2">
                 {/* Language Selector */}
-                <div className="w-[140px]">
+                <div className="w-35">
                     <Select value={language} onValueChange={setLanguage}>
                         <SelectTrigger className="bg-bg-page hover:bg-bg-muted h-7 border-none px-2 text-xs shadow-none transition-colors focus:ring-0">
                             <SelectValue placeholder="Language" />
@@ -82,7 +82,7 @@ export default function WorkspaceToolbar() {
                 <button
                     onClick={runCode}
                     disabled={isRunning || isSubmitting}
-                    className="flex items-center gap-1.5 rounded-md bg-[#333] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#444] disabled:opacity-50"
+                    className="bg-bg-muted hover:bg-border flex items-center gap-1.5 rounded-md px-4 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
                 >
                     {isRunning ? (
                         <Loader2 size={13} className="animate-spin" />
@@ -94,7 +94,7 @@ export default function WorkspaceToolbar() {
                 <button
                     onClick={submitCode}
                     disabled={isRunning || isSubmitting}
-                    className="flex items-center gap-1.5 rounded-md bg-[#2cbb5d] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50"
+                    className="bg-accent hover:bg-accent/80 flex items-center gap-1.5 rounded-md px-4 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
                 >
                     {isSubmitting ? (
                         <Loader2 size={13} className="animate-spin" />

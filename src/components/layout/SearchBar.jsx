@@ -1,26 +1,17 @@
-'use client'
-
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Loader2, ArrowRight } from 'lucide-react'
+import { Search, Loader2, ArrowRight, User, Trophy, Code2 } from 'lucide-react'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 const DIFFICULTY_STYLES = {
-    easy: 'text-[#2cbb5d]',
-    medium: 'text-[#ffc01e]',
-    hard: 'text-[#ff375f]',
-}
-
-// Accent badge color per difficulty using site semantic class names
-const DIFFICULTY_BG = {
-    easy: 'bg-[#2cbb5d]/10',
-    medium: 'bg-[#ffc01e]/10',
-    hard: 'bg-[#ff375f]/10',
+    easy: 'text-success',
+    medium: 'text-warning',
+    hard: 'text-error',
 }
 
 /**
  * @component SearchBar
- * @description Inline typeahead search bar. Shows a dropdown of results directly below
- * the input as the user types. Press Ctrl+K to focus.
+ * @description Universal typeahead search bar for problems, users, and contests.
  */
 export default function SearchBar() {
     const router = useRouter()
@@ -33,7 +24,6 @@ export default function SearchBar() {
     const containerRef = useRef(null)
     const debounceRef = useRef(null)
 
-    // Ctrl+K / Cmd+K focuses the input
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -45,7 +35,6 @@ export default function SearchBar() {
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
-    // Close dropdown on outside click
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -56,10 +45,9 @@ export default function SearchBar() {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    // Debounced search against /api/search
     const search = useCallback((q) => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        if (!q.trim()) {
+        if (!q.trim() || q.trim().length < 2) {
             setResults([])
             setIsSearching(false)
             return
@@ -67,7 +55,7 @@ export default function SearchBar() {
         setIsSearching(true)
         debounceRef.current = setTimeout(async () => {
             try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}&limit=6`)
+                const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
                 const json = await res.json()
                 if (json.success) {
                     // Combine problems and users into a flat array for easier keyboard navigation
@@ -95,19 +83,13 @@ export default function SearchBar() {
         search(val)
     }
 
-    /**
-     * Navigates to the selected item's detail page.
-     * @param {Object} item - The result item (problem or user).
-     */
     const navigate = (item) => {
         setIsOpen(false)
         setQuery('')
         setResults([])
-        if (item.type === 'problem') {
-            router.push(`/problems/${item._id}`)
-        } else {
-            router.push(`/profile/${item._id}`)
-        }
+        if (item.type === 'problem') router.push(`/problems/${item._id}`)
+        else if (item.type === 'user') router.push(`/profile/${item._id}`)
+        else if (item.type === 'contest') router.push(`/contests/${item._id}`)
     }
 
     const handleKeyDown = (e) => {
@@ -126,10 +108,10 @@ export default function SearchBar() {
     }
 
     const showDropdown =
-        isOpen && (isSearching || results.length > 0 || (query.trim() && !isSearching))
+        isOpen && (isSearching || results.length > 0 || (query.trim().length >= 2 && !isSearching))
 
     return (
-        <div ref={containerRef} className="relative hidden max-w-md flex-1 lg:block">
+        <div ref={containerRef} className="relative hidden max-w-[280px] flex-1 lg:block">
             {/* Input */}
             <div className="group relative">
                 {isSearching ? (
@@ -142,11 +124,14 @@ export default function SearchBar() {
                     type="text"
                     value={query}
                     onChange={handleChange}
-                    onFocus={() => query && setIsOpen(true)}
+                    onFocus={() => query.length >= 2 && setIsOpen(true)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Search problems or users..."
+                    placeholder="Search problems, users, contests..."
                     autoComplete="off"
-                    aria-label="Search problems or users (Ctrl+K)"
+                    role="combobox"
+                    aria-expanded={!!showDropdown}
+                    aria-controls="search-dropdown"
+                    aria-autocomplete="list"
                     className="bg-bg-subtle border-border focus:bg-bg-page focus:border-accent/20 focus:ring-accent/5 placeholder:text-text-muted w-full rounded-xl border py-2 pr-20 pl-10 text-sm transition-all focus:ring-4 focus:outline-none"
                 />
                 {!query && (
@@ -161,73 +146,75 @@ export default function SearchBar() {
                 )}
             </div>
 
-            {/* Inline Dropdown */}
             {showDropdown && (
-                <div className="border-border bg-bg-subtle absolute top-full right-0 left-0 z-50 mt-1.5 max-h-[80vh] overflow-y-auto rounded-xl border shadow-2xl">
+                <div
+                    id="search-dropdown"
+                    className="border-border bg-bg-subtle absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border shadow-2xl"
+                >
                     {results.length > 0 ? (
-                        <div className="py-1">
-                            {results.map((item, idx) => {
-                                const isFirstOfType =
-                                    idx === 0 || results[idx - 1].type !== item.type
-                                return (
-                                    <div key={item._id}>
-                                        {isFirstOfType && (
-                                            <div className="text-text-muted bg-bg-muted/30 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase">
-                                                {item.type === 'problem' ? 'Problems' : 'Users'}
-                                            </div>
-                                        )}
-                                        <div
-                                            role="option"
-                                            aria-selected={idx === selectedIndex}
-                                            onMouseDown={() => navigate(item)}
-                                            onMouseEnter={() => setSelectedIndex(idx)}
-                                            className={`group flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors ${
-                                                idx === selectedIndex
-                                                    ? 'bg-bg-page'
-                                                    : 'hover:bg-bg-page'
-                                            }`}
-                                        >
-                                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                                                {item.type === 'user' && (
-                                                    <div className="bg-accent/10 border-accent/20 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border">
-                                                        <img
-                                                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${item.avatarSeed || item.name}`}
-                                                            alt={item.name}
-                                                            className="h-full w-full object-cover"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-text-primary truncate text-sm font-medium">
-                                                        {item.type === 'problem'
-                                                            ? item.title
-                                                            : item.name}
-                                                    </p>
-                                                    {item.type === 'problem' && (
-                                                        <div className="mt-0.5 flex items-center gap-2 text-[11px]">
-                                                            <span
-                                                                className={`font-semibold capitalize ${DIFFICULTY_STYLES[item.difficulty] || 'text-text-muted'}`}
-                                                            >
-                                                                {item.difficulty}
-                                                            </span>
-                                                            {item.tags?.slice(0, 2).map((tag) => (
-                                                                <span
-                                                                    key={tag}
-                                                                    className="bg-bg-muted text-text-muted rounded px-1.5 py-0.5"
-                                                                >
-                                                                    {tag}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    {item.type === 'user' && (
-                                                        <p className="text-text-muted text-[11px]">
-                                                            User Profile
-                                                        </p>
-                                                    )}
+                        <ul role="listbox" className="py-1">
+                            {results.map((item, idx) => (
+                                <li
+                                    key={`${item.type}-${item._id}`}
+                                    role="option"
+                                    aria-selected={idx === selectedIndex}
+                                    onMouseDown={() => navigate(item)}
+                                    onMouseEnter={() => setSelectedIndex(idx)}
+                                    className={`group flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors ${
+                                        idx === selectedIndex ? 'bg-bg-page' : 'hover:bg-bg-page'
+                                    }`}
+                                >
+                                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                                        {/* Icon/Avatar based on type */}
+                                        <div className="flex-shrink-0">
+                                            {item.type === 'problem' && (
+                                                <div className="bg-accent/10 flex size-8 items-center justify-center rounded-lg">
+                                                    <Code2 size={16} className="text-accent" />
                                                 </div>
+                                            )}
+                                            {item.type === 'user' && (
+                                                <Avatar className="size-8">
+                                                    <AvatarImage
+                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${item.avatarSeed || item.name}`}
+                                                    />
+                                                    <AvatarFallback className="text-[10px] uppercase">
+                                                        {(item.name || 'U').substring(0, 2)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                            {item.type === 'contest' && (
+                                                <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10">
+                                                    <Trophy size={16} className="text-amber-500" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-text-primary truncate text-sm font-medium">
+                                                {item.title || item.name}
+                                            </p>
+                                            <div className="mt-0.5 flex items-center gap-2 text-[10px]">
+                                                <span className="text-text-muted font-bold tracking-wider uppercase">
+                                                    {item.type}
+                                                </span>
+                                                {item.type === 'problem' && (
+                                                    <span
+                                                        className={`font-bold capitalize ${DIFFICULTY_STYLES[item.difficulty]}`}
+                                                    >
+                                                        • {item.difficulty}
+                                                    </span>
+                                                )}
+                                                {item.type === 'user' && item.stats?.globalRank && (
+                                                    <span className="font-bold text-amber-500">
+                                                        • Rank #{item.stats.globalRank}
+                                                    </span>
+                                                )}
+                                                {item.type === 'contest' && (
+                                                    <span className="text-accent font-bold capitalize">
+                                                        • {item.status}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <ArrowRight className="text-text-muted group-hover:text-accent h-3.5 w-3.5 flex-shrink-0 transition-colors" />
                                         </div>
                                     </div>
                                 )
@@ -235,7 +222,7 @@ export default function SearchBar() {
                         </div>
                     ) : (
                         !isSearching &&
-                        query.trim() && (
+                        query.trim().length >= 2 && (
                             <p className="text-text-muted px-4 py-4 text-center text-sm">
                                 No results found for &ldquo;{query}&rdquo;
                             </p>

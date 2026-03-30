@@ -1,8 +1,11 @@
 import { Worker } from 'bullmq'
 import { connection } from '@/lib/queue'
+import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
 import { syncUserStats } from '@/services/user.service'
 import { redisClient } from '@/lib/redis'
+import { recommendationService } from '@/services/recommendation.service'
+import { recommendationCacheService } from '@/services/cache.service'
 
 export function initStatsWorker() {
     const worker = new Worker(
@@ -11,9 +14,16 @@ export function initStatsWorker() {
             const { userId } = job.data
 
             try {
+                await dbConnect()
                 console.log(`[STATS WORKER] Syncing stats for user ${userId}`)
                 const oldUser = await User.findById(userId).select('stats.globalRank')
                 const updatedUser = await syncUserStats(userId)
+
+                // Update ML recommendation stats
+                await recommendationService.updateUserPerformanceStats(userId)
+
+                // Invalidate specific recommendation caches
+                await recommendationCacheService.invalidateAll(userId)
 
                 // Check for rank shift
                 if (oldUser && updatedUser && updatedUser.stats?.globalRank) {

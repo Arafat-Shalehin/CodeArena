@@ -58,8 +58,11 @@ export default function InterviewSessionPage() {
 
     if (loading) {
         return (
-            <div className="bg-bg-page flex h-screen w-full items-center justify-center">
-                <Loader2 size={32} className="text-accent animate-spin" />
+            <div className="bg-bg-page flex h-screen w-full flex-col items-center justify-center">
+                <Loader2 size={32} className="text-accent mb-4 animate-spin" />
+                <p className="text-text-secondary animate-pulse text-sm font-medium">
+                    Restoring your session...
+                </p>
             </div>
         )
     }
@@ -72,7 +75,7 @@ export default function InterviewSessionPage() {
                 <p className="text-text-muted text-sm">{error || 'Session not found.'}</p>
                 <button
                     onClick={() => router.push('/feed')}
-                    className="rounded-md bg-[#2cbb5d] px-6 py-2 text-sm font-semibold text-white hover:bg-[#26a34f]"
+                    className="bg-accent hover:bg-accent/80 rounded-md px-6 py-2 text-sm font-semibold text-white"
                 >
                     Go Home
                 </button>
@@ -87,6 +90,7 @@ export default function InterviewSessionPage() {
             wsToken={sessionData.wsToken}
             durationMins={sessionData.durationMins}
             startedAt={sessionData.startedAt}
+            initialMessages={sessionData.messages || []}
             onEnd={handleEnd}
         />
     )

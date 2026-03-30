@@ -12,8 +12,7 @@
  */
 import mongoose from 'mongoose'
 
-const MONGODB_URI =
-    'mongodb+srv://CodeArenaAdmin:CSb7y4KBtTSA0kKc@crud-server.b5xdndi.mongodb.net/CodeArena?appName=Crud-Server'
+const MONGODB_URI = process.env.MONGODB_URI
 
 // Real problem IDs from the database
 const PROBLEM_IDS = [
@@ -116,6 +115,10 @@ const CONTESTS = [
 ]
 
 async function main() {
+    if (!MONGODB_URI) {
+        throw new Error('Missing required environment variable: MONGODB_URI')
+    }
+
     console.log('🔗 Connecting to MongoDB...')
     await mongoose.connect(MONGODB_URI)
 

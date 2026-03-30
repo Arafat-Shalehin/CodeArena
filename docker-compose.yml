@@ -32,7 +32,7 @@ services:
             --appendonly yes
             --requirepass $${REDIS_PASSWORD:-SuperStrongRedisPassword}
             --maxmemory 256mb
-            --maxmemory-policy allkeys-lru"
+            --maxmemory-policy noeviction"
         volumes:
             - redis_data:/data
         networks:
@@ -63,10 +63,11 @@ services:
             docker-proxy:
                 condition: service_started
         environment:
-            - MONGODB_URI=mongodb://${DB_USER:-admin}:${DB_PASSWORD:-password}@mongodb:27017/codearena?authSource=admin
+            - MONGODB_URI=${MONGODB_URI}
             - DOCKER_HOST=http://docker-proxy:2375
             - NODE_ENV=${NODE_ENV:-production}
             - JWT_SECRET=${JWT_SECRET}
+            - REDIS_URL=${REDIS_URL}
             - REDIS_HOST=redis
             - REDIS_PORT=6379
             - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -81,7 +82,8 @@ services:
         image: tecnativa/docker-socket-proxy
         container_name: codearena-docker-proxy
         privileged: true
-        # No ports exposed to the host! Only accessible via internal network.
+        ports:
+            - '127.0.0.1:2376:2375'
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock:ro
         environment:

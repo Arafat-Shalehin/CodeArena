@@ -24,6 +24,7 @@
 
 # next.js
 /.next/
+/.next-worker/
 /out/
 
 # production
@@ -49,3 +50,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *.md
+
+# local-only workspace
+hf-space-worker/

@@ -32,6 +32,7 @@ import {
 
 // Hooks
 import { useSocialLogin } from '@/features/auth/hooks/useSocialLogin'
+import { useAuth } from '@/context/AuthContext'
 
 /**
  * @component LoginForm
@@ -43,16 +44,31 @@ export default function LoginForm() {
     const searchParams = useSearchParams()
     const redirectTo = searchParams.get('redirect') || '/feed'
     const { handleSocialLogin, isLoading: socialLoading, error: socialError } = useSocialLogin()
+    const { user: authUser, isLoading: authIsLoading } = useAuth()
     const urlError = searchParams.get('error')
     const hasShownUrlError = useRef(false)
+    const shouldRedirectRef = useRef(false)
 
     // Handle URL-based errors (e.g., redirect from protected route)
     useEffect(() => {
         if (urlError === 'unauthorized' && !hasShownUrlError.current) {
             toast.error('Session expired or unauthorized. Please log in again.')
             hasShownUrlError.current = true
+
+            const nextPath = redirectTo
+                ? `/login?redirect=${encodeURIComponent(redirectTo)}`
+                : '/login'
+            router.replace(nextPath)
         }
-    }, [urlError])
+    }, [redirectTo, router, urlError])
+
+    // Redirect after auth sync completes (user is set in context)
+    useEffect(() => {
+        if (shouldRedirectRef.current && authUser && !authIsLoading) {
+            router.replace(redirectTo)
+            shouldRedirectRef.current = false
+        }
+    }, [authUser, authIsLoading, router, redirectTo])
 
     // UI state
     const [view, setView] = useState('email') // "email" | "forgot-password" | "magic-link"
@@ -84,7 +100,8 @@ export default function LoginForm() {
                     .then(() => {
                         window.localStorage.removeItem('emailForSignIn')
                         toast.success('Successfully signed in with magic link!')
-                        router.replace('/feed')
+                        // Set flag to redirect after auth sync completes
+                        shouldRedirectRef.current = true
                     })
                     .catch((err) => {
                         toast.error(err.message.replace('Firebase: ', ''))
@@ -99,7 +116,8 @@ export default function LoginForm() {
         try {
             await signInWithEmailAndPassword(auth, data.email, data.password)
             toast.success('Authentication successful')
-            router.replace(redirectTo)
+            // Set flag to redirect after auth sync completes (user is set in context)
+            shouldRedirectRef.current = true
         } catch (err) {
             toast.error(err.message.replace('Firebase: ', ''))
         } finally {

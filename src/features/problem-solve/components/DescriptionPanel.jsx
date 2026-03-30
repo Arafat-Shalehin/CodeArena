@@ -21,12 +21,10 @@ import SubmissionResultTab from './SubmissionResultTab'
 import { useProblemSolve } from '@/context/ProblemSolveContext'
 import { formatAcceptanceRate } from '@/lib/utils'
 
-import ReactionSystem from '@/components/reactions/ReactionSystem'
-
 const DIFFICULTY_STYLES = {
-    easy: 'text-[#00b8a3] bg-[#00b8a3]/10',
-    medium: 'text-[#ffc01e] bg-[#ffc01e]/10',
-    hard: 'text-[#ff375f] bg-[#ff375f]/10',
+    easy: 'difficulty-easy',
+    medium: 'difficulty-medium',
+    hard: 'difficulty-hard',
 }
 
 const TABS = [
@@ -45,7 +43,6 @@ function ProblemDescription({ problem }) {
                 <h2 className="text-text-primary text-2xl font-bold tracking-tight">
                     {problem.title}
                 </h2>
-                <ReactionSystem problemId={problem._id || problem.id} />
             </div>
 
             <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -163,7 +160,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
     return (
         <>
             {/* Tab Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-2">
+            <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center justify-between border-b px-2">
                 <div className="flex items-center gap-0.5">
                     {TABS.map((tab) => (
                         <button
@@ -235,7 +232,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5" data-lenis-prevent>
                 {leftTab === 'description' ? (
                     <ProblemDescription problem={problem} />
                 ) : leftTab === 'submissions' ? (
@@ -243,26 +240,32 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                 ) : leftTab === 'submission-result' ? (
                     <SubmissionResultTab />
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-600">
+                    <div className="text-text-muted flex flex-col items-center justify-center py-20 transition-colors">
                         <span className="mb-3 text-4xl">🚧</span>
-                        <p className="text-sm">Coming soon</p>
+                        <p className="text-sm font-medium">Coming soon</p>
                     </div>
                 )}
             </div>
 
             {/* Footer */}
-            <div className="flex h-[36px] flex-shrink-0 items-center justify-between border-t border-[#333] px-4 text-xs text-gray-500">
+            <div className="flex h-9 shrink-0 items-center justify-between border-t border-[#333] px-4 text-xs text-gray-500">
                 <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
+                    <span className="hover:text-text-primary flex items-center gap-1 transition-colors">
                         <ThumbsUp size={12} /> {problem.totalSubmissions || 0}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="hover:text-text-primary flex items-center gap-1 transition-colors">
                         <MessageSquare size={12} /> {problem.testCaseCount || 0}
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Star size={12} className="cursor-pointer hover:text-yellow-400" />
-                    <ExternalLink size={12} className="cursor-pointer hover:text-white" />
+                    <Star
+                        size={12}
+                        className="hover:text-rank-gold cursor-pointer transition-colors"
+                    />
+                    <ExternalLink
+                        size={12}
+                        className="hover:text-text-primary cursor-pointer transition-colors"
+                    />
                 </div>
             </div>
         </>

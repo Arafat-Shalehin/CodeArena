@@ -50,6 +50,11 @@ const interviewResultSchema = new mongoose.Schema(
             required: true,
             default: 0,
         },
+        problemSolvingScore: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
         overallScore: {
             type: Number,
             required: true,
@@ -64,11 +69,21 @@ const interviewResultSchema = new mongoose.Schema(
                 type: String,
             },
         ],
-        areasToImprove: [
+        weaknesses: [
             {
                 type: String,
             },
         ],
+        recommendations: [
+            {
+                type: String,
+            },
+        ],
+        recommendation: {
+            type: String,
+            enum: ['hire', 'maybe', 'no_hire'],
+            default: 'maybe',
+        },
         createdAt: {
             type: Date,
             default: Date.now,

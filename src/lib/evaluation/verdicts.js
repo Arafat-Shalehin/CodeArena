@@ -2,6 +2,7 @@
 export const VERDICTS = {
     // Success
     ACCEPTED: 'ACCEPTED',
+    EXECUTED: 'EXECUTED', // Playground mode - code ran successfully without errors
     WRONG_ANSWER: 'WRONG_ANSWER',
     TIME_LIMIT_EXCEEDED: 'TIME_LIMIT_EXCEEDED',
     MEMORY_LIMIT_EXCEEDED: 'MEMORY_LIMIT_EXCEEDED',
@@ -11,6 +12,7 @@ export const VERDICTS = {
     JUDGING: 'JUDGING',
     SYSTEM_ERROR: 'SYSTEM_ERROR',
     SECURITY_ERROR: 'SECURITY_ERROR',
+    FEATURE_UNSUPPORTED_IN_CLOUD: 'FEATURE_UNSUPPORTED_IN_CLOUD',
 }
 
 // Meta information for UI display
@@ -21,6 +23,13 @@ export const VERDICT_META = {
         description: 'Solution is correct',
         color: 'green',
         score: 100,
+    },
+    [VERDICTS.EXECUTED]: {
+        code: 'EX',
+        name: 'Executed',
+        description: 'Code ran successfully (playground mode)',
+        color: 'cyan', // Positive/neutral color
+        score: 0, // No score for playground
     },
     [VERDICTS.WRONG_ANSWER]: {
         code: 'WA',
@@ -83,6 +92,13 @@ export const VERDICT_META = {
         name: 'Security Error',
         description: 'Code contains unsafe operations',
         color: 'red',
+        score: 0,
+    },
+    [VERDICTS.FEATURE_UNSUPPORTED_IN_CLOUD]: {
+        code: 'FUC',
+        name: 'Feature Unsupported In Cloud',
+        description: 'This judge feature is not available in cloud fallback mode',
+        color: 'purple',
         score: 0,
     },
 }

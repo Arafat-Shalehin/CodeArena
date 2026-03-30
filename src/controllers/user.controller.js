@@ -78,28 +78,46 @@ export async function removeUser(req, { params }) {
  * PUT /api/users/[id]
  */
 export async function updateUserDetails(req, { params }) {
-    const resolvedParams = await params
-    const body = await req.json()
+    try {
+        const resolvedParams = await params
 
-    console.log('updateUserDetails called:', {
-        params: resolvedParams,
-        body,
-        userId: req.user?.id,
-        userRole: req.user?.role,
-    })
+        let body
+        try {
+            body = await req.json()
+        } catch (e) {
+            console.error('Failed to parse request body:', e)
+            return Response.json(
+                { success: false, message: 'Invalid request body' },
+                { status: 400 }
+            )
+        }
 
-    // Ensure the req.user exists and matches the ID (or is admin)
-    // Assuming req.user is populated by protect middleware
-    const userId = req.user?.id || req.user?._id
-    if (userId && userId.toString() !== resolvedParams.id && req.user.role !== 'admin') {
+        console.log('updateUserDetails called:', {
+            params: resolvedParams,
+            body,
+            userId: req.user?.id,
+            userRole: req.user?.role,
+        })
+
+        // Ensure the req.user exists and matches the ID (or is admin)
+        // Assuming req.user is populated by protect middleware
+        const userId = req.user?.id || req.user?._id
+        if (userId && userId.toString() !== resolvedParams.id && req.user.role !== 'admin') {
+            return Response.json(
+                { success: false, message: 'Not authorized to update this profile' },
+                { status: 403 }
+            )
+        }
+
+        const updatedUser = await updateUser(resolvedParams.id, body)
+        return Response.json({ success: true, data: updatedUser })
+    } catch (error) {
+        console.error('updateUserDetails error:', error)
         return Response.json(
-            { success: false, message: 'Not authorized to update this profile' },
-            { status: 403 }
+            { success: false, message: error.message || 'Internal server error' },
+            { status: error.status || 500 }
         )
     }
-
-    const updatedUser = await updateUser(resolvedParams.id, body)
-    return Response.json({ success: true, data: updatedUser })
 }
 
 /**

@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import { protect } from '@/middlewares/auth.middleware'
 import { terminateSession } from '@/services/interviewSession.service'
 import { InterviewSession } from '@/models/InterviewSession.model'
-import { dbConnect } from '@/lib/db'
+import dbConnect from '@/lib/mongodb'
 
 export async function POST(req, { params }) {
     await dbConnect()
 
     try {
         const user = await protect(req)
-        const { id: sessionId } = params
+        const { id: sessionId } = await params
 
         // Verify ownership
         const session = await InterviewSession.findOne({
@@ -28,12 +28,14 @@ export async function POST(req, { params }) {
         }
 
         if (session.status !== 'active') {
+            // Idempotent return to prevent race conditions (e.g., timer expired + user clicked end)
             return NextResponse.json(
                 {
-                    error: 'BAD_REQUEST',
-                    message: 'Session is no longer active',
+                    success: true,
+                    data: session,
+                    message: 'Session is already inactive',
                 },
-                { status: 400 }
+                { status: 200 }
             )
         }
 

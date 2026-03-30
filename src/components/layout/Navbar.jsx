@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
+import { ChevronDown } from 'lucide-react'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ import SearchBar from '@/components/layout/SearchBar'
 import ProfileDropdown from '@/components/layout/ProfileDropdown'
 import MobileMenu from '@/components/layout/MobileMenu'
 import NotificationBell from '@/components/layout/NotificationBell'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
@@ -22,6 +24,12 @@ import { useAuth } from '@/context/AuthContext'
 const NAV_LINKS = [
     { name: 'Feed', href: '/feed' },
     { name: 'Problems', href: '/problems' },
+    { name: 'Practice', href: '/practice' },
+    {
+        name: 'AI Interview',
+        href: '/interview',
+        subLinks: [{ name: 'History', href: '/interview/history' }],
+    },
     { name: 'Contests', href: '/contests' },
     { name: 'Leaderboard', href: '/leaderboard' },
 ]
@@ -73,22 +81,45 @@ export default function Navbar() {
                                 const isActive =
                                     pathname === link.href ||
                                     (link.href !== '/' && pathname?.startsWith(link.href + '/'))
+
                                 return (
-                                    <Link
-                                        key={link.name}
-                                        href={link.href}
-                                        aria-current={isActive ? 'page' : undefined}
-                                        className={`group relative rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                                            isActive
-                                                ? 'text-text-primary bg-bg-subtle'
-                                                : 'text-text-muted hover:text-text-primary hover:bg-bg-subtle'
-                                        }`}
-                                    >
-                                        {link.name}
-                                        {isActive && (
-                                            <span className="bg-accent absolute right-3 bottom-1 left-3 h-0.5 rounded-full transition-all duration-300" />
+                                    <div key={link.name} className="group relative">
+                                        <Link
+                                            href={link.href}
+                                            aria-current={isActive ? 'page' : undefined}
+                                            className={`relative flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+                                                isActive
+                                                    ? 'text-text-primary bg-bg-subtle'
+                                                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-subtle'
+                                            }`}
+                                        >
+                                            {link.name}
+                                            {link.subLinks && (
+                                                <ChevronDown
+                                                    size={12}
+                                                    className="text-text-muted transition-transform group-hover:rotate-180"
+                                                />
+                                            )}
+                                            {isActive && (
+                                                <span className="bg-accent absolute right-3 bottom-1 left-3 h-0.5 rounded-full" />
+                                            )}
+                                        </Link>
+
+                                        {/* Sub-links Dropdown */}
+                                        {link.subLinks && (
+                                            <div className="bg-bg-page border-border absolute top-full left-0 z-50 mt-1 min-w-[160px] translate-y-2 scale-95 overflow-hidden rounded-xl border p-1 opacity-0 shadow-2xl transition-all group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
+                                                {link.subLinks.map((sub) => (
+                                                    <Link
+                                                        key={sub.name}
+                                                        href={sub.href}
+                                                        className="text-text-secondary hover:text-text-primary hover:bg-bg-subtle flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-all"
+                                                    >
+                                                        {sub.name}
+                                                    </Link>
+                                                ))}
+                                            </div>
                                         )}
-                                    </Link>
+                                    </div>
                                 )
                             }
                         )}
@@ -100,6 +131,7 @@ export default function Navbar() {
 
                 {/* Desktop: Auth Buttons OR Profile Dropdown */}
                 <div className="hidden items-center gap-3 md:flex">
+                    <ThemeToggle />
                     {isAuthenticated && user ? (
                         <>
                             <NotificationBell />
@@ -109,7 +141,7 @@ export default function Navbar() {
                         <>
                             <Link
                                 href="/login"
-                                className="text-text-muted hover:text-text-primary px-3 py-2 text-sm font-bold transition-colors"
+                                className="text-text-secondary hover:text-text-primary px-3 py-2 text-sm font-semibold transition-colors"
                             >
                                 Sign in
                             </Link>
@@ -124,6 +156,7 @@ export default function Navbar() {
 
                 {/* Mobile Menu Toggle */}
                 <div className="flex items-center gap-2 md:hidden">
+                    <ThemeToggle />
                     {isAuthenticated && user && (
                         <Link href="/profile" className="mr-1">
                             <Avatar className="border-accent/30 size-8 border-2">

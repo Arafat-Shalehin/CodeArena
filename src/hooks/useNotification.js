@@ -45,9 +45,25 @@ export function useNotification() {
             setNotifications((prev) => [notification, ...prev])
             setUnreadCount((prev) => prev + 1)
 
-            // Play a subtle sound
-            const audio = new Audio('/sounds/notification.mp3')
-            audio.play().catch(() => {}) // Ignore if browser blocks autoplay
+            // Play a subtle notification beep using Web Audio API (no file required)
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+                const oscillator = audioContext.createOscillator()
+                const gainNode = audioContext.createGain()
+
+                oscillator.connect(gainNode)
+                gainNode.connect(audioContext.destination)
+
+                oscillator.frequency.value = 800 // Hz - a pleasant notification tone
+                oscillator.type = 'sine'
+                gainNode.gain.value = 0.1 // Low volume
+
+                oscillator.start()
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
+                oscillator.stop(audioContext.currentTime + 0.15)
+            } catch {
+                // Ignore if browser blocks audio
+            }
 
             // Show Toast
             toast(notification.message, {

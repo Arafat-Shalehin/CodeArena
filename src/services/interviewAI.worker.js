@@ -21,8 +21,11 @@ import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewResult } from '@/models/InterviewResult.model'
-import { buildPrompt, buildScorecardPrompt } from '@/services/aiConversation.service'
+import { UserInterviewStats } from '@/models/UserInterviewStats.model'
+import { UserAggregateStats } from '@/models/UserAggregateStats.model'
+import { buildPrompt, buildScorecardPrompt, selectModel } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
+import { z } from 'zod'
 
 // ── Redis publisher (separate client; cannot share the subscriber client) ──────
 const redisUrl = process.env.REDIS_URL || ''
@@ -59,128 +62,515 @@ export function interviewAIChannel(sessionId) {
     return `interview:ai:${sessionId}`
 }
 
+const scorecardSchema = z
+    .object({
+        overallScore: z.coerce.number().min(0).max(100),
+        strengths: z.array(z.string().trim()),
+        weaknesses: z.array(z.string().trim()),
+        recommendation: z.enum(['hire', 'maybe', 'no_hire']).catch('maybe'),
+        // Legacy mapping compatibility
+        communicationScore: z.coerce.number().optional(),
+        codeQualityScore: z.coerce.number().optional(),
+        codingPerformanceScore: z.coerce.number().optional(),
+        problemSolvingScore: z.coerce.number().optional(),
+        approachScore: z.coerce.number().optional(),
+        technicalAccuracyScore: z.coerce.number().optional(),
+        aiSummary: z.string().trim().optional(),
+        recommendations: z.array(z.string().trim()).optional(),
+    })
+    .strip()
+
+function parseScorecard(rawText) {
+    if (!rawText || rawText.length > 10000) throw new Error('Payload empty or exceeds 10KB limit')
+
+    // Find the first occurrence of '{' and the last occurrence of '}'
+    const startIndex = rawText.indexOf('{')
+    const endIndex = rawText.lastIndexOf('}')
+
+    if (startIndex === -1 || endIndex === -1) {
+        console.error('[parseScorecard] Raw text with no JSON object:', rawText)
+        throw new Error('No valid JSON object found in AI response')
+    }
+
+    const clean = rawText.substring(startIndex, endIndex + 1).trim()
+
+    try {
+        const parsed = JSON.parse(clean)
+        return scorecardSchema.parse(parsed)
+    } catch (err) {
+        throw new Error(`Validation failed: ${err.message}`)
+    }
+}
+
 // ── Worker ─────────────────────────────────────────────────────────────────────
 
 export function initInterviewAIWorker() {
     const worker = new Worker(
         'interview-ai',
         async (job) => {
-            const {
-                sessionId,
-                userId,
-                content,
-                phase,
-                submissionVerdict,
-                code,
-                language: lang,
-            } = job.data
+            const { sessionId, userId, content, submissionVerdict, code, language: lang } = job.data
 
             console.log(
-                `[InterviewAI Worker] Processing job ${job.id} (${job.name}) for session ${sessionId}`
+                `[InterviewAI Worker] v2.1 Processing job ${job.id} (${job.name}) for session ${sessionId}`
             )
 
             await dbConnect()
 
             // ─── Case 1: Final Scorecard ──────────────────────────────────────
             if (job.name === 'process-scorecard') {
-                const [session, history, snapshots] = await Promise.all([
-                    InterviewSession.findById(sessionId).populate('problemIds'),
-                    InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
-                    InterviewSnapshot.find({
-                        sessionId,
-                        snapshotType: { $in: ['run', 'submit'] },
-                    }).sort({ ts: 1 }),
-                ])
-
-                const problem = session?.problemIds?.[0]
-                if (!problem) throw new Error('Problem context lost')
-
-                // Build prompt
-                const { systemPrompt, messages } = buildScorecardPrompt({
-                    problemTitle: problem.title,
-                    problemDescription: problem.description,
-                    history,
-                    submissions: snapshots.map((s) => ({
-                        verdict: s.snapshotType === 'submit' ? 'SUBMITTED' : 'RUN',
-                        // Note: actual pass/fail details would need InterviewSnapshot mod or separate Verdict collection
-                        // for now we use what we have in metadata or just role-play
-                        passedCount: s.snapshotType === 'submit' ? '?' : '?',
-                        totalCount: '?',
-                    })),
-                })
-
-                // Get AI response (non-streaming)
-                const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
-                let fullResponse = ''
-                for await (const chunk of aiStream) {
-                    fullResponse += chunk
-                }
-
                 try {
-                    const scorecardData = JSON.parse(fullResponse)
+                    // Idempotency guard — abort if result already exists
+                    const existing = await InterviewResult.findOne({ sessionId })
+                    if (existing) {
+                        console.log('[InterviewAI Worker] Scorecard already exists, skipping.')
+                        return { success: true, type: 'scorecard', skipped: true }
+                    }
+
+                    const [session, history, snapshots] = await Promise.all([
+                        InterviewSession.findById(sessionId).populate('problemIds'),
+                        InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
+                        InterviewSnapshot.find({
+                            sessionId,
+                            snapshotType: { $in: ['run', 'submit'] },
+                        }).sort({ ts: 1 }),
+                    ])
+
+                    const problem = session?.problemIds?.[0]
+                    if (!problem) {
+                        console.error(
+                            '[InterviewAI Worker] Problem context lost for session:',
+                            sessionId
+                        )
+                        throw new Error('Problem context lost')
+                    }
+
+                    console.log(`[InterviewAI Worker] Generating scorecard for ${problem.title}...`)
+
+                    // ─── Participation Guard ───────────────────────────────────────
+                    // Avoid AI Hallucination: If no user messages AND no snapshots exists,
+                    // or if the only snapshot is a boilerplate "auto" save.
+                    const userMessages = history.filter((m) => m.role === 'user')
+                    const meaningfulSnapshots = snapshots.filter(
+                        (s) => s.snapshotType !== 'auto' || (s.code && s.code.length > 100)
+                    )
+
+                    if (userMessages.length === 0 && meaningfulSnapshots.length === 0) {
+                        console.log(
+                            '[InterviewAI Worker] Zero participation detected. Saving default 0 result.'
+                        )
+                        const result = await InterviewResult.findOneAndUpdate(
+                            { sessionId },
+                            {
+                                sessionId,
+                                userId,
+                                communicationScore: 0,
+                                codeQualityScore: 0,
+                                problemSolvingScore: 0,
+                                approachScore: 0,
+                                overallScore: 0,
+                                aiSummary:
+                                    'The candidate ended the session without providing any conceptual answers or code implementations. Participation was insufficient for a technical evaluation.',
+                                strengths: [],
+                                weaknesses: ['No participation detected'],
+                                recommendations: [
+                                    'Engage with the interviewer during the Q&A phase',
+                                    'Attempt a partial implementation even if stuck',
+                                ],
+                                createdAt: new Date(),
+                                error: false,
+                            },
+                            { upsert: true, new: true }
+                        )
+
+                        await InterviewSession.findByIdAndUpdate(sessionId, {
+                            status: 'terminated',
+                            currentPhase: 'completed',
+                            finalScore: 0,
+                            endedAt: new Date(),
+                        })
+
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ scorecard: result, phase: 'completed' })
+                        )
+                        return { success: true, type: 'scorecard', participation: 'none' }
+                    }
+
+                    // Build prompt with evaluation metadata
+                    const { systemPrompt, messages } = buildScorecardPrompt({
+                        problemTitle: problem.title,
+                        problemDescription: problem.description,
+                        history,
+                        submissions: snapshots.map((s) => ({
+                            verdict: s.verdict || (s.snapshotType === 'submit' ? 'UNKNOWN' : 'RUN'),
+                            passedCount: s.passedCount ?? '?',
+                            totalCount: s.totalCount ?? '?',
+                        })),
+                        evaluationMetadata: {
+                            correctAnswer: problem.correctAnswer,
+                            expectedConcepts: problem.expectedConcepts,
+                            evaluationCriteria: problem.evaluationCriteria,
+                        },
+                    })
+
+                    // Get AI response (non-streaming)
+                    const model = selectModel('completed', job.name)
+                    const aiStream = generateInterviewChatResponse({
+                        systemPrompt,
+                        messages,
+                        model,
+                        phase: 'completed',
+                        jobType: job.name,
+                    })
+
+                    let fullResponse = ''
+                    for await (const chunk of aiStream) {
+                        fullResponse += chunk
+                    }
+
+                    // Strict Zod JSON Extraction
+                    console.log('[InterviewAI Worker] Raw AI Response length:', fullResponse.length)
+                    let scorecardData
+
+                    try {
+                        scorecardData = parseScorecard(fullResponse)
+                        console.log(
+                            '[InterviewAI Worker] Parsed scorecard successfully. Overall Score:',
+                            scorecardData.overallScore
+                        )
+                    } catch (validationErr) {
+                        console.warn(
+                            `[InterviewAI Worker] Scorecard Validation Failed: ${validationErr.message}. Attempting ONE correction...`
+                        )
+                        console.warn(
+                            '[InterviewAI Worker] Raw malformed response:',
+                            fullResponse.substring(0, 200) + '...'
+                        )
+
+                        // 1. Retry Strategy
+                        const correctionPrompt = `The JSON you returned was invalid. Return ONLY a valid JSON object matching this schema:
+{
+  "overallScore": number (0-100),
+  "strengths": ["string", ...],
+  "weaknesses": ["string", ...],
+  "recommendation": "hire" | "maybe" | "no_hire",
+  "aiSummary": "string",
+  "communicationScore": number (0-100),
+  "codeQualityScore": number (0-100),
+  "problemSolvingScore": number (0-100),
+  "approachScore": number (0-100)
+}
+Do NOT include markdown, explanations, or extra text. ONLY raw JSON.`
+
+                        messages.push({ role: 'assistant', content: fullResponse })
+                        messages.push({ role: 'user', content: correctionPrompt })
+
+                        const correctionStream = generateInterviewChatResponse({
+                            systemPrompt,
+                            messages,
+                            model,
+                            phase: 'completed',
+                            jobType: job.name,
+                        })
+
+                        let correctionResponse = ''
+                        for await (const chunk of correctionStream) {
+                            correctionResponse += chunk
+                        }
+
+                        // 2. Final Fallback (FAIL-SAFE)
+                        try {
+                            scorecardData = parseScorecard(correctionResponse)
+                            console.log('[InterviewAI Worker] Correction succeeded.')
+                        } catch (fatalErr) {
+                            console.error(
+                                '[InterviewAI Worker] Correction failed too. Triggering Fallback logic.',
+                                fatalErr
+                            )
+                            scorecardData = {
+                                overallScore: 0,
+                                strengths: [],
+                                weaknesses: [],
+                                recommendation: 'maybe',
+                                error: 'parse_failure',
+                            }
+                        }
+                    }
+
+                    // a. Update result document
                     const result = await InterviewResult.findOneAndUpdate(
                         { sessionId },
                         {
                             sessionId,
                             userId,
-                            ...scorecardData,
+                            communicationScore: scorecardData.communicationScore || 0,
+                            codeQualityScore:
+                                scorecardData.codeQualityScore ||
+                                scorecardData.codingPerformanceScore ||
+                                0,
+                            problemSolvingScore: scorecardData.problemSolvingScore || 0,
+                            approachScore:
+                                scorecardData.approachScore ||
+                                scorecardData.technicalAccuracyScore ||
+                                0,
+                            overallScore: scorecardData.overallScore || 0,
+                            aiSummary: scorecardData.aiSummary || '',
+                            strengths: scorecardData.strengths || [],
+                            weaknesses: scorecardData.weaknesses || [],
+                            recommendations: scorecardData.recommendations || [],
+                            recommendation: scorecardData.recommendation || 'maybe',
                             createdAt: new Date(),
+                            error: false, // Ensure error flag is false on success
                         },
-                        { upsify: true, new: true, upsert: true }
+                        { upsert: true, new: true }
                     )
+                    console.log('[InterviewAI Worker] Saved result document:', result._id)
+
+                    // b. Update session document: status -> completed, finalScore -> overallScore
+                    // If the original session status was already set (expired/terminated), keep it.
+                    // Only set to 'completed' if it was generically ending.
+                    const currentSession = await InterviewSession.findById(sessionId)
+                    const finalStatus = ['expired', 'terminated'].includes(currentSession?.status)
+                        ? currentSession.status
+                        : 'completed'
+
+                    await InterviewSession.findByIdAndUpdate(sessionId, {
+                        status: finalStatus,
+                        currentPhase: 'completed',
+                        finalScore: scorecardData.overallScore || 0,
+                        endedAt: new Date(),
+                    })
+
+                    // --- c. Append Persistent Analytics Stats (Idempotent) ---
+                    try {
+                        let qaStartTime, qaEndTime, codingStartTime, codingEndTime
+
+                        history.forEach((m) => {
+                            if (m.phase === 'qa') {
+                                if (!qaStartTime) qaStartTime = m.ts
+                                qaEndTime = m.ts
+                            }
+                            if (m.phase === 'coding') {
+                                if (!codingStartTime) codingStartTime = m.ts
+                                codingEndTime = m.ts
+                            }
+                        })
+
+                        const timeInQaPhase =
+                            qaStartTime && qaEndTime
+                                ? Math.round((new Date(qaEndTime) - new Date(qaStartTime)) / 1000)
+                                : 0
+
+                        const timeInCodingPhase =
+                            codingStartTime && codingEndTime
+                                ? Math.round(
+                                      (new Date(codingEndTime) - new Date(codingStartTime)) / 1000
+                                  )
+                                : 0
+
+                        const finalOverallScore = scorecardData.overallScore || 0
+                        const recommendation =
+                            finalOverallScore >= 80
+                                ? 'hire'
+                                : finalOverallScore >= 60
+                                  ? 'maybe'
+                                  : 'no_hire'
+
+                        const statsPayload = {
+                            userId,
+                            sessionId,
+                            problemId: problem._id,
+                            overallScore: finalOverallScore,
+                            strengths: scorecardData.strengths || [],
+                            weaknesses: scorecardData.weaknesses || [],
+                            recommendation,
+                            timeInQaPhase,
+                            timeInCodingPhase,
+                            completedAt: new Date(),
+                        }
+
+                        await UserInterviewStats.updateOne(
+                            { sessionId },
+                            { $setOnInsert: statsPayload },
+                            { upsert: true }
+                        )
+
+                        // --- 2. Update UserAggregateStats (Idempotent & Cached) ---
+                        // Ensure we only increment once per session, even on worker retries.
+                        const weaknessIncrements = {}
+                        if (scorecardData.weaknesses) {
+                            scorecardData.weaknesses.forEach((w) => {
+                                // Sanitize key: MongoDB Map keys cannot contain . or $
+                                const safeKey = w.replace(/[.$]/g, '_')
+                                weaknessIncrements[`weaknessFrequency.${safeKey}`] = 1
+                            })
+                        }
+
+                        const aggregateUpdate = await UserAggregateStats.updateOne(
+                            { userId, processedSessions: { $ne: sessionId } },
+                            {
+                                $addToSet: { processedSessions: sessionId },
+                                $inc: { totalSessions: 1, ...weaknessIncrements },
+                                $set: { lastUpdated: new Date() },
+                            },
+                            { upsert: true }
+                        )
+
+                        if (aggregateUpdate.modifiedCount === 0 && !aggregateUpdate.upsertedCount) {
+                            console.log(
+                                `[Stats] Skipping idempotent update for session: ${sessionId}`
+                            )
+                        } else {
+                            console.log(
+                                `[Stats] Aggregate stats updated successfully for user ${userId}`
+                            )
+                        }
+
+                        // Invalidate the legacy user stats cache (if still used)
+                        try {
+                            const { redisClient } = await import('@/lib/redis')
+                            await redisClient.del(`user:stats:${userId}`)
+                        } catch (cacheErr) {
+                            console.warn(
+                                '[InterviewAI Worker] Stats cache invalidation failed:',
+                                cacheErr
+                            )
+                        }
+                    } catch (statsErr) {
+                        console.error('[InterviewAI Worker] Stats insert failed:', statsErr)
+                    }
 
                     const pub = await getPublisher()
                     await pub.publish(
                         interviewAIChannel(sessionId),
-                        JSON.stringify({ scorecard: result })
+                        JSON.stringify({ scorecard: result, phase: 'completed' })
                     )
 
                     return { success: true, type: 'scorecard' }
                 } catch (e) {
-                    console.error('[InterviewAI Worker] Scorecard Parse/Save failed:', e)
-                    throw e
+                    console.error('[InterviewAI Worker] Scorecard Generation failed:', e)
+
+                    // Fallback logic: If this was the final attempt, save a dummy result
+                    // to prevent the user from being stuck in "Pending" forever.
+                    if (job.attemptsMade >= 2) {
+                        // 3 attempts total (0, 1, 2)
+                        console.warn(
+                            '[InterviewAI Worker] Final attempt failed. Saving fallback result.'
+                        )
+
+                        const errorResult = await InterviewResult.findOneAndUpdate(
+                            { sessionId },
+                            {
+                                sessionId,
+                                userId,
+                                overallScore: 0,
+                                aiSummary:
+                                    'Evaluation could not be completed at this time due to an AI response error. Please contact support if this persists.',
+                                sections: [],
+                                error: true,
+                                createdAt: new Date(),
+                            },
+                            { upsert: true, new: true }
+                        )
+
+                        await InterviewSession.findByIdAndUpdate(sessionId, {
+                            status: 'completed',
+                            currentPhase: 'completed',
+                            endedAt: new Date(),
+                        })
+
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ scorecard: errorResult, phase: 'completed' })
+                        )
+
+                        return {
+                            success: false,
+                            type: 'scorecard',
+                            error: e.message,
+                            fallbackSaved: true,
+                        }
+                    }
+
+                    throw e // Re-throw to trigger BullMQ retry
                 }
             }
 
-            // ─── Case 2: Chat / Submission Analysis (Streaming) ───────────────
-            // 1. Fetch full context from DB
-            const [session, history, lastSnapshot] = await Promise.all([
+            // ─── Case 2: Conversation / Analysis ─────────────────────────────
+
+            // Handle Auto-greeting trigger
+            const isSystemStart = content === '[SYSTEM_START_INTERVIEW]'
+            const adjustedContent = isSystemStart
+                ? 'Introduce yourself as Alex and start the interview. Explain the rules (Conceptual then Coding) and ask the first conceptual question.'
+                : content
+
+            const [session, history] = await Promise.all([
                 InterviewSession.findById(sessionId).populate('problemIds'),
-                InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(12),
-                InterviewSnapshot.findOne({ sessionId }).sort({ ts: -1 }),
+                InterviewMessage.find({ sessionId }).sort({ ts: 1 }),
             ])
 
-            const problem = session?.problemIds?.[0]
-            if (!problem) {
-                console.warn(
-                    `[InterviewAI Worker] No problem found for session ${sessionId}. Skipping.`
-                )
-                return { skipped: true }
+            if (!session) {
+                console.error('[InterviewAI Worker] Session not found:', sessionId)
+                return { success: false, error: 'Session not found' }
+            }
+            const currentPhase = session.currentPhase
+            const problem = session.problemIds?.[0]
+
+            // Inject evaluation metadata for QA phase
+            const evaluationMetadata =
+                currentPhase === 'qa' || currentPhase === 'intro'
+                    ? {
+                          correctAnswer: problem?.correctAnswer,
+                          expectedConcepts: problem?.expectedConcepts,
+                          evaluationCriteria: problem?.evaluationCriteria,
+                      }
+                    : null
+
+            const lastSnapshot = await InterviewSnapshot.findOne({ sessionId })
+                .sort({ ts: -1 })
+                .lean()
+
+            // --- Background Summarization Context ---
+            let fetchedSummary = null
+            try {
+                const { redisClient } = await import('@/lib/redis')
+                fetchedSummary = await redisClient.get(`session:summary:${sessionId}`)
+            } catch (err) {
+                console.warn('[InterviewAI Worker] Redis summary fetch failed:', err.message)
             }
 
-            // 2. Build a sanitised, phase-aware prompt
-            const currentPhase =
-                job.name === 'process-submission-analysis'
-                    ? 'submitted'
-                    : session.currentPhase || phase || 'coding'
+            // Build prompt — apply sliding window cap when summary context is available
+            const rawHistory = job.name === 'process-chat' ? history.slice(0, -1) : history
+            const cappedHistory = fetchedSummary ? rawHistory.slice(-12) : rawHistory
 
             const { systemPrompt, messages } = buildPrompt({
-                problemTitle: problem.title,
                 problemDescription: problem.description,
                 currentCode: code || lastSnapshot?.code || '',
                 language: lang || lastSnapshot?.language || 'python',
-                phase: currentPhase,
+                phase: job.name === 'process-submission-analysis' ? 'evaluation' : currentPhase,
                 submissionVerdict: submissionVerdict || null,
-                userMessage: content || '',
-                history: history.slice(0, -1), // exclude the just-saved user turn if it was a chat job
+                userMessage: adjustedContent || '',
+                history: cappedHistory,
+                evaluationMetadata,
+                summaryContext: fetchedSummary,
             })
 
             // 3. Stream AI response and publish each chunk to Redis
             const pub = await getPublisher()
             const channel = interviewAIChannel(sessionId)
-            let fullResponse = ''
+            const model = selectModel(session.currentPhase, job.name)
+            const aiStream = generateInterviewChatResponse({
+                systemPrompt,
+                messages,
+                model,
+                phase: session.currentPhase,
+                jobType: job.name,
+            })
 
-            const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+            let fullResponse = ''
+            let emitBuffer = ''
 
             // If it's a submission analysis, we might want to stream it or just send it at once.
             // Following 'interview:ai_analysis' requirement, we'll stream internally and then emit final.
@@ -188,9 +578,47 @@ export function initInterviewAIWorker() {
                 fullResponse += chunk
                 // Only stream for chat messages; for analysis, we'll send the full object at the end
                 if (job.name === 'process-chat') {
-                    await pub.publish(channel, JSON.stringify({ chunk, done: false }))
+                    emitBuffer += chunk
+
+                    let hold = false
+                    const tag = '[INTERVIEW_COMPLETE]'
+                    for (let i = 1; i <= tag.length; i++) {
+                        if (emitBuffer.endsWith(tag.substring(0, i))) {
+                            hold = true
+                            break
+                        }
+                    }
+
+                    if (hold) continue
+
+                    if (emitBuffer.includes(tag)) {
+                        emitBuffer = emitBuffer.replace(tag, '')
+                    }
+
+                    if (emitBuffer) {
+                        await pub.publish(
+                            channel,
+                            JSON.stringify({ chunk: emitBuffer, done: false })
+                        )
+                        emitBuffer = ''
+                    }
                 }
             }
+
+            if (emitBuffer) {
+                emitBuffer = emitBuffer.replace('[INTERVIEW_COMPLETE]', '')
+                if (emitBuffer) {
+                    await pub.publish(channel, JSON.stringify({ chunk: emitBuffer, done: false }))
+                }
+            }
+
+            const isComplete =
+                fullResponse.includes('[INTERVIEW_COMPLETE]') ||
+                fullResponse.includes('<WRAP_UP />')
+            fullResponse = fullResponse
+                .replace(/\[INTERVIEW_COMPLETE\]/g, '')
+                .replace(/<WRAP_UP \/>/g, '')
+                .trim()
 
             // 4. Finalise
             if (job.name === 'process-chat') {
@@ -198,6 +626,12 @@ export function initInterviewAIWorker() {
             } else {
                 // Emission for submission analysis
                 await pub.publish(channel, JSON.stringify({ analysis: fullResponse }))
+            }
+
+            // [PART 3] Check for Wrap-up signal
+            if (isComplete) {
+                const { transitionPhase } = await import('./interviewSession.service')
+                await transitionPhase(sessionId, 'completed')
             }
 
             // 5. Persist the full response to DB
@@ -209,12 +643,143 @@ export function initInterviewAIWorker() {
                 ts: new Date(),
             })
 
+            // --- Background Summarization Trigger ---
+            try {
+                const currentMessageCount = await InterviewMessage.countDocuments({ sessionId })
+
+                // Trigger check: every 10 messages after the initial 20
+                if (currentMessageCount > 20 && currentMessageCount % 10 === 0) {
+                    const { redisClient } = await import('@/lib/redis')
+                    const cursorKey = `session:summary:cursor:${sessionId}`
+                    const lockKey = `session:summary:lock:${sessionId}`
+
+                    // 1. Get current progress cursor
+                    const cursorId = await redisClient.get(cursorKey)
+
+                    // 2. Find unsummarized messages after the cursor
+                    const query = { sessionId }
+                    if (cursorId) {
+                        query._id = { $gt: cursorId }
+                    }
+
+                    // Get the first 10 unsummarized messages to determine the range
+                    const unsummarized = await InterviewMessage.find(query)
+                        .sort({ _id: 1 })
+                        .limit(10)
+                        .select('_id')
+                        .lean()
+
+                    // Only proceed if we have a significant batch (at least 10 messages)
+                    if (unsummarized.length >= 10) {
+                        const fromId = unsummarized[0]._id
+                        const toId = unsummarized[unsummarized.length - 1]._id
+
+                        // 3. Acquire Safe Mutex (10-minute TTL to handle extreme LLM latency)
+                        const acquired = await redisClient.set(lockKey, '1', { NX: true, EX: 600 })
+                        if (acquired) {
+                            const { getInterviewSummarizeQueue } = await import('@/lib/queue')
+                            const summarizeQueue = getInterviewSummarizeQueue()
+
+                            await summarizeQueue.add(
+                                'summarize',
+                                { sessionId, fromId, toId },
+                                { jobId: `summarize:${sessionId}:${toId}` } // Job-level idempotency
+                            )
+
+                            console.log(
+                                `[InterviewAI Worker] Mutex acquired. Enqueued summarization for ${sessionId} [${fromId} -> ${toId}]`
+                            )
+                        } else {
+                            console.log(
+                                `[InterviewAI Worker] Summarization lock active for ${sessionId}, skipping enqueue.`
+                            )
+                        }
+                    }
+                }
+            } catch (sumErr) {
+                console.error('[InterviewAI Worker] Failed to enqueue summarization:', sumErr)
+            }
+
             // 6. Update session phase if it was a submission
-            if (
-                job.name === 'process-submission-analysis' &&
-                session.currentPhase !== 'submitted'
-            ) {
-                await InterviewSession.findByIdAndUpdate(sessionId, { currentPhase: 'submitted' })
+            if (job.name === 'process-submission-analysis') {
+                // Advance to evaluation (feedback) phase using deterministic state machine
+                const { requestPhaseTransition } = await import('./interviewPhase.service')
+                const { redisClient } = await import('@/lib/redis')
+
+                const result = await requestPhaseTransition(
+                    sessionId,
+                    'coding',
+                    'evaluation',
+                    redisClient
+                )
+
+                if (!result.success) {
+                    console.warn(
+                        `[InterviewAI Worker] Shielded invalid phase transition coding->evaluation: ${result.reason}`
+                    )
+                    return { success: false, reason: result.reason }
+                }
+
+                // b. Emit phase change to client
+                const pub = await getPublisher()
+                await pub.publish(
+                    interviewAIChannel(sessionId),
+                    JSON.stringify({ phase: 'evaluation' })
+                )
+            }
+
+            // 7. Handle Interactive Phase Transitions (Intro -> QA -> Coding)
+            if (job.name === 'process-chat') {
+                const userMessages = history.filter((m) => m.role === 'user')
+                const { requestPhaseTransition } = await import('./interviewPhase.service')
+                const { redisClient } = await import('@/lib/redis')
+
+                if (session.currentPhase === 'intro') {
+                    // Move to QA after the first user greeting
+                    const result = await requestPhaseTransition(
+                        sessionId,
+                        'intro',
+                        'qa',
+                        redisClient
+                    )
+
+                    if (!result.success) {
+                        console.warn(
+                            `[InterviewAI Worker] Shielded invalid phase transition intro->qa: ${result.reason}`
+                        )
+                        return { success: false, reason: result.reason }
+                    }
+
+                    const pub = await getPublisher()
+                    await pub.publish(
+                        interviewAIChannel(sessionId),
+                        JSON.stringify({ phase: 'qa' })
+                    )
+                } else if (session.currentPhase === 'qa') {
+                    const qaCount = userMessages.filter((m) => m.phase === 'qa').length
+                    if (qaCount >= 2) {
+                        // Move to coding after 2 QA turns
+                        const result = await requestPhaseTransition(
+                            sessionId,
+                            'qa',
+                            'coding',
+                            redisClient
+                        )
+
+                        if (!result.success) {
+                            console.warn(
+                                `[InterviewAI Worker] Shielded invalid phase transition qa->coding: ${result.reason}`
+                            )
+                            return { success: false, reason: result.reason }
+                        }
+
+                        const pub = await getPublisher()
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ phase: 'coding' })
+                        )
+                    }
+                }
             }
 
             console.log(
@@ -228,26 +793,40 @@ export function initInterviewAIWorker() {
         }
     )
 
-    worker.on('failed', (job, err) => {
-        const sessionId = job?.data?.sessionId
-        console.error(
-            `[InterviewAI Worker] Job ${job?.id} failed for session ${sessionId}:`,
-            err.message
-        )
+    worker.on('failed', async (job, err) => {
+        const isFinalAttempt = job.attemptsMade >= job.opts.attempts
 
-        // Best-effort: publish an error chunk so the UI doesn't hang
-        if (sessionId) {
-            getPublisher()
-                .then((pub) =>
-                    pub.publish(
-                        interviewAIChannel(sessionId),
-                        JSON.stringify({
-                            chunk: 'Sorry, I encountered an error. Please try again.',
-                            done: true,
-                        })
-                    )
-                )
-                .catch(() => {})
+        if (!isFinalAttempt) return // Silently retry transient failures
+
+        // Idempotency Protection: Prevent duplicate error emissions on stray worker restarts
+        if (job.data.__errorEmitted) return
+        await job.updateData({ ...job.data, __errorEmitted: true })
+
+        const sessionId = job?.data?.sessionId
+        if (!sessionId) return
+
+        console.error('[AI Worker Final Failure]', {
+            jobId: job.id,
+            sessionId,
+            attempts: job.attemptsMade,
+            error: err.message,
+        })
+
+        const payload = {
+            type: 'error',
+            code: 'AI_UNAVAILABLE',
+            message: 'Alex is having trouble responding. Please resend your message.',
+            sessionId,
+            jobId: job.id,
+            attemptsMade: job.attemptsMade,
+            timestamp: Date.now(),
+        }
+
+        try {
+            const pub = await getPublisher()
+            await pub.publish(interviewAIChannel(sessionId), JSON.stringify(payload))
+        } catch (pubErr) {
+            console.error('[AI Worker] Failed to publish final failure event:', pubErr)
         }
     })
 

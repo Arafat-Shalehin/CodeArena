@@ -1,4 +1,3 @@
-import mongoose from 'mongoose'
 import { Submission } from '@/models/Submission.models'
 import { User } from '@/models/User.models'
 import { Problem } from '@/models/Problem.models'
@@ -11,7 +10,24 @@ import { redisClient } from '@/lib/redis'
  * Create a new submission
  */
 export async function createSubmission(data) {
-    const { userId, problemId, code, language, contestId, type = 'submit', customInput } = data
+    const {
+        userId,
+        problemId,
+        code,
+        language,
+        contestId,
+        type = 'submit',
+        customInput,
+        cachedResult,
+    } = data
+
+    console.log('[SERVICE] createSubmission called:', {
+        userId,
+        problemId,
+        type,
+        codeLength: code?.length,
+        cachedResult: !!cachedResult,
+    })
 
     if (!userId || !problemId) {
         throw new Error('User and problem are required.')
@@ -21,135 +37,206 @@ export async function createSubmission(data) {
         throw new Error('Code and language are required.')
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    // 1️⃣ Rate limit (Redis-based throttle: 3 sec cooldown) — fail fast before any DB calls
+    if (type === 'submit' && redisClient.isOpen) {
+        const rateLimitKey = `ratelimit:submit:${userId}`
+        const isThrottled = await redisClient.get(rateLimitKey)
 
-    try {
-        // 1️⃣ Validate user
-        const user = await User.findById(userId).session(session)
-        if (!user) {
-            throw new Error('User not found.')
+        if (isThrottled) {
+            throw new Error('Submission rate limit exceeded. Please wait.')
         }
 
-        // 2️⃣ Validate problem
-        const problem = await Problem.findById(problemId).session(session)
-        if (!problem) {
-            throw new Error('Problem not found.')
+        // Set throttle for 3 seconds
+        await redisClient.set(rateLimitKey, '1', { EX: 3 })
+    } else if (type === 'submit') {
+        // Fallback to basic DB check if Redis is down
+        const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
+            .sort({ createdAt: -1 })
+            .lean()
+
+        if (lastSubmission && Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000) {
+            throw new Error('Submission rate limit exceeded. Please wait.')
+        }
+    }
+
+    // 2️⃣ Validate user & problem — reads outside transaction (no consistency requirement)
+    const [user, problem] = await Promise.all([
+        User.findById(userId).lean(),
+        Problem.findById(problemId).lean(),
+    ])
+    if (!user) throw new Error('User not found.')
+    console.log('[SERVICE] User validated:', userId)
+    if (!problem) throw new Error('Problem not found.')
+    console.log('[SERVICE] Problem validated:', problemId)
+
+    // 3️⃣ Contest validation (if provided) — reads outside transaction
+    if (contestId && type === 'submit') {
+        const contest = await Contest.findById(contestId).lean()
+        if (!contest) {
+            throw new Error('Contest not found.')
         }
 
-        // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
-        if (type === 'submit' && redisClient.isOpen) {
-            const rateLimitKey = `ratelimit:submit:${userId}`
-            const isThrottled = await redisClient.get(rateLimitKey)
+        const now = new Date()
 
-            if (isThrottled) {
-                throw new Error('Submission rate limit exceeded. Please wait.')
-            }
-
-            // Set throttle for 3 seconds
-            await redisClient.set(rateLimitKey, '1', { EX: 3 })
-        } else if (type === 'submit') {
-            // Fallback to basic DB check if Redis is down
-            const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
-                .sort({ createdAt: -1 })
-                .session(session)
-
-            if (
-                lastSubmission &&
-                Date.now() - new Date(lastSubmission.createdAt).getTime() < 3000
-            ) {
-                throw new Error('Submission rate limit exceeded. Please wait.')
-            }
+        if (contest.startTime && now < contest.startTime) {
+            throw new Error('Contest has not started yet.')
         }
 
-        // 4️⃣ Contest validation (if provided)
-        if (contestId && type === 'submit') {
-            const contest = await Contest.findById(contestId).session(session)
-            if (!contest) {
-                throw new Error('Contest not found.')
-            }
-
-            const now = new Date()
-
-            if (contest.startTime && now < contest.startTime) {
-                throw new Error('Contest has not started yet.')
-            }
-
-            if (contest.endTime && now > contest.endTime) {
-                throw new Error('Contest has already ended.')
-            }
-
-            // Check participant registration via ContestParticipant collection
-            const isRegistered = await ContestParticipant.findOne({
-                contestId,
-                userId,
-            }).session(session)
-
-            if (!isRegistered) {
-                throw new Error('User is not registered for this contest.')
-            }
+        if (contest.endTime && now > contest.endTime) {
+            throw new Error('Contest has already ended.')
         }
 
-        // Check for code size limit
-        const codeSizeKB = Buffer.byteLength(code, 'utf8') / 1024
-        if (codeSizeKB > problem.codeSizeLimit) {
-            return {
-                status: 400,
-                message: `Code size (${codeSizeKB.toFixed(1)} KB) exceeds the limit (${problem.codeSizeLimit} KB)`,
-            }
+        // Check participant registration via ContestParticipant collection
+        const isRegistered = await ContestParticipant.findOne({ contestId, userId }).lean()
+
+        if (!isRegistered) {
+            throw new Error('User is not registered for this contest.')
         }
+    }
 
-        // 5️⃣ Create submission
-        const submission = await Submission.create(
-            [
-                {
-                    userId,
-                    problemId,
-                    contestId,
-                    type,
-                    code,
-                    customInput,
-                    language,
-                    status: 'queued',
-                },
-            ],
-            { session }
-        )
+    // Check for code size limit
+    const codeSizeKB = Buffer.byteLength(code, 'utf8') / 1024
+    if (codeSizeKB > problem.codeSizeLimit) {
+        return {
+            status: 400,
+            message: `Code size (${codeSizeKB.toFixed(1)} KB) exceeds the limit (${problem.codeSizeLimit} KB)`,
+        }
+    }
 
-        await session.commitTransaction()
-        session.endSession()
+    // OPTIMIZED: Removed MongoDB transaction - single document insert is atomic by default
+    // This saves ~200-400ms of session/transaction overhead
+    console.log('[SERVICE] Creating submission (no transaction - single doc is atomic)...')
 
-        // 7️⃣ Push to Message Queue (BullMQ)
+    // 5️⃣ Create submission
+    // If cachedResult is provided, use it directly (skip queue)
+    const submissionData = {
+        userId,
+        problemId,
+        contestId,
+        type,
+        code,
+        customInput,
+        language,
+    }
+
+    if (cachedResult) {
+        console.log('[SERVICE] 🚀 Using cached result, skipping queue processing...')
+        submissionData.status = 'completed'
+        submissionData.verdict = cachedResult.verdict
+        submissionData.executionTime = cachedResult.executionTime || 0
+        submissionData.memoryUsed = cachedResult.memoryUsed || 0
+        submissionData.error = cachedResult.error || ''
+    } else {
+        submissionData.status = 'queued'
+    }
+
+    const submission = await Submission.create(submissionData)
+    console.log('[SERVICE] Submission saved to DB:', submission._id)
+
+    // 7️⃣ Push to Message Queue (BullMQ) - ONLY if not using cached result
+    if (!cachedResult) {
         try {
             const queue = getSubmissionQueue()
+            console.log('[SERVICE] Adding job to submission-queue...')
             await queue.add('process-submission', {
-                submissionId: submission[0]._id,
+                submissionId: submission._id,
             })
+            console.log('[SERVICE] Job added to queue successfully')
 
-            // 8️⃣ Publish event for real-time updates
+            // 8️⃣ Publish SINGLE event for real-time updates (merged queued + status)
+            // OPTIMIZED: Removed queue.getWaitingCount() call (~50-100ms) and merged 2 Redis messages into 1
             if (redisClient.isOpen) {
+                console.log('[SERVICE] Publishing submission_queued event...')
                 redisClient
                     .publish(
                         'submission_updates',
                         JSON.stringify({
                             type: 'submission_queued',
+                            event: 'SUBMISSION_STATUS',
                             userId,
-                            submissionId: submission[0]._id,
+                            submissionId: submission._id,
                             problemId,
+                            stage: 'queued',
+                            status: 'queued',
+                            verdict: 'PENDING',
+                            progress: 0,
+                            message: 'Queued. Starting shortly...',
+                            current: 0,
+                            total: Number(problem?.testCaseCount) || 0,
                         })
                     )
                     .catch(console.error)
             }
         } catch (queueError) {
-            console.error('Failed to add submission to queue:', queueError)
-        }
+            console.error('[SERVICE] Failed to add submission to queue:', queueError)
 
-        return submission[0]
-    } catch (error) {
-        await session.abortTransaction()
-        session.endSession()
-        throw error
+            const queueFailureMessage = `FAILED_TO_QUEUE: ${queueError?.message || 'Unknown queue error'}`
+
+            // Ensure submission is not left in pending forever if enqueue fails.
+            const failedSubmission = await Submission.findByIdAndUpdate(
+                submission._id,
+                {
+                    status: 'error',
+                    verdict: 'SYSTEM_ERROR',
+                    error: queueFailureMessage,
+                },
+                { new: true }
+            )
+
+            if (redisClient.isOpen) {
+                redisClient
+                    .publish(
+                        'submission_updates',
+                        JSON.stringify({
+                            type: 'submission_failed_to_queue',
+                            event: 'SUBMISSION_STATUS',
+                            userId,
+                            submissionId: submission._id,
+                            problemId,
+                            stage: 'queue_failed',
+                            status: 'error',
+                            verdict: 'SYSTEM_ERROR',
+                            progress: 0,
+                            message: 'Failed to queue submission. Please retry.',
+                            error: queueFailureMessage,
+                            current: 0,
+                            total: Number(problem?.testCaseCount) || 0,
+                        })
+                    )
+                    .catch(console.error)
+            }
+
+            console.warn(
+                '[SERVICE] Submission marked as error due to queue failure:',
+                submission._id
+            )
+            return failedSubmission || submission
+        }
+    } else {
+        // 🚀 CACHED RESULT: Publish submission_evaluated event immediately
+        console.log('[SERVICE] 🚀 Publishing submission_evaluated event (cached result)...')
+        if (redisClient.isOpen) {
+            redisClient
+                .publish(
+                    'submission_updates',
+                    JSON.stringify({
+                        type: 'submission_evaluated',
+                        userId,
+                        submissionId: submission._id,
+                        problemId,
+                        status: 'completed',
+                        verdict: cachedResult.verdict,
+                        executionTime: cachedResult.executionTime || 0,
+                        memoryUsed: cachedResult.memoryUsed || 0,
+                        error: cachedResult.error || '',
+                    })
+                )
+                .catch(console.error)
+        }
     }
+
+    console.log('[SERVICE] Returning submission:', submission._id)
+    return submission
 }
 
 /**

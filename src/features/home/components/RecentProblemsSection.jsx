@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
@@ -8,9 +7,11 @@ import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
+import PropTypes from 'prop-types'
+import { useRecentProblems } from '@/hooks/useRecentProblems'
 
 // Feature Components
-import ProblemCard from '@/features/problems/components/ProblemCard'
+import ProblemCard from '@/shared/components/ProblemCard'
 
 // Data
 import { normalizeDifficulty } from '@/features/problems/data/problems.data'
@@ -22,26 +23,15 @@ import { formatAcceptanceRate } from '@/lib/utils'
  */
 export default function RecentProblemsSection() {
     const shouldReduceMotion = useSafeReducedMotion()
-    const [problems, setProblems] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
+    const { problems, isLoading, error } = useRecentProblems(3)
 
-    useEffect(() => {
-        async function fetchRecentProblems() {
-            try {
-                const response = await fetch('/api/problems?limit=3')
-                const json = await response.json()
-                if (json.success) {
-                    setProblems(json.data)
-                }
-            } catch (error) {
-                console.error('Failed to fetch recent problems:', error)
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
-        fetchRecentProblems()
-    }, [])
+    if (error) {
+        return (
+            <div className="text-error py-12 text-center">
+                Failed to load recent problems. Please try again later.
+            </div>
+        )
+    }
 
     return (
         <section className="mx-auto max-w-7xl px-4 py-12">
@@ -51,7 +41,7 @@ export default function RecentProblemsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
-                className="border-border mb-16 border-b pb-12 text-center"
+                className="mb-16 pb-12 text-center"
             >
                 <div className="mx-auto max-w-2xl">
                     <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
@@ -70,7 +60,7 @@ export default function RecentProblemsSection() {
                     Array.from({ length: 3 }).map((_, i) => (
                         <div
                             key={i}
-                            className="bg-bg-subtle border-border h-[320px] w-full animate-pulse rounded-3xl border"
+                            className="bg-bg-subtle h-[320px] w-full animate-pulse rounded-2xl border-none"
                         />
                     ))
                 ) : problems.length > 0 ? (
@@ -83,16 +73,16 @@ export default function RecentProblemsSection() {
                             transition={{ delay: shouldReduceMotion ? 0 : idx * 0.1 }}
                         >
                             <ProblemCard
-                                title={problem.title}
-                                difficulty={normalizeDifficulty(problem.difficulty)}
-                                solvedCount={problem.acceptedSubmissions || 0}
-                                tags={problem.tags || []}
-                                successRate={formatAcceptanceRate(problem.acceptanceRate)}
+                                problem={{
+                                    ...problem,
+                                    difficulty: normalizeDifficulty(problem.difficulty),
+                                }}
+                                variant="detailed"
                             />
                         </motion.div>
                     ))
                 ) : (
-                    <div className="col-span-full py-12 text-center text-zinc-400">
+                    <div className="text-text-muted col-span-full py-12 text-center">
                         No problems found.
                     </div>
                 )}
@@ -108,9 +98,9 @@ export default function RecentProblemsSection() {
             >
                 <Link href="/problems">
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="lg"
-                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group h-14 min-w-[200px] rounded-full border-zinc-200 transition-all duration-300 hover:bg-emerald-50"
+                        className="btn-ghost text-accent group h-14 min-w-[200px] rounded-2xl transition-all duration-300"
                     >
                         Explore Study Plans
                         <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
