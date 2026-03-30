@@ -603,15 +603,40 @@ export default function ScorecardView({ sessionId }) {
                         margin: 1cm;
                         size: A4;
                     }
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
                     body {
                         background: white !important;
                         color: black !important;
+                    }
+                    /* Force visibility for all sections and handle Framer Motion initial states */
+                    section,
+                    div,
+                    p,
+                    span {
+                        opacity: 1 !important;
+                        transform: none !important;
+                        visibility: visible !important;
                     }
                     .matte-surface {
                         background: white !important;
                         border: 1px solid #e2e8f0 !important;
                         box-shadow: none !important;
                         backdrop-filter: none !important;
+                        height: auto !important;
+                        min-height: 0 !important;
+                        max-height: none !important;
+                        overflow: visible !important;
+                    }
+                    /* Ensure containers with fixed heights/scroll expand fully */
+                    .lg\:h-\[450px\],
+                    .custom-scrollbar,
+                    .overflow-y-auto {
+                        height: auto !important;
+                        max-height: none !important;
+                        overflow: visible !important;
                     }
                     .text-text-primary {
                         color: #0f172a !important;
@@ -623,7 +648,7 @@ export default function ScorecardView({ sessionId }) {
                     .border-border {
                         border-color: #e2e8f0 !important;
                     }
-                    .print\\:hidden {
+                    .print\:hidden {
                         display: none !important;
                     }
                     button {

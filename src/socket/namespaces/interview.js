@@ -248,12 +248,17 @@ export function registerInterviewNamespace(io) {
 
         // --- Intro Phase Sim-Streaming (Execution optimization) ---
         // If this is a fresh session (only 1 message: the intro), sim-stream it to trigger UI animations
+        // GUARD: to avoid double prompts on re-connections, we only sim-stream if the intro is "fresh"
+        // (< 30s) AND hasn't been acknowledged.
         try {
             const messages = await InterviewMessage.find({ sessionId }).sort({ ts: 1 }).limit(2)
+            const isFresh = messages[0] && Date.now() - new Date(messages[0].ts).getTime() < 30000
+
             if (
                 messages.length === 1 &&
                 messages[0].phase === 'intro' &&
-                messages[0].role === 'ai'
+                messages[0].role === 'ai' &&
+                isFresh
             ) {
                 const greeting = messages[0].content
                 socket.emit('interview:ai_stream_chunk', { chunk: greeting, done: false })

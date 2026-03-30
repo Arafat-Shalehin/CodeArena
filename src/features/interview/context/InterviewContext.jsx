@@ -25,7 +25,19 @@ export function InterviewProvider({
     const [wsTokenState, setWsTokenState] = useState(initialWsToken)
     const [durationState, setDurationState] = useState(initialDurationMins)
     const [startedAtState, setStartedAtState] = useState(initialStartedAt)
-    const [messages, setMessages] = useState(initialMessages)
+    const [messages, setMessages] = useState(() => {
+        // If it's a fresh session with only the AI intro, mark it as streaming:true
+        // so that the incoming socket 'sim-stream' chunks attach to this message
+        // instead of creating a duplicate.
+        if (
+            initialMessages?.length === 1 &&
+            initialMessages[0].role === 'ai' &&
+            initialMessages[0].phase === 'intro'
+        ) {
+            return [{ ...initialMessages[0], streaming: true }]
+        }
+        return initialMessages
+    })
     const [code, setCode] = useState(initialProblem?.starterCode?.['python'] || '')
     const [language, setLanguage] = useState('python')
     const [sessionStatus, setSessionStatus] = useState('active')
@@ -95,9 +107,27 @@ export function InterviewProvider({
                 setIsAiTyping(true)
                 setMessages((prev) => {
                     const last = prev[prev.length - 1]
+
+                    // 1. If last message is already an AI message being streamed, append to it
                     if (last && last.role === 'ai' && last.streaming) {
+                        // Idempotency check: if the chunk is identical to the current content (likely a full sim-stream), skip appending
+                        if (last.content === chunk) return prev
                         return [...prev.slice(0, -1), { ...last, content: last.content + chunk }]
                     }
+
+                    // 2. Specialized Check: If the last message is a static AI intro (from initial state),
+                    // move it to streaming mode instead of appending a duplicate.
+                    if (
+                        last &&
+                        last.role === 'ai' &&
+                        !last.streaming &&
+                        last.phase === 'intro' &&
+                        (last.content === chunk || chunk.startsWith(last.content))
+                    ) {
+                        return [...prev.slice(0, -1), { ...last, streaming: true }]
+                    }
+
+                    // 3. Fallback: create a new AI message and start streaming
                     const isErr = chunk.includes('Sorry, I')
                     return [
                         ...prev,
