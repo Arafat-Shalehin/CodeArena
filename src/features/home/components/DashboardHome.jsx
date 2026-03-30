@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useDeferredValue, startTransition } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -60,6 +60,7 @@ export default function DashboardHome({ user: initialUser }) {
     const [selectedFeedItem, setSelectedFeedItem] = useState(null)
     const [isFeedItemModalOpen, setIsFeedItemModalOpen] = useState(false)
     const [modalCommentsOpen, setModalCommentsOpen] = useState(false)
+    const deferredFeed = useDeferredValue(feed)
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -73,7 +74,9 @@ export default function DashboardHome({ user: initialUser }) {
                 const sidebarObj = await sidebarRes.json()
 
                 if (feedData.success) {
-                    setFeed(feedData.data)
+                    startTransition(() => {
+                        setFeed(feedData.data)
+                    })
                     setHasMore(feedData.pagination?.hasMore || false)
                     setNextCursor(feedData.pagination?.nextCursor || null)
                 }
@@ -98,7 +101,9 @@ export default function DashboardHome({ user: initialUser }) {
             )
             const data = await res.json()
             if (data.success) {
-                setFeed((prev) => [...prev, ...data.data])
+                startTransition(() => {
+                    setFeed((prev) => [...prev, ...data.data])
+                })
                 setHasMore(data.pagination?.hasMore || false)
                 setNextCursor(data.pagination?.nextCursor || null)
             }
@@ -147,21 +152,23 @@ export default function DashboardHome({ user: initialUser }) {
     const handleFeedItemStatsChange = useCallback((itemId, patch) => {
         if (!itemId || !patch) return
 
-        setFeed((prev) =>
-            prev.map((entry) => {
-                const currentId = String(entry.id || entry._id)
-                if (currentId !== String(itemId)) return entry
+        startTransition(() => {
+            setFeed((prev) =>
+                prev.map((entry) => {
+                    const currentId = String(entry.id || entry._id)
+                    if (currentId !== String(itemId)) return entry
 
-                return {
-                    ...entry,
-                    ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
-                    ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
-                    ...(patch.commentCount !== undefined
-                        ? { commentCount: patch.commentCount }
-                        : {}),
-                }
-            })
-        )
+                    return {
+                        ...entry,
+                        ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
+                        ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
+                        ...(patch.commentCount !== undefined
+                            ? { commentCount: patch.commentCount }
+                            : {}),
+                    }
+                })
+            )
+        })
 
         setSelectedFeedItem((prev) => {
             if (!prev) return prev
@@ -172,9 +179,7 @@ export default function DashboardHome({ user: initialUser }) {
                 ...prev,
                 ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
                 ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
-                ...(patch.commentCount !== undefined
-                    ? { commentCount: patch.commentCount }
-                    : {}),
+                ...(patch.commentCount !== undefined ? { commentCount: patch.commentCount } : {}),
             }
         })
     }, [])
@@ -204,7 +209,9 @@ export default function DashboardHome({ user: initialUser }) {
                     likes: 0,
                     hasLiked: false,
                 }
-                setFeed([newPost, ...feed])
+                startTransition(() => {
+                    setFeed((prev) => [newPost, ...prev])
+                })
                 setPostContent('')
                 setIsPostModalOpen(false)
             }
@@ -394,9 +401,9 @@ export default function DashboardHome({ user: initialUser }) {
                                 <div className="bg-bg-muted mx-auto h-4 w-48 rounded"></div>
                             </div>
                         </div>
-                    ) : feed?.length > 0 ? (
+                    ) : deferredFeed?.length > 0 ? (
                         <>
-                            {feed.map((item) => (
+                            {deferredFeed.map((item) => (
                                 <FeedItem
                                     key={item._id}
                                     item={item}
