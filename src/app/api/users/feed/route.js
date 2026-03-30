@@ -4,65 +4,53 @@ import { Submission } from '@/models/Submission.models'
 import { User } from '@/models/User.models'
 import { protect } from '@/middlewares/auth.middleware'
 import { Problem } from '@/models/Problem.models'
+
 import { Post } from '@/models/Post.models'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * GET /api/users/feed
- * Returns a merged, chronologically sorted feed of accepted submissions + posts
- * from followed users + self.
- *
- * Query params:
- *   ?cursor=<ISO date string>  — fetch items older than this date
- *   ?limit=<number>            — items per page (default 15, max 30)
- */
 export async function GET(req) {
-    const start = Date.now()
     try {
         await dbConnect()
-
-        const { searchParams } = new URL(req.url)
-        const cursor = searchParams.get('cursor')
-        const parsedLimit = Number.parseInt(searchParams.get('limit') || '15', 10)
-        const limit = Number.isNaN(parsedLimit) ? 15 : Math.min(Math.max(parsedLimit, 1), 30)
 
         // 1. Authenticate user
         const user = await protect(req)
         if (!user || (!user.following && !user.followers)) {
+            // Need the full user document with 'following' array populated
             const fullUser = await User.findById(user._id).select('following').lean()
             user.following = fullUser?.following || []
         }
 
+        // We also want to see our own posts in the feed
         const feedIds = [...(user.following || []), user._id]
 
-        // Build date filter for cursor-based pagination
-        const dateFilter = cursor ? { createdAt: { $lt: new Date(cursor) } } : {}
-
-        // 2. Fetch submissions (extra 1 for hasMore detection)
+        // 2. Fetch recent successful submissions from followed users + self
         const recentSubmissionsPromise = Submission.find({
             userId: { $in: feedIds },
             verdict: { $in: ['accepted', 'ACCEPTED'] },
-            ...dateFilter,
         })
-            .select(
-                '_id userId problemId language executionTime memoryUsed likes comments createdAt'
-            )
             .sort({ createdAt: -1 })
-            .limit(limit + 1)
-            .populate({ path: 'userId', select: 'name avatarSeed' })
-            .populate({ path: 'problemId', select: 'title difficulty' })
+            .limit(20)
+            .populate({
+                path: 'userId',
+                select: 'name avatarSeed',
+            })
+            .populate({
+                path: 'problemId',
+                select: 'title difficulty',
+            })
             .lean()
 
-        // 3. Fetch posts
+        // 3. Fetch recent posts from followed users + self
         const recentPostsPromise = Post.find({
             userId: { $in: feedIds },
-            ...dateFilter,
         })
-            .select('_id userId content likes comments createdAt')
             .sort({ createdAt: -1 })
-            .limit(limit + 1)
-            .populate({ path: 'userId', select: 'name avatarSeed' })
+            .limit(10)
+            .populate({
+                path: 'userId',
+                select: 'name avatarSeed',
+            })
             .lean()
 
         const [recentSubmissions, recentPosts] = await Promise.all([
@@ -70,7 +58,7 @@ export async function GET(req) {
             recentPostsPromise,
         ])
 
-        // 4. Format items
+        // 4. Format and merge items
         const formattedSubmissions = recentSubmissions
             .filter((sub) => sub.userId && sub.problemId)
             .map((sub) => ({
@@ -94,7 +82,6 @@ export async function GET(req) {
                 hasLiked: (sub.likes || []).some(
                     (id) => id && id.toString() === user._id.toString()
                 ),
-                commentCount: sub.comments?.length || 0,
                 createdAt: sub.createdAt,
             }))
 
@@ -110,30 +97,15 @@ export async function GET(req) {
             content: post.content,
             likes: post.likes?.length || 0,
             hasLiked: (post.likes || []).some((id) => id && id.toString() === user._id.toString()),
-            commentCount: post.comments?.length || 0,
             createdAt: post.createdAt,
         }))
 
-        // 5. Merge, sort, slice
-        const allItems = [...formattedSubmissions, ...formattedPosts].sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        )
+        const feed = [...formattedSubmissions, formattedPosts]
+            .flat()
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 30)
 
-        const hasMore = allItems.length > limit
-        const feed = allItems.slice(0, limit)
-        const nextCursor = feed.length > 0 ? feed[feed.length - 1].createdAt : null
-
-        const res = NextResponse.json({
-            success: true,
-            data: feed,
-            pagination: {
-                hasMore,
-                nextCursor,
-                count: feed.length,
-            },
-        })
-        res.headers.set('x-response-time-ms', String(Date.now() - start))
-        return res
+        return NextResponse.json({ success: true, data: feed })
     } catch (error) {
         console.error('Feed error:', error)
         return NextResponse.json({ success: false, message: 'Server Error' }, { status: 500 })

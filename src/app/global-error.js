@@ -1,37 +1,12 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { useEffect } from 'react'
-
-const CHUNK_RELOAD_ONCE_KEY = 'codearena_chunk_reload_once'
-
-function isChunkLoadError(error) {
-    const message = String(error?.message || '')
-    return (
-        message.includes('ChunkLoadError') ||
-        message.includes('Loading chunk') ||
-        message.includes('Failed to load chunk') ||
-        message.includes('/_next/static/chunks/')
-    )
-}
 
 /**
  * Global Error Boundary
  * Catch-all for unhandled errors in the application.
  */
 export default function GlobalError({ error, reset }) {
-    const chunkError = isChunkLoadError(error)
-
-    useEffect(() => {
-        if (!chunkError || typeof window === 'undefined') return
-
-        const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_ONCE_KEY) === '1'
-        if (alreadyReloaded) return
-
-        sessionStorage.setItem(CHUNK_RELOAD_ONCE_KEY, '1')
-        window.location.reload()
-    }, [chunkError])
-
     return (
         <html>
             <body className="bg-bg-page site-gradient flex min-h-screen items-center justify-center p-4">
@@ -49,17 +24,7 @@ export default function GlobalError({ error, reset }) {
                         {error.message || 'Unknown error occurred'}
                     </div>
 
-                    <Button
-                        onClick={() => {
-                            if (chunkError && typeof window !== 'undefined') {
-                                sessionStorage.removeItem(CHUNK_RELOAD_ONCE_KEY)
-                                window.location.reload()
-                                return
-                            }
-                            reset()
-                        }}
-                        className="w-full"
-                    >
+                    <Button onClick={() => reset()} className="w-full">
                         Try again
                     </Button>
                 </div>

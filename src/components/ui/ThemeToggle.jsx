@@ -70,6 +70,7 @@ export function ThemeToggle({ className }) {
                         />
                     )}
                 </div>
+
                 {/* Static Background Icons */}
                 <div className="z-0 flex h-6 w-6 items-center justify-center">
                     {!isDark && (
@@ -78,7 +79,7 @@ export function ThemeToggle({ className }) {
                 </div>
                 <div className="z-0 flex h-6 w-6 items-center justify-center">
                     {isDark && (
-                        <Sun className="h-3.5 w-3.5 text-amber-600 opacity-50" strokeWidth={1.5} />
+                        <Sun className="h-3.5 w-3.5 text-zinc-600 opacity-40" strokeWidth={1.5} />
                     )}
                 </div>
             </div>

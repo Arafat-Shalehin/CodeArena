@@ -60,7 +60,6 @@ export const SUBMISSION_STATUS = {
     MEMORY_LIMIT_EXCEEDED: { name: 'Memory Limit Exceeded', color: 'orange' },
     RUNTIME_ERROR: { name: 'Runtime Error', color: 'red' },
     COMPILATION_ERROR: { name: 'Compilation Error', color: 'red' },
-    FEATURE_UNSUPPORTED_IN_CLOUD: { name: 'Feature Unsupported In Cloud', color: 'purple' },
     SYSTEM_ERROR: { name: 'System Error', color: 'purple' },
 }
 

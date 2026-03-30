@@ -1,17 +1,15 @@
 import { InterviewSession } from '../models/InterviewSession.model.js'
 import { InterviewMessage } from '../models/InterviewMessage.model.js'
-import { recommendationService } from './recommendation.service.js'
-import { Problem } from '../models/Problem.models.js'
+import { getRecommendedProblems } from './recommendation.service.js'
 import {
     setInterviewState,
     deleteInterviewState,
     updateInterviewState,
+    getInterviewState,
 } from '../lib/redis/interviewState.js'
 import { getInterviewAIQueue } from '../lib/queue.js'
-import { buildPrompt, selectModel } from './aiConversation.service.js'
+import { buildPrompt } from './aiConversation.service.js'
 import { generateInterviewChatResponse } from '../lib/ai/interviewGroqClient.js'
-import { redisClient } from '../lib/redis.js'
-import { generateIntro } from './intro.service.js'
 
 /**
  * Valid phases enforcing strict order transitions if necessary
@@ -45,43 +43,16 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
         startedAt: { $gte: oneHourAgo },
     })
 
-    if (recentSessionsCount >= 5 && process.env.SESSION_LIMIT_BYPASS !== 'true') {
+    if (recentSessionsCount >= 5) {
         throw new Error('Rate limit exceeded: Maximum 5 interview sessions per hour')
     }
 
     // 3. Select a problem using the existing recommendation engine
-    // Fetch a larger pool to allow random selection
-    let candidateProblems = await recommendationService.getRecommendations(userId, 10)
-
-    // Fallback: if personalized recommendations are empty, use the global problem pool.
-    if (!candidateProblems || candidateProblems.length === 0) {
-        candidateProblems = await Problem.find({}).sort({ createdAt: -1 }).limit(25).lean()
+    const { recommendedProblems } = await getRecommendedProblems(userId, 1)
+    if (!recommendedProblems || recommendedProblems.length === 0) {
+        throw new Error('No appropriate problem found for this session')
     }
-
-    if (!candidateProblems || candidateProblems.length === 0) {
-        throw new Error('No problems are available to start an interview session')
-    }
-
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
-    // MongoDB handles `distinct` on array fields gracefully
-    const recentProblemIdsRaw = await InterviewSession.find({
-        userId,
-        createdAt: { $gt: sevenDaysAgo },
-    }).distinct('problemIds')
-
-    const recentProblemIds = new Set(recentProblemIdsRaw.map((id) => id.toString()))
-
-    const freshProblems = candidateProblems.filter((p) => !recentProblemIds.has(p._id.toString()))
-
-    function pickOne(arr) {
-        return arr[Math.floor(Math.random() * arr.length)]
-    }
-
-    const chosenProblem =
-        freshProblems.length > 0 ? pickOne(freshProblems) : pickOne(candidateProblems)
-
-    const problemId = chosenProblem._id
+    const problemId = recommendedProblems[0]._id
 
     // 4. Create the session record
     const session = await InterviewSession.create({
@@ -95,23 +66,58 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
     })
 
     try {
-        await redisClient.set(`session:status:${session._id}`, 'active', { EX: 8 * 60 * 60 })
-        await redisClient.set(`session:phase:${session._id}`, 'intro', { EX: 7200 })
-    } catch (err) {
-        console.error('[createSession] Redis guard/phase init failed:', err)
-    }
+        // 5. Generate AI greeting synchronously
+        // This prevents the race condition where the socket connects after the greeting is published.
+        const introPrompt =
+            'Introduce yourself as Alex and start the interview. Explain the rules (Conceptual then Coding) and ask the first conceptual question.'
 
-    try {
-        // --- Generate Templated Intro (Alex Persona) ---
-        const greetingContent = generateIntro(chosenProblem.title, chosenProblem.difficulty)
-        console.log(`[Intro] Generated templated greeting for session: ${session._id}`)
+        // We get the problem details for context
+        const problem = recommendedProblems[0]
+
+        const { systemPrompt, messages } = buildPrompt({
+            problemDescription: problem.description,
+            currentCode: problem.defaultCode?.python || '',
+            language: 'python',
+            phase: 'intro',
+            userMessage: introPrompt,
+            history: [],
+            evaluationMetadata: {
+                correctAnswer: problem.correctAnswer,
+                expectedConcepts: problem.expectedConcepts,
+                evaluationCriteria: problem.evaluationCriteria,
+            },
+        })
+
+        const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+        let fullGreeting = ''
+
+        // Wrap the greeting stream with a timeout to prevent blocking the UI for too long
+        const greetingTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Greeting timeout')), 8000)
+        )
+
+        try {
+            await Promise.race([
+                (async () => {
+                    for await (const chunk of aiStream) {
+                        fullGreeting += chunk
+                    }
+                })(),
+                greetingTimeout,
+            ])
+        } catch (err) {
+            // Fallback greeting if AI is slow or fails
+            fullGreeting =
+                "Hello! I'm Alex, your interviewer today. Let's get started — I'll walk you through the problem shortly."
+            console.warn('[createSession] Greeting timeout or error — using fallback:', err.message)
+        }
 
         // 6. Save greeting to DB
         const greetingMessage = await InterviewMessage.create({
             sessionId: session._id,
             role: 'ai',
             phase: 'intro',
-            content: greetingContent,
+            content: fullGreeting,
             ts: new Date(),
         })
 
@@ -193,12 +199,6 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
                 return terminalSession
             }
             throw new Error('Session is in an invalid state for completion')
-        }
-
-        try {
-            await redisClient.set(`session:status:${sessionId}`, 'completed', { EX: 60 * 60 })
-        } catch (err) {
-            console.error('[transitionPhase] Redis guard update failed:', err)
         }
 
         // --- Success path: Transitioned from active ---

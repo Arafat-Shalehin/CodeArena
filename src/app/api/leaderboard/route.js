@@ -4,26 +4,6 @@ import { User } from '@/models/User.models'
 import { initSocketServer } from '@/lib/socket-server'
 import { redisClient } from '@/lib/redis'
 
-const LOCAL_LEADERBOARD_CACHE_TTL_MS = 20_000
-const localLeaderboardCache = new Map()
-
-function getLocalLeaderboard(cacheKey) {
-    const cached = localLeaderboardCache.get(cacheKey)
-    if (!cached) return null
-    if (cached.expiresAt <= Date.now()) {
-        localLeaderboardCache.delete(cacheKey)
-        return null
-    }
-    return cached.value
-}
-
-function setLocalLeaderboard(cacheKey, value, ttlMs = LOCAL_LEADERBOARD_CACHE_TTL_MS) {
-    localLeaderboardCache.set(cacheKey, {
-        value,
-        expiresAt: Date.now() + ttlMs,
-    })
-}
-
 if (process.env.NODE_ENV !== 'production') {
     initSocketServer().catch(console.error)
 }
@@ -82,19 +62,12 @@ export async function GET(request) {
 
         const cacheKey = `leaderboard:global:p:${page}:l:${limit}:s:${search}:league:${league}:t:${timeframe}:u:${currentUserId || 'none'}`
 
-        const localCached = getLocalLeaderboard(cacheKey)
-        if (localCached) {
-            return NextResponse.json(localCached)
-        }
-
         try {
             if (redisClient.isOpen) {
                 const cached = await redisClient.get(cacheKey)
                 if (cached) {
                     console.log(`[Cache Hit] Global leaderboard: ${cacheKey}`)
-                    const parsed = JSON.parse(cached)
-                    setLocalLeaderboard(cacheKey, parsed)
-                    return NextResponse.json(parsed)
+                    return NextResponse.json(JSON.parse(cached))
                 }
             }
         } catch (err) {
@@ -202,8 +175,6 @@ export async function GET(request) {
         } catch (err) {
             console.error('Redis write error in global leaderboard:', err)
         }
-
-        setLocalLeaderboard(cacheKey, responsePayload)
 
         return NextResponse.json(responsePayload)
     } catch (error) {

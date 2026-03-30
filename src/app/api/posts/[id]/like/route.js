@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { Post } from '@/models/Post.models'
 import { protect } from '@/middlewares/auth.middleware'
-import { resolveNotificationActorName } from '@/services/notification.service'
 
 export async function POST(req, { params }) {
     try {
@@ -30,13 +29,12 @@ export async function POST(req, { params }) {
             // NEW: Send Real-time Notification to the post owner
             if (post.userId.toString() !== userId) {
                 const { sendNotification } = await import('@/services/notification.service')
-                const actorName = await resolveNotificationActorName(user)
                 await sendNotification({
                     recipientId: post.userId,
                     senderId: user._id,
                     type: 'social',
-                    message: `${actorName} liked your post: "${post.content.substring(0, 30)}${post.content.length > 30 ? '...' : ''}"`,
-                    link: `/feed?postId=${post._id}`,
+                    message: `${user.name} liked your post: "${post.content.substring(0, 30)}${post.content.length > 30 ? '...' : ''}"`,
+                    link: `/feed`,
                     metadata: {
                         postId: post._id,
                     },

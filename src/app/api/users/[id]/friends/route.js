@@ -32,25 +32,21 @@ export const GET = asyncHandler(async (req, context) => {
     const selectFields = '_id name bio avatarSeed stats.score stats.globalRank'
 
     if (type === 'followers' || type === 'all') {
-        // Extract IDs from potentially complex array structure
-        const followerIds = (user.followers || []).map((f) => (f._id ? f._id : f))
-        const followers = await User.find({ _id: { $in: followerIds } })
+        const followers = await User.find({ _id: { $in: user.followers } })
             .select(selectFields)
             .limit(limit)
             .lean()
         responseData.followers = followers
-        responseData.followersCount = followerIds.length
+        responseData.followersCount = user.followers.length
     }
 
     if (type === 'following' || type === 'all') {
-        // Extract IDs from potentially complex array structure
-        const followingIds = (user.following || []).map((f) => (f._id ? f._id : f))
-        const following = await User.find({ _id: { $in: followingIds } })
+        const following = await User.find({ _id: { $in: user.following } })
             .select(selectFields)
             .limit(limit)
             .lean()
         responseData.following = following
-        responseData.followingCount = followingIds.length
+        responseData.followingCount = user.following.length
     }
 
     return Response.json({

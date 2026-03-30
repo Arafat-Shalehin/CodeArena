@@ -32,7 +32,6 @@ import {
 
 // Hooks
 import { useSocialLogin } from '@/features/auth/hooks/useSocialLogin'
-import { useAuth } from '@/context/AuthContext'
 
 /**
  * @component LoginForm
@@ -44,31 +43,16 @@ export default function LoginForm() {
     const searchParams = useSearchParams()
     const redirectTo = searchParams.get('redirect') || '/feed'
     const { handleSocialLogin, isLoading: socialLoading, error: socialError } = useSocialLogin()
-    const { user: authUser, isLoading: authIsLoading } = useAuth()
     const urlError = searchParams.get('error')
     const hasShownUrlError = useRef(false)
-    const shouldRedirectRef = useRef(false)
 
     // Handle URL-based errors (e.g., redirect from protected route)
     useEffect(() => {
         if (urlError === 'unauthorized' && !hasShownUrlError.current) {
             toast.error('Session expired or unauthorized. Please log in again.')
             hasShownUrlError.current = true
-
-            const nextPath = redirectTo
-                ? `/login?redirect=${encodeURIComponent(redirectTo)}`
-                : '/login'
-            router.replace(nextPath)
         }
-    }, [redirectTo, router, urlError])
-
-    // Redirect after auth sync completes (user is set in context)
-    useEffect(() => {
-        if (shouldRedirectRef.current && authUser && !authIsLoading) {
-            router.replace(redirectTo)
-            shouldRedirectRef.current = false
-        }
-    }, [authUser, authIsLoading, router, redirectTo])
+    }, [urlError])
 
     // UI state
     const [view, setView] = useState('email') // "email" | "forgot-password" | "magic-link"
@@ -100,8 +84,7 @@ export default function LoginForm() {
                     .then(() => {
                         window.localStorage.removeItem('emailForSignIn')
                         toast.success('Successfully signed in with magic link!')
-                        // Set flag to redirect after auth sync completes
-                        shouldRedirectRef.current = true
+                        router.replace('/feed')
                     })
                     .catch((err) => {
                         toast.error(err.message.replace('Firebase: ', ''))
@@ -111,13 +94,53 @@ export default function LoginForm() {
         }
     }, [router])
 
+    // const onLoginSubmit = async (data) => {
+    //     setIsLoading(true)
+    //     try {
+    //         await signInWithEmailAndPassword(auth, data.email, data.password)
+    //         toast.success('Authentication successful')
+    //         router.replace(redirectTo)
+    //     } catch (err) {
+    //         toast.error(err.message.replace('Firebase: ', ''))
+    //     } finally {
+    //         setIsLoading(false)
+    //     }
+    // }
     const onLoginSubmit = async (data) => {
         setIsLoading(true)
         try {
-            await signInWithEmailAndPassword(auth, data.email, data.password)
-            toast.success('Authentication successful')
-            // Set flag to redirect after auth sync completes (user is set in context)
-            shouldRedirectRef.current = true
+            // ১. ফায়ারবেস লগইন
+            const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password)
+            const firebaseUser = userCredential.user
+
+            // ২. আপনার ব্যাকএন্ডের সাথে সিঙ্ক করা (যাতে টোকেন এবং রোল পাওয়া যায়)
+            const syncRes = await fetch('/api/auth/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: firebaseUser.displayName,
+                    photoURL: firebaseUser.photoURL,
+                }),
+            })
+
+            const syncData = await syncRes.json()
+
+            if (syncData.success) {
+                toast.success('Authentication successful')
+
+                // ৩. রোল অনুযায়ী রিডাইরেক্ট লজিক
+                const userRole = syncData.data.user.role
+
+                if (userRole === 'admin') {
+                    router.replace('/admin/users') // অ্যাডমিন হলে এখানে যাবে
+                } else {
+                    router.replace(redirectTo) // সাধারণ ইউজার হলে /feed বা আগের পেজে যাবে
+                }
+            } else {
+                throw new Error(syncData.error || 'Sync failed')
+            }
         } catch (err) {
             toast.error(err.message.replace('Firebase: ', ''))
         } finally {

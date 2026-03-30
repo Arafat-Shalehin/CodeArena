@@ -60,25 +60,11 @@ const submissionSchema = new mongoose.Schema(
                 'COMPILATION_ERROR',
                 'SYSTEM_ERROR',
                 'SECURITY_ERROR',
-                'FEATURE_UNSUPPORTED_IN_CLOUD',
                 'PENDING',
                 'JUDGING',
             ],
         },
         likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-        comments: [
-            {
-                userId: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: 'User',
-                },
-                text: String,
-                createdAt: {
-                    type: Date,
-                    default: Date.now,
-                },
-            },
-        ],
         executionTime: { type: Number }, // ms
         memoryUsed: { type: Number }, // KB
         error: { type: String }, // Compilation or Runtime error details
@@ -97,17 +83,6 @@ const submissionSchema = new mongoose.Schema(
                 correctness: { type: Number },
             },
         },
-        // --- Plagiarism Detection Fields ---
-        similarityScore: { type: Number, default: null },
-        suspectedPlagiarism: { type: Boolean, default: false },
-        plagiarismCheckedAt: { type: Date, default: null },
-        matchedSubmissions: [
-            {
-                submissionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Submission' },
-                userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-                similarity: { type: Number },
-            },
-        ],
         testCaseResults: [
             {
                 testCaseId: { type: mongoose.Schema.Types.ObjectId, ref: 'TestCase' },
@@ -124,9 +99,7 @@ const submissionSchema = new mongoose.Schema(
 )
 
 submissionSchema.index({ userId: 1, problemId: 1 })
-submissionSchema.index({ problemId: 1, contestId: 1, language: 1, verdict: 1 })
-submissionSchema.index({ contestId: 1, plagiarismCheckedAt: 1, suspectedPlagiarism: 1 })
-submissionSchema.index({ userId: 1, verdict: 1, createdAt: -1 })
+submissionSchema.index({ contestId: 1 })
 
 export const Submission =
     mongoose.models.Submission || mongoose.model('Submission', submissionSchema)

@@ -1,11 +1,11 @@
 import { Worker } from 'bullmq'
 import dbConnect from '@/lib/mongodb'
-import { connection, getAIAnalysisQueue, getStatsQueue, getPlagiarismQueue } from '@/lib/queue'
+import { connection, getAIAnalysisQueue, getStatsQueue } from '@/lib/queue'
 import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
-import { executeCode, executeMultipleInputs } from '@/lib/docker/executor'
+import { executeCode } from '@/lib/docker/executor'
 import { redisClient } from '@/lib/redis'
 import { VERDICTS } from '@/lib/evaluation/verdicts'
 
@@ -53,13 +53,25 @@ export function initSubmissionWorker() {
 
                 // Update status to 'running'
                 await Submission.findByIdAndUpdate(submissionId, { status: 'running' })
-                // OPTIMIZED: Merged 2 Redis messages into 1 (submission_running + submission_status)
                 if (redisClient.isOpen) {
                     redisClient
                         .publish(
                             'submission_updates',
                             JSON.stringify({
                                 type: 'submission_running',
+                                userId: submission.userId,
+                                submissionId,
+                                problemId: submission.problemId,
+                                stage: 'running',
+                            })
+                        )
+                        .catch(console.error)
+
+                    redisClient
+                        .publish(
+                            'submission_updates',
+                            JSON.stringify({
+                                type: 'submission_status',
                                 event: 'SUBMISSION_STATUS',
                                 userId: submission.userId,
                                 submissionId,
@@ -187,7 +199,7 @@ export function initSubmissionWorker() {
                         `[WORKER] SUBMIT TYPE: Running ${totalCount} test case(s) for submission ${submissionId}`
                     )
 
-                    // OPTIMIZED: Merged 2 Redis messages into 1 (judging_started + submission_status)
+                    // Notify client that judging is starting
                     if (redisClient.isOpen) {
                         redisClient
                             .publish(
@@ -201,70 +213,62 @@ export function initSubmissionWorker() {
                                     stage: 'judging_started',
                                     current: 0,
                                     total: totalCount,
-                                    totalTestCases: totalCount,
+                                    message: `Judging started on ${totalCount} test cases`,
+                                    problemId: submission.problemId,
+                                })
+                            )
+                            .catch(console.error)
+
+                        redisClient
+                            .publish(
+                                'submission_updates',
+                                JSON.stringify({
+                                    type: 'submission_status',
+                                    event: 'SUBMISSION_STATUS',
+                                    submissionId,
+                                    userId: submission.userId,
+                                    status: 'running',
+                                    stage: 'judging_started',
                                     message: `Starting judge... Running ${totalCount} test cases`,
+                                    totalTestCases: totalCount,
+                                    current: 0,
+                                    total: totalCount,
                                     problemId: submission.problemId,
                                 })
                             )
                             .catch(console.error)
                     }
 
-                    // 🚀 Execute all test cases in a SINGLE Docker container (container reuse)
-                    const inputs = testCases.map((tc) => tc.input || '')
-                    const isSpecialJudge = problem.judgeType === 'special'
-
-                    let executionResults = await executeMultipleInputs({
-                        code: submission.code,
-                        files: submission.files || [],
-                        language: submission.language,
-                        inputs,
-                        timeLimit: problem.timeLimit,
-                        memoryLimit: problem.memoryLimit,
-                        specialJudgeCode: isSpecialJudge ? problem.specialJudgeCode : null,
-                        expectedOutputs: isSpecialJudge
-                            ? testCases.map((tc) => tc.expectedOutput)
-                            : undefined,
-                    })
-
-                    if (executionResults === null) {
-                        // Docker unavailable: fall back to per-test-case Judge0 execution
-                        console.log(
-                            '[WORKER] Docker unavailable, falling back to per-case Judge0 execution'
-                        )
-                        executionResults = []
-                        for (let i = 0; i < totalCount; i++) {
-                            const tc = testCases[i]
-                            const result = await executeCode({
-                                code: submission.code,
-                                files: submission.files || [],
-                                language: submission.language,
-                                input: tc.input || '',
-                                timeLimit: problem.timeLimit,
-                                memoryLimit: problem.memoryLimit,
-                                specialJudgeCode: isSpecialJudge ? problem.specialJudgeCode : null,
-                                expectedOutput: tc.expectedOutput,
-                                isPlayground: false,
-                            })
-                            executionResults.push(result)
-                            const v = (result.verdict || '').toUpperCase()
-                            if (v !== 'ACCEPTED' && v !== 'SUCCESS') break
-                        }
-                    }
-
-                    // Process results and emit per-test-case progress events
-                    for (let i = 0; i < executionResults.length; i++) {
+                    for (let i = 0; i < totalCount; i++) {
                         const testCase = testCases[i]
-                        const result = executionResults[i]
+                        console.log(
+                            `[WORKER] Processing test case ${i + 1}/${totalCount} with input length: ${testCase.input?.length || 0}`
+                        )
 
-                        console.log(`[WORKER] Processing test case ${i + 1}/${totalCount} result`)
+                        // Execute code (including special judge if enabled)
+                        const result = await executeCode({
+                            code: submission.code,
+                            files: submission.files || [],
+                            language: submission.language,
+                            input: testCase.input || '',
+                            timeLimit: problem.timeLimit,
+                            memoryLimit: problem.memoryLimit,
+                            // Pass special judge details to executor for secure sandboxed execution
+                            specialJudgeCode:
+                                problem.judgeType === 'special' ? problem.specialJudgeCode : null,
+                            expectedOutput: testCase.expectedOutput,
+                            isPlayground: false, // Don't convert ACCEPTED to EXECUTED for submit
+                        })
 
                         maxTime = Math.max(maxTime, result.executionTime || 0)
                         maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
 
-                        let resultVerdict = (result.verdict || '').toUpperCase()
+                        // Normalize result verdict to our enum
+                        let resultVerdict = result.verdict.toUpperCase()
 
                         if (resultVerdict === 'SUCCESS' || resultVerdict === 'ACCEPTED') {
                             if (!problem.judgeType || problem.judgeType === 'exact') {
+                                // Compare exact match ignoring spacing variations
                                 const normalizeOutput = (str) =>
                                     (str || '').trim().split(/\s+/).join(' ')
                                 const actual = normalizeOutput(result.output)
@@ -281,6 +285,7 @@ export function initSubmissionWorker() {
                             resultVerdict = VERDICTS.ACCEPTED
                         }
 
+                        // 4. Update individual test case result
                         console.log(
                             `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
                         )
@@ -294,6 +299,7 @@ export function initSubmissionWorker() {
                             isSample: testCase.isSample || false,
                         }
 
+                        // Only store actual output for sample test cases (for UI feedback)
                         if (testCase.isSample) {
                             caseResult.actualOutput = result.output
                         }
@@ -301,18 +307,16 @@ export function initSubmissionWorker() {
                         testCaseResults.push(caseResult)
 
                         // 📊 Real-time progress update via Redis pub/sub
-                        // OPTIMIZED: Batch both test_case_result and test_case_completed into ONE message
                         if (redisClient.isOpen) {
                             const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
                             const passStatus = isPassedCase ? 'AC' : 'WA'
                             const progressPercent = Math.round(((i + 1) / totalCount) * 100)
 
-                            // Combined message includes both result and completion info
                             redisClient
                                 .publish(
                                     'submission_updates',
                                     JSON.stringify({
-                                        type: 'test_case_result_batched', // Single batched event
+                                        type: 'test_case_result',
                                         event: 'TEST_CASE_RESULT',
                                         submissionId,
                                         userId: submission.userId,
@@ -325,16 +329,35 @@ export function initSubmissionWorker() {
                                         executionTime: result.executionTime || 0,
                                         memoryUsed: result.memoryUsed || 0,
                                         progress: progressPercent,
+                                        message: `Running Case ${i + 1}/${totalCount}...`,
+                                    })
+                                )
+                                .catch(console.error)
+
+                            redisClient
+                                .publish(
+                                    'submission_updates',
+                                    JSON.stringify({
+                                        type: 'test_case_completed',
+                                        submissionId,
+                                        userId: submission.userId,
+                                        caseNumber: i + 1,
+                                        totalTestCases: totalCount,
+                                        verdict: resultVerdict,
+                                        progress: progressPercent,
                                         message: `Test case ${i + 1}/${totalCount}: ${passStatus} (${result.executionTime}ms)`,
+                                        problemId: submission.problemId,
                                     })
                                 )
                                 .catch(console.error)
                         }
 
                         if (resultVerdict === 'SUCCESS' || resultVerdict === VERDICTS.ACCEPTED) {
+                            // If it's a success, it means it passed either exact match (default)
+                            // or the special judge (inside Docker)
                             passedCount++
                         } else {
-                            // ⚡ FAIL-FAST bookkeeping (executor already stopped; we just record and break)
+                            // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
                             finalVerdict = resultVerdict
                             firstError = result.error
                             failedCaseNumber = i + 1
@@ -342,6 +365,7 @@ export function initSubmissionWorker() {
                                 `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
                             )
 
+                            // Send fail-fast event immediately
                             if (redisClient.isOpen) {
                                 redisClient
                                     .publish(
@@ -529,26 +553,6 @@ export function initSubmissionWorker() {
                             } catch (err) {
                                 console.error('[WORKER] Failed to dispatch AI analysis job:', err)
                             }
-                        }
-
-                        // --- Plagiarism Detection Trigger ---
-                        try {
-                            const plagiarismQueue = getPlagiarismQueue()
-                            await plagiarismQueue.add(
-                                'check-plagiarism',
-                                { submissionId: submission._id.toString() },
-                                {
-                                    jobId: `plagiarism-${submission._id}`, // deduplication key
-                                    delay: 5000, // 5s delay to ensure DB consistency
-                                    attempts: 3,
-                                    backoff: { type: 'exponential', delay: 10000 },
-                                    removeOnComplete: true,
-                                }
-                            )
-                            console.log(`[WORKER] Enqueued plagiarism check for ${submissionId}`)
-                        } catch (err) {
-                            // log but NEVER throw — must not affect submission flow
-                            console.error('[WORKER] Failed to enqueue plagiarism job:', err)
                         }
 
                         // Judging notification should not block queue throughput.

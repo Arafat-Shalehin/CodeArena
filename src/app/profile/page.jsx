@@ -39,27 +39,26 @@ export default function ProfilePage() {
     const [hasMoreSubmissions, setHasMoreSubmissions] = useState(true)
     const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false)
 
-    const userId = user?.id || user?._id
-
     useEffect(() => {
         if (!isLoading && !user) {
-            router.replace('/login?redirect=/profile')
+            router.replace('/login?error=unauthorized')
         }
     }, [user, isLoading, router])
 
     useEffect(() => {
-        if (userId) {
+        if (user) {
             fetchSubmissions(5, 0, true)
             // Background sync to ensure stats/heatmap are up to date
             syncUser?.()
         }
-    }, [userId, syncUser])
+    }, [user, syncUser])
 
     const fetchSubmissions = async (limit = 5, offset = 0, reset = false) => {
         if (!user) return
         setIsSubmissionsLoading(true)
         try {
-            const queryUrl = `/api/submissions?userId=${userId}&limit=${limit}&offset=${offset}`
+            const queryId = user._id || user.id
+            const queryUrl = `/api/submissions?userId=${queryId}&limit=${limit}&offset=${offset}`
             const res = await fetch(queryUrl)
             const data = await res.json()
             if (data.success) {
@@ -85,12 +84,16 @@ export default function ProfilePage() {
         fetchSubmissions(100, 0, true)
     }
 
-    if (isLoading || !user) {
+    if (isLoading || (!user && !isLoading)) {
         return (
             <div className="bg-bg-page flex min-h-screen items-center justify-center">
                 <Loader2 className="text-accent h-12 w-12 animate-spin" />
             </div>
         )
+    }
+
+    if (!user) {
+        return null
     }
 
     const sortedLanguages = getLanguageStats(user.stats)
