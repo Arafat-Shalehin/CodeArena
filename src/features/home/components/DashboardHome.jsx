@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
     Rss,
     Trophy,
@@ -28,12 +29,16 @@ import FeedItem from './FeedItem'
 import DashboardLeftSidebar from './DashboardLeftSidebar'
 import DashboardRightSidebar from './DashboardRightSidebar'
 import CreatePostModal from './CreatePostModal'
+import FeedItemModal from './FeedItemModal'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
 export default function DashboardHome({ user: initialUser }) {
     const { user: contextUser, updateProfile } = useAuth()
     const user = contextUser || initialUser
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
     const [feed, setFeed] = useState([])
     const [isEditingGoal, setIsEditingGoal] = useState(false)
@@ -52,6 +57,9 @@ export default function DashboardHome({ user: initialUser }) {
     const [nextCursor, setNextCursor] = useState(null)
     const [postContent, setPostContent] = useState('')
     const [isPosting, setIsPosting] = useState(false)
+    const [selectedFeedItem, setSelectedFeedItem] = useState(null)
+    const [isFeedItemModalOpen, setIsFeedItemModalOpen] = useState(false)
+    const [modalCommentsOpen, setModalCommentsOpen] = useState(false)
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -100,6 +108,76 @@ export default function DashboardHome({ user: initialUser }) {
             setLoadingMore(false)
         }
     }
+
+    const updateFeedModalQuery = useCallback(
+        (item = null, focus = '') => {
+            const params = new URLSearchParams(searchParams.toString())
+
+            params.delete('postId')
+            params.delete('focus')
+
+            if (item?.type === 'post') {
+                params.set('postId', item.id || item._id)
+                if (focus) params.set('focus', focus)
+            }
+
+            const query = params.toString()
+            router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+        },
+        [pathname, router, searchParams]
+    )
+
+    const handleOpenFeedItemModal = useCallback(
+        (item, options = {}) => {
+            setSelectedFeedItem(item)
+            setModalCommentsOpen(Boolean(options.focusComments))
+            setIsFeedItemModalOpen(true)
+            updateFeedModalQuery(item, options.focusComments ? 'comments' : '')
+        },
+        [updateFeedModalQuery]
+    )
+
+    const handleCloseFeedItemModal = useCallback(() => {
+        setIsFeedItemModalOpen(false)
+        setSelectedFeedItem(null)
+        setModalCommentsOpen(false)
+        updateFeedModalQuery(null)
+    }, [updateFeedModalQuery])
+
+    const handleFeedItemStatsChange = useCallback((itemId, patch) => {
+        if (!itemId || !patch) return
+
+        setFeed((prev) =>
+            prev.map((entry) => {
+                const currentId = String(entry.id || entry._id)
+                if (currentId !== String(itemId)) return entry
+
+                return {
+                    ...entry,
+                    ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
+                    ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
+                    ...(patch.commentCount !== undefined
+                        ? { commentCount: patch.commentCount }
+                        : {}),
+                }
+            })
+        )
+
+        setSelectedFeedItem((prev) => {
+            if (!prev) return prev
+            const currentId = String(prev.id || prev._id)
+            if (currentId !== String(itemId)) return prev
+
+            return {
+                ...prev,
+                ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
+                ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
+                ...(patch.commentCount !== undefined
+                    ? { commentCount: patch.commentCount }
+                    : {}),
+            }
+        })
+    }, [])
 
     const handleCreatePost = async () => {
         if (!postContent.trim() || isPosting) return
@@ -189,12 +267,55 @@ export default function DashboardHome({ user: initialUser }) {
         return 'bg-error-light text-error'
     }
 
+    useEffect(() => {
+        const postId = searchParams.get('postId')
+        const focus = searchParams.get('focus')
+
+        if (!postId || loading) return
+
+        const existingPost = feed.find(
+            (item) => item.type === 'post' && String(item.id || item._id) === String(postId)
+        )
+
+        if (existingPost) {
+            setSelectedFeedItem(existingPost)
+            setModalCommentsOpen(focus === 'comments')
+            setIsFeedItemModalOpen(true)
+            return
+        }
+
+        let cancelled = false
+
+        const fetchPost = async () => {
+            try {
+                const res = await fetch(`/api/posts/${postId}`)
+                const data = await res.json()
+
+                if (!cancelled && data.success) {
+                    setSelectedFeedItem(data.data)
+                    setModalCommentsOpen(focus === 'comments')
+                    setIsFeedItemModalOpen(true)
+                }
+            } catch (error) {
+                console.error('Failed to fetch post detail for modal:', error)
+            }
+        }
+
+        fetchPost()
+
+        return () => {
+            cancelled = true
+        }
+    }, [feed, loading, searchParams])
+
     return (
         <div className="max-w-container mx-auto w-full px-4 pb-8 md:px-6">
             <div
                 className={cn(
                     'grid grid-cols-1 gap-6 transition-all duration-300 lg:grid-cols-12',
-                    isPostModalOpen ? 'pointer-events-none opacity-60 blur-[2px]' : ''
+                    isPostModalOpen || (isFeedItemModalOpen && selectedFeedItem)
+                        ? 'pointer-events-none opacity-60 blur-[2px]'
+                        : ''
                 )}
             >
                 <DashboardLeftSidebar
@@ -280,6 +401,7 @@ export default function DashboardHome({ user: initialUser }) {
                                     key={item._id}
                                     item={item}
                                     getDifficultyClass={getDifficultyClass}
+                                    onOpenDetail={handleOpenFeedItemModal}
                                 />
                             ))}
                             {hasMore && (
@@ -339,6 +461,15 @@ export default function DashboardHome({ user: initialUser }) {
                 setPostContent={setPostContent}
                 isPosting={isPosting}
                 handleCreatePost={handleCreatePost}
+            />
+
+            <FeedItemModal
+                isOpen={isFeedItemModalOpen}
+                onClose={handleCloseFeedItemModal}
+                item={selectedFeedItem}
+                getDifficultyClass={getDifficultyClass}
+                onStatsChange={handleFeedItemStatsChange}
+                initialShowComments={modalCommentsOpen}
             />
         </div>
     )
