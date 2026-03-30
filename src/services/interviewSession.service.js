@@ -1,6 +1,7 @@
 import { InterviewSession } from '../models/InterviewSession.model.js'
 import { InterviewMessage } from '../models/InterviewMessage.model.js'
 import { recommendationService } from './recommendation.service.js'
+import { Problem } from '../models/Problem.models.js'
 import {
     setInterviewState,
     deleteInterviewState,
@@ -50,9 +51,15 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
 
     // 3. Select a problem using the existing recommendation engine
     // Fetch a larger pool to allow random selection
-    const recommendedProblems = await recommendationService.getRecommendations(userId, 10)
-    if (!recommendedProblems || recommendedProblems.length === 0) {
-        throw new Error('No appropriate problem found for this session')
+    let candidateProblems = await recommendationService.getRecommendations(userId, 10)
+
+    // Fallback: if personalized recommendations are empty, use the global problem pool.
+    if (!candidateProblems || candidateProblems.length === 0) {
+        candidateProblems = await Problem.find({}).sort({ createdAt: -1 }).limit(25).lean()
+    }
+
+    if (!candidateProblems || candidateProblems.length === 0) {
+        throw new Error('No problems are available to start an interview session')
     }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -65,14 +72,14 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
 
     const recentProblemIds = new Set(recentProblemIdsRaw.map((id) => id.toString()))
 
-    const freshProblems = recommendedProblems.filter((p) => !recentProblemIds.has(p._id.toString()))
+    const freshProblems = candidateProblems.filter((p) => !recentProblemIds.has(p._id.toString()))
 
     function pickOne(arr) {
         return arr[Math.floor(Math.random() * arr.length)]
     }
 
     const chosenProblem =
-        freshProblems.length > 0 ? pickOne(freshProblems) : pickOne(recommendedProblems)
+        freshProblems.length > 0 ? pickOne(freshProblems) : pickOne(candidateProblems)
 
     const problemId = chosenProblem._id
 

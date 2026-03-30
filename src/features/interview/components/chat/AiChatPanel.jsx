@@ -28,6 +28,7 @@ export default function AiChatPanel({
     const [draft, setDraft] = useState('')
     const [error, setError] = useState(null)
     const bottomRef = useRef(null)
+    const textareaRef = useRef(null)
 
     useEffect(() => {
         if (!socket) return
@@ -50,15 +51,21 @@ export default function AiChatPanel({
     useEffect(() => {
         if (transcript) {
             setDraft((prev) => {
-                const trimmedPrev = prev.trim()
-                const space = trimmedPrev ? ' ' : ''
-                return `${trimmedPrev}${space}${transcript}`
+                if (!prev) return transcript
+                const hasTrailingWhitespace = /\s$/.test(prev)
+                return `${prev}${hasTrailingWhitespace ? '' : ' '}${transcript}`
             })
             // Clear the transcript in the hook so it doesn't double-append
             // and allows setTranscript to be actually useful!
             setTranscript('')
         }
     }, [transcript, setTranscript])
+
+    useEffect(() => {
+        if (!textareaRef.current) return
+        textareaRef.current.style.height = 'auto'
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 100)}px`
+    }, [draft])
 
     const submit = () => {
         const trimmed = draft.trim()
@@ -186,6 +193,7 @@ export default function AiChatPanel({
             <div className="border-border border-t p-3">
                 <div className="border-border bg-bg-muted flex items-end gap-2 rounded-xl border px-3 py-2">
                     <textarea
+                        ref={textareaRef}
                         rows={1}
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
@@ -193,8 +201,8 @@ export default function AiChatPanel({
                         placeholder={
                             isListening ? 'Listening...' : 'Ask the AI or explain your approach…'
                         }
-                        className={`text-text-primary placeholder:text-text-muted flex-1 resize-none bg-transparent text-[13px] outline-none ${isListening ? 'animate-pulse' : ''}`}
-                        style={{ maxHeight: 100 }}
+                        className={`text-text-primary placeholder:text-text-muted flex-1 resize-none overflow-y-auto bg-transparent text-[13px] outline-none ${isListening ? 'animate-pulse' : ''}`}
+                        style={{ maxHeight: 100, minHeight: 24 }}
                     />
                     <div className="flex items-center gap-1">
                         <button

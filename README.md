@@ -3,12 +3,12 @@
 <br/>
 
 ```
- ██████╗ ██████╗ ██████╗ ███████╗ █████╗ ██████╗ ███████╗███╗   ██╗ █████╗ 
-██╔════╝██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗
-██║     ██║   ██║██║  ██║█████╗  ███████║██████╔╝█████╗  ██╔██╗ ██║███████║
-██║     ██║   ██║██║  ██║██╔══╝  ██╔══██║██╔══██╗██╔══╝  ██║╚██╗██║██╔══██║
-╚██████╗╚██████╔╝██████╔╝███████╗██║  ██║██║  ██║███████╗██║ ╚████║██║  ██║
- ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝
+     ██████╗   ██████╗  ██████╗  ███████╗  █████╗  ██████╗  ███████╗ ███╗   ██╗  █████╗ 
+  ██╔════╝   ██╔═══██╗  ██╔══██╗ ██╔════╝  ██╔══██╗ ██╔══██╗ ██╔════╝ ████╗  ██║ ██╔══██╗
+  ██║        ██║   ██║  ██║  ██║ █████╗    ███████║ ██████╔╝ █████╗   ██╔██╗ ██║ ███████║
+  ██║        ██║   ██║  ██║  ██║ ██╔══╝    ██╔══██║ ██╔══██╗ ██╔══╝   ██║╚██╗██║ ██╔══██║
+    ╚██████╗ ╚██████╔  ╝██████╔ ╝███████  ╗██║  ██║ ██║  ██ ║███████ ╗██║ ╚████ ║██║  ██║
+     ╚═════╝  ╚═════╝   ╚═════╝  ╚══════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═══╝ ╚═╝  ╚═╝
 ```
 
 **A full-stack online judge & competitive programming platform**
@@ -182,7 +182,7 @@ The fastest way to get CodeArena running is using our automated setup script:
 
 ```bash
 # Clone and setup
-git clone https://github.com/your-repo/codearena.git
+git clone https://github.com/rabiulislam5334/CodeArena-TeamProject.git
 cd codearena
 chmod +x setup.sh
 ./setup.sh
@@ -218,6 +218,6 @@ chmod +x setup.sh
 **Built for the next generation of engineers.**
 Join the revolution.
 
-[⭐ Star on GitHub](https://github.com/your-repo/codearena) • [📢 Follow Updates](https://twitter.com/codearena)
+[⭐ Star on GitHub](https://github.com/rabiulislam5334/CodeArena-TeamProject) 
 
 </div>

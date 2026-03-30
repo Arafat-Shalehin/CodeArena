@@ -36,11 +36,12 @@ export function AuthProvider({ children }) {
     // 2. Core Firebase state listener (Runs once on mount)
     useEffect(() => {
         let abortController = null
+        let isMounted = true
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 // IMPORTANT: Prevent premature redirects by keeping isLoading true until sync finishes
-                setIsLoading(true)
+                if (isMounted) setIsLoading(true)
                 try {
                     // Sync Firebase User with our Backend (and set httpOnly cookie)
                     // Add a 10s timeout to the sync fetch to prevent infinite loading
@@ -68,21 +69,23 @@ export function AuthProvider({ children }) {
                         const userId = dbUser._id?.toString()
 
                         // Ensure DB data is the source of truth, removing stale local preferences
-                        setUser((prev) => ({
-                            ...dbUser,
-                            id: userId,
-                            _id: userId,
-                            firebaseUid: firebaseUser.uid,
-                        }))
-                        setLocalPreferences({})
+                        if (isMounted)
+                            setUser((prev) => ({
+                                ...dbUser,
+                                id: userId,
+                                _id: userId,
+                                firebaseUid: firebaseUser.uid,
+                            }))
+                        if (isMounted) setLocalPreferences({})
                         localStorage.removeItem(STORAGE_KEY)
                     } else {
-                        setUser({
-                            firebaseUid: firebaseUser.uid,
-                            email: firebaseUser.email,
-                            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-                            ...localPreferences,
-                        })
+                        if (isMounted)
+                            setUser({
+                                firebaseUid: firebaseUser.uid,
+                                email: firebaseUser.email,
+                                name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                                ...localPreferences,
+                            })
                     }
                 } catch (error) {
                     if (error?.name === 'AbortError') return
@@ -90,22 +93,24 @@ export function AuthProvider({ children }) {
                     console.error('Error during auth init/sync:', error)
                     toast.error('Session sync failed. Please try logging in again.')
                     // Fallback to minimal user object to unblock the UI if sync hangs
-                    setUser({
-                        firebaseUid: firebaseUser.uid,
-                        email: firebaseUser.email,
-                        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-                        ...localPreferences,
-                    })
+                    if (isMounted)
+                        setUser({
+                            firebaseUid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                            ...localPreferences,
+                        })
                 } finally {
-                    setIsLoading(false)
+                    if (isMounted) setIsLoading(false)
                 }
             } else {
-                setUser(null)
-                setIsLoading(false)
+                if (isMounted) setUser(null)
+                if (isMounted) setIsLoading(false)
             }
         })
 
         return () => {
+            isMounted = false
             // Abort any pending fetch request before unsubscribing
             if (abortController) {
                 abortController.abort()

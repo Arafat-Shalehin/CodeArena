@@ -49,17 +49,19 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Keep standalone bundle in .next/standalone so scripts/start-process.js can detect it.
-COPY --from=builder /app/.next/standalone ./.next/standalone
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/docker/executors/seccomp-profile.json ./docker/executors/seccomp-profile.json
-COPY --from=builder /app/docker/executors/seccomp-profile.json ./.next/standalone/docker/executors/seccomp-profile.json
-COPY --from=builder /app/scripts/start-process.js ./scripts/start-process.js
-COPY --from=builder /app/scripts/worker-boot.js ./scripts/worker-boot.js
-COPY --from=builder /app/scripts/alias-loader.mjs ./scripts/alias-loader.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./.next/standalone
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/standalone/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./.next/standalone/public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/docker/executors/seccomp-profile.json ./docker/executors/seccomp-profile.json
+COPY --from=builder --chown=nextjs:nodejs /app/docker/executors/seccomp-profile.json ./.next/standalone/docker/executors/seccomp-profile.json
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-process.js ./scripts/start-process.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/worker-boot.js ./scripts/worker-boot.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/alias-loader.mjs ./scripts/alias-loader.mjs
 
 USER nextjs
 

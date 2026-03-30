@@ -43,7 +43,7 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (!isLoading && !user) {
-            router.replace('/login?error=unauthorized')
+            router.replace('/login?redirect=/profile')
         }
     }, [user, isLoading, router])
 
