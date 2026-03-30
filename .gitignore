@@ -53,3 +53,9 @@ next-env.d.ts
 
 # local-only workspace
 hf-space-worker/
+.next/
+node_modules/
+.env
+dist/
+build/
+*.log
