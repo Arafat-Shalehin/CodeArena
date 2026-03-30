@@ -181,6 +181,23 @@ export default function ProblemsPage() {
             <Navbar />
 
             <main className="max-w-container mx-auto w-full flex-grow px-4 py-8 md:px-6">
+                {/* Breadcrumb */}
+                <nav className="text-text-muted mb-8 flex items-center gap-1.5 text-sm">
+                    <a href="/" className="hover:text-accent duration-normal transition-colors">
+                        Home
+                    </a>
+                    <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                    >
+                        <path d="m9 18 6-6-6-6" />
+                    </svg>
+                    <span className="text-text-primary font-medium">Problems</span>
+                </nav>
+
                 <div className="flex flex-col gap-8 lg:flex-row">
                     <ProblemsSidebar
                         sidebarOpen={sidebarOpen}

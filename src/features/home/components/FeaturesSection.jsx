@@ -30,7 +30,7 @@ export default function FeaturesSection() {
     return (
         <section
             ref={containerRef}
-            className="bg-bg-page relative mx-auto h-[200vh] max-w-7xl px-4 pt-8 pb-12"
+            className="bg-bg-page relative mx-auto h-[300vh] max-w-7xl px-4 pt-8 pb-12 lg:h-[400vh]"
         >
             {/* 
               Background ambient glow attached to scroll.
@@ -67,12 +67,10 @@ export default function FeaturesSection() {
                 <div className="relative z-10 flex h-[60vh] w-full items-center justify-center perspective-[2000px] lg:h-[80vh] lg:w-[50%]">
                     {featuresData.map((feature, idx) => {
                         // Calculate specific scroll trigger points for each card based on its index
-                        // Adjusted for 200vh total height (faster transitions)
-                        const step = 1 / featuresData.length
-                        const startOpacity = idx * step
-                        const fullOpacity = startOpacity + step * 0.3
-                        const startExit = startOpacity + step * 0.7
-                        const fullExit = startOpacity + step
+                        const startOpacity = idx * 0.15
+                        const fullOpacity = startOpacity + 0.1
+                        const startExit = fullOpacity + 0.3
+                        const fullExit = startExit + 0.2
 
                         // Tie opacity, scale, and Y-position to the scroll progress
                         const opacity = useTransform(
@@ -84,7 +82,7 @@ export default function FeaturesSection() {
                         const yOffset = useTransform(
                             smoothedProgress,
                             [startOpacity, fullOpacity, startExit, fullExit],
-                            [100, 0, 0, -100]
+                            [150, 0, 0, -150]
                         )
 
                         const scale = useTransform(
@@ -114,11 +112,11 @@ export default function FeaturesSection() {
                                 }}
                                 className="w-full max-w-[500px]"
                             >
-                                <Card className="bg-bg-subtle/80 relative flex flex-col items-start overflow-hidden rounded-2xl border-none p-8 shadow-none backdrop-blur-2xl md:p-10">
+                                <Card className="bg-bg-subtle/98 border-border/60 border-t-accent/20 relative flex flex-col items-start overflow-hidden rounded-[2rem] border-t p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.4)] backdrop-blur-2xl md:p-10">
                                     {/* Inner Glow */}
                                     <div className="via-accent/50 absolute top-0 left-1/2 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent to-transparent" />
 
-                                    <div className="bg-bg-page group mb-8 flex size-14 items-center justify-center rounded-xl border-none shadow-none">
+                                    <div className="bg-bg-page border-border group mb-8 flex size-14 items-center justify-center rounded-2xl border shadow-inner">
                                         <div className="text-accent transition-transform group-hover:scale-110 [&_svg]:size-7">
                                             {feature.icon}
                                         </div>

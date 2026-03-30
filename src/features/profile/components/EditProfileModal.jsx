@@ -4,23 +4,16 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { toast } from 'sonner'
 
 // Firebase — sync displayName on save
 import { auth } from '@/lib/firebase/config'
 import { updateProfile as firebaseUpdateProfile } from 'firebase/auth'
 
-// Auth
-import { useAuth } from '@/context/AuthContext'
-
 // UI
 import { Button } from '@/components/ui/button'
-import { X, Loader2 } from 'lucide-react'
-
-// Sub-components
-import UsernameInput from './UsernameInput'
-import BioInput from './BioInput'
-import AvatarSelector from './AvatarSelector'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { User, AtSign, FileText, X, Loader2 } from 'lucide-react'
 
 // ── Validation Schema ──────────────────────────────────────────────────────────
 const editProfileSchema = z.object({
@@ -31,6 +24,25 @@ const editProfileSchema = z.object({
         .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
     bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
 })
+
+// ── Avatar Seeds ────────────────────────────────────────────────────────────────
+const PREDEFINED_AVATARS = [
+    'adventurer',
+    'mage',
+    'knight',
+    'rogue',
+    'cleric',
+    'paladin',
+    'bard',
+    'druid',
+    'ranger',
+    'monk',
+    'sorcerer',
+    'warlock',
+    'barbarian',
+    'fighter',
+    'wizard',
+]
 
 /**
  * @component EditProfileModal
@@ -45,8 +57,6 @@ const editProfileSchema = z.object({
  * @returns {JSX.Element} The rendered modal.
  */
 export default function EditProfileModal({ user, onSave, onClose }) {
-    const { syncUser } = useAuth()
-
     const {
         register,
         handleSubmit,
@@ -62,12 +72,12 @@ export default function EditProfileModal({ user, onSave, onClose }) {
     })
 
     // Controlled avatar seed
-    const avatarSeed = watch('avatarSeed') ?? (user?.avatarSeed || user?.name || 'adventurer')
-    const bioValue = watch('bio') || ''
+    const avatarSeed =
+        watch('avatarSeed') ?? (user?.avatarSeed || user?.name || PREDEFINED_AVATARS[0])
 
     // Set initial avatarSeed into the form
     useEffect(() => {
-        setValue('avatarSeed', user?.avatarSeed || user?.name || 'adventurer')
+        setValue('avatarSeed', user?.avatarSeed || user?.name || PREDEFINED_AVATARS[0])
     }, [user, setValue])
 
     // Escape key + scroll lock
@@ -83,41 +93,19 @@ export default function EditProfileModal({ user, onSave, onClose }) {
         }
     }, [onClose])
 
+    const bioValue = watch('bio') || ''
+
     const onSubmit = async (data) => {
-        const userId = user?._id || user?.id
-        if (!userId) {
-            toast.error('Unable to update profile. Please log in again.')
-            return
-        }
-
-        try {
-            // 1. Save to database
-            const payload = { name: data.name, bio: data.bio || '', avatarSeed }
-            const res = await fetch(`/api/users/${userId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            const responseData = await res.json()
-            if (!res.ok) throw new Error(responseData.message || 'Failed to update profile')
-
-            // 2. Sync Firebase displayName
-            if (auth.currentUser) {
-                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name }).catch(
-                    (e) => console.error('Firebase profile sync failed:', e)
-                )
+        // Sync displayName to Firebase Auth
+        if (auth.currentUser) {
+            try {
+                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
+            } catch (e) {
+                console.error('Firebase profile sync failed:', e)
             }
-
-            // 3. Refresh user from DB to guarantee UI matches server
-            await syncUser()
-
-            toast.success('Profile updated!')
-            onSave?.({ name: data.name, bio: data.bio || '', avatarSeed })
-            onClose()
-        } catch (error) {
-            console.error('Profile update failed:', error)
-            toast.error(error.message || 'Failed to save profile.')
         }
+        onSave({ name: data.name, bio: data.bio || '', avatarSeed })
+        onClose()
     }
 
     return (
@@ -142,27 +130,109 @@ export default function EditProfileModal({ user, onSave, onClose }) {
                 {/* Scrollable form body + sticky footer all inside one <form> */}
                 <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
                     <div className="flex-1 space-y-5 overflow-y-auto p-6">
-                        {/* Username Input with availability checker */}
-                        <UsernameInput
-                            value={watch('name')}
-                            register={register}
-                            errors={errors}
-                            disabled={isSubmitting}
-                        />
+                        {/* Unique Handle (mapped to backend 'name') */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="name" className="text-text-primary text-sm font-medium">
+                                Username / Handle
+                            </Label>
+                            <div className="relative">
+                                <div className="text-text-muted pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <AtSign size={16} />
+                                </div>
+                                <Input
+                                    id="name"
+                                    className="h-11 pl-10"
+                                    placeholder="your_unique_handle"
+                                    disabled={isSubmitting}
+                                    {...register('name')}
+                                />
+                            </div>
+                            {errors.name && (
+                                <p className="text-error text-xs font-medium">
+                                    {errors.name.message}
+                                </p>
+                            )}
+                            <p className="text-text-muted text-xs">
+                                Unique name used to identify you and for your profile URL.
+                            </p>
+                        </div>
 
-                        {/* Bio Input with character counter */}
-                        <BioInput
-                            value={bioValue}
-                            register={register}
-                            errors={errors}
-                            disabled={isSubmitting}
-                        />
+                        {/* Bio */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label
+                                    htmlFor="bio"
+                                    className="text-text-primary text-sm font-medium"
+                                >
+                                    <span className="flex items-center gap-1.5">
+                                        <FileText size={14} className="text-text-muted" />
+                                        Bio
+                                    </span>
+                                </Label>
+                                <span
+                                    className={`text-xs font-medium ${bioValue.length > 140 ? 'text-warning' : 'text-text-muted'}`}
+                                >
+                                    {bioValue.length}/160
+                                </span>
+                            </div>
+                            <textarea
+                                id="bio"
+                                rows={3}
+                                placeholder="A short description about yourself..."
+                                disabled={isSubmitting}
+                                className="border-border bg-bg-page text-text-primary placeholder:text-text-muted focus:ring-accent/10 focus:border-accent/30 w-full resize-none rounded-xl border px-4 py-3 text-sm transition-all focus:ring-4 focus:outline-none disabled:opacity-50"
+                                {...register('bio')}
+                            />
+                            {errors.bio && (
+                                <p className="text-error text-xs font-medium">
+                                    {errors.bio.message}
+                                </p>
+                            )}
+                        </div>
 
-                        {/* Avatar Selection Grid */}
-                        <AvatarSelector
-                            value={avatarSeed}
-                            onChange={(seed) => setValue('avatarSeed', seed)}
-                        />
+                        {/* Avatar Selection */}
+                        <div className="space-y-3">
+                            <Label className="text-text-primary block text-sm font-medium">
+                                Choose an Avatar
+                            </Label>
+                            <div className="grid grid-cols-5 gap-3">
+                                {PREDEFINED_AVATARS.map((seed) => {
+                                    const isSelected = avatarSeed === seed
+                                    return (
+                                        <button
+                                            key={seed}
+                                            type="button"
+                                            onClick={() => setValue('avatarSeed', seed)}
+                                            className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                                                isSelected
+                                                    ? 'border-accent ring-accent/20 bg-accent/5 ring-2'
+                                                    : 'border-border hover:border-text-muted/50 hover:bg-bg-subtle bg-bg-page'
+                                            }`}
+                                        >
+                                            <img
+                                                src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${seed}`}
+                                                alt={seed}
+                                                className="h-full w-full object-cover p-1 select-none"
+                                                draggable={false}
+                                            />
+                                            {isSelected && (
+                                                <div className="bg-accent text-bg-page absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full">
+                                                    <svg
+                                                        className="h-2.5 w-2.5"
+                                                        viewBox="0 0 12 12"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2.5"
+                                                    >
+                                                        <path d="M2 6l3 3 5-5" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Sticky Footer — inside <form> so submit works */}

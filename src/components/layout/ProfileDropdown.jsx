@@ -41,7 +41,6 @@ export default function ProfileDropdown({ user, onLogout }) {
                 onClick={() => setIsOpen(!isOpen)}
                 className="hover:bg-bg-subtle group flex items-center gap-1 rounded-full p-0.5 pr-1.5 transition-colors"
                 aria-label="User menu"
-                aria-expanded={isOpen}
             >
                 <Avatar className="border-accent/30 size-9 border-2 shadow-sm">
                     <AvatarImage
