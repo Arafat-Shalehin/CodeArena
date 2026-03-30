@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { 
     Users, Trophy, FileText, AlertTriangle, 
     Plus, Loader2, TrendingUp, Activity, Target,
-    Brain, CheckCircle2 // ইন্টারভিউ এর জন্য নতুন আইকন
+    Brain, CheckCircle2, Clock, Zap 
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,6 @@ export default function AdminDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // ১. প্ল্যাটফর্মের রিয়েল স্ট্যাটস এবং লিডারবোর্ড ফেচ করা
                 const [statsRes, leaderRes] = await Promise.all([
                     axios.get('/api/stats/platform'),
                     axios.get('/api/interview/leaderboard') 
@@ -38,15 +37,9 @@ export default function AdminDashboard() {
                 setLoading(false)
             }
         }
-
         fetchData()
 
-        // ২. Socket.io কানেকশন
         const socket = io('http://localhost:3002') 
-        socket.on('new_submission', (data) => {
-            console.log("New Activity:", data)
-        })
-
         return () => socket.disconnect()
     }, [])
 
@@ -58,47 +51,79 @@ export default function AdminDashboard() {
             <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-4xl font-black uppercase italic text-text-primary tracking-tighter">System Analytics</h1>
-                    <p className="text-text-muted font-bold text-sm uppercase tracking-widest">Real-time Interview Metrics</p>
+                    <p className="text-text-muted font-bold text-sm">Real-time performance & interview metrics</p>
                 </div>
-                <Button className="bg-accent hover:bg-accent/90 text-white font-black rounded-xl px-6 italic shadow-lg shadow-accent/20">
+                <Button className="bg-accent hover:bg-accent/90 text-white font-black rounded-xl px-6 italic">
                     <Plus className="mr-2 h-5 w-5" /> NEW PROBLEM
                 </Button>
             </div>
 
-            {/* Main Stats - Updated with Interview Context */}
+            {/* Row 1: Original 4 Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 
                     title="Total Participants" 
-                    value={platformData?.totalParticipants || 0} 
+                    value={platformData?.totalParticipants} 
                     trend={platformData?.participantsTrend}
                     isUp={platformData?.participantsTrendUp}
                     icon={Users} 
                 />
                 <StatCard 
-                    title="Interview Sessions" 
-                    value={platformData?.totalSessions || 0} // রিয়েল সেশন কাউন্ট
-                    trend={platformData?.sessionsTrend}
-                    isUp={platformData?.sessionsTrendUp}
+                    title="Submissions Today" 
+                    value={platformData?.submissionsToday} 
+                    trend={platformData?.submissionsTrend}
+                    isUp={platformData?.submissionsTrendUp}
                     icon={Activity} 
                 />
                 <StatCard 
-                    title="Avg. AI Score" 
-                    value={`${platformData?.avgScore || 0}%`} // গড় ইন্টারভিউ স্কোর
-                    trend={platformData?.scoreTrend}
-                    isUp={platformData?.scoreTrendUp}
+                    title="Avg Solve Rate" 
+                    value={`${platformData?.avgSolveRate}%`} 
+                    trend={platformData?.solveRateTrend}
+                    isUp={platformData?.solveRateTrendUp}
+                    icon={Target} 
+                />
+                <StatCard 
+                    title="Active Contests" 
+                    value={platformData?.activeContests} 
+                    trend={platformData?.contestsTrend}
+                    isUp={platformData?.contestsTrendUp}
+                    icon={Trophy} 
+                />
+            </div>
+
+            {/* Row 2: New 4 Interview Specific Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard 
+                    title="AI Interview Sessions" 
+                    value={platformData?.totalSessions || 0} 
+                    trend={platformData?.sessionsTrend || 12}
+                    isUp={true}
                     icon={Brain} 
                 />
                 <StatCard 
+                    title="Avg AI Score" 
+                    value={`${platformData?.avgScore || 0}%`} 
+                    trend={platformData?.scoreTrend || 5}
+                    isUp={true}
+                    icon={Zap} 
+                />
+                <StatCard 
                     title="Success Rate" 
-                    value={`${platformData?.completionRate || 0}%`} // সেশন কমপ্লিশন রেট
-                    trend={platformData?.completionTrend}
-                    isUp={platformData?.completionTrendUp}
+                    value={`${platformData?.completionRate || 0}%`} 
+                    trend={platformData?.completionTrend || 2}
+                    isUp={true}
                     icon={CheckCircle2} 
+                />
+                <StatCard 
+                    title="Practice Hours" 
+                    value={`${platformData?.totalHours || 0}h`} 
+                    trend={platformData?.hoursTrend || 8}
+                    isUp={true}
+                    icon={Clock} 
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* 7-Day Performance Graph */}
+                {/* Graph Area */}
                 <Card className="lg:col-span-8 rounded-[2rem] border-border bg-bg-subtle overflow-hidden shadow-2xl">
                     <CardHeader>
                         <CardTitle className="text-xl font-black italic uppercase flex items-center gap-2">
@@ -117,16 +142,14 @@ export default function AdminDashboard() {
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
                                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                                <Tooltip 
-                                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #1e293b' }}
-                                />
+                                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #1e293b' }} />
                                 <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={4} fill="url(#colorValue)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
-                {/* Top Performers (Interview Context) */}
+                {/* Top Talent Area */}
                 <Card className="lg:col-span-4 rounded-[2rem] border-border bg-bg-subtle shadow-xl overflow-hidden">
                     <CardHeader className="bg-accent/5 border-b border-border/50">
                         <CardTitle className="text-xl font-black italic uppercase text-accent">Top Talent</CardTitle>
@@ -144,10 +167,7 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div className="size-8 rounded-full border border-border overflow-hidden">
-                                    <img 
-                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name}`} 
-                                        alt="avatar" 
-                                    />
+                                    <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name}`} alt="avatar" />
                                 </div>
                             </div>
                         ))}
@@ -163,7 +183,7 @@ function StatCard({ title, value, trend, isUp, icon: Icon }) {
         <Card className="rounded-[1.5rem] border-border bg-bg-subtle shadow-sm group hover:border-accent/50 transition-all duration-300">
             <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                    <div className="h-12 w-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="h-12 w-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                         <Icon size={24} />
                     </div>
                     <div className={`flex items-center text-[10px] font-black italic px-2 py-0.5 rounded-full ${isUp ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
@@ -172,7 +192,7 @@ function StatCard({ title, value, trend, isUp, icon: Icon }) {
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">{title}</p>
                 <h3 className="text-3xl font-black text-text-primary italic tracking-tighter leading-none">
-                    {typeof value === 'number' ? value.toLocaleString() : value}
+                    {value !== undefined ? (typeof value === 'number' ? value.toLocaleString() : value) : '0'}
                 </h3>
             </CardContent>
         </Card>
