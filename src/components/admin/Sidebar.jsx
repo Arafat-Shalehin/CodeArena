@@ -2,8 +2,8 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useAuth } from '@/context/AuthContext' // আপনার Auth Context ইমপোর্ট করুন
+import { usePathname, useRouter } from 'next/navigation' // useRouter ইমপোর্ট করুন
+import { useAuth } from '@/context/AuthContext'
 import { 
   LayoutDashboard, 
   User, 
@@ -16,7 +16,18 @@ import {
 
 export default function AdminSidebar() {
   const pathname = usePathname()
-  const { logout, user } = useAuth() // AuthContext থেকে ডাটা নিন
+  const router = useRouter() // router ইনভোক করুন
+  const { logout, user } = useAuth()
+
+  // লগআউট হ্যান্ডলার ফাংশন
+  const handleLogout = async () => {
+    try {
+      await logout() // লগআউট কল করুন
+      router.push('/') // হোম পেজে পাঠিয়ে দিন
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
 
   const mainMenuItems = [
     {
@@ -44,12 +55,12 @@ export default function AdminSidebar() {
   const accountItems = [
     {
       title: 'My Profile',
-      href: '/admin/profile', // আপনার প্রি-বিল্ড প্রোফাইল পাথ
+      href: '/admin/profile',
       icon: <User size={20} />,
     },
     {
       title: 'Settings',
-      href: '/admin/settings', // আপনার প্রি-বিল্ড সেটিংস পাথ
+      href: '/admin/settings',
       icon: <Settings size={20} />,
     },
   ]
@@ -92,7 +103,7 @@ export default function AdminSidebar() {
       {/* Footer Actions: Logout & User Profile */}
       <div className="p-4 space-y-2 border-t border-border bg-bg-page/50">
         <button
-          onClick={logout} // Logout Function Call
+          onClick={handleLogout} // আপডেট করা হ্যান্ডলার কল করুন
           className="flex w-full items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-all duration-200 group"
         >
           <LogOut size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -113,7 +124,6 @@ export default function AdminSidebar() {
   )
 }
 
-// Reusable Nav Link Component
 function SidebarLink({ item, active }) {
   return (
     <Link
