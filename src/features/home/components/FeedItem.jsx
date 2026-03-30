@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
@@ -62,7 +62,7 @@ const getDynamicStory = (item) => {
     return pool[seed % pool.length]
 }
 
-export default function FeedItem({ item, getDifficultyClass }) {
+export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
     const [congratulated, setCongratulated] = useState(item.hasLiked || false)
     const [likeCount, setLikeCount] = useState(item.likes || 0)
     const [isLoading, setIsLoading] = useState(false)
@@ -78,6 +78,10 @@ export default function FeedItem({ item, getDifficultyClass }) {
         setLikeCount(item.likes || 0)
     }, [item.hasLiked, item.likes])
 
+    useEffect(() => {
+        setCommentCount(item.commentCount || 0)
+    }, [item.commentCount])
+
     const isPost = item.type === 'post'
     const langKey = item.language?.toLowerCase() || 'javascript'
     const language = LANGUAGE_MAP[langKey] || LANGUAGE_MAP.javascript
@@ -91,6 +95,7 @@ export default function FeedItem({ item, getDifficultyClass }) {
 
     const handleCongratulate = useCallback(
         async (e) => {
+            e?.stopPropagation?.()
             if (isLoading) return
 
             const rect = e.currentTarget.getBoundingClientRect()
@@ -139,6 +144,12 @@ export default function FeedItem({ item, getDifficultyClass }) {
     )
 
     const handleToggleComments = async () => {
+        // In feed list we always open detail modal to avoid layout shift.
+        if (onOpenDetail) {
+            onOpenDetail(item, { focusComments: true })
+            return
+        }
+
         setShowComments((prev) => !prev)
 
         if (!showComments && comments.length === 0) {
@@ -178,8 +189,8 @@ export default function FeedItem({ item, getDifficultyClass }) {
             if (data.success) {
                 // Use the populated comment data from API
                 setComments((prev) => [data.data, ...prev])
-                // Use the actual commentCount from API response
-                setCommentCount(data.commentCount ?? commentCount + 1)
+                // Use server count when available; otherwise increment safely.
+                setCommentCount((prev) => data.commentCount ?? prev + 1)
                 setCommentText('')
             }
         } catch (err) {
@@ -190,12 +201,18 @@ export default function FeedItem({ item, getDifficultyClass }) {
     }
 
     return (
-        <div className="bg-bg-subtle border-border duration-normal rounded-lg border p-6 shadow-sm transition-shadow hover:shadow">
+        <div
+            onClick={() => isPost && onOpenDetail && onOpenDetail(item)}
+            className={cn(
+                'bg-bg-subtle border-border duration-normal rounded-lg border p-6 shadow-sm transition-shadow hover:shadow',
+                isPost && onOpenDetail && 'cursor-pointer'
+            )}
+        >
             <div
                 className={`mb-4 flex items-start justify-between ${isPost ? 'items-center' : ''}`}
             >
                 <div className="flex items-center gap-3">
-                    <Link href={`/profile/${item.user?._id || ''}`}>
+                    <Link href={`/profile/${item.user?._id || ''}`} onClick={(e) => e.stopPropagation()}>
                         <Avatar className="border-border hover:border-accent h-10 w-10 border transition-colors">
                             <AvatarImage
                                 src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${item.user?.avatarSeed || item.user?.name || 'User'}`}
@@ -209,6 +226,7 @@ export default function FeedItem({ item, getDifficultyClass }) {
                         <p className="text-sm">
                             <Link
                                 href={`/profile/${item.user?._id || ''}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="text-text-primary hover:text-accent font-bold transition-colors"
                             >
                                 {item.user?.name || 'Unknown User'}
@@ -220,6 +238,7 @@ export default function FeedItem({ item, getDifficultyClass }) {
                                     </span>
                                     <Link
                                         href={`/problems/${item.problem?._id || ''}`}
+                                        onClick={(e) => e.stopPropagation()}
                                         className="text-accent ml-1 font-semibold hover:underline"
                                     >
                                         {item.problem?.title || 'Unknown Problem'}
@@ -297,7 +316,10 @@ export default function FeedItem({ item, getDifficultyClass }) {
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleToggleComments}
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleComments()
+                    }}
                     className={cn(
                         'bg-bg-page border-border text-text-secondary hover:bg-bg-muted hover:text-text-primary h-8 text-xs font-semibold',
                         showComments && 'border-accent/30 text-accent'
