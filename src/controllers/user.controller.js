@@ -32,7 +32,12 @@ export async function createUser(req) {
     const user = await registerUser(body)
 
     // Auto-login: sign a token and set the cookie
-    const token = signToken({ id: user.id, role: user.role })
+    const token = signToken({
+        id: user.id,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+    })
 
     return createResponseWithCookie({ success: true, data: { user } }, token, 201)
 }

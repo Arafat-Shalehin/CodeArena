@@ -126,6 +126,7 @@ const submissionSchema = new mongoose.Schema(
 submissionSchema.index({ userId: 1, problemId: 1 })
 submissionSchema.index({ problemId: 1, contestId: 1, language: 1, verdict: 1 })
 submissionSchema.index({ contestId: 1, plagiarismCheckedAt: 1, suspectedPlagiarism: 1 })
+submissionSchema.index({ userId: 1, verdict: 1, createdAt: -1 })
 
 export const Submission =
     mongoose.models.Submission || mongoose.model('Submission', submissionSchema)

@@ -1,29 +1,91 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
+
+const NOTIFICATION_PAGE_SIZE = 20
 
 export function useNotification() {
     const { user } = useAuth()
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
-    const [socket, setSocket] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const [loadingMore, setLoadingMore] = useState(false)
+    const [nextCursor, setNextCursor] = useState(null)
+    const [hasMore, setHasMore] = useState(false)
+    const audioContextRef = useRef(null)
+
+    const playNotificationTone = useCallback(() => {
+        try {
+            if (!audioContextRef.current) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext
+                if (!AudioContextClass) return
+                audioContextRef.current = new AudioContextClass()
+            }
+
+            const audioContext = audioContextRef.current
+            const oscillator = audioContext.createOscillator()
+            const gainNode = audioContext.createGain()
+
+            oscillator.connect(gainNode)
+            gainNode.connect(audioContext.destination)
+
+            oscillator.frequency.value = 800
+            oscillator.type = 'sine'
+            gainNode.gain.value = 0.1
+
+            oscillator.start()
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
+            oscillator.stop(audioContext.currentTime + 0.15)
+        } catch {
+            // Ignore if browser blocks audio
+        }
+    }, [])
 
     const fetchNotifications = useCallback(async () => {
         if (!user?._id) return
+        setLoading(true)
         try {
-            const res = await fetch('/api/notifications')
+            const res = await fetch(`/api/notifications?limit=${NOTIFICATION_PAGE_SIZE}`)
             const data = await res.json()
             if (data.success) {
-                setNotifications(data.data)
-                setUnreadCount(data.data.filter((n) => !n.isRead).length)
+                const nextNotifications = data.data || []
+                setNotifications(nextNotifications)
+                setUnreadCount(
+                    data.unreadCount ?? nextNotifications.filter((n) => !n.isRead).length
+                )
+                setNextCursor(data.pagination?.nextCursor || null)
+                setHasMore(Boolean(data.pagination?.hasMore))
             }
         } catch (error) {
             console.error('Error fetching notifications:', error)
+        } finally {
+            setLoading(false)
         }
     }, [user?._id])
+
+    const loadMore = useCallback(async () => {
+        if (!user?._id || !hasMore || !nextCursor || loadingMore) return
+        setLoadingMore(true)
+        try {
+            const res = await fetch(
+                `/api/notifications?limit=${NOTIFICATION_PAGE_SIZE}&cursor=${encodeURIComponent(nextCursor)}`
+            )
+            const data = await res.json()
+            if (data.success) {
+                setNotifications((prev) => [...prev, ...(data.data || [])])
+                setNextCursor(data.pagination?.nextCursor || null)
+                setHasMore(Boolean(data.pagination?.hasMore))
+                setUnreadCount((prev) => data.unreadCount ?? prev)
+            }
+        } catch (error) {
+            console.error('Error loading more notifications:', error)
+        } finally {
+            setLoadingMore(false)
+        }
+    }, [hasMore, loadingMore, nextCursor, user?._id])
 
     useEffect(() => {
         if (!user?._id) return
@@ -45,25 +107,7 @@ export function useNotification() {
             setNotifications((prev) => [notification, ...prev])
             setUnreadCount((prev) => prev + 1)
 
-            // Play a subtle notification beep using Web Audio API (no file required)
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-                const oscillator = audioContext.createOscillator()
-                const gainNode = audioContext.createGain()
-
-                oscillator.connect(gainNode)
-                gainNode.connect(audioContext.destination)
-
-                oscillator.frequency.value = 800 // Hz - a pleasant notification tone
-                oscillator.type = 'sine'
-                gainNode.gain.value = 0.1 // Low volume
-
-                oscillator.start()
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
-                oscillator.stop(audioContext.currentTime + 0.15)
-            } catch {
-                // Ignore if browser blocks audio
-            }
+            playNotificationTone()
 
             // Show Toast
             toast(notification.message, {
@@ -77,12 +121,10 @@ export function useNotification() {
             })
         })
 
-        setSocket(socketInstance)
-
         return () => {
-            if (socketInstance) socketInstance.disconnect()
+            socketInstance.disconnect()
         }
-    }, [user?._id, fetchNotifications])
+    }, [user?._id, fetchNotifications, playNotificationTone])
 
     const markAllAsRead = async () => {
         try {
@@ -99,6 +141,10 @@ export function useNotification() {
     return {
         notifications,
         unreadCount,
+        hasMore,
+        loading,
+        loadingMore,
+        loadMore,
         markAllAsRead,
         refresh: fetchNotifications,
     }

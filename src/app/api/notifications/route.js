@@ -11,6 +11,7 @@ import { asyncHandler } from '@/lib/asyncHandler'
 export const dynamic = 'force-dynamic'
 
 export const GET = asyncHandler(async (req) => {
+    const start = Date.now()
     await dbConnect()
     const user = await protect(req)
     if (!user)
@@ -18,14 +19,27 @@ export const GET = asyncHandler(async (req) => {
 
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type') // Optional: count or list
+    const limit = searchParams.get('limit')
+    const cursor = searchParams.get('cursor')
 
     if (type === 'count') {
         const count = await getUnreadCount(user._id)
         return NextResponse.json({ success: true, count })
     }
 
-    const notifications = await getUserNotifications(user._id)
-    return NextResponse.json({ success: true, data: notifications })
+    const [notificationResult, unreadCount] = await Promise.all([
+        getUserNotifications(user._id, { limit, cursor }),
+        getUnreadCount(user._id),
+    ])
+
+    const res = NextResponse.json({
+        success: true,
+        data: notificationResult.data,
+        pagination: notificationResult.pagination,
+        unreadCount,
+    })
+    res.headers.set('x-response-time-ms', String(Date.now() - start))
+    return res
 })
 
 export const PATCH = asyncHandler(async (req) => {

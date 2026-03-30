@@ -63,7 +63,12 @@ export async function POST(request) {
         if (!user.stats) user.stats = {}
 
         // --- AUTH BRIDGE: Issue JWT for our protected APIs ---
-        const token = signToken({ id: user._id, role: user.role, email: user.email })
+        const token = signToken({
+            id: user._id,
+            role: user.role,
+            email: user.email,
+            name: user.name,
+        })
 
         // Return user data and set httpOnly cookie
         return createResponseWithCookie({ success: true, data: { user } }, token)

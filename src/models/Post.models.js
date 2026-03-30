@@ -41,4 +41,6 @@ const postSchema = new mongoose.Schema(
     }
 )
 
+postSchema.index({ userId: 1, createdAt: -1 })
+
 export const Post = mongoose.models.Post || mongoose.model('Post', postSchema)

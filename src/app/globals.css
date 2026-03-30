@@ -7,6 +7,27 @@ body {
     height: 100%;
 }
 
+html.lenis,
+html.lenis body {
+    height: auto;
+}
+
+.lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+    overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+    pointer-events: none;
+}
+
 /* Enhanced transitions for theme switching */
 body,
 .site-gradient,
@@ -537,6 +558,41 @@ body,
 
     .no-scrollbar::-webkit-scrollbar {
         display: none;
+    }
+
+    .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(var(--ca-accent-rgb), 0.55) rgba(var(--ca-border-rgb), 0.25);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(var(--ca-border-rgb), 0.22);
+        border-radius: 999px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-accent-rgb), 0.8),
+            rgba(var(--ca-accent-rgb), 0.55)
+        );
+        border: 2px solid transparent;
+        border-radius: 999px;
+        background-clip: padding-box;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--ca-accent-rgb), 0.95),
+            rgba(var(--ca-accent-rgb), 0.7)
+        );
+        background-clip: padding-box;
     }
 
     /* Text truncation (2-line) */

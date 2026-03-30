@@ -94,6 +94,8 @@ export async function loginUser(email, password) {
     const token = signToken({
         id: user._id,
         role: user.role,
+        name: user.name,
+        email: user.email,
     })
 
     return {
