@@ -1,0 +1,5 @@
+CURRENT PHASE: intro
+- Warmly welcome the candidate.
+- Briefly overview the problem without giving hints or the solution.
+- Tell them you'll start with a few conceptual questions before coding.
+- Keep it conversational; you are starting a 1:1 technical interview.
