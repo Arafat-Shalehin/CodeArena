@@ -18,12 +18,14 @@ export const dynamic = 'force-dynamic'
  *   ?limit=<number>            — items per page (default 15, max 30)
  */
 export async function GET(req) {
+    const start = Date.now()
     try {
         await dbConnect()
 
         const { searchParams } = new URL(req.url)
         const cursor = searchParams.get('cursor')
-        const limit = Math.min(parseInt(searchParams.get('limit') || '15', 10), 30)
+        const parsedLimit = Number.parseInt(searchParams.get('limit') || '15', 10)
+        const limit = Number.isNaN(parsedLimit) ? 15 : Math.min(Math.max(parsedLimit, 1), 30)
 
         // 1. Authenticate user
         const user = await protect(req)
@@ -43,6 +45,9 @@ export async function GET(req) {
             verdict: { $in: ['accepted', 'ACCEPTED'] },
             ...dateFilter,
         })
+            .select(
+                '_id userId problemId language executionTime memoryUsed likes comments createdAt'
+            )
             .sort({ createdAt: -1 })
             .limit(limit + 1)
             .populate({ path: 'userId', select: 'name avatarSeed' })
@@ -54,6 +59,7 @@ export async function GET(req) {
             userId: { $in: feedIds },
             ...dateFilter,
         })
+            .select('_id userId content likes comments createdAt')
             .sort({ createdAt: -1 })
             .limit(limit + 1)
             .populate({ path: 'userId', select: 'name avatarSeed' })
@@ -117,7 +123,7 @@ export async function GET(req) {
         const feed = allItems.slice(0, limit)
         const nextCursor = feed.length > 0 ? feed[feed.length - 1].createdAt : null
 
-        return NextResponse.json({
+        const res = NextResponse.json({
             success: true,
             data: feed,
             pagination: {
@@ -126,6 +132,8 @@ export async function GET(req) {
                 count: feed.length,
             },
         })
+        res.headers.set('x-response-time-ms', String(Date.now() - start))
+        return res
     } catch (error) {
         console.error('Feed error:', error)
         return NextResponse.json({ success: false, message: 'Server Error' }, { status: 500 })

@@ -1,6 +1,59 @@
 import { Notification } from '@/models/Notification.models'
 import { redisClient } from '@/lib/redis'
 
+const DEFAULT_NOTIFICATION_LIMIT = 20
+const MAX_NOTIFICATION_LIMIT = 50
+const NOTIFICATION_CACHE_TTL_SECONDS = 300
+
+function normalizeLimit(limit) {
+    const parsed = Number.parseInt(String(limit || DEFAULT_NOTIFICATION_LIMIT), 10)
+    if (Number.isNaN(parsed)) return DEFAULT_NOTIFICATION_LIMIT
+    return Math.min(Math.max(parsed, 1), MAX_NOTIFICATION_LIMIT)
+}
+
+function normalizeCursor(cursor) {
+    if (!cursor) return null
+    const date = new Date(cursor)
+    return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getNotificationVersionKey(userId) {
+    return `notifications:${userId}:v`
+}
+
+function getNotificationCacheKey(userId, { version, limit, cursor }) {
+    const safeCursor = cursor ? new Date(cursor).toISOString() : 'none'
+    return `notifications:${userId}:ver:${version}:limit:${limit}:cursor:${safeCursor}`
+}
+
+async function getNotificationCacheVersion(userId) {
+    if (!redisClient.isOpen) return '0'
+
+    const versionKey = getNotificationVersionKey(userId)
+
+    try {
+        let version = await redisClient.get(versionKey)
+        if (!version) {
+            version = '1'
+            await redisClient.set(versionKey, version, { NX: true })
+        }
+        return version || '1'
+    } catch (err) {
+        console.error('Failed to read notification cache version:', err)
+        return '0'
+    }
+}
+
+async function bumpNotificationCacheVersion(userId) {
+    if (!redisClient.isOpen) return
+
+    try {
+        await redisClient.incr(getNotificationVersionKey(userId))
+    } catch (err) {
+        console.error('Failed to bump notification cache version:', err)
+    }
+}
+
 export async function resolveNotificationActorName(user) {
     if (user?.name?.trim()) return user.name.trim()
 
@@ -11,7 +64,9 @@ export async function resolveNotificationActorName(user) {
     if (user?._id || user?.id) {
         try {
             const { User } = await import('@/models/User.models')
-            const actor = await User.findById(user._id || user.id).select('name email').lean()
+            const actor = await User.findById(user._id || user.id)
+                .select('name email')
+                .lean()
 
             if (actor?.name?.trim()) return actor.name.trim()
             if (actor?.email?.trim()) return actor.email.split('@')[0].trim() || 'Someone'
@@ -47,14 +102,8 @@ export async function sendNotification(data) {
 
         // 2. Publish to Redis for Socket.IO instances to pick up
         if (redisClient.isOpen) {
-            // Invalidate notification cache
-            const cachePattern = `notifications:${data.recipientId}:*`
-            try {
-                const keys = await redisClient.keys(cachePattern)
-                if (keys.length > 0) await redisClient.del(keys)
-            } catch (err) {
-                console.error('Failed to invalidate notification cache:', err)
-            }
+            // Invalidate notification cache via version bump (O(1), avoids KEYS scan).
+            await bumpNotificationCacheVersion(data.recipientId)
 
             await redisClient.publish(
                 'notifications',
@@ -76,8 +125,13 @@ export async function sendNotification(data) {
     }
 }
 
-export async function getUserNotifications(userId, limit = 20) {
-    const cacheKey = `notifications:${userId}:limit:${limit}`
+export async function getUserNotifications(userId, options = {}) {
+    const normalizedOptions = typeof options === 'number' ? { limit: options } : (options ?? {})
+    const limit = normalizeLimit(normalizedOptions.limit)
+    const cursorDate = normalizeCursor(normalizedOptions.cursor)
+    const cursor = cursorDate ? cursorDate.toISOString() : null
+    const version = await getNotificationCacheVersion(userId)
+    const cacheKey = getNotificationCacheKey(userId, { version, limit, cursor })
 
     try {
         if (redisClient.isOpen) {
@@ -90,20 +144,51 @@ export async function getUserNotifications(userId, limit = 20) {
         console.error('Redis read error in getUserNotifications:', err)
     }
 
-    const notifications = await Notification.find({ recipientId: userId })
-        .sort({ createdAt: -1 })
-        .limit(limit)
+    const query = { recipientId: userId }
+    if (cursorDate) {
+        query.createdAt = { $lt: cursorDate }
+    }
+
+    const docs = await Notification.find(query)
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('senderId type message link metadata isRead createdAt')
         .populate('senderId', 'name avatarSeed')
+        .lean()
+
+    const hasMore = docs.length > limit
+    const notifications = hasMore ? docs.slice(0, limit) : docs
+    const lastItem = notifications[notifications.length - 1]
+    const nextCursor =
+        hasMore && lastItem?.createdAt ? new Date(lastItem.createdAt).toISOString() : null
 
     try {
         if (redisClient.isOpen) {
-            await redisClient.set(cacheKey, JSON.stringify(notifications), { EX: 300 }) // 5 mins
+            await redisClient.set(
+                cacheKey,
+                JSON.stringify({
+                    data: notifications,
+                    pagination: {
+                        hasMore,
+                        nextCursor,
+                        count: notifications.length,
+                    },
+                }),
+                { EX: NOTIFICATION_CACHE_TTL_SECONDS }
+            )
         }
     } catch (err) {
         console.error('Redis write error in getUserNotifications:', err)
     }
 
-    return notifications
+    return {
+        data: notifications,
+        pagination: {
+            hasMore,
+            nextCursor,
+            count: notifications.length,
+        },
+    }
 }
 
 export async function markAsRead(notificationId, userId) {
@@ -113,10 +198,7 @@ export async function markAsRead(notificationId, userId) {
         { new: true }
     )
 
-    if (redisClient.isOpen) {
-        const keys = await redisClient.keys(`notifications:${userId}:*`)
-        if (keys.length > 0) await redisClient.del(keys).catch(() => {})
-    }
+    await bumpNotificationCacheVersion(userId)
 
     return result
 }
@@ -127,10 +209,7 @@ export async function markAllAsRead(userId) {
         { isRead: true }
     )
 
-    if (redisClient.isOpen) {
-        const keys = await redisClient.keys(`notifications:${userId}:*`)
-        if (keys.length > 0) await redisClient.del(keys).catch(() => {})
-    }
+    await bumpNotificationCacheVersion(userId)
 
     return result
 }
