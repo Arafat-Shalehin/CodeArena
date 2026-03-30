@@ -4,161 +4,153 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
     Users, Trophy, FileText, AlertTriangle, 
-    Plus, Loader2, PlayCircle, History, 
-    BarChart3, CheckCircle2, Clock
+    Plus, Loader2, TrendingUp, Activity, Target,
+    Brain, CheckCircle2 // ইন্টারভিউ এর জন্য নতুন আইকন
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-    Tooltip, ResponsiveContainer, Radar, RadarChart, 
-    PolarGrid, PolarAngleAxis, PolarRadiusAxis 
+    Tooltip, ResponsiveContainer 
 } from 'recharts'
 import axios from 'axios'
+import { io } from 'socket.io-client'
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState(null)
-    const [interviewHistory, setInterviewHistory] = useState([])
+    const [platformData, setPlatformData] = useState(null)
+    const [leaderboard, setLeaderboard] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
+        const fetchData = async () => {
             try {
-                // আপনার পাঠানো API গুলো থেকে ডাটা ফেচ করা
-                const [platformRes, historyRes] = await Promise.all([
+                // ১. প্ল্যাটফর্মের রিয়েল স্ট্যাটস এবং লিডারবোর্ড ফেচ করা
+                const [statsRes, leaderRes] = await Promise.all([
                     axios.get('/api/stats/platform'),
-                    axios.get('/api/interview/history?limit=5') // ইন্টারভিউ হিস্ট্রি এপিআই
+                    axios.get('/api/interview/leaderboard') 
                 ])
                 
-                setStats(platformRes.data.data)
-                setInterviewHistory(historyRes.data.data)
+                if (statsRes.data.success) setPlatformData(statsRes.data.data)
+                if (leaderRes.data.success) setLeaderboard(leaderRes.data.data.slice(0, 5))
             } catch (error) {
-                console.error("Dashboard Error:", error)
+                console.error("Dashboard error:", error)
             } finally {
                 setLoading(false)
             }
         }
-        fetchDashboardData()
+
+        fetchData()
+
+        // ২. Socket.io কানেকশন
+        const socket = io('http://localhost:3002') 
+        socket.on('new_submission', (data) => {
+            console.log("New Activity:", data)
+        })
+
+        return () => socket.disconnect()
     }, [])
 
-    if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-accent" size={40} /></div>
+    if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-accent" size={48} /></div>
 
     return (
-        <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
-            {/* Top Row: Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard title="Total Users" value={stats?.totalParticipants || "0"} icon={Users} color="bg-blue-600" />
-                <StatCard title="Total Problems" value="450+" icon={FileText} color="bg-purple-600" />
-                <StatCard title="Interviews Taken" value={stats?.totalInterviews || "1.2k"} icon={PlayCircle} color="bg-emerald-600" />
-                <StatCard title="Avg. Success" value="78%" icon={Trophy} color="bg-amber-600" />
+        <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-700">
+            {/* Header */}
+            <div className="flex justify-between items-end">
+                <div>
+                    <h1 className="text-4xl font-black uppercase italic text-text-primary tracking-tighter">System Analytics</h1>
+                    <p className="text-text-muted font-bold text-sm uppercase tracking-widest">Real-time Interview Metrics</p>
+                </div>
+                <Button className="bg-accent hover:bg-accent/90 text-white font-black rounded-xl px-6 italic shadow-lg shadow-accent/20">
+                    <Plus className="mr-2 h-5 w-5" /> NEW PROBLEM
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* 1. Interview Performance Analysis (Chart) */}
-                <Card className="lg:col-span-8 rounded-[2rem] border-border bg-bg-subtle shadow-xl overflow-hidden">
-                    <CardHeader className="border-b border-border/50 pb-6">
-                        <CardTitle className="text-xl font-black uppercase italic flex items-center gap-2">
-                            <BarChart3 className="text-accent" /> Interview Trend Analysis
+            {/* Main Stats - Updated with Interview Context */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard 
+                    title="Total Participants" 
+                    value={platformData?.totalParticipants || 0} 
+                    trend={platformData?.participantsTrend}
+                    isUp={platformData?.participantsTrendUp}
+                    icon={Users} 
+                />
+                <StatCard 
+                    title="Interview Sessions" 
+                    value={platformData?.totalSessions || 0} // রিয়েল সেশন কাউন্ট
+                    trend={platformData?.sessionsTrend}
+                    isUp={platformData?.sessionsTrendUp}
+                    icon={Activity} 
+                />
+                <StatCard 
+                    title="Avg. AI Score" 
+                    value={`${platformData?.avgScore || 0}%`} // গড় ইন্টারভিউ স্কোর
+                    trend={platformData?.scoreTrend}
+                    isUp={platformData?.scoreTrendUp}
+                    icon={Brain} 
+                />
+                <StatCard 
+                    title="Success Rate" 
+                    value={`${platformData?.completionRate || 0}%`} // সেশন কমপ্লিশন রেট
+                    trend={platformData?.completionTrend}
+                    isUp={platformData?.completionTrendUp}
+                    icon={CheckCircle2} 
+                />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* 7-Day Performance Graph */}
+                <Card className="lg:col-span-8 rounded-[2rem] border-border bg-bg-subtle overflow-hidden shadow-2xl">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-black italic uppercase flex items-center gap-2">
+                            <TrendingUp className="text-accent" /> Submission Activity (7 Days)
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-8">
-                        <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={stats?.chartData || []}>
-                                    <defs>
-                                        <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#1e293b', borderRadius: '16px', border: 'none' }}
+                    <CardContent className="h-[350px] pr-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={platformData?.submissionsHistory?.map((val, i) => ({ day: `Day ${i+1}`, value: val })) || []}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #1e293b' }}
+                                />
+                                <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={4} fill="url(#colorValue)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                {/* Top Performers (Interview Context) */}
+                <Card className="lg:col-span-4 rounded-[2rem] border-border bg-bg-subtle shadow-xl overflow-hidden">
+                    <CardHeader className="bg-accent/5 border-b border-border/50">
+                        <CardTitle className="text-xl font-black italic uppercase text-accent">Top Talent</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-6">
+                        {leaderboard.map((user, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 rounded-2xl bg-bg-page hover:scale-[1.02] transition-transform cursor-pointer border border-transparent hover:border-accent/20">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center font-black text-accent text-xs">
+                                        #{index + 1}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-text-primary leading-none mb-1 text-sm">{user.name}</p>
+                                        <p className="text-[10px] uppercase font-black text-text-muted">Score: {user.score}%</p>
+                                    </div>
+                                </div>
+                                <div className="size-8 rounded-full border border-border overflow-hidden">
+                                    <img 
+                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name}`} 
+                                        alt="avatar" 
                                     />
-                                    <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 2. Quick Interview Launch */}
-                <Card className="lg:col-span-4 rounded-[2rem] border-accent/20 bg-accent/5 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                        <PlayCircle size={150} />
-                    </div>
-                    <CardContent className="p-8 flex flex-col h-full justify-between relative z-10">
-                        <div>
-                            <h2 className="text-3xl font-black uppercase italic leading-none mb-2">Ready for an Interview?</h2>
-                            <p className="text-sm text-text-secondary font-medium">Test your skills with AI-powered code analysis and real-time feedback.</p>
-                        </div>
-                        <div className="space-y-4 mt-8">
-                            <Button className="w-full bg-accent hover:bg-accent/90 text-white font-black py-6 rounded-2xl italic tracking-widest shadow-lg shadow-accent/30">
-                                START NEW SESSION
-                            </Button>
-                            <Button variant="outline" className="w-full py-6 rounded-2xl font-black border-2">
-                                BROWSE PROBLEMS
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 3. Recent Interview Sessions (Table Context) */}
-                <Card className="lg:col-span-12 rounded-[2rem] border-border bg-bg-subtle shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-xl font-black uppercase italic flex items-center gap-2">
-                            <History size={20} className="text-accent" /> Recent Interview Sessions
-                        </CardTitle>
-                        <Button variant="ghost" className="text-xs font-black text-accent uppercase tracking-widest">View All History</Button>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted border-b border-border/50">
-                                        <th className="text-left pb-4">Problem Name</th>
-                                        <th className="text-left pb-4">Started At</th>
-                                        <th className="text-left pb-4">Status</th>
-                                        <th className="text-right pb-4">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/30">
-                                    {interviewHistory.length > 0 ? interviewHistory.map((session) => (
-                                        <tr key={session._id} className="group hover:bg-bg-page/50 transition-colors">
-                                            <td className="py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-xl bg-bg-page flex items-center justify-center text-accent border border-border">
-                                                        <FileText size={18} />
-                                                    </div>
-                                                    <span className="font-bold text-text-primary">
-                                                        {session.problemIds?.[0]?.title || "Multi-Problem Session"}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 text-sm text-text-muted font-medium">
-                                                {new Date(session.startedAt).toLocaleDateString()}
-                                            </td>
-                                            <td className="py-4">
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-widest">
-                                                    <CheckCircle2 size={12} /> Completed
-                                                </span>
-                                            </td>
-                                            <td className="py-4 text-right">
-                                                <Button size="sm" variant="ghost" className="rounded-lg font-bold text-xs hover:bg-accent hover:text-white transition-all">
-                                                    Review Result
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan="4" className="py-10 text-center text-text-muted font-bold italic">No recent interview sessions found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                </div>
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
             </div>
@@ -166,17 +158,22 @@ export default function AdminDashboard() {
     )
 }
 
-function StatCard({ title, value, icon: Icon, color }) {
+function StatCard({ title, value, trend, isUp, icon: Icon }) {
     return (
-        <Card className="rounded-[1.5rem] border-border bg-bg-subtle hover:shadow-2xl transition-all group overflow-hidden relative">
-            <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">{title}</p>
-                    <h3 className="text-3xl font-black text-text-primary italic tracking-tight">{value}</h3>
+        <Card className="rounded-[1.5rem] border-border bg-bg-subtle shadow-sm group hover:border-accent/50 transition-all duration-300">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="h-12 w-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Icon size={24} />
+                    </div>
+                    <div className={`flex items-center text-[10px] font-black italic px-2 py-0.5 rounded-full ${isUp ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                        {isUp ? '▲' : '▼'} {Math.abs(trend || 0)}%
+                    </div>
                 </div>
-                <div className={`h-12 w-12 rounded-2xl ${color} flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:rotate-12 transition-transform`}>
-                    <Icon size={24} />
-                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">{title}</p>
+                <h3 className="text-3xl font-black text-text-primary italic tracking-tighter leading-none">
+                    {typeof value === 'number' ? value.toLocaleString() : value}
+                </h3>
             </CardContent>
         </Card>
     )
