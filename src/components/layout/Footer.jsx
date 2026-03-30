@@ -27,7 +27,7 @@ const COMPANY_LINKS = [
     { name: 'About', href: '/about' },
     { name: 'Careers', href: '/careers' },
     { name: 'Blog', href: '/blog' },
-    { name: 'Contact', href: '#' },
+    { name: 'Contact', href: '/contact' },
 ]
 const RESOURCES_LINKS = [
     { name: 'Documentation', href: '/documentation' },
