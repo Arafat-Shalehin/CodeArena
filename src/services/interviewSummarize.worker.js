@@ -3,7 +3,6 @@ import { connection } from '@/lib/queue'
 import dbConnect from '@/lib/mongodb'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
-import { MODELS } from '@/services/aiConversation.service'
 
 /**
  * Background worker to compress old interview messages into a dense, token-efficient summary.
@@ -71,9 +70,6 @@ RULES:
                     messages: [
                         { role: 'user', content: `TRANSCRIPT TO SUMMARIZE:\n${transcript}` },
                     ],
-                    model: MODELS.FAST,
-                    phase: 'summary',
-                    jobType: 'interview-summarize',
                 })
 
                 let summaryBlock = ''
