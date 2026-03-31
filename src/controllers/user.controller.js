@@ -8,6 +8,7 @@ import {
 } from '@/services/user.service'
 import { createResponseWithCookie, createResponseClearCookie } from '@/lib/cookie'
 import { signToken } from '@/lib/jwt'
+import { NextResponse } from 'next/server'
 
 /**
  * POST /api/auth/login
@@ -92,14 +93,14 @@ export async function updateUserDetails(req, { params }) {
     // Assuming req.user is populated by protect middleware
     const userId = req.user?.id || req.user?._id
     if (userId && userId.toString() !== resolvedParams.id && req.user.role !== 'admin') {
-        return Response.json(
+        return NextResponse.json(
             { success: false, message: 'Not authorized to update this profile' },
             { status: 403 }
         )
     }
 
     const updatedUser = await updateUser(resolvedParams.id, body)
-    return Response.json({ success: true, data: updatedUser })
+    return NextResponse.json({ success: true, data: updatedUser })
 }
 
 /**

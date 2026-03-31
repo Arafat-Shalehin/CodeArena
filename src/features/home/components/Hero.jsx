@@ -1,32 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import React, { useMemo, useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import CodeEditorPreview from './CodeEditorPreview'
 import { ScrollRevealCard } from '@/components/ui/ScrollRevealCard'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
-import { Tiles } from '@/components/ui/tiles'
+import dynamic from 'next/dynamic'
+
+const Tiles = dynamic(
+    () => import('@/components/ui/tiles').then((mod) => ({ default: mod.Tiles })),
+    {
+        ssr: false,
+        loading: () => <div className="bg-bg-page absolute inset-0" />,
+    }
+)
+
+// Import CodeEditorPreview statically for instant rendering (it's a lightweight visual component)
+import CodeEditorPreview from './CodeEditorPreview'
+
 import { SiPython, SiCplusplus, SiJavascript, SiRust, SiGo } from 'react-icons/si'
 import { FaJava } from 'react-icons/fa'
 
-const Streak = () => {
-    const [config, setConfig] = useState(null)
-
-    useEffect(() => {
-        setConfig({
-            left: `${Math.random() * 100}%`,
-            duration: 3 + Math.random() * 4,
-            delay: Math.random() * 10,
-            opacity: 0.1 + Math.random() * 0.3,
-            height: 100 + Math.random() * 200,
-        })
-    }, [])
-
-    if (!config) return null
-
+const Streak = React.memo(({ config }) => {
     return (
         <motion.div
             initial={{ y: -config.height - 100, opacity: 0 }}
@@ -50,31 +47,58 @@ const Streak = () => {
             <div className="bg-accent absolute bottom-0 left-1/2 size-1 -translate-x-1/2 rounded-full shadow-[0_0_10px_var(--ca-accent)]" />
         </motion.div>
     )
-}
+})
 
-const FallingLight = () => {
-    const streaks = Array.from({ length: 20 })
+const FallingLight = React.memo(({ count = 8 }) => {
+    const [streaks, setStreaks] = useState([])
+
+    useEffect(() => {
+        setStreaks(
+            Array.from({ length: count }, () => ({
+                left: `${Math.random() * 100}%`,
+                duration: 4 + Math.random() * 4,
+                delay: Math.random() * 6,
+                opacity: 0.08 + Math.random() * 0.12,
+                height: 120 + Math.random() * 160,
+            }))
+        )
+    }, [count])
+
     return (
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-            {streaks.map((_, i) => (
-                <Streak key={i} />
+            {streaks.map((config, i) => (
+                <Streak key={i} config={config} />
             ))}
         </div>
     )
-}
+})
 
-export default function Hero() {
+export default React.memo(function Hero() {
     const shouldReduceMotion = useSafeReducedMotion()
+    const decorativeStreakCount = shouldReduceMotion ? 0 : 8
 
     return (
-        <section className="hero-gradient relative overflow-hidden pt-12 pb-0 transition-all duration-700">
-            {/* Background Animations: Interactive Tiles */}
-            <div className="absolute inset-0 z-0 opacity-10">
-                <Tiles rows={40} cols={20} tileSize="md" />
+        <section className="hero-gradient relative overflow-hidden pt-18 pb-0 transition-[transform,opacity] duration-700">
+            {/* Interactive Tiles Background */}
+            <div className="absolute inset-0 z-0">
+                <Tiles
+                    className="opacity-[0.18] lg:opacity-[0.25]"
+                    rows={40}
+                    cols={28}
+                    tileSize="md"
+                    tileClassName="border-neutral-300 dark:border-neutral-800/30"
+                />
+
+                {/* Overlay gradients for depth */}
+                <div className="from-bg-page to-bg-page absolute inset-0 bg-gradient-to-b via-transparent opacity-100" />
+                <div className="from-bg-page to-bg-page absolute inset-0 bg-gradient-to-r via-transparent opacity-60" />
+
+                <div className="absolute -top-32 right-0 h-96 w-96 rounded-full bg-[radial-gradient(circle,_rgba(58,154,255,0.12),_transparent_68%)] opacity-50 blur-3xl" />
+                <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(2,186,76,0.12),_transparent_68%)] opacity-50 blur-3xl" />
             </div>
 
             {/* Falling Light Data Animation */}
-            <FallingLight />
+            {decorativeStreakCount > 0 && <FallingLight count={decorativeStreakCount} />}
 
             <div className="relative z-10 mx-auto -mt-20 flex max-w-7xl flex-col items-center px-4 lg:-mt-24">
                 {/* Top Section: Content */}
@@ -91,11 +115,11 @@ export default function Hero() {
                             },
                         },
                     }}
-                    className="mb-6 text-center"
+                    className="mb-2 text-center"
                 >
                     {/* Headline */}
-                    <div className="mt-12 mb-2 overflow-visible">
-                        <h1 className="text-text-primary pt-12 pb-2 font-sans text-6xl leading-[1.1] font-extrabold tracking-[-0.04em] sm:text-7xl lg:text-8xl">
+                    <div className="mt-2 mb-1 overflow-visible">
+                        <h1 className="text-text-primary font-display pt-6 pb-2 text-6xl leading-[1.05] font-black tracking-[-0.04em] [text-wrap:balance] sm:text-7xl lg:text-[7.5rem]">
                             <motion.span
                                 variants={{
                                     hidden: { y: 60, opacity: 0 },
@@ -127,22 +151,31 @@ export default function Hero() {
                     </div>
 
                     {/* Subheadline */}
-                    <motion.p
-                        variants={{
-                            hidden: { opacity: 0, y: 30 },
-                            visible: {
-                                opacity: 1,
-                                y: 0,
-                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
-                            },
-                        }}
-                        className="text-text-secondary mx-auto mb-8 max-w-2xl text-lg leading-relaxed md:text-xl"
-                    >
-                        Level up your coding skills and ace your next technical interview. Join the
-                        world's fastest-growing competitive programming arena.
-                    </motion.p>
+                    <div className="mx-auto mb-1 max-w-3xl text-center">
+                        <motion.p
+                            variants={{
+                                hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
+                                visible: {
+                                    opacity: 1,
+                                    y: 0,
+                                    filter: 'blur(0px)',
+                                    transition: {
+                                        duration: 0.8,
+                                        ease: [0.16, 1, 0.3, 1],
+                                        delay: 0.25,
+                                    },
+                                },
+                            }}
+                            className="text-text-secondary font-display text-lg leading-relaxed font-medium [text-wrap:balance] md:text-2xl"
+                        >
+                            Where developers stop learning and start{' '}
+                            <span className="text-gradient">competing.</span>
+                            <br className="hidden md:block" />
+                            Solve what matters. Prove it in real time.
+                        </motion.p>
+                    </div>
 
-                    {/* CTA Buttons */}
+                    {/* CTA Section */}
                     <motion.div
                         variants={{
                             hidden: { opacity: 0, y: 20 },
@@ -152,27 +185,42 @@ export default function Hero() {
                                 transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
                             },
                         }}
-                        className="flex flex-col justify-center gap-4 pt-2 sm:flex-row"
+                        className="flex flex-col items-center justify-center gap-8 pt-6"
                     >
-                        <Link href="/problems" className="w-full sm:w-auto">
-                            <Button
-                                variant="default"
-                                size="lg"
-                                className="bg-accent hover:bg-accent-hover h-12 w-full px-8 text-base transition-all hover:scale-105 active:scale-95"
-                            >
-                                Start Solving
-                                <ArrowRight className="ml-2 size-4" />
-                            </Button>
-                        </Link>
-                        <Link href="/contests" className="w-full sm:w-auto">
-                            <Button
-                                variant="secondary"
-                                size="lg"
-                                className="bg-bg-page hover:bg-bg-subtle border-border hover:border-accent/40 h-12 w-full border px-8 text-base transition-all"
-                            >
-                                View Contests
-                            </Button>
-                        </Link>
+                        {/* Action Buttons */}
+                        <div className="flex w-full flex-col justify-center gap-4 sm:w-auto sm:flex-row">
+                            <Link href="/problems" className="w-full sm:w-auto">
+                                <Button
+                                    variant="default"
+                                    size="lg"
+                                    className="btn-primary h-14 w-full px-12 text-lg transition-all hover:scale-105 active:scale-95"
+                                >
+                                    Start Solving
+                                    <ArrowRight className="ml-2 size-5" />
+                                </Button>
+                            </Link>
+                            <Link href="/contests" className="w-full sm:w-auto">
+                                <Button
+                                    variant="secondary"
+                                    size="lg"
+                                    className="btn-secondary h-14 w-full px-12 text-lg transition-all hover:scale-105 active:scale-95"
+                                >
+                                    View Contests
+                                </Button>
+                            </Link>
+                        </div>
+                        {/* Status Tags */}
+                        <div className="text-text-muted flex flex-wrap items-center justify-center gap-3 text-[10px] font-bold tracking-[0.18em] uppercase opacity-90 sm:text-xs">
+                            <span className="bg-bg-subtle border-border/40 hover:bg-bg-muted hover:text-text-primary rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all">
+                                2,500+ Problems
+                            </span>
+                            <span className="bg-bg-subtle border-border/40 hover:bg-bg-muted hover:text-text-primary rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all">
+                                Live Contests
+                            </span>
+                            <span className="bg-bg-subtle border-border/40 hover:bg-bg-muted hover:text-text-primary rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all">
+                                AI Interviewer
+                            </span>
+                        </div>
                     </motion.div>
 
                     {/* Language Support Showcase */}
@@ -184,35 +232,41 @@ export default function Hero() {
                                 transition: { duration: 1, delay: 0.4 },
                             },
                         }}
-                        className="text-text-muted pointer-events-auto mt-10 mb-2 flex flex-col items-center gap-4 transition-all duration-300"
+                        className="text-text-muted pointer-events-auto mt-4 mb-1 flex flex-col items-center gap-4 transition-all duration-300"
                     >
-                        <p className="text-xs font-bold tracking-widest uppercase opacity-70">
+                        <p className="text-xs font-bold tracking-widest [text-wrap:balance] uppercase opacity-70">
                             Supported Execution Environments
                         </p>
-                        <div className="flex flex-wrap justify-center gap-6 text-2xl opacity-60 grayscale transition-all duration-500 hover:opacity-100 hover:grayscale-0 sm:gap-8 lg:text-3xl">
+                        <div className="flex flex-wrap justify-center gap-6 text-2xl opacity-60 grayscale transition-[opacity,filter] duration-500 hover:opacity-100 hover:grayscale-0 sm:gap-8 lg:text-3xl">
                             <SiPython
                                 className="cursor-pointer transition-colors hover:text-[#3776AB]"
                                 title="Python 3"
+                                aria-hidden="true"
                             />
                             <SiCplusplus
                                 className="cursor-pointer transition-colors hover:text-[#00599C]"
                                 title="C++"
+                                aria-hidden="true"
                             />
                             <FaJava
                                 className="cursor-pointer transition-colors hover:text-[#5382a1]"
                                 title="Java"
+                                aria-hidden="true"
                             />
                             <SiJavascript
                                 className="cursor-pointer transition-colors hover:text-[#F7DF1E]"
                                 title="JavaScript"
+                                aria-hidden="true"
                             />
                             <SiRust
                                 className="cursor-pointer transition-colors hover:text-[#000000] dark:hover:text-[#FFFFFF]"
                                 title="Rust"
+                                aria-hidden="true"
                             />
                             <SiGo
                                 className="cursor-pointer transition-colors hover:text-[#00ADD8]"
                                 title="Go"
+                                aria-hidden="true"
                             />
                         </div>
                     </motion.div>
@@ -224,4 +278,4 @@ export default function Hero() {
             </div>
         </section>
     )
-}
+})

@@ -6,14 +6,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 // Firebase — sync displayName on save
-import { auth } from '@/lib/firebase/config'
-import { updateProfile as firebaseUpdateProfile } from 'firebase/auth'
+import { getFirebaseAuth } from '@/lib/firebase/config'
 
 // UI
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { User, AtSign, FileText, X, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 // ── Validation Schema ──────────────────────────────────────────────────────────
 const editProfileSchema = z.object({
@@ -96,16 +96,37 @@ export default function EditProfileModal({ user, onSave, onClose }) {
     const bioValue = watch('bio') || ''
 
     const onSubmit = async (data) => {
-        // Sync displayName to Firebase Auth
-        if (auth.currentUser) {
-            try {
-                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
-            } catch (e) {
-                console.error('Firebase profile sync failed:', e)
-            }
+        const userId = user?._id || user?.id
+        if (!userId) {
+            toast.error('Unable to update profile. Please log in again.')
+            return
         }
-        onSave({ name: data.name, bio: data.bio || '', avatarSeed })
-        onClose()
+
+        try {
+            // 1. Save to database
+            const payload = { name: data.name, bio: data.bio || '', avatarSeed }
+            const res = await fetch(`/api/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+            const responseData = await res.json()
+            if (!res.ok) throw new Error(responseData.message || 'Failed to update profile')
+
+            // 2. Sync Firebase displayName
+            const { auth } = await getFirebaseAuth()
+            if (auth?.currentUser) {
+                const { updateProfile: firebaseUpdateProfile } = await import('firebase/auth')
+                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name }).catch(
+                    (e) => console.error('Firebase profile sync failed:', e)
+                )
+            }
+            onSave({ name: data.name, bio: data.bio || '', avatarSeed })
+            onClose()
+        } catch (error) {
+            console.error('Update failed:', error)
+            toast.error(error.message || 'Failed to update profile')
+        }
     }
 
     return (

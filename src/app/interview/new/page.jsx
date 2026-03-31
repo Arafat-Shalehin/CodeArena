@@ -24,16 +24,12 @@ const MODES = [
         title: 'Practice Session',
         description: 'Guided problem solving. Alex will help you with hints and feedback.',
         icon: Gamepad2,
-        color: 'text-blue-400',
-        bg: 'bg-blue-400/10',
     },
     {
         id: 'mock',
         title: 'Mock Interview',
         description: 'Elite pressure. No hints, strict timing, and objective scoring.',
         icon: Trophy,
-        color: 'text-emerald-400',
-        bg: 'bg-emerald-400/10',
     },
 ]
 
@@ -80,114 +76,156 @@ export default function NewInterviewPage() {
     }
 
     return (
-        <main className="bg-bg-page min-h-screen px-4 pt-32 pb-20">
-            <div className="container mx-auto max-w-4xl">
-                <Link
-                    href="/interview"
-                    className="text-text-secondary hover:text-accent mb-12 inline-flex items-center gap-2 font-bold transition-colors"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Dashboard
-                </Link>
+        <main className="bg-bg-page selection:bg-accent/30 relative min-h-screen overflow-hidden px-6 pt-2 pb-10">
+            {/* Static Radial Spotlight (No Animation) */}
+            <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(2,186,76,0.02)_0%,transparent_70%)]"
+                aria-hidden="true"
+            />
 
-                <header className="mb-16">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="border-accent/20 bg-accent/10 text-accent mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-black tracking-widest uppercase"
+            <div className="relative z-10 container mx-auto max-w-4xl">
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <Link
+                        href="/interview"
+                        className="text-text-sub-muted hover:text-accent mb-2 inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase transition-colors"
                     >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Session Configuration
-                    </motion.div>
-                    <h1 className="text-text-primary mb-4 text-5xl font-[1000] tracking-tight">
-                        Ready to <span className="text-accent font-serif italic">Begin?</span>
-                    </h1>
-                    <p className="text-text-secondary text-xl font-medium">
+                        <ArrowLeft className="h-3 w-3" />
+                        Back to Dashboard
+                    </Link>
+                </motion.div>
+
+                <header className="mb-2">
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                        className="text-text-primary mb-2 text-6xl leading-[1.0] font-black tracking-tighter sm:text-7xl"
+                    >
+                        Ready to <span className="text-accent font-normal italic">Begin?</span>
+                    </motion.h1>
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.8, delay: 0.3 }}
+                        className="text-text-secondary pb-4 text-lg font-medium opacity-80"
+                    >
                         Configure your simulation parameters. Alex is ready when you are.
-                    </p>
+                    </motion.p>
                 </header>
 
-                <div className="grid gap-12">
+                <div className="grid gap-8">
                     {/* Mode Selection */}
-                    <div className="space-y-6">
-                        <div className="text-text-primary flex items-center gap-3 text-xs font-black tracking-widest uppercase">
-                            <Brain className="text-accent h-4 w-4" />
-                            Select Simulation Mode
-                        </div>
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            {MODES.map((item) => (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.4 }}
+                        className="space-y-8"
+                    >
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            {MODES.map((item, idx) => (
                                 <button
                                     key={item.id}
                                     onClick={() => setMode(item.id)}
-                                    className={`relative flex flex-col items-start rounded-[2rem] border p-8 text-left transition-all duration-300 ${
+                                    className={`group relative flex flex-col items-start rounded-2xl border p-6 text-left transition-all duration-300 ${
                                         mode === item.id
-                                            ? 'border-accent bg-accent/5 ring-accent ring-1'
-                                            : 'border-border bg-bg-subtle/50 hover:bg-bg-subtle hover:border-text-muted'
+                                            ? 'border-accent bg-accent/[0.02] shadow-sm'
+                                            : 'border-border bg-bg-subtle/40 hover:bg-bg-subtle hover:border-text-muted/30'
                                     }`}
                                 >
-                                    <div className={`mb-6 rounded-2xl p-4 ${item.bg}`}>
-                                        <item.icon className={`h-6 w-6 ${item.color}`} />
+                                    <div
+                                        className={`border-border group-hover:border-accent/20 bg-bg-page mb-6 flex h-12 w-12 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 ${mode === item.id ? 'border-accent/40 scale-110' : ''}`}
+                                    >
+                                        <item.icon
+                                            className={`h-5 w-5 ${mode === item.id ? 'text-accent' : 'text-text-muted'}`}
+                                        />
                                     </div>
-                                    <h3 className="text-text-primary mb-2 text-xl font-bold">
+                                    <h3
+                                        className={`mb-2 text-lg font-bold tracking-tight transition-colors ${mode === item.id ? 'text-text-primary' : 'text-text-primary/70'}`}
+                                    >
                                         {item.title}
                                     </h3>
-                                    <p className="text-text-secondary text-sm leading-relaxed font-medium">
+                                    <p className="text-text-secondary text-xs leading-relaxed font-medium opacity-70">
                                         {item.description}
                                     </p>
                                     {mode === item.id && (
-                                        <div className="bg-accent absolute top-6 right-6 flex h-6 w-6 items-center justify-center rounded-full">
-                                            <div className="h-3 w-3 rounded-full bg-black" />
+                                        <div className="bg-accent absolute top-6 right-6 flex h-5 w-5 items-center justify-center rounded-full shadow-[0_0_10px_rgba(2,186,76,0.3)]">
+                                            <div className="h-2 w-2 rounded-full bg-black" />
                                         </div>
                                     )}
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Duration Selection */}
-                    <div className="space-y-6">
-                        <div className="text-text-primary flex items-center gap-3 text-xs font-black tracking-widest uppercase">
-                            <Clock className="text-accent h-4 w-4" />
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.5 }}
+                        className="space-y-8"
+                    >
+                        <div className="text-text-muted flex items-center gap-3 text-[10px] font-black tracking-[0.4em] uppercase">
+                            <span className="bg-accent h-1.5 w-1.5 rounded-full" />
                             Session Duration
                         </div>
-                        <div className="flex flex-wrap gap-4">
+                        <div className="flex flex-wrap gap-3">
                             {DURATIONS.map((d) => (
                                 <button
                                     key={d}
                                     onClick={() => setDuration(d)}
-                                    className={`rounded-2xl px-8 py-4 font-bold transition-all ${
+                                    className={`h-11 rounded-md px-8 text-xs font-bold tracking-widest uppercase transition-all duration-300 ${
                                         duration === d
-                                            ? 'bg-accent shadow-accent/20 text-black shadow-lg'
-                                            : 'bg-bg-subtle border-border text-text-secondary hover:text-text-primary hover:border-text-muted border'
+                                            ? 'bg-accent shadow-accent/20 text-white shadow-lg'
+                                            : 'bg-bg-subtle border-border text-text-muted hover:border-text-muted hover:text-text-primary border'
                                     }`}
                                 >
-                                    {d} Minutes
+                                    {d} Min
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
-                    {/* Final Action */}
-                    <div className="border-border border-t pt-12">
-                        <div className="bg-bg-subtle/50 border-border flex flex-col justify-between gap-8 rounded-[2rem] border p-8 md:flex-row md:items-center">
-                            <div className="space-y-1">
-                                <h4 className="text-text-primary text-lg font-bold">All set?</h4>
-                                <p className="text-text-secondary text-sm font-medium">
-                                    Total Session: {duration} mins •{' '}
-                                    {mode === 'coding' ? 'Practice' : 'Ranked'}
-                                </p>
+                    {/* Final Action - High Density Footer */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.6 }}
+                        className="border-border mt-2 border-t pt-2"
+                    >
+                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-between gap-8 rounded-2xl border p-8 md:flex-row">
+                            <div className="space-y-2 text-center md:text-left">
+                                <h4 className="text-text-primary text-xl font-bold tracking-tight">
+                                    System Ready.
+                                </h4>
+                                <div className="flex items-center justify-center gap-3 md:justify-start">
+                                    <div className="bg-accent h-1.5 w-1.5 animate-pulse rounded-full" />
+                                    <p className="text-text-secondary text-xs font-medium tracking-widest uppercase opacity-70">
+                                        Total Session:{' '}
+                                        <span className="text-text-primary font-bold">
+                                            {duration} mins
+                                        </span>{' '}
+                                        •{' '}
+                                        <span className="text-text-primary font-bold">
+                                            {mode === 'coding' ? 'Practice' : 'Mock'}
+                                        </span>
+                                    </p>
+                                </div>
                             </div>
                             <Button
                                 size="lg"
                                 onClick={handleStart}
                                 disabled={isCreating}
-                                className="bg-accent shadow-accent/20 hover:bg-accent-hover h-16 rounded-[1.2rem] px-12 text-lg font-black text-black shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                                className="bg-accent hover:bg-accent-hover hover:shadow-accent/20 h-14 min-w-[220px] rounded-md px-10 text-sm font-bold tracking-[0.2em] text-white uppercase shadow-lg transition-all duration-300 disabled:opacity-50"
                             >
                                 {isCreating ? 'Synchronizing...' : 'Enter Sandbox'}
-                                <ChevronRight className="ml-2 h-5 w-5" />
+                                {!isCreating && <ChevronRight className="ml-3 h-4 w-4" />}
                             </Button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </main>

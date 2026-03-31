@@ -185,10 +185,51 @@ export async function deleteUser(id) {
  */
 export async function updateUser(id, updateData) {
     // Only allow updating specific profile fields to prevent privilege escalation
-    const allowedFields = ['name', 'bio', 'location', 'website', 'socials', 'avatarSeed']
+    const allowedFields = ['bio', 'location', 'country', 'website', 'socials', 'avatarSeed']
     const safeData = {}
 
     console.log('updateUser called with:', { id, updateData, allowedFields })
+
+    // ── Username (name) change — gated logic ──────────────────────────────────
+    if (updateData.name !== undefined) {
+        const currentUser = await User.findById(id).select('name lastUsernameChange')
+        if (!currentUser) {
+            const err = new Error('User not found')
+            err.status = 404
+            throw err
+        }
+
+        const newName = updateData.name.trim()
+        const nameChanged = newName !== currentUser.name
+
+        if (nameChanged) {
+            // 1. Enforce 15-day cooldown
+            if (currentUser.lastUsernameChange) {
+                const msSinceChange =
+                    Date.now() - new Date(currentUser.lastUsernameChange).getTime()
+                const daysSinceChange = msSinceChange / (1000 * 60 * 60 * 24)
+                if (daysSinceChange < 15) {
+                    const daysRemaining = Math.ceil(15 - daysSinceChange)
+                    const err = new Error(
+                        `You can only change your username once every 15 days. Please wait ${daysRemaining} more day${daysRemaining === 1 ? '' : 's'}.`
+                    )
+                    err.status = 429
+                    throw err
+                }
+            }
+
+            // 2. Check username availability
+            const existing = await User.findOne({ name: newName, _id: { $ne: id } }).select('_id')
+            if (existing) {
+                const err = new Error('This username is already taken. Please choose another.')
+                err.status = 409
+                throw err
+            }
+
+            safeData.name = newName
+            safeData.lastUsernameChange = new Date()
+        }
+    }
 
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
@@ -197,6 +238,12 @@ export async function updateUser(id, updateData) {
     }
 
     console.log('safeData to update:', safeData)
+
+    if (Object.keys(safeData).length === 0) {
+        // Nothing to update — return current user without a write
+        const user = await User.findById(id).select('-password')
+        return user
+    }
 
     const user = await User.findByIdAndUpdate(
         id,
@@ -340,22 +387,32 @@ export async function syncUserStats(userId) {
     const acceptedCount = solvedProblems.length
 
     // 3. Solved Distribution and Score (Easy, Medium, Hard)
+    // OPTIMIZATION: Fetch all problems ONCE with both difficulty and tags
+    const allProblemIds = Array.from(new Set([...solvedProblems, ...attemptedProblems]))
+    const allProblems = await Problem.find({ _id: { $in: allProblemIds } })
+        .select('difficulty tags')
+        .lean()
+
+    const problemMapWithData = new Map(allProblems.map((p) => [p._id.toString(), p]))
+
     const solvedDistribution = { easy: 0, medium: 0, hard: 0 }
     let calculatedScore = 0
 
     if (solvedProblems.length > 0) {
-        const problems = await Problem.find({ _id: { $in: solvedProblems } }).select('difficulty')
         const pointsMap = { easy: 10, medium: 20, hard: 50 }
 
-        problems.forEach((p) => {
-            const diff = p.difficulty?.toLowerCase() || 'medium'
-            if (solvedDistribution[diff] !== undefined) {
-                solvedDistribution[diff]++
+        solvedProblems.forEach((pId) => {
+            const problem = problemMapWithData.get(pId)
+            if (problem) {
+                const diff = problem.difficulty?.toLowerCase() || 'medium'
+                if (solvedDistribution[diff] !== undefined) {
+                    solvedDistribution[diff]++
+                }
+                calculatedScore += pointsMap[diff] || 20
             }
-            // Add points according to difficulty mapping, fallback to medium points
-            calculatedScore += pointsMap[diff] || 20
         })
     }
+
     // 4. Activity Calendar
     // Rule: Increment count for EVERY accepted submission on a given day (not just unique problems)
     const activityCalendar = new Map()
@@ -369,9 +426,7 @@ export async function syncUserStats(userId) {
 
     // 5. Performance Stats Per Tag (Crucial for Recommendations)
     const performanceStats = new Map()
-    const problemIdsForTags = Array.from(problemMap.keys())
-    const problemsWithTags = await Problem.find({ _id: { $in: problemIdsForTags } }).select('tags')
-    const problemTagMap = new Map(problemsWithTags.map((p) => [p._id.toString(), p.tags || []]))
+    const problemTagMap = problemMapWithData // Reuse the same map
 
     // Sort submissions by date to calculate streaks and last attempt accurately
     const sortedSubmissions = [...submissions].sort(

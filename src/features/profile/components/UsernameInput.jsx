@@ -162,6 +162,7 @@ export default function UsernameInput({ value, register, errors, disabled = fals
                             type="button"
                             onClick={() => setShowUsernameChange(false)}
                             className="text-text-muted hover:text-text-primary transition-colors"
+                            aria-label="Cancel username change"
                         >
                             <X size={14} />
                         </button>

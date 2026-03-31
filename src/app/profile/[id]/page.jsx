@@ -316,7 +316,7 @@ export default function PublicProfilePage({ params }) {
                                 </div>
                             </section>
 
-                            <RecommendedProblems />
+                            <RecommendedProblems context="profile" />
                             <ContestPerformance performance={user.stats?.contestPerformance} />
 
                             {/* Recent Submissions */}

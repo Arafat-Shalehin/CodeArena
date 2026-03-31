@@ -321,7 +321,7 @@ export default function DashboardHome({ user: initialUser }) {
                         </div>
                     </div>
 
-                    <RecommendedProblems key="rec-problems" />
+                    <RecommendedProblems key="rec-problems" context="feed" />
 
                     <DailyPicks />
 
@@ -441,9 +441,10 @@ export default function DashboardHome({ user: initialUser }) {
                                                     </p>
                                                 </Link>
                                                 <p className="text-text-muted line-clamp-1 text-[10px]">
+                                                    {sugg.country || 'Global'}{' '}
                                                     {sugg.stats?.globalRank
-                                                        ? `Rank #${sugg.stats.globalRank}`
-                                                        : sugg.bio || 'New Coder'}
+                                                        ? `• Rank #${sugg.stats.globalRank}`
+                                                        : ''}
                                                 </p>
                                             </div>
                                         </div>

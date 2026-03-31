@@ -10,13 +10,10 @@ const fetcher = (url) => fetch(url).then((res) => res.json())
  *
  * @returns {{ users: Array, isLoading: boolean, error: string|null }}
  */
-export function useLeaderboard({
-    page = 1,
-    limit = ITEMS_PER_PAGE,
-    search = '',
-    league = 'all',
-    timeframe = 'all_time',
-} = {}) {
+export function useLeaderboard(
+    { page = 1, limit = ITEMS_PER_PAGE, search = '', league = 'all', timeframe = 'all_time' } = {},
+    enabled = true
+) {
     const params = new URLSearchParams()
     params.set('page', page)
     params.set('limit', limit)
@@ -24,7 +21,10 @@ export function useLeaderboard({
     params.set('timeframe', timeframe)
     if (search) params.set('search', search)
 
-    const { data, error, isLoading } = useSWR(`/api/leaderboard?${params.toString()}`, fetcher)
+    const { data, error, isLoading } = useSWR(
+        enabled ? `/api/leaderboard?${params.toString()}` : null,
+        fetcher
+    )
 
     const users = data?.success
         ? data.data.map((u, index) => ({

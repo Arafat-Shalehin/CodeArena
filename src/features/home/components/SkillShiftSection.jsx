@@ -1,74 +1,151 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Zap, BarChart3, Users } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
+import { useEffect, useState } from 'react'
 
 export default function SkillShiftSection() {
     const shouldReduceMotion = useSafeReducedMotion()
 
     return (
-        <section className="bg-bg-page text-text-primary border-border w-full border-y px-4 py-24 sm:py-32">
-            <div className="mx-auto max-w-5xl text-center">
+        <section className="bg-bg-page text-text-primary relative overflow-hidden px-4 py-24 sm:py-32">
+            {/* Background elements */}
+            <div className="bg-dot-matrix pointer-events-none absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)] opacity-[0.4]" />
+            <div className="bg-accent/5 pointer-events-none absolute top-1/2 left-1/2 z-0 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]" />
+
+            <div className="relative z-10 mx-auto max-w-5xl text-center">
                 <motion.div
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-100px' }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
                 >
-                    <h2 className="mb-10 font-sans text-5xl leading-tight font-black tracking-[-0.04em] sm:text-6xl lg:text-7xl">
+                    {/* HEADLINE */}
+                    <h2 className="font-display text-text-primary mb-12 text-4xl leading-[1.05] font-black tracking-tight [text-wrap:balance] sm:text-6xl md:text-7xl">
                         You're writing code.
-                        <br className="hidden sm:block" />
-                        <span className="text-text-muted font-bold">
+                        <br />
+                        <span className="text-text-muted mt-2 block font-bold sm:mt-0 sm:inline">
                             But are you writing{' '}
-                            <em className="text-text-primary font-serif font-normal italic">
-                                fast
-                            </em>{' '}
+                            <span className="relative inline-block px-1">
+                                <span className="text-accent relative z-10">fast</span>
+                                <motion.span
+                                    className="bg-accent/30 absolute bottom-1.5 left-0 z-0 h-[35%] w-full"
+                                    initial={{ scaleX: 0 }}
+                                    whileInView={{ scaleX: 1 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.8, delay: 0.5, ease: 'circOut' }}
+                                    style={{ originX: 0 }}
+                                />
+                                <motion.span
+                                    className="bg-accent absolute bottom-1.5 left-0 z-0 h-[2px] w-full blur-[2px]"
+                                    initial={{ opacity: 0, x: '-100%' }}
+                                    whileInView={{ opacity: 1, x: '100%' }}
+                                    viewport={{ once: true }}
+                                    transition={{
+                                        duration: 1.2,
+                                        delay: 0.7,
+                                        repeat: Infinity,
+                                        repeatDelay: 3,
+                                    }}
+                                />
+                            </span>{' '}
                             code?
                         </span>
                     </h2>
 
-                    <div className="mx-auto mb-14 grid max-w-4xl grid-cols-1 gap-8 sm:grid-cols-3">
-                        <div className="border-border bg-bg-subtle flex flex-col items-center justify-center rounded-lg border p-6 shadow-sm">
-                            <span className="text-accent mb-2 font-mono text-4xl font-bold sm:text-5xl">
-                                2,500+
-                            </span>
-                            <span className="text-text-secondary text-sm font-medium tracking-wider uppercase">
-                                Curated Problems
-                            </span>
-                        </div>
-                        <div className="border-border bg-bg-subtle flex flex-col items-center justify-center rounded-lg border p-6 shadow-sm">
-                            <span className="text-accent mb-2 font-mono text-4xl font-bold sm:text-5xl">
-                                50x
-                            </span>
-                            <span className="text-text-secondary text-sm font-medium tracking-wider uppercase">
-                                Faster Prep
-                            </span>
-                        </div>
-                        <div className="border-border bg-bg-subtle flex flex-col items-center justify-center rounded-lg border p-6 shadow-sm">
-                            <span className="text-accent mb-2 font-mono text-4xl font-bold sm:text-5xl">
-                                1M+
-                            </span>
-                            <span className="text-text-secondary text-sm font-medium tracking-wider uppercase">
-                                Submissions
-                            </span>
-                        </div>
+                    {/* STATS */}
+                    <div className="mx-auto mb-16 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3">
+                        <StatCard
+                            value={2500}
+                            suffix="+"
+                            label="Curated Problems"
+                            icon={<Zap className="size-5" />}
+                        />
+                        <StatCard
+                            value={50}
+                            suffix="x"
+                            label="Faster Prep"
+                            icon={<BarChart3 className="size-5" />}
+                        />
+                        <StatCard
+                            value={1000000}
+                            suffix="+"
+                            label="Global Users"
+                            icon={<Users className="size-5" />}
+                        />
                     </div>
 
+                    {/* CTA */}
                     <Link href="/signup">
                         <Button
-                            variant="default"
                             size="lg"
-                            className="bg-accent hover:bg-accent-hover duration-normal focus:ring-accent inline-flex h-14 items-center justify-center gap-2 rounded-md px-10 text-lg font-semibold text-white transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
+                            className="bg-accent hover:bg-accent-hover shadow-accent/20 hover:shadow-accent/40 inline-flex h-16 items-center gap-3 rounded-xl border-none px-12 text-lg font-black tracking-tight text-white shadow-lg transition-all duration-300 hover:scale-[1.02]"
                         >
                             Enter the Arena
-                            <ArrowRight className="size-5" />
+                            <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" />
                         </Button>
                     </Link>
                 </motion.div>
             </div>
         </section>
     )
+}
+
+/* ----------------- STAT CARD ----------------- */
+
+function StatCard({ value, suffix, label, icon }) {
+    const [count, setCount] = useState(0)
+
+    useEffect(() => {
+        let start = 0
+        const duration = 1500
+        const increment = value / (duration / 16)
+
+        const timer = setInterval(() => {
+            start += increment
+            if (start >= value) {
+                setCount(value)
+                clearInterval(timer)
+            } else {
+                setCount(Math.floor(start))
+            }
+        }, 16)
+
+        return () => clearInterval(timer)
+    }, [value])
+
+    return (
+        <motion.div
+            whileHover={{ y: -4, borderColor: 'var(--color-accent)' }}
+            className="bg-bg-subtle border-border relative flex flex-col items-center justify-center rounded-xl border p-8 transition-[border-color,transform,shadow] duration-300"
+        >
+            <div
+                className="text-accent bg-accent/10 mb-5 flex size-12 items-center justify-center rounded-lg"
+                aria-hidden="true"
+            >
+                {icon}
+            </div>
+
+            <span className="text-text-primary mb-1 font-mono text-4xl font-black tabular-nums sm:text-5xl">
+                {formatNumber(count)}
+                {suffix}
+            </span>
+
+            <span className="text-text-muted text-xs font-bold tracking-widest uppercase">
+                {label}
+            </span>
+
+            {/* Subtle corner accent */}
+            <div className="bg-accent pointer-events-none absolute top-3 right-3 size-1.5 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        </motion.div>
+    )
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+    return num
 }
