@@ -18,15 +18,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 
 const SkeletonCard = () => (
-    <div className="border-border bg-bg-subtle/20 flex animate-pulse flex-col items-center gap-8 rounded-2xl border p-6 md:flex-row">
-        <div className="bg-border/40 h-16 w-16 rounded-xl" />
-        <div className="w-full flex-1 space-y-3">
-            <div className="bg-border/40 h-6 w-1/3 rounded-md" />
-            <div className="bg-border/20 h-3 w-1/2 rounded-sm" />
+    <div className="border-border bg-bg-subtle/20 flex animate-pulse flex-col items-center gap-8 rounded-[2.5rem] border p-8 backdrop-blur-xl md:flex-row">
+        <div className="bg-border/40 h-20 w-20 rounded-2xl" />
+        <div className="w-full flex-1 space-y-4">
+            <div className="bg-border/40 h-8 w-1/3 rounded-xl" />
+            <div className="bg-border/20 h-4 w-1/2 rounded-lg" />
         </div>
         <div className="flex w-full gap-3 md:w-auto">
-            <div className="bg-border/30 h-10 w-24 rounded-lg" />
-            <div className="bg-border/50 h-10 w-32 rounded-lg" />
+            <div className="bg-border/30 h-14 w-32 rounded-2xl" />
+            <div className="bg-border/50 h-14 w-40 rounded-2xl" />
         </div>
     </div>
 )
@@ -54,10 +54,13 @@ export default function HistoryList() {
 
     if (loading) {
         return (
-            <div className="space-y-4 py-8">
-                {[...Array(3)].map((_, i) => (
-                    <SkeletonCard key={i} />
-                ))}
+            <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
+                <div className="bg-border h-10 w-64 animate-pulse rounded" />
+                <div className="grid gap-6">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                </div>
             </div>
         )
     }
@@ -67,23 +70,27 @@ export default function HistoryList() {
             <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex min-h-[500px] flex-col items-center justify-center px-4 text-center"
+                className="flex min-h-[600px] flex-col items-center justify-center px-4 text-center"
             >
-                <div className="bg-bg-subtle border-border mb-8 rounded-2xl border p-10 shadow-sm transition-transform duration-500 hover:scale-105">
-                    <Bot className="text-accent h-16 w-16" />
+                <div className="group relative mb-8">
+                    <div className="bg-accent/15 group-hover:bg-accent/25 absolute -inset-8 rounded-full blur-3xl transition-colors duration-700" />
+                    <div className="bg-bg-subtle/50 border-border relative rounded-[3rem] border p-12 shadow-2xl backdrop-blur-2xl transition-transform duration-500 group-hover:scale-110">
+                        <Bot className="text-accent h-20 w-20 transition-transform duration-700 group-hover:rotate-12" />
+                    </div>
                 </div>
-                <h3 className="text-text-primary mb-4 text-4xl font-black tracking-tighter">
-                    Stage is <span className="text-accent font-normal italic">Empty.</span>
+                <h3 className="text-text-primary mb-4 text-4xl font-[1000] tracking-tighter">
+                    Your Stage is Empty
                 </h3>
-                <p className="text-text-secondary mb-10 max-w-md text-base leading-relaxed font-medium opacity-70">
+                <p className="text-text-secondary mb-12 max-w-md text-lg leading-relaxed font-medium">
                     Alex is waiting in the sandbox. Start your first session to receive elite
                     technical coaching and performance metrics.
                 </p>
                 <Link href="/interview/new">
                     <Button
                         size="lg"
-                        className="bg-accent hover:bg-accent-hover shadow-accent/10 h-14 rounded-md px-10 text-sm font-bold tracking-[0.2em] text-white uppercase shadow-lg transition-all active:scale-95"
+                        className="bg-accent hover:bg-accent-hover shadow-accent/20 h-16 rounded-[1.5rem] px-12 text-lg font-[1000] tracking-widest text-black uppercase shadow-2xl transition-all hover:scale-105 active:scale-95"
                     >
+                        <Sparkles className="mr-3 h-6 w-6" />
                         Enter the Sandbox
                     </Button>
                 </Link>
@@ -92,72 +99,79 @@ export default function HistoryList() {
     }
 
     return (
-        <div className="py-8">
-            <header className="mb-10">
-                <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-                    <div className="space-y-1">
-                        <div className="text-accent text-[10px] font-black tracking-[0.4em] uppercase">
-                            Analytics Engine
-                        </div>
-                        <h2 className="text-text-primary text-3xl font-black tracking-tight">
+        <div className="mx-auto max-w-6xl px-4 py-5">
+            <header className="mb-12 space-y-4">
+                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                    <div className="text-center md:text-left">
+                        <h2 className="text-text-primary text-2xl font-black tracking-tight md:text-3xl">
                             Past Sessions
                         </h2>
+                        <p className="text-text-muted text-sm font-medium">
+                            {sessions.length} interviews completed so far
+                        </p>
                     </div>
                 </div>
             </header>
 
-            <div className="grid gap-4">
+            <div className="grid gap-6">
                 <AnimatePresence mode="popLayout">
                     {sessions.map((session, index) => (
                         <motion.div
                             key={session._id}
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.98 }}
-                            transition={{ delay: index * 0.05, duration: 0.6 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ delay: index * 0.05, type: 'spring', damping: 20 }}
                             className="group relative"
                         >
-                            <div className="border-border bg-bg-subtle/20 hover:bg-bg-subtle/40 hover:border-text-muted/30 relative overflow-hidden rounded-2xl border p-1 transition-all duration-300">
-                                <div className="flex flex-col items-center gap-6 p-5 md:flex-row md:p-6">
-                                    {/* Problem Icon (Monochrome) */}
-                                    <div className="bg-bg-page border-border group-hover:border-accent/40 flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 group-hover:scale-105">
-                                        <Code2
-                                            className={`h-8 w-8 transition-colors ${session.finalScore >= 70 ? 'text-accent' : 'text-text-muted'}`}
-                                        />
+                            {/* Ambient Glow */}
+                            <div className="bg-accent/5 pointer-events-none absolute -inset-4 rounded-[3rem] opacity-0 blur-3xl transition-opacity duration-700 group-hover:opacity-100" />
+
+                            <div className="border-border bg-bg-subtle/30 group-hover:bg-bg-subtle/50 group-hover:border-accent/20 relative overflow-hidden rounded-[2.5rem] border p-1 shadow-2xl backdrop-blur-2xl transition-all duration-500 group-hover:-translate-y-1">
+                                <div className="flex flex-col items-center gap-8 p-6 md:flex-row md:p-8">
+                                    {/* Problem Icon */}
+                                    <div className="relative flex-shrink-0">
+                                        <div className="bg-accent/20 absolute inset-0 rounded-2xl opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
+                                        <div className="bg-bg-page border-border group-hover:border-accent/40 relative flex h-20 w-20 items-center justify-center rounded-2xl border shadow-inner transition-colors duration-500">
+                                            <Code2
+                                                className={`h-10 w-10 ${session.finalScore >= 70 ? 'text-accent' : 'text-text-muted'} transition-transform duration-500 group-hover:scale-110`}
+                                            />
+                                        </div>
                                     </div>
 
                                     {/* Title & Meta */}
                                     <div className="flex-1 space-y-4 text-center md:text-left">
-                                        <div className="space-y-2">
+                                        <div className="space-y-1">
                                             <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                                                <h3 className="text-text-primary text-xl font-bold tracking-tight">
+                                                <h3 className="text-text-primary group-hover:text-accent text-3xl font-black tracking-tight transition-colors">
                                                     {session.problemIds?.[0]?.title ||
-                                                        'System Analysis'}
+                                                        'Session Analysis'}
                                                 </h3>
                                                 <span
-                                                    className={`rounded-full border px-2.5 py-0.5 text-[8px] font-black tracking-widest uppercase ${
+                                                    className={`rounded-full border px-3 py-1 text-[9px] font-black tracking-widest uppercase ${
                                                         session.status === 'completed'
-                                                            ? 'border-accent/20 bg-accent/5 text-accent'
+                                                            ? 'border-accent/20 bg-accent/10 text-accent'
                                                             : session.status === 'terminated'
-                                                              ? 'border-red-500/20 bg-red-500/5 text-red-500'
-                                                              : 'border-text-muted/20 bg-text-muted/5 text-text-muted'
+                                                              ? 'border-error/20 bg-error/10 text-error'
+                                                              : session.status === 'expired'
+                                                                ? 'border-warning/20 bg-warning/10 text-warning'
+                                                                : 'border-text-secondary/20 bg-text-secondary/10 text-text-secondary'
                                                     }`}
                                                 >
                                                     {session.status}
                                                 </span>
                                             </div>
-
-                                            <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-[9px] font-black tracking-[0.2em] uppercase md:justify-start">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Calendar className="h-3 w-3" />
+                                            <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-xs font-bold tracking-wide uppercase md:justify-start">
+                                                <div className="hover:text-text-secondary flex items-center gap-1.5 transition-colors">
+                                                    <Calendar className="h-3.5 w-3.5" />
                                                     {format(
                                                         new Date(session.startedAt || Date.now()),
                                                         'MMM d, yyyy'
                                                     )}
                                                 </div>
                                                 <div className="bg-border h-1 w-1 rounded-full" />
-                                                <div className="flex items-center gap-1.5">
-                                                    <Clock className="h-3 w-3" />
+                                                <div className="hover:text-text-secondary flex items-center gap-1.5 transition-colors">
+                                                    <Clock className="h-3.5 w-3.5" />
                                                     {format(
                                                         new Date(session.startedAt || Date.now()),
                                                         'h:mm a'
@@ -165,27 +179,31 @@ export default function HistoryList() {
                                                 </div>
                                                 <div className="bg-border h-1 w-1 rounded-full" />
                                                 <div className="text-accent flex items-center gap-1.5">
-                                                    <div className="h-1 w-1 rounded-full bg-current" />
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-current" />
                                                     {session.mode || 'Practice'}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Score Display (High Density) */}
+                                    {/* Score Display */}
                                     {session.status === 'completed' &&
                                         session.finalScore !== undefined && (
-                                            <div className="border-border/50 flex flex-col items-center justify-center border-x px-8 text-center md:items-end md:text-right">
-                                                <span className="text-text-muted mb-1 text-[8px] font-black tracking-[0.3em] uppercase opacity-70">
-                                                    Score
+                                            <div className="bg-bg-page/40 border-border flex flex-col items-center rounded-3xl border p-4 shadow-inner md:items-end">
+                                                <span className="text-text-muted mb-1 text-[10px] font-black tracking-[0.3em] uppercase">
+                                                    Final Score
                                                 </span>
                                                 <div className="flex items-baseline gap-1">
                                                     <span
-                                                        className={`text-2xl font-black tracking-tighter ${session.finalScore >= 70 ? 'text-accent' : 'text-text-primary'}`}
+                                                        className={`text-4xl leading-none font-[1000] ${
+                                                            session.finalScore >= 70
+                                                                ? 'text-accent'
+                                                                : 'text-text-primary'
+                                                        }`}
                                                     >
                                                         {session.finalScore}
                                                     </span>
-                                                    <span className="text-text-muted text-[10px] font-bold">
+                                                    <span className="text-text-muted text-base font-bold">
                                                         /100
                                                     </span>
                                                 </div>
@@ -193,31 +211,40 @@ export default function HistoryList() {
                                         )}
 
                                     {/* Action Buttons */}
-                                    <div className="flex w-full flex-shrink-0 items-center gap-2 md:w-auto">
+                                    <div className="flex w-full flex-shrink-0 flex-col gap-3 sm:flex-row md:w-auto">
                                         <Link
                                             href={`/interview/${session._id}${session.status === 'active' ? '' : '/replay'}`}
-                                            className="flex-1 md:flex-initial"
+                                            className="w-full"
                                         >
                                             <Button
-                                                variant="outline"
-                                                className="border-border hover:bg-bg-subtle text-text-muted hover:text-text-primary h-10 w-full rounded-md px-5 text-[10px] font-bold tracking-widest uppercase transition-all md:w-auto"
+                                                variant="ghost"
+                                                className="bg-bg-muted/50 hover:bg-bg-muted text-text-primary h-12 w-full rounded-xl text-xs font-black tracking-widest uppercase transition-all md:px-6"
                                             >
-                                                {session.status === 'active' ? 'Resume' : 'Replay'}
+                                                {session.status === 'active' ? (
+                                                    <Sparkles className="text-accent mr-2 h-4 w-4" />
+                                                ) : (
+                                                    <PlayCircle className="text-accent mr-2 h-4 w-4" />
+                                                )}
+                                                {session.status === 'active'
+                                                    ? 'Resume'
+                                                    : 'View Replay'}
                                             </Button>
                                         </Link>
                                         <Link
                                             href={`/interview/${session._id}/${session.status === 'active' ? '' : 'result'}`}
-                                            className="flex-1 md:flex-initial"
+                                            className="w-full"
                                         >
                                             <Button
-                                                className={`h-10 w-full rounded-md px-5 text-[10px] font-bold tracking-widest uppercase transition-all md:w-auto ${
+                                                className={`h-12 w-full rounded-xl text-xs font-black tracking-widest uppercase transition-all md:px-8 ${
                                                     session.status === 'active'
-                                                        ? 'bg-accent shadow-accent/10 text-white shadow-lg'
-                                                        : 'hover:bg-accent bg-white text-black hover:text-white'
-                                                }`}
+                                                        ? 'bg-accent hover:bg-accent-hover text-black'
+                                                        : 'hover:bg-accent bg-white text-black'
+                                                } hover:shadow-accent/20 shadow-lg`}
                                             >
-                                                {session.status === 'active' ? 'Join' : 'Result'}
-                                                <ChevronRight className="ml-1 h-3 w-3" />
+                                                {session.status === 'active'
+                                                    ? 'Join Now'
+                                                    : 'View Result'}
+                                                <ChevronRight className="ml-2 h-4 w-4" />
                                             </Button>
                                         </Link>
                                     </div>
