@@ -22,8 +22,10 @@ export async function getAllProblems(query) {
     // Simple cache key based on query parameters
     const cacheKey = `problem:list:p:${page}:l:${limit}:d:${query.difficulty || 'all'}:s:${query.search || 'none'}:t:${query.tag || 'all'}:st:${query.status || 'all'}:u:${query.userId || 'none'}:sort:${query.sortBy || 'recent'}`
 
+    const isCurated = query.sortBy?.toLowerCase() === 'curated'
+
     try {
-        if (redisClient.isOpen) {
+        if (redisClient.isOpen && !isCurated) {
             const cached = await redisClient.get(cacheKey)
             if (cached) {
                 console.log(`[Cache Hit] Problem list: ${cacheKey}`)
@@ -85,12 +87,67 @@ export async function getAllProblems(query) {
         }
     }
 
-    // 5. Build Aggregation Pipeline for Sorting and Calculation
+    // 5. Special Case for Home Page "Curated" Sorting
+    if (query.sortBy?.toLowerCase() === 'curated') {
+        const curatedPipeline = [
+            { $match: filter },
+            {
+                $facet: {
+                    easy: [{ $match: { difficulty: 'easy' } }, { $sample: { size: 2 } }],
+                    medium: [{ $match: { difficulty: 'medium' } }, { $sample: { size: 2 } }],
+                    hard: [{ $match: { difficulty: 'hard' } }, { $sample: { size: 2 } }],
+                },
+            },
+            { $project: { all: { $concatArrays: ['$easy', '$medium', '$hard'] } } },
+            { $unwind: '$all' },
+            { $replaceRoot: { newRoot: '$all' } },
+            { $sample: { size: 6 } }, // Final shuffle for variety
+            {
+                $addFields: {
+                    acceptanceRate: {
+                        $cond: [
+                            { $eq: ['$totalSubmissions', 0] },
+                            0,
+                            {
+                                $multiply: [
+                                    { $divide: ['$acceptedSubmissions', '$totalSubmissions'] },
+                                    100,
+                                ],
+                            },
+                        ],
+                    },
+                    numericDifficulty: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ['$difficulty', 'easy'] }, then: 1 },
+                                { case: { $eq: ['$difficulty', 'medium'] }, then: 2 },
+                                { case: { $eq: ['$difficulty', 'hard'] }, then: 3 },
+                            ],
+                            default: 2,
+                        },
+                    },
+                },
+            },
+        ]
+
+        const curatedResults = await Problem.aggregate(curatedPipeline)
+
+        return {
+            problems: curatedResults,
+            pagination: {
+                total: curatedResults.length,
+                page: 1,
+                limit: curatedResults.length,
+                pages: 1,
+            },
+        }
+    }
+
+    // 6. Build Aggregation Pipeline for Sorting and Calculation (Normal Sort)
     const pipeline = [
         { $match: filter },
         {
             $addFields: {
-                // acceptanceRate = (accepted / total) * 100
                 acceptanceRate: {
                     $cond: [
                         { $eq: ['$totalSubmissions', 0] },
@@ -103,7 +160,6 @@ export async function getAllProblems(query) {
                         },
                     ],
                 },
-                // numericDifficulty for logical sorting
                 numericDifficulty: {
                     $switch: {
                         branches: [
@@ -118,7 +174,6 @@ export async function getAllProblems(query) {
         },
     ]
 
-    // 6. Apply Sorting Logic
     let sortStage = { createdAt: -1 } // Default: Most Recent
     const sortBy = query.sortBy?.toLowerCase()
 
@@ -156,7 +211,7 @@ export async function getAllProblems(query) {
     }
 
     try {
-        if (redisClient.isOpen) {
+        if (redisClient.isOpen && !isCurated) {
             // Cache for 5 minutes
             await redisClient.set(cacheKey, JSON.stringify(result), { EX: 300 })
         }

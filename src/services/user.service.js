@@ -12,8 +12,13 @@ import { redisClient } from '@/lib/redis'
  */
 export async function registerUser(data) {
     try {
+        const name = data.name.trim()
+        const username =
+            data.username?.trim().toLowerCase() || name.toLowerCase().replace(/\s+/g, '_')
+
         const safeData = {
-            name: data.name,
+            name,
+            username,
             email: data.email,
             password: data.password,
             role: 'user',
@@ -25,6 +30,7 @@ export async function registerUser(data) {
             id: user._id,
             email: user.email,
             name: user.name,
+            username: user.username,
             role: user.role,
         }
     } catch (error) {
@@ -185,14 +191,22 @@ export async function deleteUser(id) {
  */
 export async function updateUser(id, updateData) {
     // Only allow updating specific profile fields to prevent privilege escalation
-    const allowedFields = ['bio', 'location', 'country', 'website', 'socials', 'avatarSeed']
+    const allowedFields = [
+        'bio',
+        'location',
+        'country',
+        'website',
+        'socials',
+        'avatarSeed',
+        'username',
+    ]
     const safeData = {}
 
     console.log('updateUser called with:', { id, updateData, allowedFields })
 
-    // ── Username (name) change — gated logic ──────────────────────────────────
+    // ── Display Name (name) change — gated logic ──────────────────────────────────
     if (updateData.name !== undefined) {
-        const currentUser = await User.findById(id).select('name lastUsernameChange')
+        const currentUser = await User.findById(id).select('name lastUsernameChange username')
         if (!currentUser) {
             const err = new Error('User not found')
             err.status = 404
@@ -211,29 +225,54 @@ export async function updateUser(id, updateData) {
                 if (daysSinceChange < 15) {
                     const daysRemaining = Math.ceil(15 - daysSinceChange)
                     const err = new Error(
-                        `You can only change your username once every 15 days. Please wait ${daysRemaining} more day${daysRemaining === 1 ? '' : 's'}.`
+                        `You can only change your name once every 15 days. Please wait ${daysRemaining} more day${daysRemaining === 1 ? '' : 's'}.`
                     )
                     err.status = 429
                     throw err
                 }
             }
 
-            // 2. Check username availability
-            const existing = await User.findOne({ name: newName, _id: { $ne: id } }).select('_id')
-            if (existing) {
-                const err = new Error('This username is already taken. Please choose another.')
-                err.status = 409
-                throw err
-            }
-
             safeData.name = newName
             safeData.lastUsernameChange = new Date()
+
+            // If username is not set, set it to a sanitized version of the new name
+            if (!currentUser.username && !updateData.username) {
+                const baseUsername = newName.toLowerCase().replace(/[^a-z0-9]/g, '')
+                const existing = await User.findOne({
+                    username: baseUsername,
+                    _id: { $ne: id },
+                }).select('_id')
+                if (!existing) {
+                    safeData.username = baseUsername
+                }
+            }
         }
+    }
+
+    // ── Handle Username ──────────────────────────────────
+    if (updateData.username !== undefined) {
+        const newUsername = updateData.username.trim().toLowerCase()
+        const existing = await User.findOne({ username: newUsername, _id: { $ne: id } }).select(
+            '_id'
+        )
+        if (existing) {
+            const err = new Error('This username is already taken. Please choose another.')
+            err.status = 409
+            throw err
+        }
+        safeData.username = newUsername
     }
 
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
-            safeData[field] = updateData[field]
+            if (field === 'socials') {
+                // Handle nested socials update
+                Object.keys(updateData.socials).forEach((key) => {
+                    safeData[`socials.${key}`] = updateData.socials[key]
+                })
+            } else {
+                safeData[field] = updateData[field]
+            }
         }
     }
 

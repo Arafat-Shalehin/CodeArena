@@ -48,7 +48,7 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
     }
 
     // 3. Select a problem using the existing recommendation engine
-    const { recommendedProblems } = await getRecommendedProblems(userId, 1)
+    const recommendedProblems = await getRecommendedProblems(userId, 1)
     if (!recommendedProblems || recommendedProblems.length === 0) {
         throw new Error('No appropriate problem found for this session')
     }

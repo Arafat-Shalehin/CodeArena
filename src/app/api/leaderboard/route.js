@@ -166,7 +166,7 @@ export async function GET(request) {
             // Standard All-Time approach
             ;[users, total] = await Promise.all([
                 User.find(query)
-                    .select('name username email stats createdAt')
+                    .select('name username email stats createdAt country avatarSeed')
                     .sort({
                         'stats.score': -1,
                         'stats.accepted': -1,
@@ -176,6 +176,29 @@ export async function GET(request) {
                     .lean(),
                 User.countDocuments(query),
             ])
+
+            // UPDATE GLOBAL RANKS:
+            // This ensures users' profile pages reflect their rank from the leaderboard.
+            // We do this asynchronously to avoid blocking the response.
+            if (!search && league === 'all') {
+                const updateRanks = async () => {
+                    try {
+                        // For the current page of users, update their rank in the DB
+                        const bulkOps = users.map((u, index) => ({
+                            updateOne: {
+                                filter: { _id: u._id },
+                                update: { $set: { 'stats.globalRank': skip + index + 1 } },
+                            },
+                        }))
+                        if (bulkOps.length > 0) {
+                            await User.bulkWrite(bulkOps)
+                        }
+                    } catch (err) {
+                        console.error('Error updating bulk global ranks:', err)
+                    }
+                }
+                updateRanks()
+            }
         }
 
         const responsePayload = {

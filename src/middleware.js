@@ -17,20 +17,27 @@ import { NextResponse } from 'next/server'
  */
 
 const PROTECTED_PREFIXES = ['/feed', '/profile']
+const AUTH_ROUTES = ['/login', '/signup']
 const AUTH_COOKIE = 'codearena_access_token'
 
 export function middleware(request) {
     const { pathname } = request.nextUrl
 
     const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-    if (!isProtected) return NextResponse.next()
+    const isAuthRoute = AUTH_ROUTES.some((route) => pathname === route)
 
     const token = request.cookies.get(AUTH_COOKIE)?.value
 
-    if (!token) {
+    // If user is not authenticated and trying to access a protected route
+    if (isProtected && !token) {
         const loginUrl = new URL('/login', request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
+    }
+
+    // If user is already authenticated and trying to access login/signup
+    if (isAuthRoute && token) {
+        return NextResponse.redirect(new URL('/feed', request.url))
     }
 
     return NextResponse.next()
@@ -38,5 +45,5 @@ export function middleware(request) {
 
 export const config = {
     // Only run middleware on these path patterns — skip static assets and api routes
-    matcher: ['/feed', '/feed/:path*', '/profile', '/profile/:path*'],
+    matcher: ['/feed', '/feed/:path*', '/profile', '/profile/:path*', '/login', '/signup'],
 }

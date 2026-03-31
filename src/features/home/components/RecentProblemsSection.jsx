@@ -41,7 +41,7 @@ export default function RecentProblemsSection() {
                 className="mb-20 pb-4 text-center"
             >
                 <div className="mx-auto max-w-3xl">
-                    <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight [text-wrap:balance] md:text-5xl lg:text-6xl">
+                    <h2 className="font-display text-text-primary mb-6 text-4xl font-bold tracking-tight [text-wrap:balance] md:text-5xl lg:text-6xl">
                         Curated <span className="text-accent font-serif italic">challenges.</span>
                     </h2>
                     <p className="text-text-muted mx-auto max-w-2xl text-base leading-relaxed font-medium [text-wrap:balance] md:text-lg">

@@ -3,8 +3,10 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Code2, Trophy, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ArrowButton } from '@/components/ui/ArrowButton'
+import { PatternButton } from '@/components/ui/PatternButton'
 import { ScrollRevealCard } from '@/components/ui/ScrollRevealCard'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 import dynamic from 'next/dynamic'
@@ -22,6 +24,7 @@ import CodeEditorPreview from './CodeEditorPreview'
 
 import { SiPython, SiCplusplus, SiJavascript, SiRust, SiGo } from 'react-icons/si'
 import { FaJava } from 'react-icons/fa'
+import { useAuth } from '@/context/AuthContext'
 
 const Streak = React.memo(({ config }) => {
     return (
@@ -76,6 +79,7 @@ const FallingLight = React.memo(({ count = 8 }) => {
 export default React.memo(function Hero() {
     const shouldReduceMotion = useSafeReducedMotion()
     const decorativeStreakCount = shouldReduceMotion ? 0 : 8
+    const { isAuthenticated } = useAuth()
 
     return (
         <section className="hero-gradient relative overflow-hidden pt-18 pb-0 transition-[transform,opacity] duration-700">
@@ -188,38 +192,33 @@ export default React.memo(function Hero() {
                         className="flex flex-col items-center justify-center gap-8 pt-6"
                     >
                         {/* Action Buttons */}
-                        <div className="flex w-full flex-col justify-center gap-4 sm:w-auto sm:flex-row">
-                            <Link href="/problems" className="w-full sm:w-auto">
-                                <Button
-                                    variant="default"
-                                    size="lg"
-                                    className="btn-primary h-14 w-full px-12 text-lg transition-all hover:scale-105 active:scale-95"
-                                >
-                                    Start Solving
-                                    <ArrowRight className="ml-2 size-5" />
-                                </Button>
-                            </Link>
-                            <Link href="/contests" className="w-full sm:w-auto">
-                                <Button
-                                    variant="secondary"
-                                    size="lg"
-                                    className="btn-secondary h-14 w-full px-12 text-lg transition-all hover:scale-105 active:scale-95"
-                                >
-                                    View Contests
-                                </Button>
+                        <div className="flex w-full flex-col items-center justify-center gap-6 sm:w-auto sm:flex-row sm:gap-4 md:mt-4">
+                            <Link
+                                href={isAuthenticated ? '/feed' : '/problems'}
+                                className="w-full sm:w-auto"
+                            >
+                                <PatternButton className="h-14 w-full sm:w-auto">
+                                    {isAuthenticated ? 'Go to Feed' : 'Start Solving'}
+                                </PatternButton>
                             </Link>
                         </div>
                         {/* Status Tags */}
-                        <div className="text-text-muted flex flex-wrap items-center justify-center gap-3 text-[10px] font-bold tracking-[0.18em] uppercase opacity-90 sm:text-xs">
-                            <span className="bg-bg-subtle border-border/40 hover:bg-bg-muted hover:text-text-primary rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all">
-                                2,500+ Problems
-                            </span>
-                            <span className="bg-bg-subtle border-border/40 hover:bg-bg-muted hover:text-text-primary rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all">
-                                Live Contests
-                            </span>
-                            <span className="bg-bg-subtle border-border/40 hover:bg-bg-muted hover:text-text-primary rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all">
-                                AI Interviewer
-                            </span>
+                        <div className="text-text-muted flex flex-wrap items-center justify-center gap-3 text-[10px] font-medium tracking-[0.18em] uppercase opacity-90 sm:text-xs">
+                            <Link href="/problems">
+                                <span className="bg-bg-subtle border-border/40 hover:bg-accent/10 hover:text-accent cursor-pointer rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all hover:scale-105 active:scale-95">
+                                    2,500+ Problems
+                                </span>
+                            </Link>
+                            <Link href="/contests">
+                                <span className="bg-bg-subtle border-border/40 hover:bg-accent/10 hover:text-accent cursor-pointer rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all hover:scale-105 active:scale-95">
+                                    Live Contests
+                                </span>
+                            </Link>
+                            <Link href="/interview/new">
+                                <span className="bg-bg-subtle border-border/40 hover:bg-accent/10 hover:text-accent cursor-pointer rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all hover:scale-105 active:scale-95">
+                                    AI Interviewer
+                                </span>
+                            </Link>
                         </div>
                     </motion.div>
 

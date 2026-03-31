@@ -1,9 +1,10 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, Zap, BarChart3, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Zap, BarChart3, Users } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { ArenaButton } from '@/components/ui/ArenaButton'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 import { useEffect, useState } from 'react'
 
@@ -24,10 +25,10 @@ export default function SkillShiftSection() {
                     transition={{ duration: 0.8 }}
                 >
                     {/* HEADLINE */}
-                    <h2 className="font-display text-text-primary mb-12 text-4xl leading-[1.05] font-black tracking-tight [text-wrap:balance] sm:text-6xl md:text-7xl">
+                    <h2 className="font-display text-text-primary mb-12 text-4xl leading-[1.05] font-bold tracking-tight [text-wrap:balance] sm:text-6xl md:text-7xl">
                         You're writing code.
                         <br />
-                        <span className="text-text-muted mt-2 block font-bold sm:mt-0 sm:inline">
+                        <span className="text-text-muted mt-2 block font-medium sm:mt-0 sm:inline">
                             But are you writing{' '}
                             <span className="relative inline-block px-1">
                                 <span className="text-accent relative z-10">fast</span>
@@ -81,11 +82,11 @@ export default function SkillShiftSection() {
                     {/* CTA */}
                     <Link href="/signup">
                         <Button
-                            size="lg"
-                            className="bg-accent hover:bg-accent-hover shadow-accent/20 hover:shadow-accent/40 inline-flex h-16 items-center gap-3 rounded-xl border-none px-12 text-lg font-black tracking-tight text-white shadow-lg transition-all duration-300 hover:scale-[1.02]"
+                            variant="outline"
+                            className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-16 w-full max-w-[280px] rounded-full transition-all duration-300"
                         >
-                            Enter the Arena
-                            <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" />
+                            Enter CodeArena
+                            <ArrowUpRight className="ml-2 h-5 w-5 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                         </Button>
                     </Link>
                 </motion.div>
@@ -129,12 +130,12 @@ function StatCard({ value, suffix, label, icon }) {
                 {icon}
             </div>
 
-            <span className="text-text-primary mb-1 font-mono text-4xl font-black tabular-nums sm:text-5xl">
+            <span className="text-text-primary mb-1 font-mono text-4xl font-bold tabular-nums sm:text-5xl">
                 {formatNumber(count)}
                 {suffix}
             </span>
 
-            <span className="text-text-muted text-xs font-bold tracking-widest uppercase">
+            <span className="text-text-muted text-xs font-medium tracking-widest uppercase">
                 {label}
             </span>
 

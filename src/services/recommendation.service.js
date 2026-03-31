@@ -15,6 +15,16 @@ function clamp(value, min = 0, max = 1) {
     return Math.min(max, Math.max(min, value))
 }
 
+function deterministicJitter(seedInput) {
+    const seed = String(seedInput || '')
+    let hash = 0
+    for (let i = 0; i < seed.length; i += 1) {
+        hash = (hash << 5) - hash + seed.charCodeAt(i)
+        hash |= 0
+    }
+    return ((hash >>> 0) % 1000) / 1000
+}
+
 export const recommendationService = {
     async updateUserPerformanceStats(userId) {
         if (!userId) return null
@@ -294,42 +304,61 @@ export const recommendationService = {
         const trendSignal = clamp(
             Math.max(popularitySignal, clamp((problem.trendingScore || 0) / 100), freshnessSignal)
         )
+        const weakCoverageSignal = weakTagMatches.length > 0 ? clamp(weakTagMatches.length / 2) : 0
 
         const weights =
             context === 'feed'
                 ? {
-                      weaknessSignal: 0.24,
-                      noveltySignal: 0.24,
-                      recoverySignal: 0.08,
-                      difficultySignal: 0.16,
-                      qualitySignal: 0.08,
+                      weaknessSignal: 0.1, // Feed is less about deep weaknesses
+                      noveltySignal: 0.4, // Focus heavily on new things for discovery
+                      recoverySignal: 0.05,
+                      difficultySignal: 0.15,
+                      qualitySignal: 0.1,
                       trendSignal: 0.2,
+                      weakCoverageSignal: 0,
                   }
                 : context === 'problems'
                   ? {
-                        weaknessSignal: 0.3,
-                        noveltySignal: 0.12,
-                        recoverySignal: 0.18,
+                        weaknessSignal: 0.35,
+                        noveltySignal: 0.15,
+                        recoverySignal: 0.1,
                         difficultySignal: 0.2,
-                        qualitySignal: 0.08,
-                        trendSignal: 0.12,
+                        qualitySignal: 0.1,
+                        trendSignal: 0.1,
+                        weakCoverageSignal: 0,
                     }
                   : {
-                        weaknessSignal: 0.42,
-                        noveltySignal: 0.06,
-                        recoverySignal: 0.18,
-                        difficultySignal: 0.2,
-                        qualitySignal: 0.08,
-                        trendSignal: 0.06,
+                        // Profile context - Focus Areas (deep growth)
+                        weaknessSignal: 0.6, // Strongest focus on fixing weaknesses
+                        noveltySignal: 0.05, // Less about new things, more about mastery
+                        recoverySignal: 0.2, // Higher focus on retrying failed tags
+                        difficultySignal: 0.1,
+                        qualitySignal: 0.05,
+                        trendSignal: 0.0,
+                        weakCoverageSignal: 0.1, // Reward multi-weak-tag overlap in profile
                     }
 
-        const score =
+        let score =
             weaknessSignal * weights.weaknessSignal +
             noveltySignal * weights.noveltySignal +
             recoverySignal * weights.recoverySignal +
             difficultySignal * weights.difficultySignal +
             qualitySignal * weights.qualitySignal +
-            trendSignal * weights.trendSignal
+            trendSignal * weights.trendSignal +
+            weakCoverageSignal * weights.weakCoverageSignal
+
+        // Context-sensitive shaping: profile should prefer mastery gaps;
+        // feed should prefer fresh momentum.
+        if (context === 'profile' && weakTagMatches.length === 0) {
+            score *= 0.85
+        }
+        if (context === 'feed' && noveltySignal === 0 && trendSignal < 0.4) {
+            score *= 0.9
+        }
+
+        // Deterministic micro-jitter keeps ordering stable but avoids repetitive ties.
+        const jitter = deterministicJitter(`${problem._id}:${context}:${profile.userLevel}`) * 0.03
+        score += jitter
 
         let reason = 'Balanced next problem based on your recent activity.'
         if (context === 'profile' && strongestWeakness) {

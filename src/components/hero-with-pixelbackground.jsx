@@ -4,8 +4,12 @@ import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Tiles } from '@/components/ui/tiles'
 
-// Master Redesign Hero: High-Fidelity, Clean, Non-Animated Background
+/**
+ * @component HeroWithPixelBackground
+ * @description Modern Technical Hero: High-density, professional layout with precise rounding and compact spacing.
+ */
 export default function HeroWithPixelBackground({ badge, title, subtitle, primary, secondary }) {
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -19,32 +23,51 @@ export default function HeroWithPixelBackground({ badge, title, subtitle, primar
     }
 
     const itemVariants = {
-        hidden: { opacity: 0, y: 30 },
+        hidden: {
+            opacity: 0,
+            y: 20,
+            filter: 'blur(8px)',
+        },
         visible: {
             opacity: 1,
             y: 0,
-            transition: { duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] },
+            filter: 'blur(0px)',
+            transition: {
+                duration: 0.8,
+                ease: [0.16, 1, 0.3, 1],
+            },
         },
     }
 
     return (
-        <div className="bg-bg-page relative flex min-h-[70vh] w-full items-center justify-center overflow-hidden">
-            {/* Static Radial Spotlight for Visual Depth (No Animation) */}
-            <div
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(2,186,76,0.03)_0%,transparent_70%)]"
-                aria-hidden="true"
-            />
+        <div className="bg-bg-page border-border/50 relative flex min-h-[55vh] w-full items-center justify-center overflow-hidden border-b">
+            {/* Interactive Tiles Background - Premium Texture */}
+            <div className="absolute inset-0 z-0">
+                <Tiles
+                    className="opacity-[0.08] lg:opacity-[0.12]"
+                    rows={30}
+                    cols={28}
+                    tileSize="md"
+                    tileClassName="border-neutral-300 dark:border-neutral-800/10"
+                />
+                {/* Overlay gradients for depth and spotlight */}
+                <div
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(2,186,76,0.03)_0%,transparent_70%)]"
+                    aria-hidden="true"
+                />
+                <div className="from-bg-page to-bg-page absolute inset-0 bg-gradient-to-b via-transparent opacity-100" />
+            </div>
 
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="max-w-container relative z-10 mx-auto flex flex-col items-center px-6 py-12 text-center"
+                className="max-w-container relative z-10 mx-auto flex flex-col items-center px-6 py-10 text-center"
             >
                 {badge && (
                     <motion.span
                         variants={itemVariants}
-                        className="text-accent mb-10 text-[10px] font-bold tracking-[0.4em] uppercase"
+                        className="text-accent mb-6 text-[10px] font-black tracking-[0.4em] uppercase"
                     >
                         {badge}
                     </motion.span>
@@ -53,7 +76,7 @@ export default function HeroWithPixelBackground({ badge, title, subtitle, primar
                 {title && (
                     <motion.h1
                         variants={itemVariants}
-                        className="text-text-primary mb-8 max-w-5xl text-5xl leading-[1.0] font-black tracking-tight [text-wrap:balance] md:text-8xl"
+                        className="text-text-primary mb-6 max-w-4xl text-4xl leading-[1] font-[1000] tracking-tighter [text-wrap:balance] md:text-6xl"
                     >
                         {title}
                     </motion.h1>
@@ -62,7 +85,7 @@ export default function HeroWithPixelBackground({ badge, title, subtitle, primar
                 {subtitle && (
                     <motion.p
                         variants={itemVariants}
-                        className="text-text-secondary mt-2 max-w-2xl text-lg leading-relaxed font-medium opacity-80 md:text-xl"
+                        className="text-text-secondary mt-1 max-w-xl text-base leading-relaxed font-medium opacity-60 md:text-lg"
                     >
                         {subtitle}
                     </motion.p>
@@ -70,21 +93,21 @@ export default function HeroWithPixelBackground({ badge, title, subtitle, primar
 
                 <motion.div
                     variants={itemVariants}
-                    className="mt-14 flex flex-col items-center justify-center gap-5 sm:flex-row"
+                    className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
                 >
                     {primary && (
                         <Link href={primary.href}>
-                            <Button className="bg-accent hover:bg-accent-hover hover:shadow-accent/20 h-14 rounded-md px-12 text-sm font-bold tracking-widest text-white uppercase shadow-lg transition-all duration-300">
+                            <Button
+                                variant="default"
+                                className="transition-all hover:scale-105 active:scale-95"
+                            >
                                 {primary.label}
                             </Button>
                         </Link>
                     )}
                     {secondary && (
                         <Link href={secondary.href}>
-                            <Button
-                                variant="outline"
-                                className="border-border hover:border-text-primary text-text-primary h-14 rounded-md bg-white px-12 text-sm font-bold tracking-widest uppercase shadow-sm transition-all duration-300 hover:bg-white hover:text-black"
-                            >
+                            <Button variant="ghost" className="transition-all hover:scale-105">
                                 {secondary.label}
                             </Button>
                         </Link>

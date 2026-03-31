@@ -263,7 +263,7 @@ export default function LoginForm() {
                             htmlFor="email"
                             className="text-text-muted font-mono text-xs tracking-wider uppercase"
                         >
-                            User Email
+                            Email Address
                         </Label>
                         <div className="group relative">
                             <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
@@ -292,7 +292,7 @@ export default function LoginForm() {
                                 htmlFor="password"
                                 className="text-text-muted font-mono text-xs tracking-wider uppercase"
                             >
-                                Access Key
+                                Password
                             </Label>
                             <button
                                 type="button"
@@ -340,11 +340,7 @@ export default function LoginForm() {
                         className="shadow-accent/20 h-11 w-full shadow-lg"
                         disabled={anyLoading}
                     >
-                        {isLoading ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            'Authenticate'
-                        )}
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
                     </Button>
                 </form>
             )}
@@ -437,7 +433,7 @@ export default function LoginForm() {
                     <div className="grid grid-cols-2 gap-3">
                         <Button
                             variant="secondary"
-                            className="text-text-primary hover:text-accent w-full transition-colors"
+                            className="bg-bg-surface/50 border-border hover:bg-accent/5 hover:border-accent/20 hover:text-accent w-full border transition-all duration-300"
                             onClick={() => handleSocialLogin('google')}
                             disabled={anyLoading}
                             type="button"
@@ -464,7 +460,7 @@ export default function LoginForm() {
                         </Button>
                         <Button
                             variant="secondary"
-                            className="text-text-primary hover:text-accent w-full transition-colors"
+                            className="bg-bg-surface/50 border-border hover:bg-accent/5 hover:border-accent/20 hover:text-accent w-full border transition-all duration-300"
                             onClick={() => handleSocialLogin('github')}
                             disabled={anyLoading}
                             type="button"
@@ -476,7 +472,7 @@ export default function LoginForm() {
                         </Button>
                         <Button
                             variant="outline"
-                            className="bg-bg-surface border-border hover:bg-bg-subtle hover:text-accent col-span-2 w-full"
+                            className="bg-bg-surface/50 border-border hover:bg-accent/5 hover:border-accent/20 hover:text-accent col-span-2 w-full transition-all duration-300"
                             onClick={() => switchView('magic-link')}
                             disabled={anyLoading}
                         >

@@ -216,7 +216,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                         {icon}
                     </div>
                     <p
-                        className="text-xs leading-none font-semibold tracking-wider uppercase"
+                        className="text-xs leading-none font-medium tracking-wider uppercase"
                         style={{ color: 'var(--color-text-muted)' }}
                     >
                         {stat.label}
@@ -225,7 +225,7 @@ function StatCard({ stat, icon, sparkline, index }) {
 
                 {/* Value */}
                 <div
-                    className="mb-3 font-mono text-2xl leading-none font-bold tracking-tight"
+                    className="mb-3 font-mono text-2xl leading-none font-semibold tracking-tight"
                     style={{ color: 'var(--color-text-primary)' }}
                     aria-label={`${stat.label}: ${stat.value}`}
                 >
@@ -236,7 +236,7 @@ function StatCard({ stat, icon, sparkline, index }) {
                 <div className="flex items-end justify-between gap-2">
                     {/* Trend pill */}
                     <div
-                        className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold"
+                        className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium"
                         style={{ background: trendBg, color: trendColour }}
                     >
                         {!isStable && (

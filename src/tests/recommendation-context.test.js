@@ -10,6 +10,7 @@ describe('Recommendation Context Split', () => {
         const recommendationPool = Array.from({ length: 12 }, (_, idx) =>
             makeProblem(idx + 1, [`tag-${idx + 1}`])
         )
+        const userId = 'user-alpha'
 
         const profileResult = buildContextualRecommendations({
             context: 'profile',
@@ -18,6 +19,7 @@ describe('Recommendation Context Split', () => {
             profileLimit: 6,
             feedLimit: 6,
             discoveryLimit: 3,
+            userId,
         })
 
         const feedResult = buildContextualRecommendations({
@@ -27,6 +29,7 @@ describe('Recommendation Context Split', () => {
             profileLimit: 6,
             feedLimit: 6,
             discoveryLimit: 3,
+            userId,
         })
 
         const profileIds = new Set(profileResult.recommendations.map((p) => String(p._id)))
@@ -42,6 +45,17 @@ describe('Recommendation Context Split', () => {
             makeProblem(idx + 1, [`core-${idx + 1}`])
         )
         const discoveryPool = [makeProblem('d1', ['graph']), makeProblem('d2', ['dp'])]
+        const userId = 'user-backfill'
+
+        const profileResult = buildContextualRecommendations({
+            context: 'profile',
+            recommendationPool,
+            discoveryPool,
+            profileLimit: 6,
+            feedLimit: 6,
+            discoveryLimit: 3,
+            userId,
+        })
 
         const feedResult = buildContextualRecommendations({
             context: 'feed',
@@ -50,10 +64,11 @@ describe('Recommendation Context Split', () => {
             profileLimit: 6,
             feedLimit: 6,
             discoveryLimit: 3,
+            userId,
         })
 
         const profileIds = new Set(
-            recommendationPool.slice(0, 6).map((problem) => String(problem._id))
+            profileResult.recommendations.map((problem) => String(problem._id))
         )
         const overlap = feedResult.recommendations.filter((p) => profileIds.has(String(p._id)))
 

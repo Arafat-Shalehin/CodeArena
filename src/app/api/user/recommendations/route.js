@@ -102,6 +102,7 @@ export async function GET(request) {
             profileLimit: 6,
             feedLimit: 6,
             discoveryLimit: 3,
+            userId,
         })
 
         const payload = {

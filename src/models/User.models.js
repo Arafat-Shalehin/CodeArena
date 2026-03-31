@@ -10,10 +10,16 @@ const userSchema = new mongoose.Schema(
             trim: true,
             lowercase: true,
         },
+        username: {
+            type: String,
+            unique: [true, 'Username already exists.'],
+            trim: true,
+            lowercase: true,
+            sparse: true,
+        },
         name: {
             type: String,
             required: [true, 'Name is required for creating a account'],
-            unique: [true, 'Name already exists.'],
         },
         password: {
             type: String,
@@ -69,6 +75,7 @@ const userSchema = new mongoose.Schema(
             totalSubmissions: { type: Number, default: 0 },
             accepted: { type: Number, default: 0 }, // Unique problems solved
             score: { type: Number, default: 0 },
+            globalRank: { type: Number, default: 0 },
             weeklyGoal: { type: Number, default: 10 },
             solvedProblems: [
                 {
