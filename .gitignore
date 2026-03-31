@@ -1,17 +1,6 @@
-.next/
-node_modules/
-.env
-.env.local
-.env.example
-
-.claude
-.vscode
-.dockerignore
-.gitignore
-
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -29,10 +18,15 @@ node_modules/
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+.claude
+.vscode
+.dockerignore
+*.log
 
 # debug
 npm-debug.log*
@@ -40,8 +34,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
 # vercel
 .vercel
@@ -49,16 +48,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-*.md
 
 # local-only workspace
 hf-space-worker/
-.next/
-node_modules/
-.env
-dist/
-build/
-*.log
-dist/
-build/
-*.log
