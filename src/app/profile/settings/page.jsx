@@ -8,8 +8,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 // Firebase
-import { auth } from '@/lib/firebase/config'
-import { updateProfile as firebaseUpdateProfile } from 'firebase/auth'
+import { getFirebaseAuth } from '@/lib/firebase/config'
 
 // Auth Context
 import { useAuth } from '@/context/AuthContext'
@@ -21,6 +20,11 @@ import SocialProfilesForm from '@/features/profile/components/SocialProfilesForm
 import { Button } from '@/components/ui/button'
 import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
 import Navbar from '@/components/layout/Navbar'
+import AccountSection from '@/features/profile/components/settings/AccountSection'
+import PreferencesSection from '@/features/profile/components/settings/PreferencesSection'
+import NotificationsSection from '@/features/profile/components/settings/NotificationsSection'
+import PrivacySection from '@/features/profile/components/settings/PrivacySection'
+import SubscriptionSection from '@/features/profile/components/settings/SubscriptionSection'
 
 // Schema
 const editProfileSchema = z.object({
@@ -30,6 +34,7 @@ const editProfileSchema = z.object({
         .max(50, 'Display name must be at most 50 characters'),
     bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
     location: z.string().max(100, 'Location is too long').optional().or(z.literal('')),
+    country: z.string().optional().or(z.literal('')),
     website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
     socials: z
         .object({
@@ -61,6 +66,7 @@ const PREDEFINED_AVATARS = [
 export default function SettingsPage() {
     const { user, updateProfile: updateLocalContext, isLoading: authLoading, syncUser } = useAuth()
     const [activeSection, setActiveSection] = useState('profile')
+    const [isSaved, setIsSaved] = useState(false)
 
     const {
         register,
@@ -75,6 +81,7 @@ export default function SettingsPage() {
             name: '',
             bio: '',
             location: '',
+            country: '',
             website: '',
             socials: { github: '', linkedin: '', twitter: '' },
         },
@@ -87,6 +94,7 @@ export default function SettingsPage() {
                 name: user.name || '',
                 bio: user.bio || '',
                 location: user.location || '',
+                country: user.country || '',
                 website: user.website || '',
                 socials: {
                     github: user.socials?.github || '',
@@ -103,77 +111,100 @@ export default function SettingsPage() {
     const avatarSeed = watch('avatarSeed')
 
     const onSubmit = async (data) => {
-        // First, update the MongoDB database
         const userId = user?.id || user?._id
-        console.log('User object:', user)
-        console.log('Extracted userId:', userId)
-
-        if (userId) {
-            try {
-                const userIdString = userId.toString()
-                const payload = {
-                    name: data.name,
-                    bio: data.bio || '',
-                    location: data.location || '',
-                    website: data.website || '',
-                    socials: data.socials || { github: '', linkedin: '', twitter: '' },
-                    avatarSeed,
-                }
-                console.log('Sending profile update:', { userId: userIdString, payload })
-
-                const res = await fetch(`/api/users/${userIdString}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                })
-
-                const responseData = await res.json()
-                console.log('Profile update response:', { status: res.status, data: responseData })
-
-                if (!res.ok) {
-                    throw new Error(responseData.message || 'Failed to update profile')
-                }
-            } catch (error) {
-                console.error('Database profile sync failed:', error)
-                toast.error(error.message || 'Failed to save profile. Please try again.')
-                return // Stop here - don't update local context or show success
-            }
-        } else {
+        if (!userId) {
             console.error('No user ID found:', user)
             toast.error('Unable to update profile. Please log in again.')
             return
         }
 
-        // Update Firebase display name
-        if (auth.currentUser) {
-            try {
-                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name })
-            } catch (e) {
-                console.error('Firebase profile sync failed:', e)
-                toast.error('Failed to sync name with Firebase auth.')
-            }
-        }
+        let responseData = null
+        let profileUpdateSuccess = false
 
-        // Update local auth context (which also handles localStorage caching mapping)
-        updateLocalContext({
-            name: data.name,
-            bio: data.bio || '',
-            location: data.location || '',
-            website: data.website || '',
-            socials: data.socials,
-            avatarSeed,
-        })
-
-        // Sync with server to get fresh data
         try {
-            await syncUser()
-        } catch (syncError) {
-            console.error('Sync failed:', syncError)
+            const userIdString = userId.toString()
+            const payload = {
+                name: data.name,
+                bio: data.bio || '',
+                location: data.location || '',
+                country: data.country || '',
+                website: data.website || '',
+                socials: data.socials || { github: '', linkedin: '', twitter: '' },
+                avatarSeed,
+            }
+
+            console.log('Submitting profile update:', { userId: userIdString, payload })
+
+            const res = await fetch(`/api/users/${userIdString}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            console.log('Response status:', res.status, res.ok)
+
+            // Check if response is OK before trying to parse JSON
+            if (!res.ok) {
+                const contentType = res.headers.get('content-type')
+                let errorMessage = 'Failed to update profile'
+
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await res.json()
+                    errorMessage = responseData.message || errorMessage
+                } else {
+                    const text = await res.text()
+                    console.error('Non-JSON error response:', text)
+                    errorMessage = text || `Server error: ${res.status}`
+                }
+                throw new Error(errorMessage)
+            }
+
+            // Only parse JSON if the response was successful
+            const contentType = res.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+                responseData = await res.json()
+            } else {
+                throw new Error('Server returned invalid response')
+            }
+
+            console.log('Profile update successful:', responseData)
+
+            // Update Firebase display name if available
+            const firebase = await getFirebaseAuth()
+            if (firebase?.auth?.currentUser) {
+                const { updateProfile: firebaseUpdateProfile } = await import('firebase/auth')
+                await firebaseUpdateProfile(firebase.auth.currentUser, { displayName: data.name })
+            }
+
+            profileUpdateSuccess = true
+        } catch (error) {
+            if (error.name === 'AbortError') return
+            console.error('Profile update failed:', error)
+            toast.error(error.message || 'Failed to save profile. Please try again.')
+            return
         }
 
-        toast.success('Changes saved successfully!')
+        if (profileUpdateSuccess) {
+            try {
+                await syncUser()
+            } catch (syncError) {
+                console.error('Sync failed:', syncError)
+            }
+
+            updateLocalContext({
+                name: data.name,
+                bio: data.bio || '',
+                location: data.location || '',
+                country: data.country || '',
+                website: data.website || '',
+                socials: data.socials,
+                avatarSeed,
+            })
+
+            setIsSaved(true)
+            toast.success('Changes saved successfully!')
+            setTimeout(() => setIsSaved(false), 3000)
+        }
     }
 
     if (authLoading) {
@@ -221,6 +252,9 @@ export default function SettingsPage() {
                                     register={register}
                                     errors={errors}
                                     bioValue={watch('bio')}
+                                    watch={watch}
+                                    setValue={setValue}
+                                    user={user}
                                 />
                                 <SocialProfilesForm register={register} errors={errors} />
 
@@ -253,14 +287,11 @@ export default function SettingsPage() {
                             </form>
                         )}
 
-                        {/* Coming Soon Placeholder */}
-                        {activeSection !== 'profile' && (
-                            <div className="bg-bg-subtle border-border text-text-muted rounded-lg border p-12 text-center">
-                                <p className="text-sm font-medium">
-                                    This settings section is coming soon.
-                                </p>
-                            </div>
-                        )}
+                        {activeSection === 'account' && <AccountSection user={user} />}
+                        {activeSection === 'preferences' && <PreferencesSection user={user} />}
+                        {activeSection === 'notifications' && <NotificationsSection user={user} />}
+                        {activeSection === 'privacy' && <PrivacySection user={user} />}
+                        {activeSection === 'subscription' && <SubscriptionSection user={user} />}
                     </div>
                 </div>
             </main>

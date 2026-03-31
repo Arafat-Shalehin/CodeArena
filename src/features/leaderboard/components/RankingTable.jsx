@@ -99,7 +99,7 @@ export function RankingTable({ data, currentUser }) {
                                             <div className="flex items-center gap-3 md:gap-4">
                                                 <Avatar className="border-border size-8 border-2 shadow-sm md:size-12">
                                                     <AvatarImage
-                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.userId?.username || 'user'}`}
+                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${row.userId?.avatarSeed || row.userId?.username || 'user'}`}
                                                         alt={row.userId?.username}
                                                     />
                                                     <AvatarFallback className="bg-bg-muted text-text-primary text-xs">

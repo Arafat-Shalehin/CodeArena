@@ -1,11 +1,13 @@
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import Hero from '@/features/home/components/Hero'
-import FeaturesSection from '@/features/home/components/FeaturesSection'
+import FeaturesBentoGrid from '@/features/home/components/FeaturesBentoGrid'
 import HowItWorksSection from '@/features/home/components/HowItWorksSection'
 import RecentProblemsSection from '@/features/home/components/RecentProblemsSection'
 import LeaderboardPreviewSection from '@/features/home/components/LeaderboardPreviewSection'
 import TrustedBySection from '@/features/home/components/TrustedBySection'
+import SkillShiftSection from '@/features/home/components/SkillShiftSection'
+import FeaturesHeader from '@/features/home/components/FeaturesHeader'
 
 import ErrorBoundary from '@/components/ui/error-boundary'
 
@@ -37,7 +39,14 @@ export default function Home() {
                 </ErrorBoundary>
 
                 <ErrorBoundary>
-                    <FeaturesSection />
+                    <SkillShiftSection />
+                </ErrorBoundary>
+
+                <ErrorBoundary>
+                    <section className="bg-bg-page relative mx-auto max-w-7xl px-4 py-16 md:py-24">
+                        <FeaturesHeader />
+                        <FeaturesBentoGrid />
+                    </section>
                 </ErrorBoundary>
 
                 <ErrorBoundary>

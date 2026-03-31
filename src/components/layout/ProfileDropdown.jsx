@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { User, LogOut, ChevronDown } from 'lucide-react'
+import { User, LogOut, ChevronDown, LayoutDashboard } from 'lucide-react'
 
 /**
  * @component ProfileDropdown
@@ -68,6 +68,14 @@ export default function ProfileDropdown({ user, onLogout }) {
 
                     {/* Links */}
                     <div className="py-1">
+                        <Link
+                            href="/admin/dashboard"
+                            onClick={() => setIsOpen(false)}
+                            className="text-text-primary hover:bg-bg-subtle flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+                        >
+                            <LayoutDashboard size={16} className="text-text-muted" />
+                            Dashboard
+                        </Link>
                         <Link
                             href="/profile"
                             onClick={() => setIsOpen(false)}

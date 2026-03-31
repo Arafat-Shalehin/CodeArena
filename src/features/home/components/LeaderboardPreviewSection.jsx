@@ -1,6 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowUpRight, Crown } from 'lucide-react'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
@@ -16,13 +17,15 @@ import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
  */
 export default function LeaderboardPreviewSection() {
     const shouldReduceMotion = useSafeReducedMotion()
-    const { users: leaderboardUsers, isLoading, error } = useLeaderboard()
+    const sectionRef = useRef(null)
+    const isNearViewport = useInView(sectionRef, { once: true, margin: '320px' })
+    const { users: leaderboardUsers, isLoading, error } = useLeaderboard({}, isNearViewport)
 
     if (error) return null
     if (isLoading || !leaderboardUsers || leaderboardUsers.length === 0) {
         // Show skeleton instead of nothing while loading
         return (
-            <section className="mx-auto max-w-7xl px-4 py-16">
+            <section ref={sectionRef} className="mx-auto max-w-7xl px-4 py-16">
                 <div className="grid gap-16 lg:grid-cols-2">
                     <div className="space-y-8">
                         <div className="bg-bg-muted h-12 w-3/4 animate-pulse rounded-xl" />
@@ -36,7 +39,7 @@ export default function LeaderboardPreviewSection() {
     }
 
     return (
-        <section className="mx-auto max-w-7xl px-4 py-16">
+        <section ref={sectionRef} className="mx-auto max-w-7xl px-4 py-16">
             <div className="grid gap-16 lg:grid-cols-2">
                 {/* Left: Content */}
                 <motion.div

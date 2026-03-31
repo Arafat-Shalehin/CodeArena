@@ -440,6 +440,7 @@ export const recommendationCacheService = {
     generateKey(userId, params = {}) {
         return generateCacheKey(CACHE_CONFIG.USER_RECOMMENDATIONS.namespace, {
             userId,
+            context: params.context || 'profile',
             limit: params.limit || 10,
             includeDiscovery: params.includeDiscovery || false,
         })

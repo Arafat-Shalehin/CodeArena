@@ -69,51 +69,67 @@ export default function ProblemCard({
     // --- Detailed Variant (Home Page Style) ---
     if (variant === 'detailed') {
         return (
-            <Link href={`/problems/${_id}`} className={cn('group block', className)}>
-                <Card className="matte-surface hover:border-accent/50 h-full cursor-pointer overflow-hidden rounded-2xl p-0 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="flex h-full flex-col p-8">
+            <Link
+                href={`/problems/${_id}`}
+                className={cn('group relative block h-full', className)}
+            >
+                <Card className="matte-surface bg-bg-subtle/50 border-border hover:border-accent/50 relative h-full cursor-pointer overflow-hidden rounded-2xl p-0 shadow-sm transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                    {/* Background Detail: Grid Pattern */}
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-[size:24px_24px] opacity-10" />
+
+                    {/* Hover Spotlight */}
+                    <div className="from-accent/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                    <CardContent className="relative z-10 flex h-full flex-col p-6">
                         <div className="mb-4 flex items-start justify-between">
                             <Badge
                                 variant="outline"
                                 className={cn(
-                                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] tracking-widest uppercase',
+                                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[9px] font-bold tracking-widest uppercase transition-colors duration-300',
                                     config.bg,
                                     config.color,
                                     config.border
                                 )}
                             >
-                                <Icon className="h-3 w-3" strokeWidth={3} />
+                                <Icon className="size-2.5" strokeWidth={3} aria-hidden="true" />
                                 {difficulty}
                             </Badge>
-                            <div className="text-text-muted flex items-center gap-1.5 text-xs font-medium">
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                {acceptedSubmissions || 0}
+                            <div className="text-text-muted flex items-center gap-1.5 text-[10px] font-bold tracking-tight">
+                                <CheckCircle className="size-3 opacity-60" aria-hidden="true" />
+                                {acceptedSubmissions?.toLocaleString() || 0}
                             </div>
                         </div>
 
-                        <h3 className="text-text-primary group-hover:text-accent font-display mb-3 line-clamp-2 text-xl font-bold tracking-tight transition-colors">
+                        <h3 className="text-text-primary group-hover:text-accent font-display mb-3 line-clamp-2 text-xl leading-tight font-black tracking-tight transition-colors duration-300">
                             {title}
                         </h3>
 
-                        <div className="mb-6 flex flex-wrap gap-2">
+                        <div className="mb-5 flex flex-wrap gap-1.5">
                             {tags?.slice(0, 3).map((tag, i) => (
                                 <span
                                     key={i}
-                                    className="bg-bg-muted text-text-secondary hover:bg-border rounded px-2 py-1 text-[10px] font-medium transition-colors"
+                                    className="bg-bg-muted/80 text-text-secondary hover:bg-border/60 hover:text-text-primary rounded-md px-2 py-0.5 text-[9px] font-bold tracking-wide transition-all duration-300"
                                 >
                                     {tag}
                                 </span>
                             ))}
                         </div>
 
-                        <div className="border-border mt-auto flex items-center justify-between border-t pt-4">
-                            <span className="text-text-muted text-xs font-medium">
-                                <span className="text-text-primary font-bold">
+                        <div className="border-border/60 mt-auto flex items-center justify-between border-t pt-4">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-text-muted text-[9px] font-bold tracking-wider uppercase">
+                                    Acceptance
+                                </span>
+                                <span className="text-text-primary text-xs font-black italic">
                                     {formatAcceptanceRate(acceptanceRate)}
-                                </span>{' '}
-                                Success
-                            </span>
-                            <ArrowRight className="group-hover:text-accent text-text-muted/60 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                </span>
+                            </div>
+                            <div className="bg-bg-muted/50 group-hover:bg-accent/10 border-border group-hover:border-accent/30 flex size-8 items-center justify-center rounded-lg border transition-all duration-300 group-hover:scale-110">
+                                <ArrowRight
+                                    className="text-text-muted group-hover:text-accent size-4 transition-transform duration-300 group-hover:translate-x-0.5"
+                                    aria-hidden="true"
+                                />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

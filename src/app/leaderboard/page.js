@@ -80,9 +80,10 @@ export default function LeaderboardPage() {
                         submissions: u.stats?.accepted || 0,
                         userId: {
                             _id: u._id,
-                            username: u.username || u.name || 'Anonymous',
+                            username: u.name || u.username || 'Anonymous', // Prefer Display Name (name) for visuals
                             email: u.email,
                             stats: u.stats,
+                            avatarSeed: u.avatarSeed,
                         },
                         title:
                             u.stats?.score > 40
@@ -90,7 +91,7 @@ export default function LeaderboardPage() {
                                 : u.stats?.score > 10
                                   ? 'Elite Engineer'
                                   : 'Code Warrior',
-                        country: 'Global',
+                        country: u.country || 'Global',
                         streak: 0,
                     }))
                     setUsers(transformed)

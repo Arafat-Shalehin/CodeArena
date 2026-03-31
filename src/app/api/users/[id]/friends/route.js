@@ -31,12 +31,27 @@ export const GET = asyncHandler(async (req, context) => {
     const responseData = {}
     const selectFields = '_id name bio avatarSeed stats.score stats.globalRank'
 
+    // Get the current user's following list to check isFollowing status
+    const currentUserId = searchParams.get('currentUserId')
+    let currentUserFollowing = []
+    if (currentUserId) {
+        const currentUser = await User.findById(currentUserId).select('following')
+        currentUserFollowing = currentUser?.following?.map((fId) => fId.toString()) || []
+    }
+
     if (type === 'followers' || type === 'all') {
         const followers = await User.find({ _id: { $in: user.followers } })
             .select(selectFields)
             .limit(limit)
             .lean()
-        responseData.followers = followers
+
+        // Attach isFollowing status
+        const followersWithStatus = followers.map((f) => ({
+            ...f,
+            isFollowing: currentUserFollowing.includes(f._id.toString()),
+        }))
+
+        responseData.followers = followersWithStatus
         responseData.followersCount = user.followers.length
     }
 
@@ -45,7 +60,14 @@ export const GET = asyncHandler(async (req, context) => {
             .select(selectFields)
             .limit(limit)
             .lean()
-        responseData.following = following
+
+        // Attach isFollowing status
+        const followingWithStatus = following.map((f) => ({
+            ...f,
+            isFollowing: currentUserFollowing.includes(f._id.toString()),
+        }))
+
+        responseData.following = followingWithStatus
         responseData.followingCount = user.following.length
     }
 
