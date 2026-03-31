@@ -3,20 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import {
-    Zap,
-    Shield,
-    Target,
-    BarChart3,
-    ArrowRight,
-    Sparkles,
-    Bot,
-    Code,
-    Mic,
-    Play,
-    MessageSquare,
-    Trophy,
-} from 'lucide-react'
+import { Zap, Shield, BarChart3, Bot, Code, Mic, Play, MessageSquare, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import HeroWithPixelBackground from '@/components/hero-with-pixelbackground'
 

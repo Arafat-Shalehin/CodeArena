@@ -3,17 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import {
-    Zap,
-    Target,
-    Clock,
-    ChevronRight,
-    Sparkles,
-    Brain,
-    Trophy,
-    Gamepad2,
-    ArrowLeft,
-} from 'lucide-react'
+import { ChevronRight, Trophy, Gamepad2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import Link from 'next/link'
