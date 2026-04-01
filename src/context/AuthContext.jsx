@@ -137,10 +137,19 @@ export function AuthProvider({ children }) {
     const syncUser = useCallback(async () => {
         try {
             setIsLoading(true)
+            const firebaseUser = auth.currentUser
+            if (!firebaseUser) return null
+
             const res = await fetch('/api/auth/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ authProvider: 'firebase' }),
+                body: JSON.stringify({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: firebaseUser.displayName,
+                    photoURL: firebaseUser.photoURL,
+                    authProvider: 'firebase',
+                }),
             })
             const data = await res.json()
             if (data.success) {

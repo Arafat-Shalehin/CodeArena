@@ -1,8 +1,17 @@
 'use client'
 
 import React, { useState } from 'react'
-import Editor from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
+
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex h-full w-full items-center justify-center p-4">
+            <span className="text-text-muted animate-pulse text-sm">Loading Monaco Editor...</span>
+        </div>
+    ),
+})
 import {
     ChevronDown,
     ChevronUp,

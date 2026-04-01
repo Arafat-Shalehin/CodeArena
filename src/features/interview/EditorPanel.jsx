@@ -1,8 +1,18 @@
 'use client'
 
 import React, { useState, useRef, useCallback } from 'react'
-import Editor from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
+
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex h-full w-full flex-col items-center justify-center p-4">
+            <Loader2 className="text-text-muted mb-2 animate-spin" size={24} />
+            <span className="text-text-muted text-sm">Loading Editor...</span>
+        </div>
+    ),
+})
 import {
     Play,
     CheckCircle2,
@@ -86,7 +96,7 @@ export default function EditorPanel({
     return (
         <div className="flex h-full flex-col overflow-hidden">
             {/* ─── Header ─────────────────────────────────────────────── */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center justify-between border-b px-3">
+            <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center justify-between border-b px-3">
                 {/* Left: title + lang picker */}
                 <div className="flex items-center gap-3">
                     <span className="text-text-primary flex items-center gap-1.5 text-xs font-bold">
@@ -236,7 +246,7 @@ export default function EditorPanel({
             </div>
 
             {/* ─── Status Bar ─────────────────────────────────────────── */}
-            <div className="border-border bg-bg-subtle text-text-muted flex h-[26px] flex-shrink-0 items-center justify-between border-t px-4 text-[11px]">
+            <div className="border-border bg-bg-subtle text-text-muted flex h-6.5 shrink-0 items-center justify-between border-t px-4 text-[11px]">
                 <span className="flex items-center gap-1.5">
                     <div
                         className={`h-1.5 w-1.5 rounded-full ${isReadOnly ? 'bg-error' : 'bg-success'}`}

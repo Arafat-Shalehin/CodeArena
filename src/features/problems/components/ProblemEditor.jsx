@@ -1,8 +1,17 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import Editor from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
+
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+    ssr: false,
+    loading: () => (
+        <div className="bg-bg-page/50 flex h-full w-full items-center justify-center">
+            <Loader2 className="text-text-muted animate-spin" size={24} />
+        </div>
+    ),
+})
 import {
     Play,
     Send,

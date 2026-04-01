@@ -31,9 +31,18 @@ import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'
 import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
+import dynamic from 'next/dynamic'
 
 import DescriptionPanel from './DescriptionPanel'
-import CodeEditorPanel from './CodeEditorPanel'
+const CodeEditorPanel = dynamic(() => import('./CodeEditorPanel'), {
+    ssr: false,
+    loading: () => (
+        <div className="bg-bg-page text-text-muted flex h-full w-full items-center justify-center">
+            <Loader2 className="animate-spin" size={24} />
+            <span className="ml-2 text-sm">Loading Editor...</span>
+        </div>
+    ),
+})
 import ExecutionConsole from './ExecutionConsole'
 import WorkspaceLoader from './WorkspaceLoader'
 

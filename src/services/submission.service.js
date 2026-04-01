@@ -38,20 +38,21 @@ export async function createSubmission(data) {
         throw new Error('Code and language are required.')
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    const session = null // Transactions are slow and unnecessary here
 
     try {
-        console.log('[SERVICE] Starting transaction...')
+        console.log('[SERVICE] Validating user & problem...')
         // 1️⃣ Validate user
-        const user = await User.findById(userId).session(session)
+        const user = await User.findById(userId).select('_id').lean()
         if (!user) {
             throw new Error('User not found.')
         }
         console.log('[SERVICE] User validated:', userId)
 
         // 2️⃣ Validate problem
-        const problem = await Problem.findById(problemId).session(session)
+        const problem = await Problem.findById(problemId)
+            .select('_id codeSizeLimit testCaseCount')
+            .lean()
         if (!problem) {
             throw new Error('Problem not found.')
         }
@@ -70,9 +71,9 @@ export async function createSubmission(data) {
             await redisClient.set(rateLimitKey, '1', { EX: 3 })
         } else if (type === 'submit') {
             // Fallback to basic DB check if Redis is down
-            const lastSubmission = await Submission.findOne({ userId, type: 'submit' })
-                .sort({ createdAt: -1 })
-                .session(session)
+            const lastSubmission = await Submission.findOne({ userId, type: 'submit' }).sort({
+                createdAt: -1,
+            })
 
             if (
                 lastSubmission &&
@@ -84,7 +85,7 @@ export async function createSubmission(data) {
 
         // 4️⃣ Contest validation (if provided)
         if (contestId && type === 'submit') {
-            const contest = await Contest.findById(contestId).session(session)
+            const contest = await Contest.findById(contestId).select('startTime endTime').lean()
             if (!contest) {
                 throw new Error('Contest not found.')
             }
@@ -100,10 +101,10 @@ export async function createSubmission(data) {
             }
 
             // Check participant registration via ContestParticipant collection
-            const isRegistered = await ContestParticipant.findOne({
+            const isRegistered = await ContestParticipant.exists({
                 contestId,
                 userId,
-            }).session(session)
+            })
 
             if (!isRegistered) {
                 throw new Error('User is not registered for this contest.')
@@ -142,11 +143,9 @@ export async function createSubmission(data) {
             submissionData.status = 'queued'
         }
 
-        const submission = await Submission.create([submissionData], { session })
+        const submission = await Submission.create(submissionData)
 
-        await session.commitTransaction()
-        session.endSession()
-        console.log('[SERVICE] Submission saved to DB:', submission[0]._id)
+        console.log('[SERVICE] Submission saved to DB:', submission._id)
 
         // 7️⃣ Push to Message Queue (BullMQ) - ONLY if not using cached result
         if (!cachedResult) {
@@ -154,7 +153,7 @@ export async function createSubmission(data) {
                 const queue = getSubmissionQueue()
                 console.log('[SERVICE] Adding job to submission-queue...')
                 await queue.add('process-submission', {
-                    submissionId: submission[0]._id,
+                    submissionId: submission._id,
                 })
                 console.log('[SERVICE] Job added to queue successfully')
 
@@ -177,7 +176,7 @@ export async function createSubmission(data) {
                     const queuedPayload = {
                         type: 'submission_queued',
                         userId,
-                        submissionId: submission[0]._id,
+                        submissionId: submission._id,
                         problemId,
                         stage: 'queued',
                         status: 'queued',
@@ -199,7 +198,7 @@ export async function createSubmission(data) {
                             JSON.stringify({
                                 type: 'submission_status',
                                 userId,
-                                submissionId: submission[0]._id,
+                                submissionId: submission._id,
                                 problemId,
                                 stage: 'queued',
                                 status: 'queued',
@@ -227,7 +226,7 @@ export async function createSubmission(data) {
                         JSON.stringify({
                             type: 'submission_evaluated',
                             userId,
-                            submissionId: submission[0]._id,
+                            submissionId: submission._id,
                             problemId,
                             status: 'completed',
                             verdict: cachedResult.verdict,
@@ -240,11 +239,10 @@ export async function createSubmission(data) {
             }
         }
 
-        console.log('[SERVICE] Returning submission:', submission[0]._id)
-        return submission[0]
+        console.log('[SERVICE] Returning submission:', submission._id)
+        return submission.toJSON()
     } catch (error) {
-        await session.abortTransaction()
-        session.endSession()
+        console.error('[SERVICE] Submission error:', error.message)
         throw error
     }
 }
@@ -295,6 +293,7 @@ export async function getSubmissionById(id) {
     const submission = await Submission.findById(id)
         .populate('userId', 'name email')
         .populate('problemId', 'title difficulty')
+        .lean()
 
     if (!submission) {
         const err = new Error('Submission not found.')
