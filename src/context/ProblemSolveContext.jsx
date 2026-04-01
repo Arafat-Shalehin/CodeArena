@@ -50,7 +50,16 @@ const readSavedLeftTab = (problemId) => {
 export { STARTER_CODES, LANG_LABELS }
 
 // Inner component that uses all sub-contexts
-function ProblemSolveProviderInner({ children, problemId, initialCode, problem, contestId }) {
+function ProblemSolveProviderInner({
+    children,
+    problemId,
+    initialCode,
+    problem,
+    contestId,
+    disableAI,
+    mode,
+    onProblemSolved,
+}) {
     const { user, syncUser } = useAuth()
 
     // Get Zustand store for persistence
@@ -472,6 +481,11 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                                     console.log('[FRONTEND] Polled submission status:', verdict)
 
                                     if (verdict && verdict !== 'PENDING') {
+                                        // Update status indicators if solved
+                                        if (verdict === 'ACCEPTED' && onProblemSolved) {
+                                            onProblemSolved(problemId)
+                                        }
+
                                         // Update testResult with the actual verdict
                                         execution.setTestResult({
                                             status: 'done',
@@ -513,11 +527,17 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         problemId,
         problem?.testCaseCount,
         contestId,
+        onProblemSolved,
     ])
 
     // ─── AI Feedback ─────────────────────────────────────────────────────────
     const fetchAiFeedback = useCallback(
         async (options = { switchTab: true }) => {
+            if (disableAI) {
+                log.info('AI feedback is disabled in this mode')
+                toast.info('AI features are disabled during contests')
+                return
+            }
             // Get the code to analyze (prefer submitted code, fallback to last analyzed)
             const codeToAnalyze =
                 execution.lastSubmittedCode || execution.lastAnalyzedCode || codeEditor.code
@@ -580,7 +600,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 console.error('AI feedback error:', err)
                 execution.setTestResultData({ aiFeedback: { error: err.message } })
             } finally {
-                execution.setIsAiLoading(false)
+                execution.setIsAiLoading(true)
             }
         },
         [
@@ -652,7 +672,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                         })
                         setLeftTab('submission-result')
 
-                        if (isAccepted) {
+                        if (isAccepted && onProblemSolved) {
+                            onProblemSolved(problemId)
                             syncUser()
                         }
                     }
@@ -664,7 +685,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
                 execution.setIsRunning(false)
             }
         },
-        [syncUser]
+        [syncUser, onProblemSolved, problemId]
     )
 
     useSubmissionRealtime({
@@ -682,6 +703,7 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
         activeSubmissionRoomRef,
         finalVerdictHandledRef,
         lastFinalSubmissionIdRef,
+        onProblemSolved,
     })
 
     const value = useMemo(
@@ -736,6 +758,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             // Problem context
             problem,
             problemId,
+            disableAI,
+            mode,
         }),
         [
             codeEditor.code,
@@ -775,6 +799,8 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
             setLeftTab,
             problem,
             problemId,
+            disableAI,
+            mode,
         ]
     )
 
@@ -782,7 +808,16 @@ function ProblemSolveProviderInner({ children, problemId, initialCode, problem, 
 }
 
 // Main provider that wraps all sub-providers
-export function ProblemSolveProvider({ children, problemId, initialCode, problem, contestId }) {
+export function ProblemSolveProvider({
+    children,
+    problemId,
+    initialCode,
+    problem,
+    contestId,
+    disableAI = false,
+    mode = 'practice',
+    onProblemSolved,
+}) {
     return (
         <CodeEditorProvider initialCode={initialCode} problemId={problemId}>
             <ExecutionProvider>
@@ -793,6 +828,9 @@ export function ProblemSolveProvider({ children, problemId, initialCode, problem
                             initialCode={initialCode}
                             problem={problem}
                             contestId={contestId}
+                            disableAI={disableAI}
+                            mode={mode}
+                            onProblemSolved={onProblemSolved}
                         >
                             {children}
                         </ProblemSolveProviderInner>

@@ -10,7 +10,7 @@ import {
  * Admin only
  */
 export async function finalizeLeaderboard(req, { params }) {
-    const contestId = params.id
+    const { id: contestId } = await params
 
     const result = await computeLeaderboard(contestId)
 
@@ -56,7 +56,7 @@ export async function fetchLeaderboard(req, context) {
  * Authenticated user
  */
 export async function fetchMyRank(req, { params }) {
-    const contestId = params.id
+    const { id: contestId } = await params
     const userId = req.user.id
 
     const result = await getUserRank(contestId, userId)
@@ -72,7 +72,7 @@ export async function fetchMyRank(req, { params }) {
  * Admin only
  */
 export async function deleteLeaderboard(req, { params }) {
-    const contestId = params.id
+    const { id: contestId } = await params
 
     const result = await resetLeaderboard(contestId)
 

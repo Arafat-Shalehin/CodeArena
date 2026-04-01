@@ -70,17 +70,13 @@ export async function fetchContestById(req, { params, isAdmin }) {
  */
 export async function update(req, { params }) {
     try {
-        // ১. params কে await করে id বের করুন
-        const { id } = await params; 
-        const body = await req.json();
-
-        // ২. params.id এর বদলে id ব্যবহার করুন
-        const contest = await updateContest(id, body);
-        
-        return Response.json({ success: true, data: contest });
+        const { id } = await params
+        const body = await req.json()
+        const contest = await updateContest(id, body)
+        return Response.json({ success: true, data: contest })
     } catch (error) {
-        const status = error.message.includes('not found') ? 404 : 400;
-        return Response.json({ success: false, message: error.message }, { status });
+        const status = error.status || 400
+        return Response.json({ success: false, message: error.message }, { status })
     }
 }
 
@@ -89,12 +85,11 @@ export async function update(req, { params }) {
  */
 export async function remove(req, { params }) {
     try {
-        // ৩. এখানেও params কে await করতে হবে
-        const { id } = await params;
-        
-        await deleteContest(id);
-        return Response.json({ success: true, message: 'Contest deleted.' });
+        const { id } = await params
+        await deleteContest(id)
+        return Response.json({ success: true, message: 'Contest deleted.' })
     } catch (error) {
-        return Response.json({ success: false, message: error.message }, { status: 400 });
+        const status = error.status || 400
+        return Response.json({ success: false, message: error.message }, { status })
     }
 }

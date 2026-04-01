@@ -17,22 +17,22 @@ export default function AdminLayout({ children }) {
     const { user } = useAuth()
 
     return (
-        <div className="flex min-h-screen w-full bg-bg-page text-text-primary font-sans">
+        <div className="bg-bg-page text-text-primary flex min-h-screen w-full font-sans">
             {/* Sidebar: Fixed on Desktop */}
-            <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border bg-bg-surface/50 backdrop-blur-xl lg:block">
+            <aside className="border-border bg-bg-surface/50 sticky top-0 hidden h-screen w-64 shrink-0 border-r backdrop-blur-xl lg:block">
                 <Sidebar />
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex flex-1 flex-col min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
                 {/* Navbar */}
-                <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg-page/80 px-4 backdrop-blur-xl md:px-8">
+                <header className="border-border bg-bg-page/80 sticky top-0 z-40 flex h-16 items-center justify-between border-b px-4 backdrop-blur-xl md:px-8">
                     <div className="flex items-center gap-4">
                         {/* Mobile Menu Trigger */}
                         <div className="lg:hidden">
                             <Sheet open={open} onOpenChange={setOpen}>
                                 <SheetTrigger asChild>
-                                    <button className="flex size-10 items-center justify-center rounded-lg bg-bg-subtle hover:bg-border transition-colors">
+                                    <button className="bg-bg-subtle hover:bg-border flex size-10 items-center justify-center rounded-lg transition-colors">
                                         <Menu className="h-5 w-5" />
                                     </button>
                                 </SheetTrigger>
@@ -43,13 +43,17 @@ export default function AdminLayout({ children }) {
                         </div>
 
                         {/* Logo with Link to Home */}
-                        <Link href="/" className="flex items-center gap-2 group cursor-pointer">
+                        <Link href="/" className="group flex cursor-pointer items-center gap-2">
                             <div className="size-8 transition-transform group-hover:scale-110">
                                 <Image src="/logo.svg" alt="Logo" width={32} height={32} />
                             </div>
-                            <div className="hidden sm:flex flex-col">
-                                <span className="text-sm font-black uppercase italic text-accent leading-none">Admin Center</span>
-                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">CodeArena v2.0</span>
+                            <div className="hidden flex-col sm:flex">
+                                <span className="text-accent text-sm leading-none font-black uppercase italic">
+                                    Admin Center
+                                </span>
+                                <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+                                    CodeArena v2.0
+                                </span>
                             </div>
                         </Link>
                     </div>
@@ -57,27 +61,38 @@ export default function AdminLayout({ children }) {
                     {/* Right Navbar Actions */}
                     <div className="flex items-center gap-3">
                         <ThemeToggle />
-                        <button className="relative flex size-9 items-center justify-center rounded-xl bg-bg-subtle hover:bg-border transition-all">
+                        <button className="bg-bg-subtle hover:bg-border relative flex size-9 items-center justify-center rounded-xl transition-all">
                             <Bell size={18} className="text-text-secondary" />
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-accent border-2 border-bg-page"></span>
+                            <span className="bg-accent border-bg-page absolute top-2 right-2 h-2 w-2 rounded-full border-2"></span>
                         </button>
 
-                        <div className="flex items-center gap-3 border-l border-border pl-3">
+                        <div className="border-border flex items-center gap-3 border-l pl-3">
                             <div className="hidden text-right sm:block">
-                                <p className="text-xs font-black uppercase italic text-text-primary">{user?.name || "Administrator"}</p>
-                                <Badge variant="outline" className="border-accent/30 text-[9px] uppercase italic text-accent">Root Access</Badge>
+                                <p className="text-text-primary text-xs font-black uppercase italic">
+                                    {user?.name || 'Administrator'}
+                                </p>
+                                <Badge
+                                    variant="outline"
+                                    className="border-accent/30 text-accent text-[9px] uppercase italic"
+                                >
+                                    Root Access
+                                </Badge>
                             </div>
-                            <Avatar className="size-9 border-2 border-accent/20">
-                                <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user?.avatarSeed || 'admin'}`} />
-                                <AvatarFallback className="bg-accent/10 text-accent font-black">AD</AvatarFallback>
+                            <Avatar className="border-accent/20 size-9 border-2">
+                                <AvatarImage
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user?.avatarSeed || 'admin'}`}
+                                />
+                                <AvatarFallback className="bg-accent/10 text-accent font-black">
+                                    AD
+                                </AvatarFallback>
                             </Avatar>
                         </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 w-full p-4 md:p-8">
-                    <motion.div 
+                <main className="w-full flex-1 p-4 md:p-8">
+                    <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mx-auto max-w-7xl"

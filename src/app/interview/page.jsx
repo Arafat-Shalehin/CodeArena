@@ -213,15 +213,15 @@ export default function InterviewLandingPage() {
             </section>
 
             {/* Final Balanced CTA - High-Density Side-by-Side */}
-            <section className="container mx-auto max-w-7xl px-6 py-24">
-                <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
-                    {/* Insights Preview (40%) */}
+            <section className="container mx-auto max-w-7xl py-24">
+                <div className="flex flex-col items-center justify-center gap-16 lg:flex-row">
+                    {/* Insights Preview */}
                     <motion.div
                         initial={{ opacity: 0, x: -20, filter: 'blur(8px)' }}
                         whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                        className="w-full lg:w-[40%]"
+                        className="w-full"
                     >
                         <div className="bg-bg-subtle border-border hover:border-accent/10 relative overflow-hidden rounded-2xl border p-6 shadow-lg transition-colors duration-300 md:p-8">
                             <div className="mb-8 space-y-1">
@@ -275,8 +275,8 @@ export default function InterviewLandingPage() {
                         </div>
                     </motion.div>
 
-                    {/* Content (55%) */}
-                    <div className="w-full space-y-8 text-left lg:w-[55%]">
+                    {/* Content */}
+                    <div className="w-full space-y-8 text-left">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}

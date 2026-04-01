@@ -459,7 +459,7 @@ function DataBlock({ label, value }) {
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
 export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }) {
-    const { consoleTab, setConsoleTab, testResult, fetchAiFeedback } = useProblemSolve()
+    const { consoleTab, setConsoleTab, testResult, fetchAiFeedback, disableAI } = useProblemSolve()
 
     return (
         <>
@@ -486,7 +486,7 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
                     >
                         <Terminal size={14} className="text-accent" /> Test Result
                     </button>
-                    {testResult?.status === 'done' && (
+                    {!disableAI && testResult?.status === 'done' && (
                         <button
                             onClick={() => {
                                 setConsoleTab('ai')
@@ -524,7 +524,7 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
             <div className="flex-1 overflow-y-auto">
                 {consoleTab === 'testcase' && <TestCaseTab />}
                 {consoleTab === 'result' && <TestResultTab />}
-                {consoleTab === 'ai' && <AiFeedbackTab />}
+                {consoleTab === 'ai' && !disableAI && <AiFeedbackTab />}
             </div>
         </>
     )

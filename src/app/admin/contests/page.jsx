@@ -2,8 +2,17 @@
 
 import React, { useState, useEffect } from 'react'
 import {
-    Trophy, Plus, Edit, Trash2, Search, Eye, X, Save, 
-    ChevronLeft, ChevronRight, ArrowUpDown
+    Trophy,
+    Plus,
+    Edit,
+    Trash2,
+    Search,
+    Eye,
+    X,
+    Save,
+    ChevronLeft,
+    ChevronRight,
+    ArrowUpDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,7 +65,10 @@ export default function AdminContestsPage() {
         c.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
     const totalPages = Math.ceil(filtered.length / itemsPerPage)
-    const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    const currentItems = filtered.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    )
 
     const deleteContest = (id) => {
         Swal.fire({
@@ -66,7 +78,7 @@ export default function AdminContestsPage() {
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Yes, delete it!'
+            confirmButtonText: 'Yes, delete it!',
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
@@ -103,16 +115,21 @@ export default function AdminContestsPage() {
         }
     }
 
-    if (isLoading) return <div className="p-10"><Skeleton className="h-64 w-full rounded-3xl" /></div>
+    if (isLoading)
+        return (
+            <div className="p-10">
+                <Skeleton className="h-64 w-full rounded-3xl" />
+            </div>
+        )
 
     return (
-        <div className="bg-bg-page min-h-screen p-6 md:p-10 text-text-primary">
+        <div className="bg-bg-page text-text-primary min-h-screen p-6 md:p-10">
             <div className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight uppercase">
                     <Trophy className="text-accent size-8" /> Contest Manager
                 </h1>
-                <Button 
-                    onClick={() => window.location.href = '/admin/contests/create'}
+                <Button
+                    onClick={() => (window.location.href = '/admin/contests/create')}
                     className="bg-accent h-12 rounded-xl px-8 font-black text-white uppercase shadow-lg"
                 >
                     <Plus className="mr-2 size-5" /> New Contest
@@ -126,7 +143,10 @@ export default function AdminContestsPage() {
                         placeholder="Search contests..."
                         className="border-none bg-transparent font-bold focus-visible:ring-0"
                         value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value)
+                            setCurrentPage(1)
+                        }}
                     />
                 </div>
                 <div className="text-text-muted text-[10px] font-black tracking-widest uppercase">
@@ -136,102 +156,174 @@ export default function AdminContestsPage() {
 
             <div className="border-border overflow-hidden rounded-3xl border bg-white shadow-sm">
                 <table className="w-full text-left">
-                    <thead className="bg-bg-page/50 border-border border-b text-[10px] font-black tracking-widest uppercase text-text-muted">
+                    <thead className="bg-bg-page/50 border-border text-text-muted border-b text-[10px] font-black tracking-widest uppercase">
                         <tr>
-                            <th className="px-6 py-5 cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('title')}>
-                                <div className="flex items-center gap-1">Contest Name <ArrowUpDown size={12}/></div>
+                            <th
+                                className="hover:text-accent cursor-pointer px-6 py-5 transition-colors"
+                                onClick={() => handleSort('title')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Contest Name <ArrowUpDown size={12} />
+                                </div>
                             </th>
                             <th className="px-6 py-5">Status</th>
-                            <th className="px-6 py-5 cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('startTime')}>
-                                <div className="flex items-center gap-1">Start Date <ArrowUpDown size={12}/></div>
+                            <th
+                                className="hover:text-accent cursor-pointer px-6 py-5 transition-colors"
+                                onClick={() => handleSort('startTime')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Start Date <ArrowUpDown size={12} />
+                                </div>
                             </th>
                             <th className="px-6 py-5 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody className="divide-border divide-y">
                         {currentItems.map((contest) => (
-                            <tr key={contest._id} className="hover:bg-accent/[0.02] group transition-colors">
+                            <tr
+                                key={contest._id}
+                                className="hover:bg-accent/[0.02] group transition-colors"
+                            >
                                 <td className="px-6 py-6 font-black">{contest.title}</td>
                                 <td className="px-6 py-6">
-                                    <span className={`rounded-lg border px-3 py-1 text-[10px] font-black uppercase ${
-                                        new Date(contest.endTime) < new Date() 
-                                        ? 'border-red-100 bg-red-50 text-red-600' 
-                                        : 'border-green-100 bg-green-50 text-green-600'
-                                    }`}>
-                                        {new Date(contest.endTime) < new Date() ? 'Ended' : 'Active'}
+                                    <span
+                                        className={`rounded-lg border px-3 py-1 text-[10px] font-black uppercase ${
+                                            new Date(contest.endTime) < new Date()
+                                                ? 'border-red-100 bg-red-50 text-red-600'
+                                                : 'border-green-100 bg-green-50 text-green-600'
+                                        }`}
+                                    >
+                                        {new Date(contest.endTime) < new Date()
+                                            ? 'Ended'
+                                            : 'Active'}
                                     </span>
                                 </td>
-                                <td className="px-6 py-6 text-xs font-bold text-text-muted italic">
+                                <td className="text-text-muted px-6 py-6 text-xs font-bold italic">
                                     {new Date(contest.startTime).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-6 text-right">
                                     <div className="flex justify-end gap-1">
-                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedContest(contest); setIsViewModalOpen(true); }} className="hover:text-accent"><Eye size={18}/></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedContest(contest); setIsEditModalOpen(true); }} className="hover:text-blue-600"><Edit size={18}/></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => deleteContest(contest._id)} className="hover:text-red-600"><Trash2 size={18}/></Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                setSelectedContest(contest)
+                                                setIsViewModalOpen(true)
+                                            }}
+                                            className="hover:text-accent"
+                                        >
+                                            <Eye size={18} />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                setSelectedContest(contest)
+                                                setIsEditModalOpen(true)
+                                            }}
+                                            className="hover:text-blue-600"
+                                        >
+                                            <Edit size={18} />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => deleteContest(contest._id)}
+                                            className="hover:text-red-600"
+                                        >
+                                            <Trash2 size={18} />
+                                        </Button>
                                     </div>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                <div className="border-t border-border p-6 flex items-center justify-between bg-bg-page/20">
-                    <p className="text-[10px] font-black uppercase text-text-muted italic">Page {currentPage} of {totalPages || 1}</p>
+                <div className="border-border bg-bg-page/20 flex items-center justify-between border-t p-6">
+                    <p className="text-text-muted text-[10px] font-black uppercase italic">
+                        Page {currentPage} of {totalPages || 1}
+                    </p>
                     <div className="flex gap-2">
-                        <Button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} variant="outline" size="sm" className="rounded-xl font-bold"><ChevronLeft size={16} /> Prev</Button>
-                        <Button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)} variant="outline" size="sm" className="rounded-xl font-bold">Next <ChevronRight size={16} /></Button>
+                        <Button
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((p) => p - 1)}
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl font-bold"
+                        >
+                            <ChevronLeft size={16} /> Prev
+                        </Button>
+                        <Button
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            onClick={() => setCurrentPage((p) => p + 1)}
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl font-bold"
+                        >
+                            Next <ChevronRight size={16} />
+                        </Button>
                     </div>
                 </div>
             </div>
-{/* VIEW MODAL */}
+            {/* VIEW MODAL */}
             {isViewModalOpen && selectedContest && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-                        <div className="border-b border-border flex items-center justify-between p-6 bg-bg-page/30">
-                            <h2 className="text-xl font-black uppercase italic text-accent flex items-center gap-2">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="animate-in zoom-in-95 w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl duration-200">
+                        <div className="border-border bg-bg-page/30 flex items-center justify-between border-b p-6">
+                            <h2 className="text-accent flex items-center gap-2 text-xl font-black uppercase italic">
                                 <Trophy size={20} /> Contest Details
                             </h2>
-                            <button 
-                                onClick={() => setIsViewModalOpen(false)} 
-                                className="text-text-muted hover:text-red-500 transition-colors"
+                            <button
+                                onClick={() => setIsViewModalOpen(false)}
+                                className="text-text-muted transition-colors hover:text-red-500"
                             >
                                 <X />
                             </button>
                         </div>
-                        
-                        <div className="p-8 space-y-6">
+
+                        <div className="space-y-6 p-8">
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-text-muted ml-1">Contest Name</label>
-                                    <p className="bg-bg-page/50 p-3 rounded-xl font-black border border-border">{selectedContest.title}</p>
+                                    <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                        Contest Name
+                                    </label>
+                                    <p className="bg-bg-page/50 border-border rounded-xl border p-3 font-black">
+                                        {selectedContest.title}
+                                    </p>
                                 </div>
-                                
+
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-text-muted ml-1">Description</label>
-                                    <div className="bg-bg-page/50 p-4 rounded-xl text-sm font-medium border border-border min-h-[80px]">
-                                        {selectedContest.description || "No description provided."}
+                                    <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                        Description
+                                    </label>
+                                    <div className="bg-bg-page/50 border-border min-h-[80px] rounded-xl border p-4 text-sm font-medium">
+                                        {selectedContest.description || 'No description provided.'}
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-text-muted ml-1">Start Time</label>
-                                        <p className="bg-bg-page/50 p-3 rounded-xl text-xs font-bold border border-border">
+                                        <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                            Start Time
+                                        </label>
+                                        <p className="bg-bg-page/50 border-border rounded-xl border p-3 text-xs font-bold">
                                             {new Date(selectedContest.startTime).toLocaleString()}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-text-muted ml-1">End Time</label>
-                                        <p className="bg-bg-page/50 p-3 rounded-xl text-xs font-bold border border-border">
+                                        <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                            End Time
+                                        </label>
+                                        <p className="bg-bg-page/50 border-border rounded-xl border p-3 text-xs font-bold">
                                             {new Date(selectedContest.endTime).toLocaleString()}
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <Button 
-                                onClick={() => setIsViewModalOpen(false)} 
-                                className="bg-black h-12 w-full rounded-xl font-black text-white uppercase shadow-lg mt-4"
+                            <Button
+                                onClick={() => setIsViewModalOpen(false)}
+                                className="mt-4 h-12 w-full rounded-xl bg-black font-black text-white uppercase shadow-lg"
                             >
                                 Close Preview
                             </Button>
@@ -241,33 +333,93 @@ export default function AdminContestsPage() {
             )}
             {/* EDIT MODAL */}
             {isEditModalOpen && selectedContest && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="animate-in zoom-in-95 w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl duration-200">
                         <form onSubmit={handleUpdate}>
-                            <div className="border-b border-border flex items-center justify-between p-6 bg-bg-page/30">
-                                <h2 className="text-xl font-black uppercase italic">Edit Contest</h2>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-text-muted hover:text-black transition-colors"><X /></button>
+                            <div className="border-border bg-bg-page/30 flex items-center justify-between border-b p-6">
+                                <h2 className="text-xl font-black uppercase italic">
+                                    Edit Contest
+                                </h2>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditModalOpen(false)}
+                                    className="text-text-muted transition-colors hover:text-black"
+                                >
+                                    <X />
+                                </button>
                             </div>
-                            <div className="p-8 space-y-4">
+                            <div className="space-y-4 p-8">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-text-muted ml-1">Title</label>
-                                    <Input value={selectedContest.title} onChange={(e) => setSelectedContest({...selectedContest, title: e.target.value})} className="rounded-xl font-bold" required />
+                                    <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                        Title
+                                    </label>
+                                    <Input
+                                        value={selectedContest.title}
+                                        onChange={(e) =>
+                                            setSelectedContest({
+                                                ...selectedContest,
+                                                title: e.target.value,
+                                            })
+                                        }
+                                        className="rounded-xl font-bold"
+                                        required
+                                    />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-text-muted ml-1">Description</label>
-                                    <Textarea value={selectedContest.description} onChange={(e) => setSelectedContest({...selectedContest, description: e.target.value})} className="rounded-xl min-h-[100px]" />
+                                    <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                        Description
+                                    </label>
+                                    <Textarea
+                                        value={selectedContest.description}
+                                        onChange={(e) =>
+                                            setSelectedContest({
+                                                ...selectedContest,
+                                                description: e.target.value,
+                                            })
+                                        }
+                                        className="min-h-[100px] rounded-xl"
+                                    />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-text-muted ml-1">Start</label>
-                                        <Input type="datetime-local" value={selectedContest.startTime?.slice(0, 16)} onChange={(e) => setSelectedContest({...selectedContest, startTime: e.target.value})} className="rounded-xl text-xs font-bold" />
+                                        <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                            Start
+                                        </label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={selectedContest.startTime?.slice(0, 16)}
+                                            onChange={(e) =>
+                                                setSelectedContest({
+                                                    ...selectedContest,
+                                                    startTime: e.target.value,
+                                                })
+                                            }
+                                            className="rounded-xl text-xs font-bold"
+                                        />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-text-muted ml-1">End</label>
-                                        <Input type="datetime-local" value={selectedContest.endTime?.slice(0, 16)} onChange={(e) => setSelectedContest({...selectedContest, endTime: e.target.value})} className="rounded-xl text-xs font-bold" />
+                                        <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
+                                            End
+                                        </label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={selectedContest.endTime?.slice(0, 16)}
+                                            onChange={(e) =>
+                                                setSelectedContest({
+                                                    ...selectedContest,
+                                                    endTime: e.target.value,
+                                                })
+                                            }
+                                            className="rounded-xl text-xs font-bold"
+                                        />
                                     </div>
                                 </div>
-                                <Button type="submit" className="bg-accent h-12 w-full rounded-xl font-black text-white uppercase shadow-lg mt-4"><Save className="mr-2" size={18} /> Save Changes</Button>
+                                <Button
+                                    type="submit"
+                                    className="bg-accent mt-4 h-12 w-full rounded-xl font-black text-white uppercase shadow-lg"
+                                >
+                                    <Save className="mr-2" size={18} /> Save Changes
+                                </Button>
                             </div>
                         </form>
                     </div>

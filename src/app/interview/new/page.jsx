@@ -88,7 +88,7 @@ export default function NewInterviewPage() {
     }
 
     return (
-        <main className="bg-bg-page selection:bg-accent/30 relative flex min-h-screen flex-col items-center overflow-hidden">
+        <main className="bg-bg-page selection:bg-accent/30 relative mt-5 flex min-h-screen flex-col items-center overflow-hidden">
             {/* Master Static Spotlight + Tiles */}
             <div className="absolute inset-0 z-0">
                 <Tiles

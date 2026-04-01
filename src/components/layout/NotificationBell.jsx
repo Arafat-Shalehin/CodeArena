@@ -45,7 +45,7 @@ export default function NotificationBell() {
             </button>
 
             {isOpen && (
-                <div className="bg-bg-page border-border animate-fade-up absolute right-0 z-[100] mt-2 w-80 overflow-hidden rounded-xl border shadow-2xl">
+                <div className="bg-bg-page border-border animate-fade-up absolute right-0 z-100 mt-2 w-80 overflow-hidden rounded-xl border shadow-2xl">
                     <div className="flex items-center justify-between border-b p-4">
                         <h3 className="text-sm font-bold">Notifications</h3>
                         {unreadCount > 0 && (
@@ -77,11 +77,29 @@ export default function NotificationBell() {
                                             <p className="text-text-primary text-xs leading-relaxed">
                                                 {notif.message}
                                             </p>
-                                            <span className="text-text-muted text-[10px] font-medium">
-                                                {formatDistanceToNow(new Date(notif.createdAt), {
-                                                    addSuffix: true,
-                                                })}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-text-muted text-[10px] font-medium">
+                                                    {formatDistanceToNow(
+                                                        new Date(notif.createdAt),
+                                                        {
+                                                            addSuffix: true,
+                                                        }
+                                                    )}
+                                                </span>
+                                                {notif.type === 'contest' &&
+                                                    notif.metadata?.contestStartTime && (
+                                                        <span className="text-accent flex items-center gap-1 text-[10px] font-bold">
+                                                            <span className="bg-accent h-1 w-1 animate-pulse rounded-full" />
+                                                            Starts{' '}
+                                                            {formatDistanceToNow(
+                                                                new Date(
+                                                                    notif.metadata.contestStartTime
+                                                                ),
+                                                                { addSuffix: true }
+                                                            )}
+                                                        </span>
+                                                    )}
+                                            </div>
                                         </div>
                                         {!notif.isRead && (
                                             <div className="bg-accent mt-1 ml-auto size-2 shrink-0 rounded-full" />

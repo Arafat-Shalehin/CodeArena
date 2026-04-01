@@ -65,11 +65,11 @@ const Filters = ({
                 <div className="space-y-1">
                     {DIFFICULTY_FILTERS.map((diff) => {
                         const colorType =
-                            diff.label === 'Beginner'
+                            diff.label === 'Easy'
                                 ? 'success'
-                                : diff.label === 'Intermediate'
+                                : diff.label === 'Medium'
                                   ? 'warning'
-                                  : diff.label === 'Advanced'
+                                  : diff.label === 'Hard'
                                     ? 'error'
                                     : 'default'
 

@@ -36,10 +36,12 @@ export default function AdminProfilePage() {
         if (!userId) return
         setIsSubmissionsLoading(true)
         try {
-            const res = await fetch(`/api/submissions?userId=${userId}&limit=${limit}&offset=${offset}`)
+            const res = await fetch(
+                `/api/submissions?userId=${userId}&limit=${limit}&offset=${offset}`
+            )
             const data = await res.json()
             if (data.success) {
-                setSubmissions(prev => reset ? data.data : [...prev, ...data.data])
+                setSubmissions((prev) => (reset ? data.data : [...prev, ...data.data]))
             }
         } catch (err) {
             console.error(err)
@@ -67,16 +69,18 @@ export default function AdminProfilePage() {
     if (isLoading || !user) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-accent" />
+                <Loader2 className="text-accent h-10 w-10 animate-spin" />
             </div>
         )
     }
 
     return (
-        <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500 bg-bg-page min-h-screen">
+        <div className="animate-in fade-in bg-bg-page min-h-screen space-y-8 p-4 duration-500 md:p-8">
             <header>
-                <h1 className="text-2xl font-black uppercase italic text-text-primary">My Profile</h1>
-                <p className="text-sm text-text-muted">Admin Personal View</p>
+                <h1 className="text-text-primary text-2xl font-black uppercase italic">
+                    My Profile
+                </h1>
+                <p className="text-text-muted text-sm">Admin Personal View</p>
             </header>
 
             <ProfileHero user={user} />
@@ -89,10 +93,10 @@ export default function AdminProfilePage() {
                 </div>
 
                 <div className="space-y-8 lg:col-span-8">
-                    <div className="bg-bg-subtle border border-border rounded-2xl p-6 shadow-sm overflow-hidden">
-                        <h3 className="font-bold mb-4 text-text-primary">Submission Activity</h3>
-                        <div className="flex justify-start overflow-x-auto no-scrollbar">
-                            <ActivityCalendar 
+                    <div className="bg-bg-subtle border-border overflow-hidden rounded-2xl border p-6 shadow-sm">
+                        <h3 className="text-text-primary mb-4 font-bold">Submission Activity</h3>
+                        <div className="no-scrollbar flex justify-start overflow-x-auto">
+                            <ActivityCalendar
                                 data={calendarData}
                                 // থিম অবজেক্টটি ফিক্স করা হয়েছে
                                 theme={{

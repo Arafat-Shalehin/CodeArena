@@ -13,25 +13,41 @@ import { useState, useEffect, useCallback } from 'react'
 export function useContestTimer(startTime, endTime) {
     const [timeLeft, setTimeLeft] = useState(0)
     const [phase, setPhase] = useState('waiting')
+    const [isGracePeriodOver, setIsGracePeriodOver] = useState(false)
 
     const computePhase = useCallback(() => {
         const now = Date.now()
         const start = new Date(startTime).getTime()
         const end = new Date(endTime).getTime()
+        const graceEnd = start + 10 * 60 * 1000 // 10 minutes grace period
 
-        if (!startTime || !endTime) return { phase: 'waiting', timeLeft: 0 }
-        if (now < start) return { phase: 'waiting', timeLeft: start - now }
-        if (now >= start && now < end) return { phase: 'active', timeLeft: end - now }
-        return { phase: 'ended', timeLeft: 0 }
+        if (!startTime || !endTime)
+            return { phase: 'waiting', timeLeft: 0, isGracePeriodOver: false }
+
+        let p = 'waiting'
+        let t = 0
+        if (now < start) {
+            p = 'waiting'
+            t = start - now
+        } else if (now >= start && now < end) {
+            p = 'active'
+            t = end - now
+        } else {
+            p = 'ended'
+            t = 0
+        }
+
+        return { phase: p, timeLeft: t, isGracePeriodOver: now > graceEnd }
     }, [startTime, endTime])
 
     useEffect(() => {
         if (!startTime || !endTime) return
 
         const tick = () => {
-            const { phase: p, timeLeft: t } = computePhase()
+            const { phase: p, timeLeft: t, isGracePeriodOver: g } = computePhase()
             setPhase(p)
             setTimeLeft(t)
+            setIsGracePeriodOver(g)
         }
 
         tick()
@@ -46,5 +62,5 @@ export function useContestTimer(startTime, endTime) {
     const s = totalSecs % 60
     const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 
-    return { timeLeft, phase, formatted, totalSecs }
+    return { timeLeft, phase, formatted, totalSecs, isGracePeriodOver }
 }

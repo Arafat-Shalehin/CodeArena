@@ -13,19 +13,25 @@ const DIFFICULTY_BADGE = {
  * Renders a horizontal tab strip for the contest problems.
  * Shows solve status (solved / unsolved / locked).
  */
-export default function ArenaProblemTabs({ problems = [], activeProblemId, onSelect, isEnded }) {
+export default function ArenaProblemTabs({
+    problems = [],
+    activeProblemId,
+    onSelect,
+    isEnded,
+    solvedProblems = new Set(),
+}) {
     return (
         <div className="border-border bg-bg-page border-b">
             <div className="flex overflow-x-auto">
                 {problems.map((problem, idx) => {
                     const isActive = problem._id === activeProblemId
-                    const isSolved = problem.solved
+                    const isSolved = problem.solved || solvedProblems.has(problem._id || problem)
 
                     return (
                         <button
-                            key={problem._id}
+                            key={problem._id || problem}
                             onClick={() => !isEnded && onSelect(problem._id)}
-                            className={`flex min-w-[120px] flex-shrink-0 flex-col items-start gap-1 border-b-2 px-4 py-3 text-left text-sm transition-all ${
+                            className={`flex min-w-[120px] shrink-0 flex-col items-start gap-1 border-b-2 px-4 py-3 text-left text-sm transition-all ${
                                 isActive
                                     ? 'border-accent text-text-primary bg-accent-light'
                                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-subtle border-transparent'
@@ -36,9 +42,9 @@ export default function ArenaProblemTabs({ problems = [], activeProblemId, onSel
                                     {String.fromCharCode(65 + idx)}. {problem.title}
                                 </span>
                                 {isSolved ? (
-                                    <CheckCircle2 className="text-success size-4 flex-shrink-0" />
+                                    <CheckCircle2 className="text-success size-4 shrink-0" />
                                 ) : (
-                                    <Circle className="text-text-muted size-4 flex-shrink-0" />
+                                    <Circle className="text-text-muted size-4 shrink-0" />
                                 )}
                             </div>
                             <span

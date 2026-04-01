@@ -3,7 +3,7 @@
 <br/>
 
 ```
-     ██████╗   ██████╗  ██████╗  ███████╗  █████╗  ██████╗  ███████╗ ███╗   ██╗  █████╗ 
+     ██████╗   ██████╗  ██████╗  ███████╗  █████╗  ██████╗  ███████╗ ███╗   ██╗  █████╗
   ██╔════╝   ██╔═══██╗  ██╔══██╗ ██╔════╝  ██╔══██╗ ██╔══██╗ ██╔════╝ ████╗  ██║ ██╔══██╗
   ██║        ██║   ██║  ██║  ██║ █████╗    ███████║ ██████╔╝ █████╗   ██╔██╗ ██║ ███████║
   ██║        ██║   ██║  ██║  ██║ ██╔══╝    ██╔══██║ ██╔══██╗ ██╔══╝   ██║╚██╗██║ ██╔══██║
@@ -16,6 +16,7 @@
 ---
 
 # 🌌 CodeArena
+
 ### **Elevate Your Engineering Soul**
 
 **The Ultimate Production-Grade Competitive Programming & AI Coaching Ecosystem**
@@ -37,6 +38,7 @@
 </div>
 
 ## 📑 Table of Contents
+
 - [✨ Key Capabilities](#-key-capabilities)
 - [🤖 AI Career Coach (Alex)](#-ai-career-coach-alex)
 - [⚙️ The Judge Engine](#-the-judge-engine)
@@ -86,7 +88,7 @@
 
 ## 🤖 AI Career Coach (Alex)
 
-Alex is not just a chatbot—he is a Senior Staff Engineer simulating the pressure of high-stakes technical interviews. 
+Alex is not just a chatbot—he is a Senior Staff Engineer simulating the pressure of high-stakes technical interviews.
 
 ```mermaid
 graph TD
@@ -99,6 +101,7 @@ graph TD
 ```
 
 **What Alex evaluates:**
+
 - **Algorithmic Complexity**: O(n) vs O(n log n) tradeoffs.
 - **Clean Code**: SOLID principles and production-ready structure.
 - **Communication**: Your ability to explain logic under pressure.
@@ -134,11 +137,13 @@ sequenceDiagram
 ## 🛠️ Tech Stack
 
 ### **Modern Core**
+
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Server Components)
 - **UI Architecture**: [React 19](https://react.dev/) + [Zustand](https://github.com/pmndrs/zustand)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Framer Motion](https://www.framer.com/motion/)
 
 ### **High-Performance Infrastructure**
+
 - **Runtime**: [Node.js](https://nodejs.org/) + [Socket.io](https://socket.io/)
 - **Data Layers**: [MongoDB](https://www.mongodb.com/) + [Redis](https://redis.io/)
 - **Job Processing**: [BullMQ](https://docs.bullmq.io/)
@@ -149,11 +154,13 @@ sequenceDiagram
 ## 🌍 Supported Ecosystem
 
 ### **Languages**
+
 | 🚀 C++ | 🐍 Python | ☕ Java | 📦 JS | 🐹 Go |
-| :---: | :---: | :---: | :---: | :---: |
-| ✅ | ✅ | ✅ | ✅ | ✅ |
+| :----: | :-------: | :-----: | :---: | :---: |
+|   ✅   |    ✅     |   ✅    |  ✅   |  ✅   |
 
 ### **Judge Verdicts**
+
 > `ACCEPTED` • `WRONG_ANSWER` • `TLE` • `MLE` • `RUNTIME_ERROR` • `JUDGING`
 
 ---
@@ -178,6 +185,7 @@ sequenceDiagram
 ## 🚀 Getting Started
 
 ### **The 1-Minute Setup**
+
 The fastest way to get CodeArena running is using our automated setup script:
 
 ```bash
@@ -189,6 +197,7 @@ chmod +x setup.sh
 ```
 
 ### **Manual Configuration**
+
 1. **Dependencies**: `npm install`
 2. **Environment**: Sync `.env.local` (Requires MongoDB, Redis, and Firebase keys).
 3. **Execute Engine**: `npm run docker:build`
@@ -200,14 +209,14 @@ chmod +x setup.sh
 
 <div align="center">
 
-| Role | Talent |
-|---|---|
-| 👑 **Lead** | Rabiul Islam |
-| 🛡️ **Architect / Engine / Backend** | Arafat Salehin |
-| ⚡ **Core Systems** | AH Muzahid |
-| 🎨 **Architect /UI / UX Master** | Shahnawas Adeel |
-| ✨ **Creative Frontend** | Abdullah Noman |
-| 🚀 **Content** | Ummey Salma Tamanna |
+| Role                                | Talent              |
+| ----------------------------------- | ------------------- |
+| 👑 **Lead**                         | Rabiul Islam        |
+| 🛡️ **Architect / Engine / Backend** | Arafat Salehin      |
+| ⚡ **Core Systems**                 | AH Muzahid          |
+| 🎨 **Architect /UI / UX Master**    | Shahnawas Adeel     |
+| ✨ **Creative Frontend**            | Abdullah Noman      |
+| 🚀 **Content**                      | Ummey Salma Tamanna |
 
 </div>
 
@@ -218,6 +227,6 @@ chmod +x setup.sh
 **Built for the next generation of engineers.**
 Join the revolution.
 
-[⭐ Star on GitHub](https://github.com/rabiulislam5334/CodeArena-TeamProject) 
+[⭐ Star on GitHub](https://github.com/rabiulislam5334/CodeArena-TeamProject)
 
 </div>

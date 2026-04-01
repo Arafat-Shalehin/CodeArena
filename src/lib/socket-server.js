@@ -154,6 +154,21 @@ export async function initSocketServer() {
                                 }
                             }
 
+                            // Route contest-specific events with their proper event names
+                            if (data.type === 'contest:result_finalized') {
+                                console.log(
+                                    `[Socket.IO] Emitting contest:result_finalized to user ${userId}`
+                                )
+                                serverIo.to(userId).emit('contest:result_finalized', data)
+                            }
+
+                            if (data.type === 'leaderboard_update' && data.contestId) {
+                                console.log(
+                                    `[Socket.IO] Emitting leaderboard_update to user ${userId}`
+                                )
+                                serverIo.to(userId).emit('leaderboard_update', data)
+                            }
+
                             // Also emit the generic submission_update for other listeners
                             console.log(`[Socket.IO] Emitting submission_update to user ${userId}`)
                             serverIo.to(userId).emit('submission_update', data)
@@ -187,6 +202,22 @@ export async function initSocketServer() {
                         }
                     } catch (e) {
                         console.error('[Socket.IO] Failed to parse notification Redis message', e)
+                    }
+                })
+
+                // Subscribe to contest updates (schedule changes, etc.)
+                await redisSubClient.subscribe('contest_updates', (message) => {
+                    try {
+                        const data = JSON.parse(message)
+                        if (data.contestId) {
+                            const contestRoom = `contest_${data.contestId}`
+                            console.log(
+                                `[Socket.IO] Broadcasting ${data.type} to room ${contestRoom}`
+                            )
+                            serverIo.to(contestRoom).emit('contest:updated', data)
+                        }
+                    } catch (e) {
+                        console.error('[Socket.IO] Failed to parse contest update', e)
                     }
                 })
             } catch (e) {

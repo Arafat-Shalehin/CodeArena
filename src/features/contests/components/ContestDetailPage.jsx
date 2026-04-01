@@ -1,8 +1,11 @@
 'use client'
 
+import React, { useMemo, useEffect } from 'react'
+import useSWR from 'swr'
+import { io } from 'socket.io-client'
 import { useContest } from '@/hooks/useContest'
 import { useContestTimer } from '@/hooks/useContestTimer'
-import ContestDetailHero from '@/features/contests/components/ContestDetailHero'
+import ContestDetailHero from './ContestDetailHero'
 import { ContestAbout } from '@/features/contests/components/ContestAbout'
 import { ContestParticipants } from '@/features/contests/components/ContestParticipants'
 import { useAuth } from '@/context/AuthContext'
@@ -13,7 +16,61 @@ import { useAuth } from '@/context/AuthContext'
  */
 export default function ContestDetailPage({ contestId }) {
     const { user: currentUser } = useAuth()
-    const { contest, isLoading, error } = useContest(contestId)
+    const { contest, isLoading, error, mutate } = useContest(contestId)
+    const { data: participantsData } = useSWR(
+        contestId ? `/api/contests/${contestId}/participants?limit=5` : null,
+        (url) => fetch(url).then((r) => r.json()),
+        { refreshInterval: 10000 }
+    )
+
+    const { data: regData, isLoading: isRegLoading } = useSWR(
+        contestId && currentUser ? `/api/contests/${contestId}/check-registration` : null,
+        (url) => fetch(url).then((r) => r.json()),
+        { refreshInterval: 10000 }
+    )
+
+    const participants = useMemo(() => {
+        if (!participantsData?.success) return []
+        return (participantsData.data || []).map((p) => ({
+            id: p._id,
+            name: p.userId?.name || 'Anonymous',
+            avatar: p.userId?.avatarSeed
+                ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.userId.avatarSeed}`
+                : '',
+        }))
+    }, [participantsData])
+
+    const isRegistered = regData?.isRegistered || false
+    const totalParticipants = participantsData?.pagination?.total || participants.length
+
+    // Real-time synchronization
+    useEffect(() => {
+        if (!contestId) return
+
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002', {
+            reconnection: true,
+        })
+
+        socket.on('connect', () => {
+            console.log(`[ContestDetail] Joined room contest_${contestId}`)
+            socket.emit('join_room', `contest_${contestId}`)
+        })
+
+        socket.on('contest:updated', (data) => {
+            console.log('[ContestDetail] Contest updated, refreshing state...', data)
+            mutate()
+        })
+
+        socket.on('contest:deleted', () => {
+            console.log('[ContestDetail] Contest deleted, redirecting...')
+            window.location.href = '/contests'
+        })
+
+        return () => {
+            socket.disconnect()
+        }
+    }, [contestId, mutate])
+
     useContestTimer(contest?.startTime, contest?.endTime) // pre-warm timer
 
     if (isLoading) {
@@ -46,7 +103,12 @@ export default function ContestDetailPage({ contestId }) {
 
     return (
         <div className="min-h-screen">
-            <ContestDetailHero contest={contest} isRegistered={false} currentUser={currentUser} />
+            <ContestDetailHero
+                contest={contest}
+                isRegistered={isRegistered}
+                isRegLoading={isRegLoading}
+                currentUser={currentUser}
+            />
 
             <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
                 <div className="grid gap-10 lg:grid-cols-3">
@@ -60,8 +122,8 @@ export default function ContestDetailPage({ contestId }) {
                     </div>
                     <div>
                         <ContestParticipants
-                            participants={[]}
-                            countLabel="Registered"
+                            participants={participants}
+                            countLabel={`${totalParticipants} Registered`}
                             contestId={contestId}
                         />
                     </div>

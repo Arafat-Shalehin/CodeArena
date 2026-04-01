@@ -1,7 +1,6 @@
-export const dynamic = 'force-dynamic'
 import dbConnect from '@/lib/mongodb'
 import { asyncHandler } from '@/lib/asyncHandler'
-import { Contest } from '@/models/Contest.models'
+import { getContestById } from '@/services/contest.service'
 
 /**
  * GET /api/contests/[id]/public
@@ -13,13 +12,13 @@ export const GET = asyncHandler(async (req, context) => {
 
     const { id } = await context.params
 
-    const contest = await Contest.findOne({ _id: id, isDeleted: false })
-        .populate('problemIds', 'title difficulty')
-        .lean()
-
-    if (!contest) {
-        return Response.json({ success: false, message: 'Contest not found' }, { status: 404 })
+    try {
+        const contest = await getContestById(id)
+        return Response.json({ success: true, data: contest })
+    } catch (error) {
+        return Response.json(
+            { success: false, message: error.message || 'Contest not found' },
+            { status: error.status || 404 }
+        )
     }
-
-    return Response.json({ success: true, data: contest })
 })

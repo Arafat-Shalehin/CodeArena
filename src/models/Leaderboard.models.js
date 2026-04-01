@@ -50,6 +50,10 @@ const leaderboardSchema = new mongoose.Schema(
             default: false,
             index: true,
         },
+        solvedProblemCount: {
+            type: Number,
+            default: 0,
+        },
     },
     { timestamps: true }
 )
