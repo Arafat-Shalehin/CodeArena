@@ -9,6 +9,8 @@ import {
     CheckCircle2,
     List,
     User as UserIcon,
+    Settings2,
+    Sparkles,
 } from 'lucide-react'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -24,6 +26,8 @@ export default function SolverNavbar({
     isSubmitting,
     isAuthenticated,
     user,
+    testResult,
+    fetchAiFeedback,
 }) {
     return (
         <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-2 sm:px-4">
@@ -96,6 +100,11 @@ export default function SolverNavbar({
             </div>
             {/* Right */}
             <div className="flex items-center gap-1 text-gray-400 sm:gap-2">
+                <button className="hover:bg-bg-muted hover:text-text-primary hidden rounded p-1 transition-colors sm:block">
+                    <Settings2 size={18} />
+                </button>
+
+                <div className="bg-border hidden h-6 w-px sm:block" />
                 <div className="hidden sm:block">
                     <NotificationBell />
                 </div>

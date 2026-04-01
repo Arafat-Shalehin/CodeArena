@@ -24,7 +24,10 @@ export default function GlobalError({ error, reset }) {
                         {error.message || 'Unknown error occurred'}
                     </div>
 
-                    <Button onClick={() => reset()} className="w-full">
+                    <Button
+                        onClick={() => reset?.() || window.location.reload()}
+                        className="w-full"
+                    >
                         Try again
                     </Button>
                 </div>

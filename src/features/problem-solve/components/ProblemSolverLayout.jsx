@@ -33,6 +33,8 @@ import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
 import dynamic from 'next/dynamic'
 
+import SolverNavbar from './SolverNavbar'
+import MobileTabBar from './MobileTabBar'
 import DescriptionPanel from './DescriptionPanel'
 const CodeEditorPanel = dynamic(() => import('./CodeEditorPanel'), {
     ssr: false,
@@ -91,6 +93,7 @@ function InnerLayout({
     })
 
     const [showProblemList, setShowProblemList] = useState(false)
+    const [mobileActivePanel, setMobileActivePanel] = useState('description')
 
     /** Toggle maximize for a panel — if already maximized, restore */
     const toggleMaximize = useCallback((panel) => {
@@ -134,102 +137,19 @@ function InnerLayout({
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-4">
-                {/* Left */}
-                <div className="flex items-center gap-1">
-                    <AreanaLogo
-                        href="/feed"
-                        className="mr-4 scale-90 transition-transform hover:scale-95"
-                    />
-                    <div className="bg-border mr-2 h-6 w-px" />
-                    <button
-                        onClick={() => setShowProblemList(true)}
-                        className="hover:bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors"
-                    >
-                        <List size={16} />
-                        <span className="font-semibold">Problem List</span>
-                    </button>
-                    <div className="bg-border mx-2 h-4 w-px" />
-                    <button
-                        onClick={() => navigateProblem(-1)}
-                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
-                    >
-                        <ChevronLeft size={20} />
-                    </button>
-                    <button
-                        onClick={() => navigateProblem(1)}
-                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
-                    >
-                        <ChevronRight size={20} />
-                    </button>
-                    <button
-                        onClick={randomProblem}
-                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
-                    >
-                        <Shuffle size={18} />
-                    </button>
-                </div>
-                {/* Center */}
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={runCode}
-                        disabled={isRunning}
-                        className="flex items-center gap-1.5 rounded-md bg-[#333] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#444] disabled:opacity-50"
-                    >
-                        {isRunning ? (
-                            <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                            <Play size={14} />
-                        )}
-                        Run
-                    </button>
-                    <button
-                        onClick={submitCode}
-                        disabled={isSubmitting}
-                        className="flex items-center gap-1.5 rounded-md bg-[#2cbb5d] px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50"
-                    >
-                        {isSubmitting ? (
-                            <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                            <CheckCircle2 size={14} />
-                        )}
-                        Submit
-                    </button>
-                </div>
-                {/* Right */}
-                <div className="flex items-center gap-4 text-gray-400">
-                    {testResult?.status === 'done' && (
-                        <button
-                            onClick={fetchAiFeedback}
-                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-purple-400 hover:bg-purple-500/10"
-                        >
-                            <Sparkles size={14} /> AI Analysis
-                        </button>
-                    )}
-                    <button className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors">
-                        <Settings2 size={18} />
-                    </button>
-
-                    <div className="bg-border h-6 w-px" />
-
-                    {user && (
-                        <Link
-                            href="/profile"
-                            className="group flex items-center transition-transform hover:scale-105"
-                        >
-                            <Avatar className="border-accent/20 group-hover:border-accent/40 size-8 border transition-colors">
-                                <AvatarImage
-                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
-                                    alt={user.name}
-                                />
-                                <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
-                                    <UserIcon size={12} />
-                                </AvatarFallback>
-                            </Avatar>
-                        </Link>
-                    )}
-                </div>
-            </nav>
+            <SolverNavbar
+                setShowProblemList={setShowProblemList}
+                navigateProblem={navigateProblem}
+                randomProblem={randomProblem}
+                runCode={runCode}
+                submitCode={submitCode}
+                isRunning={isRunning}
+                isSubmitting={isSubmitting}
+                isAuthenticated={!!user}
+                user={user}
+                testResult={testResult}
+                fetchAiFeedback={fetchAiFeedback}
+            />
 
             {/* ═══ Workspace Area ═══ */}
             <div ref={hSplit.containerRef} className="flex flex-1 gap-1.5 overflow-hidden p-1.5">
@@ -517,6 +437,11 @@ function InnerLayout({
                     </>
                 )}
             </div>
+            {/* ═══ Mobile Tab Bar (Bottom Navigation for Panels) ═══ */}
+            <MobileTabBar
+                mobileActivePanel={mobileActivePanel}
+                setMobileActivePanel={setMobileActivePanel}
+            />
         </div>
     )
 }

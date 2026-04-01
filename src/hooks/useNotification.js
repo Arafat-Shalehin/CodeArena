@@ -45,8 +45,11 @@ export function useNotification() {
             setNotifications((prev) => [notification, ...prev])
             setUnreadCount((prev) => prev + 1)
 
-            // Play a subtle sound
-            const audio = new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
+            // Play a subtle notification sound (Professional simple UI bubble pop)
+            const audio = new Audio(
+                'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'
+            )
+            audio.volume = 0.5
             audio.play().catch(() => {}) // Ignore if browser blocks autoplay
 
             // Show Toast
