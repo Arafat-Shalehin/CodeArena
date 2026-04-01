@@ -7,7 +7,7 @@ const AuthLayout = ({ children }) => {
             <Navbar />
 
             {/* Split Layout Container */}
-            <div className="flex flex-grow items-stretch">
+            <div className="flex grow items-stretch">
                 {/* Left Panel: Visual/Technical (Hidden on mobile) */}
                 <div className="bg-bg-surface border-border relative hidden flex-1 flex-col items-center justify-center overflow-hidden border-r lg:flex">
                     <div className="pointer-events-none absolute inset-0 opacity-10">

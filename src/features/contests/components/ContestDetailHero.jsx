@@ -5,7 +5,7 @@ import { useContestTimer } from '@/hooks/useContestTimer'
 import { useContestRegistration } from '@/hooks/useContestRegistration'
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, Users, Zap, CheckCircle2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function formatDate(date) {
     return new Date(date).toLocaleDateString('en-US', {
@@ -25,15 +25,25 @@ function formatDate(date) {
 export default function ContestDetailHero({
     contest,
     isRegistered: initialIsRegistered,
+    isRegLoading,
     currentUser,
 }) {
     const [isRegistered, setIsRegistered] = useState(initialIsRegistered)
+
+    // Synchronize local state when the check-registration fetch finishes
+    useEffect(() => {
+        setIsRegistered(initialIsRegistered)
+    }, [initialIsRegistered])
+
     const {
         register,
         isLoading: registering,
         error: regError,
     } = useContestRegistration(contest._id)
-    const { phase, formatted } = useContestTimer(contest.startTime, contest.endTime)
+    const { phase, formatted, isGracePeriodOver } = useContestTimer(
+        contest.startTime,
+        contest.endTime
+    )
 
     const handleRegister = async () => {
         try {
@@ -101,7 +111,7 @@ export default function ContestDetailHero({
                             <div className="flex flex-wrap gap-2">
                                 {contest.problemIds.map((p, idx) => (
                                     <span
-                                        key={p._id}
+                                        key={p._id || p}
                                         className="border-border bg-bg-page text-text-secondary inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
                                     >
                                         <span className="text-text-muted font-mono">
@@ -143,41 +153,57 @@ export default function ContestDetailHero({
                         <div className="border-border border-t" />
 
                         {/* CTA */}
-                        {phase === 'active' && isRegistered && (
-                            <Link href={`/arena/${contest._id}`} className="w-full">
-                                <Button className="btn-primary w-full gap-2">
-                                    <Zap className="size-4" />
-                                    Enter Arena
-                                </Button>
-                            </Link>
-                        )}
-
-                        {phase === 'active' && !isRegistered && (
-                            <p className="text-text-muted text-center text-sm">
-                                Registration closed. Contest is live.
-                            </p>
-                        )}
-
-                        {phase === 'waiting' && !isRegistered && currentUser && (
-                            <Button
-                                className="btn-primary w-full"
-                                onClick={handleRegister}
-                                disabled={registering}
-                            >
-                                {registering ? 'Registering...' : 'Register Now'}
-                            </Button>
-                        )}
-
-                        {phase === 'waiting' && isRegistered && (
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="text-success flex items-center gap-2 text-sm font-medium">
-                                    <CheckCircle2 className="size-4" />
-                                    You&apos;re registered!
-                                </div>
+                        {isRegLoading && currentUser ? (
+                            <div className="bg-bg-muted h-10 w-full animate-pulse rounded-lg" />
+                        ) : isGracePeriodOver && phase === 'active' ? (
+                            <div className="border-error/20 bg-error/5 flex flex-col items-center gap-2 rounded-lg border p-4">
+                                <p className="text-error text-center text-sm font-medium">
+                                    Entry Closed
+                                </p>
                                 <p className="text-text-muted text-center text-xs">
-                                    The arena will unlock when the contest starts.
+                                    The 10-minute grace period has expired. No new entries are
+                                    allowed.
                                 </p>
                             </div>
+                        ) : (
+                            <>
+                                {phase === 'active' && isRegistered && (
+                                    <Link href={`/arena/${contest._id}`} className="w-full">
+                                        <Button className="btn-primary w-full gap-2">
+                                            <Zap className="size-4" />
+                                            Enter Arena
+                                        </Button>
+                                    </Link>
+                                )}
+
+                                {phase === 'active' && !isRegistered && (
+                                    <p className="text-text-muted text-center text-sm">
+                                        Registration closed. Contest is live.
+                                    </p>
+                                )}
+
+                                {phase === 'waiting' && !isRegistered && currentUser && (
+                                    <Button
+                                        className="btn-primary w-full"
+                                        onClick={handleRegister}
+                                        disabled={registering}
+                                    >
+                                        {registering ? 'Registering...' : 'Register Now'}
+                                    </Button>
+                                )}
+
+                                {phase === 'waiting' && isRegistered && (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="text-success flex items-center gap-2 text-sm font-medium">
+                                            <CheckCircle2 className="size-4" />
+                                            You&apos;re registered!
+                                        </div>
+                                        <p className="text-text-muted text-center text-xs">
+                                            The arena will unlock when the contest starts.
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {phase === 'ended' && (

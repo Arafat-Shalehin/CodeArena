@@ -277,8 +277,9 @@ export async function checkUpcomingContests() {
                 await sendNotification({
                     recipientId: p.userId,
                     type: 'contest',
-                    message: `Reminder: "${contest.title}" starts in 15 minutes! Get ready. 🚀`,
+                    message: `Reminder: "${contest.title}" is starting soon! Get ready. 🚀`,
                     link: `/contests/${contest._id}`,
+                    metadata: { contestId: contest._id, contestStartTime: contest.startTime },
                 })
             }
 

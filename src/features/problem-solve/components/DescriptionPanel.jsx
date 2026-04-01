@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import {
     Clock,
     HardDrive,
@@ -153,16 +153,21 @@ function ProblemDescription({ problem }) {
 // ─── Main DescriptionPanel ──────────────────────────────────────────────────
 
 export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMaximized }) {
-    const { leftTab, setLeftTab, submissionResult } = useProblemSolve()
+    const { leftTab, setLeftTab, submissionResult, mode } = useProblemSolve()
 
     if (!problem) return null
+
+    // In contest mode, only show the description tab
+    const CONTEST_HIDDEN_TABS = new Set(['editorial', 'solutions'])
+    const visibleTabs =
+        mode === 'contest' ? TABS.filter((t) => !CONTEST_HIDDEN_TABS.has(t.key)) : TABS
 
     return (
         <>
             {/* Tab Header */}
             <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center justify-between border-b px-2">
                 <div className="flex items-center gap-0.5">
-                    {TABS.map((tab) => (
+                    {visibleTabs.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setLeftTab(tab.key)}

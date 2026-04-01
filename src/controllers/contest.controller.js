@@ -70,8 +70,9 @@ export async function fetchContestById(req, { params, isAdmin }) {
  */
 export async function update(req, { params }) {
     try {
+        const { id } = await params
         const body = await req.json()
-        const contest = await updateContest(params.id, body)
+        const contest = await updateContest(id, body)
         return Response.json({ success: true, data: contest })
     } catch (error) {
         const status = error.message.includes('not found') ? 404 : 400
@@ -84,6 +85,7 @@ export async function update(req, { params }) {
  * Performs a soft delete
  */
 export async function remove(req, { params }) {
-    await deleteContest(params.id)
+    const { id } = await params
+    await deleteContest(id)
     return Response.json({ success: true, message: 'Contest deleted.' })
 }

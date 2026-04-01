@@ -858,10 +858,13 @@ function extractError(output) {
 
 /**
  * Extract program output
+ * This function separates actual program stdout/stderr from internal metadata
+ * printed by the sandbox runner.
  */
 function extractOutput(output) {
+    if (!output) return ''
+
     const lines = output.split('\n')
-    let capturing = false
     const outputLines = []
 
     // Patterns to exclude from the final program output
@@ -872,19 +875,18 @@ function extractOutput(output) {
         'Compiling',
         'Executing',
         'runner.sh:',
-        '[:'
+        '[:', // Shell condition outputs
+        'COMPILATION_ERROR',
+        'RUNTIME_ERROR',
+        'TIME_LIMIT_EXCEEDED',
+        'MEMORY_LIMIT_EXCEEDED'
     ]
 
     for (const line of lines) {
-        if (line.includes('SUCCESS')) {
-            capturing = true
-            continue
-        }
-        if (capturing) {
-            const isInternal = internalPatterns.some((p) => line.includes(p))
-            if (!isInternal) {
-                outputLines.push(line)
-            }
+        // Skip lines that are purely internal marker info
+        const isInternal = internalPatterns.some((p) => line.includes(p))
+        if (!isInternal && line.trim() !== '') {
+            outputLines.push(line)
         }
     }
 

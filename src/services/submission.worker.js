@@ -8,6 +8,7 @@ import { TestCase } from '@/models/TestCase.models'
 import { executeCode, executeMultipleInputs } from '@/lib/docker/executor'
 import { redisClient } from '@/lib/redis'
 import { VERDICTS } from '@/lib/evaluation/verdicts'
+import { updateParticipantScore } from '@/services/contestParticipant.service'
 
 /**
  * Worker to process code submissions
@@ -501,6 +502,130 @@ export function initSubmissionWorker() {
                                 await Problem.findByIdAndUpdate(submission.problemId, {
                                     $inc: { acceptedSubmissions: 1 },
                                 })
+                            }
+
+                            // --- CONTEST SCORING ---
+                            if (submission.contestId) {
+                                const previousContestAcceptedCount =
+                                    await Submission.countDocuments({
+                                        userId: submission.userId,
+                                        problemId: submission.problemId,
+                                        contestId: submission.contestId,
+                                        verdict: {
+                                            $regex: new RegExp(`^${VERDICTS.ACCEPTED}$`, 'i'),
+                                        },
+                                        _id: { $ne: submission._id },
+                                    })
+
+                                if (previousContestAcceptedCount === 0) {
+                                    // ⏱ Calculate Penalty:
+                                    // 1. Time from contest start to current AC (in seconds)
+                                    // 2. + 20 minutes (1200s) for each failed submission before this AC
+                                    const contest = await Contest.findById(
+                                        submission.contestId
+                                    ).lean()
+                                    if (contest) {
+                                        const startTime = new Date(contest.startTime).getTime()
+                                        const submittedAt = new Date(submission.createdAt).getTime()
+                                        const timePenalty = Math.max(
+                                            0,
+                                            Math.floor((submittedAt - startTime) / 1000)
+                                        )
+
+                                        // Count failed submissions for THIS problem by THIS user in THIS contest
+                                        const failedSubmissionsCount =
+                                            await Submission.countDocuments({
+                                                userId: submission.userId,
+                                                problemId: submission.problemId,
+                                                contestId: submission.contestId,
+                                                verdict: {
+                                                    $nin: [
+                                                        'ACCEPTED',
+                                                        'PENDING',
+                                                        'RUNNING',
+                                                        'SUCCESS',
+                                                    ],
+                                                },
+                                                createdAt: { $lt: submission.createdAt },
+                                            })
+
+                                        const totalPenalty =
+                                            timePenalty + failedSubmissionsCount * 20 * 60
+
+                                        console.log(
+                                            `[WORKER] First AC for problem ${submission.problemId} in contest ${submission.contestId}. ` +
+                                                `Score: 100, Penalty: ${totalPenalty}s (Time: ${timePenalty}s, Failed: ${failedSubmissionsCount})`
+                                        )
+
+                                        const updatedParticipant = await updateParticipantScore(
+                                            submission.contestId,
+                                            submission.userId,
+                                            {
+                                                problemId: submission.problemId,
+                                                scoreIncrement: 100,
+                                                penaltyIncrement: totalPenalty,
+                                            }
+                                        )
+
+                                        // Publish idempotent leaderboard update with ABSOLUTE values (not increments)
+                                        if (redisClient.isOpen && updatedParticipant) {
+                                            redisClient
+                                                .publish(
+                                                    'submission_updates',
+                                                    JSON.stringify({
+                                                        type: 'leaderboard_update',
+                                                        contestId: submission.contestId,
+                                                        userId: submission.userId,
+                                                        // Absolute values — frontend replaces state, never increments
+                                                        score: updatedParticipant.score,
+                                                        solvedCount:
+                                                            updatedParticipant.solvedProblemCount,
+                                                        penalty: updatedParticipant.penalty,
+                                                        solvedProblemIds:
+                                                            updatedParticipant.solvedProblemIds,
+                                                        updatedAt: new Date().toISOString(),
+                                                    })
+                                                )
+                                                .catch(console.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- CONTEST RESULT FINALIZATION SIGNAL ---
+                        // After processing any contest submission, check if ALL of this user's
+                        // submissions are now complete. If so, emit a signal so the Result page
+                        // can stop polling and display final data.
+                        if (submission.contestId) {
+                            const remainingPending = await Submission.countDocuments({
+                                contestId: submission.contestId,
+                                userId: submission.userId,
+                                type: 'submit',
+                                status: { $in: ['queued', 'running'] },
+                            })
+
+                            console.log(
+                                `[WORKER] Contest ${submission.contestId} user ${submission.userId}: ` +
+                                    `${remainingPending} pending submission(s) remaining`
+                            )
+
+                            if (remainingPending === 0 && redisClient.isOpen) {
+                                console.log(
+                                    `[WORKER] ✅ All submissions processed for user ${submission.userId} ` +
+                                        `in contest ${submission.contestId}. Emitting result_finalized.`
+                                )
+                                redisClient
+                                    .publish(
+                                        'submission_updates',
+                                        JSON.stringify({
+                                            type: 'contest:result_finalized',
+                                            contestId: submission.contestId,
+                                            userId: submission.userId,
+                                            timestamp: new Date().toISOString(),
+                                        })
+                                    )
+                                    .catch(console.error)
                             }
                         }
 

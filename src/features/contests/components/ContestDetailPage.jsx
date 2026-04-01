@@ -1,8 +1,10 @@
 'use client'
 
+import React, { useMemo } from 'react'
+import useSWR from 'swr'
 import { useContest } from '@/hooks/useContest'
 import { useContestTimer } from '@/hooks/useContestTimer'
-import ContestDetailHero from '@/features/contests/components/ContestDetailHero'
+import ContestDetailHero from './ContestDetailHero'
 import { ContestAbout } from '@/features/contests/components/ContestAbout'
 import { ContestParticipants } from '@/features/contests/components/ContestParticipants'
 import { useAuth } from '@/context/AuthContext'
@@ -14,6 +16,32 @@ import { useAuth } from '@/context/AuthContext'
 export default function ContestDetailPage({ contestId }) {
     const { user: currentUser } = useAuth()
     const { contest, isLoading, error } = useContest(contestId)
+    const { data: participantsData } = useSWR(
+        contestId ? `/api/contests/${contestId}/participants?limit=5` : null,
+        (url) => fetch(url).then((r) => r.json()),
+        { refreshInterval: 10000 }
+    )
+
+    const { data: regData, isLoading: isRegLoading } = useSWR(
+        contestId && currentUser ? `/api/contests/${contestId}/check-registration` : null,
+        (url) => fetch(url).then((r) => r.json()),
+        { refreshInterval: 10000 }
+    )
+
+    const participants = useMemo(() => {
+        if (!participantsData?.success) return []
+        return (participantsData.data || []).map((p) => ({
+            id: p._id,
+            name: p.userId?.name || 'Anonymous',
+            avatar: p.userId?.avatarSeed
+                ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.userId.avatarSeed}`
+                : '',
+        }))
+    }, [participantsData])
+
+    const isRegistered = regData?.isRegistered || false
+    const totalParticipants = participantsData?.pagination?.total || participants.length
+
     useContestTimer(contest?.startTime, contest?.endTime) // pre-warm timer
 
     if (isLoading) {
@@ -46,7 +74,12 @@ export default function ContestDetailPage({ contestId }) {
 
     return (
         <div className="min-h-screen">
-            <ContestDetailHero contest={contest} isRegistered={false} currentUser={currentUser} />
+            <ContestDetailHero
+                contest={contest}
+                isRegistered={isRegistered}
+                isRegLoading={isRegLoading}
+                currentUser={currentUser}
+            />
 
             <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
                 <div className="grid gap-10 lg:grid-cols-3">
@@ -60,8 +93,8 @@ export default function ContestDetailPage({ contestId }) {
                     </div>
                     <div>
                         <ContestParticipants
-                            participants={[]}
-                            countLabel="Registered"
+                            participants={participants}
+                            countLabel={`${totalParticipants} Registered`}
                             contestId={contestId}
                         />
                     </div>

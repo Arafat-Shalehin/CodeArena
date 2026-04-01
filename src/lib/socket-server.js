@@ -148,6 +148,21 @@ export async function initSocketServer() {
                                 }
                             }
 
+                            // Route contest-specific events with their proper event names
+                            if (data.type === 'contest:result_finalized') {
+                                console.log(
+                                    `[Socket.IO] Emitting contest:result_finalized to user ${userId}`
+                                )
+                                serverIo.to(userId).emit('contest:result_finalized', data)
+                            }
+
+                            if (data.type === 'leaderboard_update' && data.contestId) {
+                                console.log(
+                                    `[Socket.IO] Emitting leaderboard_update to user ${userId}`
+                                )
+                                serverIo.to(userId).emit('leaderboard_update', data)
+                            }
+
                             // Also emit the generic submission_update for other listeners
                             console.log(`[Socket.IO] Emitting submission_update to user ${userId}`)
                             serverIo.to(userId).emit('submission_update', data)

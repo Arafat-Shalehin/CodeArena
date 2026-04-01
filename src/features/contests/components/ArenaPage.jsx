@@ -1,15 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useContest } from '@/hooks/useContest'
 import { useContestTimer } from '@/hooks/useContestTimer'
 import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
+import useSWR from 'swr'
 import ArenaTimer from '@/features/contests/components/ArenaTimer'
 import ArenaProblemTabs from '@/features/contests/components/ArenaProblemTabs'
 import ArenaLeaderboardPanel from '@/features/contests/components/ArenaLeaderboardPanel'
+import ArenaWorkspace from '@/features/contests/components/ArenaWorkspace'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, LayoutPanelLeft, Trophy, User as UserIcon } from 'lucide-react'
+import { ChevronLeft, Trophy, User as UserIcon, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -20,19 +23,78 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
  * Layout: top nav → problem tabs → split pane (problem desc | code editor | leaderboard)
  */
 export default function ArenaPage({ contestId }) {
-    const router = useRouter()
     const { user: currentUser } = useAuth()
+    const router = useRouter()
     const { contest, isLoading } = useContest(contestId)
     const { phase } = useContestTimer(contest?.startTime, contest?.endTime)
+
+    // Check participation status (if finished)
+    const { data: participantData } = useSWR(
+        contestId ? `/api/contests/${contestId}/check-registration` : null,
+        (url) => fetch(url).then((r) => r.json())
+    )
+    const isUserFinished = participantData?.data?.isFinished
+
     const [activeProblemId, setActiveProblemId] = useState(null)
     const [showLeaderboard, setShowLeaderboard] = useState(true)
+    const [solvedProblems, setSolvedProblems] = useState(new Set())
+    const [isAutoFinishing, setIsAutoFinishing] = useState(false)
+
+    const handleProblemSolved = (problemId) => {
+        setSolvedProblems((prev) => new Set([...prev, problemId]))
+    }
+
+    // Auto-redirect if contest ended OR user already marked finished
+    useEffect(() => {
+        if (isUserFinished) {
+            router.replace(`/contests/${contestId}/result`)
+            return
+        }
+
+        if (phase === 'ended') {
+            const timer = setTimeout(() => {
+                router.push(`/contests/${contestId}/result`)
+            }, 2000)
+            return () => clearTimeout(timer)
+        }
+    }, [phase, isUserFinished, contestId, router])
+
+    // Auto-finish if ALL problems solved
+    useEffect(() => {
+        if (!contest || contest.problemIds.length === 0 || isAutoFinishing || isUserFinished) return
+
+        if (solvedProblems.size >= contest.problemIds.length && phase === 'active') {
+            const timer = setTimeout(async () => {
+                setIsAutoFinishing(true)
+                toast.success('All problems solved! Finalizing your results...', {
+                    icon: <Trophy className="text-accent h-5 w-5" />,
+                    duration: 5000,
+                })
+
+                try {
+                    const res = await fetch(`/api/contests/${contestId}/finish`, {
+                        method: 'POST',
+                    })
+                    const data = await res.json()
+                    if (data.success) {
+                        router.push(`/contests/${contestId}/result`)
+                    }
+                } catch (error) {
+                    console.error('Failed to auto-finish contest:', error)
+                    setIsAutoFinishing(false)
+                }
+            }, 2500) // Delay to let the user see the "Accepted" state
+
+            return () => clearTimeout(timer)
+        }
+    }, [solvedProblems.size, contest, contestId, phase, isAutoFinishing, isUserFinished, router])
 
     // Show skeleton while loading initial contest data
     if (isLoading) {
         return (
             <div className="bg-bg-page flex h-screen flex-col overflow-hidden">
                 {/* Skeleton header */}
-                <header className="border-border bg-bg-page/90 flex-shrink-0 border-b">
+                <header className="border-border bg-bg-page/90 shrink-0 border-b">
                     <div className="flex h-14 items-center justify-between gap-4 px-4">
                         <div className="bg-bg-muted h-4 w-32 animate-pulse rounded" />
                         <div className="bg-bg-muted h-8 w-40 animate-pulse rounded-lg" />
@@ -83,12 +145,11 @@ export default function ArenaPage({ contestId }) {
     }
 
     const problems = contest?.problemIds || []
-    const currentProblem = problems.find((p) => p._id === activeProblemId) || problems[0]
 
     return (
         <div className="bg-bg-page flex h-screen flex-col overflow-hidden">
             {/* Arena Top Nav */}
-            <header className="border-border bg-bg-page/90 flex-shrink-0 border-b backdrop-blur-md">
+            <header className="border-border bg-bg-page/90 shrink-0 border-b backdrop-blur-md">
                 <div className="flex h-14 items-center justify-between gap-4 px-4">
                     {/* Left: logo + back + title */}
                     <div className="flex min-w-0 items-center gap-3">
@@ -99,7 +160,7 @@ export default function ArenaPage({ contestId }) {
                         <div className="bg-border mr-1 h-6 w-px" />
                         <Link
                             href={`/contests/${contestId}`}
-                            className="text-text-muted hover:text-text-primary flex-shrink-0 transition-colors"
+                            className="text-text-muted hover:text-text-primary shrink-0 transition-colors"
                         >
                             <ChevronLeft className="size-5" />
                         </Link>
@@ -118,7 +179,7 @@ export default function ArenaPage({ contestId }) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="flex-shrink-0 gap-2"
+                            className="shrink-0 gap-2"
                             onClick={() => setShowLeaderboard((v) => !v)}
                         >
                             <Trophy className="size-4" />
@@ -153,70 +214,23 @@ export default function ArenaPage({ contestId }) {
                         activeProblemId={activeProblemId || problems[0]?._id}
                         onSelect={setActiveProblemId}
                         isEnded={phase === 'ended'}
+                        solvedProblems={solvedProblems}
                     />
                 )}
             </header>
 
             {/* Arena Body — split pane */}
             <div className="flex flex-1 overflow-hidden">
-                {/* Problem Description Panel */}
-                <div
-                    className={`border-border flex flex-col overflow-y-auto border-r ${showLeaderboard ? 'w-[35%]' : 'w-[50%]'} flex-shrink-0`}
-                >
-                    <div className="p-6">
-                        {isLoading ? (
-                            <div className="space-y-4">
-                                <div className="bg-bg-muted h-8 w-3/4 animate-pulse rounded-lg" />
-                                <div className="bg-bg-muted h-4 w-full animate-pulse rounded" />
-                                <div className="bg-bg-muted h-4 w-5/6 animate-pulse rounded" />
-                            </div>
-                        ) : currentProblem ? (
-                            <>
-                                <h2 className="text-text-primary mb-4 text-xl font-bold">
-                                    {currentProblem.title}
-                                </h2>
-                                <p className="text-text-secondary text-sm leading-relaxed">
-                                    Problem description will appear here.
-                                    {/* Link to the full problem page for now */}
-                                </p>
-                                <Link
-                                    href={`/problems/${currentProblem._id}`}
-                                    target="_blank"
-                                    className="text-accent-text mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
-                                >
-                                    Open full problem statement ↗
-                                </Link>
-                            </>
-                        ) : (
-                            <p className="text-text-muted text-sm">Select a problem above.</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Code Editor Area */}
-                <div
-                    className={`flex flex-col overflow-hidden ${showLeaderboard ? 'flex-1' : 'flex-1'}`}
-                >
-                    <div className="border-border bg-bg-subtle flex items-center justify-between border-b px-4 py-2">
-                        <span className="text-text-muted text-xs font-medium tracking-wide uppercase">
-                            Code Editor
-                        </span>
-                        {phase === 'active' && (
-                            <Button size="sm" className="btn-primary h-8 gap-2 text-xs">
-                                Submit Solution
-                            </Button>
-                        )}
-                    </div>
-                    <div className="bg-bg-page flex flex-1 items-center justify-center">
-                        <p className="text-text-muted text-center text-sm">
-                            Code editor integration via existing problem-solve feature.
-                        </p>
-                    </div>
-                </div>
+                {/* Workspace: Description + Editor + Console — all real, context-aware */}
+                <ArenaWorkspace
+                    contestId={contestId}
+                    activeProblemId={activeProblemId || problems[0]?._id}
+                    onProblemSolved={handleProblemSolved}
+                />
 
                 {/* Live Leaderboard Panel */}
                 {showLeaderboard && (
-                    <div className="border-border w-[240px] flex-shrink-0 overflow-hidden border-l">
+                    <div className="border-border w-[240px] shrink-0 overflow-hidden border-l">
                         <ArenaLeaderboardPanel
                             contestId={contestId}
                             currentUserId={currentUser?.uid}

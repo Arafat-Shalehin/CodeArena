@@ -129,6 +129,7 @@ export function useSubmissionRealtime({
     activeSubmissionRoomRef,
     finalVerdictHandledRef,
     lastFinalSubmissionIdRef,
+    onProblemSolved,
 }) {
     const userId = user?._id || user?.id || null
 
@@ -318,6 +319,9 @@ export function useSubmissionRealtime({
 
             if (verdict === 'ACCEPTED') {
                 toast.success('Accepted!')
+                if (onProblemSolved && problemId) {
+                    onProblemSolved(problemId)
+                }
                 syncUser()
             } else if (data.status === 'error' || verdict === 'ERROR') {
                 toast.error(data.error || 'Evaluation Error')
