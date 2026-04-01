@@ -53,11 +53,12 @@ export default function TrustedBySection() {
                             {[...companies, ...companies].map((company, index) => (
                                 <div
                                     key={index}
-                                    className={`group flex cursor-pointer items-center justify-center gap-3 opacity-50 grayscale transition-all duration-300 hover:opacity-100 hover:grayscale-0`}
+                                    className={`group flex cursor-pointer items-center justify-center gap-3 opacity-50 grayscale transition-[opacity,filter] duration-300 hover:opacity-100 hover:grayscale-0`}
                                     title={company.name}
                                 >
                                     <company.icon
                                         className={`text-4xl ${company.color} transition-colors duration-300`}
+                                        aria-hidden="true"
                                     />
                                     <span className="font-display hidden text-xl font-bold sm:block">
                                         {company.name}

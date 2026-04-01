@@ -48,7 +48,6 @@ export default function NotificationBell() {
         }
     }
 
-    // Close dropdown on outside click
     useEffect(() => {
         function handleClickOutside(e) {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -64,8 +63,6 @@ export default function NotificationBell() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="hover:bg-bg-subtle relative flex size-10 items-center justify-center rounded-full transition-all active:scale-95"
-                aria-label="View notifications"
-                aria-expanded={isOpen}
             >
                 <Bell className="text-text-secondary h-5 w-5" />
                 {unreadCount > 0 && (
@@ -135,11 +132,29 @@ export default function NotificationBell() {
                                             >
                                                 {normalizeMessage(notif.message)}
                                             </p>
-                                            <span className="text-text-muted mt-1 block text-[11px] font-medium">
-                                                {formatDistanceToNow(new Date(notif.createdAt), {
-                                                    addSuffix: true,
-                                                })}
-                                            </span>
+                                            <div className="mt-1 flex items-center gap-2">
+                                                <span className="text-text-muted text-[11px] font-medium">
+                                                    {formatDistanceToNow(
+                                                        new Date(notif.createdAt),
+                                                        {
+                                                            addSuffix: true,
+                                                        }
+                                                    )}
+                                                </span>
+                                                {notif.type === 'contest' &&
+                                                    notif.metadata?.contestStartTime && (
+                                                        <span className="text-accent flex items-center gap-1 text-[10px] font-bold">
+                                                            <span className="bg-accent h-1 w-1 animate-pulse rounded-full" />
+                                                            Starts{' '}
+                                                            {formatDistanceToNow(
+                                                                new Date(
+                                                                    notif.metadata.contestStartTime
+                                                                ),
+                                                                { addSuffix: true }
+                                                            )}
+                                                        </span>
+                                                    )}
+                                            </div>
                                             {!notif.isRead && (
                                                 <button
                                                     onClick={(e) => {

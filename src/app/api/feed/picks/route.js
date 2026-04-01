@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { protect } from '@/middlewares/auth.middleware'
-import { Problem } from '@/models/Problem.models'
 import { User } from '@/models/User.models'
+import { recommendationService } from '@/services/recommendation.service'
 
+// Authenticated endpoint (uses request headers/cookies), must be dynamic.
 export const dynamic = 'force-dynamic'
 
 export async function GET(req) {
@@ -11,18 +12,11 @@ export async function GET(req) {
         await dbConnect()
 
         const userAuth = await protect(req)
-        const user = await User.findById(userAuth.id).select('stats.solvedProblems')
-
-        const solvedProblemIds = user?.stats?.solvedProblems || []
-
-        // Fetch "daily picks" - Trending/Most Solved unsolved problems
-        const picks = await Problem.find({
-            _id: { $nin: solvedProblemIds },
+        const user = await User.findById(userAuth.id).select('stats performanceStats').lean()
+        const picks = await recommendationService.getRecommendations(userAuth.id, 4, {
+            user,
+            context: 'feed',
         })
-            .select('title difficulty acceptanceRate tags acceptedSubmissions')
-            .sort({ acceptedSubmissions: -1 })
-            .limit(4)
-            .lean()
 
         return NextResponse.json({
             success: true,

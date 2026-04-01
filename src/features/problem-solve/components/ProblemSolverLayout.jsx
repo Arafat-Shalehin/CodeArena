@@ -9,9 +9,11 @@ import {
     ChevronUp,
     Shuffle,
     Loader2,
+    Sparkles,
     Maximize2,
     Minimize2,
     CheckCircle2,
+    Settings2,
     List,
     GripVertical,
     GripHorizontal,
@@ -29,15 +31,11 @@ import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'
 import { useMarkProblemView } from '@/hooks/usePageRestoration'
 import useResizable from '@/features/problem-solve/hooks/useResizable'
-import NotificationBell from '@/components/layout/NotificationBell'
-import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 import DescriptionPanel from './DescriptionPanel'
 import CodeEditorPanel from './CodeEditorPanel'
 import ExecutionConsole from './ExecutionConsole'
 import WorkspaceLoader from './WorkspaceLoader'
-import SolverNavbar from './SolverNavbar'
-import MobileTabBar from './MobileTabBar'
 
 // ─── Inner Layout (has access to ProblemSolveContext) ────────────────────────
 
@@ -53,8 +51,9 @@ function InnerLayout({
     // Mark that user is viewing this problem (for reload restoration)
     useMarkProblemView(problem?._id)
 
-    const { runCode, submitCode, isRunning, isSubmitting } = useProblemSolve()
-    const { user, isAuthenticated } = useAuth()
+    const { runCode, submitCode, isRunning, isSubmitting, testResult, fetchAiFeedback } =
+        useProblemSolve()
+    const { user } = useAuth()
 
     // ── Panel state: null = normal, 'description'|'editor'|'console' = that panel maximized ──
     const [maximizedPanel, setMaximizedPanel] = useState(null)
@@ -83,8 +82,6 @@ function InnerLayout({
     })
 
     const [showProblemList, setShowProblemList] = useState(false)
-    // Mobile: Track active panel (for mobile tab switching)
-    const [mobileActivePanel, setMobileActivePanel] = useState('description')
 
     /** Toggle maximize for a panel — if already maximized, restore */
     const toggleMaximize = useCallback((panel) => {
@@ -128,20 +125,105 @@ function InnerLayout({
             />
 
             {/* ═══ Top Navbar ═══ */}
-            <SolverNavbar
-                setShowProblemList={setShowProblemList}
-                navigateProblem={navigateProblem}
-                randomProblem={randomProblem}
-                runCode={runCode}
-                submitCode={submitCode}
-                isRunning={isRunning}
-                isSubmitting={isSubmitting}
-                isAuthenticated={isAuthenticated}
-                user={user}
-            />
+            <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-4">
+                {/* Left */}
+                <div className="flex items-center gap-1">
+                    <AreanaLogo
+                        href="/feed"
+                        className="mr-4 scale-90 transition-transform hover:scale-95"
+                    />
+                    <div className="bg-border mr-2 h-6 w-px" />
+                    <button
+                        onClick={() => setShowProblemList(true)}
+                        className="hover:bg-bg-muted text-text-secondary hover:text-text-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors"
+                    >
+                        <List size={16} />
+                        <span className="font-semibold">Problem List</span>
+                    </button>
+                    <div className="bg-border mx-2 h-4 w-px" />
+                    <button
+                        onClick={() => navigateProblem(-1)}
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <button
+                        onClick={() => navigateProblem(1)}
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                    >
+                        <ChevronRight size={20} />
+                    </button>
+                    <button
+                        onClick={randomProblem}
+                        className="text-text-muted hover:bg-bg-muted hover:text-text-primary rounded-lg p-1.5 transition-colors"
+                    >
+                        <Shuffle size={18} />
+                    </button>
+                </div>
+                {/* Center */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={runCode}
+                        disabled={isRunning}
+                        className="flex items-center gap-1.5 rounded-md bg-[#333] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#444] disabled:opacity-50"
+                    >
+                        {isRunning ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <Play size={14} />
+                        )}
+                        Run
+                    </button>
+                    <button
+                        onClick={submitCode}
+                        disabled={isSubmitting}
+                        className="flex items-center gap-1.5 rounded-md bg-[#2cbb5d] px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#26a34f] disabled:opacity-50"
+                    >
+                        {isSubmitting ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <CheckCircle2 size={14} />
+                        )}
+                        Submit
+                    </button>
+                </div>
+                {/* Right */}
+                <div className="flex items-center gap-4 text-gray-400">
+                    {testResult?.status === 'done' && (
+                        <button
+                            onClick={fetchAiFeedback}
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-purple-400 hover:bg-purple-500/10"
+                        >
+                            <Sparkles size={14} /> AI Analysis
+                        </button>
+                    )}
+                    <button className="hover:bg-bg-muted hover:text-text-primary rounded p-1 transition-colors">
+                        <Settings2 size={18} />
+                    </button>
+
+                    <div className="bg-border h-6 w-px" />
+
+                    {user && (
+                        <Link
+                            href="/profile"
+                            className="group flex items-center transition-transform hover:scale-105"
+                        >
+                            <Avatar className="border-accent/20 group-hover:border-accent/40 size-8 border transition-colors">
+                                <AvatarImage
+                                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name || user.email}`}
+                                    alt={user.name}
+                                />
+                                <AvatarFallback className="bg-accent/10 text-accent text-[10px] font-bold">
+                                    <UserIcon size={12} />
+                                </AvatarFallback>
+                            </Avatar>
+                        </Link>
+                    )}
+                </div>
+            </nav>
 
             {/* ═══ Workspace Area ═══ */}
-            <div ref={hSplit.containerRef} className="flex flex-1 gap-0.5 overflow-hidden p-1">
+            <div ref={hSplit.containerRef} className="flex flex-1 gap-1.5 overflow-hidden p-1.5">
                 {/* ── Maximized: Show maximized panel + other panels as collapsed headers ── */}
                 {maximizedPanel ? (
                     <>
@@ -183,7 +265,7 @@ function InnerLayout({
                         )}
 
                         {/* Right side: Editor+Console or their stubs */}
-                        <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+                        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
                             {/* Editor or stub */}
                             {maximizedPanel === 'editor' ? (
                                 <div className="border-border bg-bg-subtle flex flex-1 flex-col overflow-hidden rounded-xl border">
@@ -289,7 +371,7 @@ function InnerLayout({
                         ) : (
                             <div
                                 style={{ width: `${hSplit.ratio * 100}%` }}
-                                className="border-border bg-bg-subtle flex min-h-0 flex-col overflow-hidden rounded-xl border"
+                                className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                             >
                                 <DescriptionPanel
                                     problem={problem}
@@ -308,7 +390,7 @@ function InnerLayout({
                                 }
                                 hSplit.onMouseDown(e)
                             }}
-                            className="bg-bg-page hover:bg-accent/40 flex w-1.5 cursor-col-resize items-center justify-center transition-colors"
+                            className="bg-bg-page hover:bg-accent/40 flex w-2 cursor-col-resize items-center justify-center transition-colors"
                         >
                             <GripVertical size={12} className="text-text-muted" />
                         </div>
@@ -321,7 +403,7 @@ function InnerLayout({
                                     : `${(1 - hSplit.ratio) * 100}%`,
                             }}
                             ref={vSplit.containerRef}
-                            className="flex flex-1 flex-col gap-0.5 overflow-hidden"
+                            className="flex flex-1 flex-col gap-1.5 overflow-hidden"
                         >
                             {/* Editor or collapsed stub */}
                             {collapsedPanels.editor ? (
@@ -375,7 +457,7 @@ function InnerLayout({
                                         setCollapsedPanels((p) => ({ ...p, console: false }))
                                     vSplit.onMouseDown(e)
                                 }}
-                                className="bg-bg-page hover:bg-accent/40 flex h-1.5 cursor-row-resize items-center justify-center transition-colors"
+                                className="bg-bg-page hover:bg-accent/40 flex h-2 cursor-row-resize items-center justify-center transition-colors"
                             >
                                 <GripHorizontal size={12} className="text-text-muted" />
                             </div>
@@ -413,7 +495,7 @@ function InnerLayout({
                                             ? '100%'
                                             : `${(1 - vSplit.ratio) * 100}%`,
                                     }}
-                                    className="border-border bg-bg-subtle flex min-h-0 flex-col overflow-hidden rounded-xl border"
+                                    className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                                 >
                                     <ExecutionConsole
                                         onMaximize={() => toggleMaximize('console')}
@@ -426,12 +508,6 @@ function InnerLayout({
                     </>
                 )}
             </div>
-
-            {/* ═══ Mobile Tab Bar (Bottom Navigation for Panels) ═══ */}
-            <MobileTabBar
-                mobileActivePanel={mobileActivePanel}
-                setMobileActivePanel={setMobileActivePanel}
-            />
         </div>
     )
 }
@@ -498,14 +574,13 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
 
                 if (isMounted) setIsLoading(false)
             } catch (err) {
-                if (err?.name === 'AbortError') {
-                    console.log('[ProblemSolver] Fetch aborted')
-                    return
-                }
-
                 console.error('[ProblemSolver] Fetch error:', err)
                 if (isMounted) {
-                    setError('Network error')
+                    if (err?.name === 'AbortError') {
+                        setError('Request timeout. Please retry.')
+                    } else {
+                        setError('Network error')
+                    }
                     setIsLoading(false)
                 }
             } finally {
@@ -556,7 +631,7 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
                     <p className="text-sm text-gray-400">{error || 'Problem not found.'}</p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="bg-accent hover:bg-accent/80 rounded-md px-6 py-2 text-sm font-medium text-white"
+                        className="rounded-md bg-[#2cbb5d] px-6 py-2 text-sm font-medium text-white hover:bg-[#26a34f]"
                     >
                         Try Again
                     </button>

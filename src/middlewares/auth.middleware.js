@@ -10,6 +10,21 @@ import { logger } from '@/lib/logger'
  *   2. httpOnly cookie        (codearena_access_token) — for browser clients
  *   3. Neither → throw 401
  */
+// function extractToken(req) {
+//     // 1️⃣ Try Authorization header first
+//     const authHeader = req.headers.get('authorization')
+//     if (authHeader && authHeader.startsWith('Bearer ')) {
+//         return authHeader.split(' ')[1]
+//     }
+
+//     // 2️⃣ Fallback to httpOnly cookie
+//     const cookieToken = getTokenFromCookies(req)
+//     if (cookieToken) {
+//         return cookieToken
+//     }
+
+//     return null
+// }
 function extractToken(req) {
     // 1️⃣ Try Authorization header first
     const authHeader = req.headers.get('authorization')
@@ -18,7 +33,10 @@ function extractToken(req) {
     }
 
     // 2️⃣ Fallback to httpOnly cookie
-    const cookieToken = getTokenFromCookies(req)
+    // আপনার প্রোজেক্টে কুকির নাম 'token' হলে এখানেও 'token' দিন
+    const cookieToken =
+        req.cookies.get('token')?.value || req.cookies.get('codearena_access_token')?.value
+
     if (cookieToken) {
         return cookieToken
     }

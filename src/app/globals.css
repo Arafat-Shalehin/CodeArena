@@ -1,33 +1,5 @@
 @import 'tailwindcss';
 
-/* Prevent layout shifts when scrollbar appears */
-html,
-body {
-    scrollbar-gutter: stable;
-    height: 100%;
-}
-
-html.lenis,
-html.lenis body {
-    height: auto;
-}
-
-.lenis.lenis-smooth {
-    scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
-    overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-    overflow: hidden;
-}
-
-.lenis.lenis-smooth iframe {
-    pointer-events: none;
-}
-
 /* Enhanced transitions for theme switching */
 body,
 .site-gradient,
@@ -53,8 +25,8 @@ body,
 
     /* Text */
     --ca-text-primary: #111827;
-    --ca-text-secondary: #374151;
-    --ca-text-muted: #6b7280;
+    --ca-text-secondary: #4b5563;
+    --ca-text-muted: #9ca3af;
     --ca-text-inverse: #ffffff;
 
     /* Brand Accent (HackerRank green) */
@@ -117,9 +89,6 @@ body,
     --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
     --font-display: var(--font-bricolage), system-ui, sans-serif;
     --font-mono: var(--font-jetbrains), 'Fira Code', monospace;
-
-    /* Acid Green Gradient */
-    --ca-acid-gradient: linear-gradient(90deg, #10b981 0%, #047857 100%);
 
     /* ----------------------------------------------------------
    * SHADOWS
@@ -185,8 +154,8 @@ body,
     --ca-site-grad-2: rgba(2, 186, 76, 0.1);
 
     --ca-text-primary: #f0f6fc;
-    --ca-text-secondary: #a8b2c1;
-    --ca-text-muted: #6e7681;
+    --ca-text-secondary: #8b949e;
+    --ca-text-muted: #484f58;
     --ca-text-inverse: #0f1117;
 
     --ca-accent: #02ba4c;
@@ -418,16 +387,12 @@ body,
 
     /* ── Buttons ── */
     .btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-50;
-        background: linear-gradient(135deg, #69f6b8 0%, #06b77f 100%);
-        color: #002919;
-        transition:
-            transform var(--duration-normal) var(--ease-default),
-            box-shadow var(--duration-normal) var(--ease-default);
+        @apply bg-accent inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
+        transition: background-color var(--duration-normal) var(--ease-default);
     }
 
     .btn-primary:hover {
-        box-shadow: 0 0 20px #10b981;
+        background-color: var(--ca-accent-hover);
     }
 
     .btn-primary:focus-visible {
@@ -435,8 +400,7 @@ body,
     }
 
     .btn-secondary {
-        @apply bg-bg-page text-text-primary inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
-        border: 1px solid rgba(118, 117, 117, 0.15);
+        @apply bg-bg-subtle text-text-primary border-border inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
         transition: background-color var(--duration-normal) var(--ease-default);
     }
 
@@ -560,41 +524,6 @@ body,
         display: none;
     }
 
-    .custom-scrollbar {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(var(--ca-accent-rgb), 0.55) rgba(var(--ca-border-rgb), 0.25);
-    }
-
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: rgba(var(--ca-border-rgb), 0.22);
-        border-radius: 999px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: linear-gradient(
-            180deg,
-            rgba(var(--ca-accent-rgb), 0.8),
-            rgba(var(--ca-accent-rgb), 0.55)
-        );
-        border: 2px solid transparent;
-        border-radius: 999px;
-        background-clip: padding-box;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(
-            180deg,
-            rgba(var(--ca-accent-rgb), 0.95),
-            rgba(var(--ca-accent-rgb), 0.7)
-        );
-        background-clip: padding-box;
-    }
-
     /* Text truncation (2-line) */
     .truncate-2 {
         display: -webkit-box;
@@ -606,10 +535,7 @@ body,
 
     /* Gradient text (accent) */
     .text-gradient {
-        background: var(
-            --ca-acid-gradient,
-            linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover))
-        );
+        background: linear-gradient(135deg, var(--ca-accent), var(--ca-accent-hover));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;

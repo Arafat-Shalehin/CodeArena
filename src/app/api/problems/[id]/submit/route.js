@@ -25,11 +25,14 @@ export async function POST(request, context) {
         await dbConnect()
 
         // Authenticate user
-        let user;
+        let user
         try {
             user = await protect(request)
         } catch (err) {
-            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+            return NextResponse.json(
+                { success: false, error: 'Authentication required' },
+                { status: 401 }
+            )
         }
 
         const body = await request.json()
@@ -45,7 +48,10 @@ export async function POST(request, context) {
         // 1. Fetch the problem with test cases
         const problem = await Problem.findById(id)
         if (!problem) {
-            return NextResponse.json({ success: false, error: 'Problem not found' }, { status: 404 })
+            return NextResponse.json(
+                { success: false, error: 'Problem not found' },
+                { status: 404 }
+            )
         }
 
         if (!problem.testCases || problem.testCases.length === 0) {
@@ -138,7 +144,7 @@ export async function POST(request, context) {
 
         // 5. Update User Stats
         const userUpdate = {
-            $inc: { 'stats.totalSubmissions': 1 }
+            $inc: { 'stats.totalSubmissions': 1 },
         }
 
         if (overallVerdict === 'ACCEPTED') {
@@ -150,7 +156,7 @@ export async function POST(request, context) {
                 userId: user._id,
                 problemId: id,
                 verdict: 'accepted',
-                _id: { $ne: submission._id }
+                _id: { $ne: submission._id },
             })
 
             if (!previousAccepted) {

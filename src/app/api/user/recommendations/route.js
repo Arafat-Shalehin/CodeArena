@@ -3,31 +3,15 @@ import { User } from '@/models/User.models'
 import { protect } from '@/middlewares/auth.middleware'
 import { NextResponse } from 'next/server'
 import { recommendationService } from '@/services/recommendation.service'
+import { buildContextualRecommendations } from '@/services/recommendation-context.service'
 import { recommendationCacheService } from '@/services/cache.service'
 
-export const dynamic = 'force-dynamic'
-
-/**
- * A/B Testing: Hash User ID to a bucket (0-99)
- */
-function hashUserId(userIdStr) {
-    let hash = 0
-    for (let i = 0; i < userIdStr.length; i++) {
-        hash = (hash << 5) - hash + userIdStr.charCodeAt(i)
-        hash |= 0
-    }
-    return Math.abs(hash)
-}
+// User-specific recommendations use Redis caching, but keep dynamic for personalization
+// The cache service handles TTL (2 hours)
 
 /**
  * GET /api/user/recommendations
  * Returns personalized problem recommendations based on user weaknesses and discovery.
- *
- * Response shape (consumed by RecommendedProblems.jsx):
- *   data.recommendations   — weakness-matched + scored problems
- *   data.weakTags          — top 3 weak tag names (strings)
- *   data.discoveryProblems — easy problems in untouched tags
- *   data.discoveryTags     — names of the untouched tags
  */
 export async function GET(request) {
     try {
@@ -39,12 +23,23 @@ export async function GET(request) {
         }
 
         const userId = userAuth.id.toString()
+        const { searchParams } = new URL(request.url)
+        const context = searchParams.get('context') === 'feed' ? 'feed' : 'profile'
+
+        // Define cacheParams at the top level so it's accessible throughout
+        const cacheParams = { context, limit: 6, includeDiscovery: true }
 
         // --- Check full-payload cache first ---
-        const cacheParams = { limit: 6, includeDiscovery: true }
-        const cached = await recommendationCacheService.get(userId, cacheParams)
-        if (cached) {
-            return NextResponse.json({ success: true, source: 'cache', ...cached })
+        try {
+            const cached = await recommendationCacheService.get(userId, cacheParams)
+            if (cached) {
+                return NextResponse.json({ success: true, source: 'cache', ...cached })
+            }
+        } catch (cacheError) {
+            console.warn(
+                '[RecommendationsAPI] Cache error, proceeding with fresh data:',
+                cacheError.message
+            )
         }
 
         const user = await User.findById(userId).select('_id stats performanceStats')
@@ -52,66 +47,99 @@ export async function GET(request) {
             return NextResponse.json({
                 success: true,
                 data: {
-                    recommendations: [],
                     weakTags: [],
+                    recommendations: [],
                     discoveryProblems: [],
                     discoveryTags: [],
+                    userLevel: 'easy',
                 },
             })
         }
 
-        // Feature flags / A/B Testing
-        const userBucket = hashUserId(userId) % 100
-        const useNewEngine = userBucket < 50
+        let recommendationPool = []
+        let discoveryPool = []
+        let weakTags = []
 
-        let recommendations = []
-        let engineUsed = ''
-
-        if (useNewEngine) {
-            engineUsed = 'ml-multi-signal'
-            recommendations = await recommendationService.getRecommendations(userId, 6)
-        } else {
-            engineUsed = 'legacy-rule-based'
-            recommendations = await recommendationService.getDiscoveryProblems(userId, 6)
+        try {
+            recommendationPool = await recommendationService.getRecommendations(userId, 12, {
+                user: user.toObject ? user.toObject() : user,
+                context,
+            })
+        } catch (recError) {
+            console.error('[RecommendationsAPI] getRecommendations error:', recError.message)
+            recommendationPool = []
         }
 
-        // --- Build weakTags from performanceStats ---
-        const perfStats = user.performanceStats || {}
-        const perfStatsObj =
-            typeof perfStats.toJSON === 'function' ? perfStats.toJSON() : { ...perfStats }
-        const weakTagObjects = recommendationService.getUserWeakTags(perfStatsObj)
-        const weakTags = weakTagObjects.slice(0, 3).map((w) => w.tag)
+        try {
+            // --- Build weakTags from performanceStats ---
+            const perfStats = user.performanceStats || {}
+            const perfStatsObj =
+                typeof perfStats.toJSON === 'function' ? perfStats.toJSON() : { ...perfStats }
+            const weakTagObjects = recommendationService.getUserWeakTags(perfStatsObj)
+            weakTags = weakTagObjects.slice(0, 3).map((w) => w.tag)
+        } catch (weakTagsError) {
+            console.error('[RecommendationsAPI] getUserWeakTags error:', weakTagsError.message)
+            weakTags = []
+        }
 
-        // --- Build discovery data ---
-        const discoveryLimit = Math.max(1, 3 - recommendations.filter((r) => r.isDiscovery).length)
-        const discoveryProblems = await recommendationService.getDiscoveryProblems(
+        try {
+            discoveryPool = await recommendationService.getDiscoveryProblems(userId, 6, {
+                user: user.toObject ? user.toObject() : user,
+                context,
+            })
+        } catch (discoveryError) {
+            console.error(
+                '[RecommendationsAPI] getDiscoveryProblems error:',
+                discoveryError.message
+            )
+            discoveryPool = []
+        }
+
+        const { recommendations, discoveryProblems } = buildContextualRecommendations({
+            context,
+            recommendationPool: recommendationPool || [],
+            discoveryPool: discoveryPool || [],
+            profileLimit: 6,
+            feedLimit: 6,
+            discoveryLimit: 3,
             userId,
-            discoveryLimit
-        )
-        const discoveryTags = [
-            ...new Set(discoveryProblems.flatMap((p) => p.tags || []).map((t) => t)),
-        ].slice(0, 3)
+        })
 
         const payload = {
-            engine: engineUsed,
-            bucket: userBucket,
+            engine: `ai-contextual-${context}`,
+            context,
             data: {
-                recommendations,
-                weakTags,
-                discoveryProblems,
-                discoveryTags,
+                weakTags: weakTags || [],
+                recommendations: recommendations || [],
+                discoveryProblems: discoveryProblems || [],
+                discoveryTags:
+                    discoveryProblems
+                        ?.map((p) => p.tags?.[0])
+                        .filter(Boolean)
+                        .slice(0, 3) || [],
             },
         }
 
-        // --- Persist to cache (1 hour TTL via CACHE_CONFIG) ---
-        await recommendationCacheService.set(userId, cacheParams, payload)
+        // Persist to cache for short-lived performance boost
+        try {
+            await recommendationCacheService.set(userId, cacheParams, payload)
+        } catch (cacheSetError) {
+            console.warn('[RecommendationsAPI] Cache set error:', cacheSetError.message)
+        }
 
         return NextResponse.json({ success: true, source: 'fresh', ...payload })
     } catch (error) {
-        console.error('[RecommendationsAPI] Error:', error)
-        return NextResponse.json(
-            { success: false, error: 'Failed to fetch recommendations', details: error.message },
-            { status: 500 }
-        )
+        console.error('[RecommendationsAPI] Critical Error:', error)
+        // Return graceful fallback instead of 500
+        return NextResponse.json({
+            success: true,
+            data: {
+                weakTags: [],
+                recommendations: [],
+                discoveryProblems: [],
+                discoveryTags: [],
+            },
+            error: 'Recommendations temporarily unavailable',
+        })
     }
 }

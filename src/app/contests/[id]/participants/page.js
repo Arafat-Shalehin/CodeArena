@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
+import useSWR from 'swr'
 import { useParams, useRouter } from 'next/navigation'
 import { useContest } from '@/hooks/useContest'
 import { ArrowLeft, Search, Users, School, Calendar, User as UserIcon } from 'lucide-react'
@@ -9,89 +10,50 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Mock Data as requested (Assuming backend might provide this eventually)
-const MOCK_PARTICIPANTS = [
-    {
-        id: '1',
-        name: 'Rabiul Islam',
-        institution: 'BUET',
-        registeredAt: '2024-03-01T10:00:00Z',
-        rank: 1,
-        avatar: '',
-    },
-    {
-        id: '2',
-        name: 'Zayan Ahmed',
-        institution: 'NSU',
-        registeredAt: '2024-03-01T10:05:00Z',
-        rank: 2,
-        avatar: '',
-    },
-    {
-        id: '3',
-        name: 'Nishat Tasnim',
-        institution: 'University of Dhaka',
-        registeredAt: '2024-03-01T10:15:00Z',
-        rank: 3,
-        avatar: '',
-    },
-    {
-        id: '4',
-        name: 'Arafat Sunny',
-        institution: 'SUST',
-        registeredAt: '2024-03-01T11:00:00Z',
-        rank: 4,
-        avatar: '',
-    },
-    {
-        id: '5',
-        name: 'Mehidi Hasan',
-        institution: 'MIST',
-        registeredAt: '2024-03-01T12:00:00Z',
-        rank: 5,
-        avatar: '',
-    },
-    {
-        id: '6',
-        name: 'Sara Khan',
-        institution: 'Brac University',
-        registeredAt: '2024-03-02T09:00:00Z',
-        rank: 6,
-        avatar: '',
-    },
-    {
-        id: '7',
-        name: 'Tanvir Hossain',
-        institution: 'CUET',
-        registeredAt: '2024-03-02T10:30:00Z',
-        rank: 7,
-        avatar: '',
-    },
-    {
-        id: '8',
-        name: 'Labiba Zaman',
-        institution: 'IUT',
-        registeredAt: '2024-03-02T11:45:00Z',
-        rank: 8,
-        avatar: '',
-    },
-]
-
 export default function ParticipantsPage() {
     const { id: contestId } = useParams()
     const router = useRouter()
     const { contest, isLoading: contestLoading } = useContest(contestId)
     const [searchQuery, setSearchQuery] = useState('')
+    const { data: resData, isLoading: swrLoading } = useSWR(
+        contestId ? `/api/contests/${contestId}/participants?limit=100` : null,
+        (url) => fetch(url).then((r) => r.json()),
+        { refreshInterval: 10000 }
+    )
+
+    const participants = useMemo(() => {
+        if (!resData?.success) return []
+        return (resData.data || []).map((p, idx) => ({
+            id: p._id,
+            name: p.userId?.name || 'Anonymous',
+            email: p.userId?.email || '',
+            institution: p.userId?.location || 'Independent',
+            registeredAt: p.createdAt,
+            rank: idx + 1,
+            avatar: p.userId?.avatarSeed
+                ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.userId.avatarSeed}`
+                : '',
+        }))
+    }, [resData])
+
+    const totalCount = resData?.pagination?.total || participants.length
+    const isLoading = swrLoading && participants.length === 0
 
     const filteredParticipants = useMemo(() => {
-        return MOCK_PARTICIPANTS.filter(
+        const query = searchQuery.trim().toLowerCase()
+        if (!query) return participants
+
+        return participants.filter(
             (p) =>
-                p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                p.institution.toLowerCase().includes(searchQuery.toLowerCase())
+                p.name?.toLowerCase().includes(query) ||
+                p.institution?.toLowerCase().includes(query) ||
+                p.email?.toLowerCase().includes(query) ||
+                p.rank.toString().includes(query)
         )
-    }, [searchQuery])
+    }, [participants, searchQuery])
 
     const formatDate = (dateString) => {
+        if (!dateString) return 'Not available'
         return new Date(dateString).toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
@@ -99,7 +61,7 @@ export default function ParticipantsPage() {
         })
     }
 
-    if (contestLoading) {
+    if (contestLoading || isLoading) {
         return (
             <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
                 <Skeleton className="mb-8 h-10 w-48" />
@@ -135,7 +97,9 @@ export default function ParticipantsPage() {
                                 {contest?.title || 'Contest Participants'}
                             </h1>
                             <p className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
-                                {MOCK_PARTICIPANTS.length} Total Registered
+                                {searchQuery.trim()
+                                    ? `Showing ${filteredParticipants.length} of ${totalCount} Registered`
+                                    : `${totalCount} Registered Participants`}
                             </p>
                         </div>
                     </div>
@@ -148,11 +112,19 @@ export default function ParticipantsPage() {
                     <div className="relative w-full max-w-md">
                         <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                         <Input
-                            placeholder="Filter by name or institution..."
+                            placeholder="Search by name, email or institution..."
                             className="border-border bg-bg-subtle focus-visible:ring-accent pl-10 text-sm font-medium"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="text-text-muted hover:text-text-primary absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                            >
+                                <span className="text-xs font-bold uppercase">Clear</span>
+                            </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-text-muted text-xs font-bold tracking-widest uppercase">
@@ -169,9 +141,18 @@ export default function ParticipantsPage() {
                     <div className="border-border bg-bg-subtle flex flex-col items-center justify-center rounded-2xl border py-20 text-center">
                         <Users className="text-text-muted mb-4 h-12 w-12 opacity-20" />
                         <h3 className="text-text-primary text-lg font-black uppercase">
-                            No participants found
+                            No match found
                         </h3>
-                        <p className="text-text-muted text-sm">Try adjusting your search query.</p>
+                        <p className="text-text-muted text-sm">
+                            Tried searching for &quot;{searchQuery}&quot; but nothing matched.
+                        </p>
+                        <Button
+                            variant="link"
+                            className="text-accent mt-2 font-bold uppercase"
+                            onClick={() => setSearchQuery('')}
+                        >
+                            Clear search
+                        </Button>
                     </div>
                 ) : (
                     <>

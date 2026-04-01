@@ -32,6 +32,7 @@ const contestSchema = new mongoose.Schema(
         },
         maxParticipants: { type: Number, default: null },
         reminderSent: { type: Boolean, default: false },
+        isResultReady: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

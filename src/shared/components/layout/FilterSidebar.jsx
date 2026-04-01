@@ -43,6 +43,7 @@ export function FilterSidebar({
                     <button
                         onClick={() => setIsOpen(false)}
                         className="hover:bg-bg-page text-text-secondary duration-normal rounded-lg p-1.5 transition-colors"
+                        aria-label="Close filter sidebar"
                     >
                         <X className="h-4 w-4" />
                     </button>

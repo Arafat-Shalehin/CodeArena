@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { User, LogOut, Search, ChevronRight } from 'lucide-react'
+import { User, LogOut, Search, ChevronRight, LayoutDashboard } from 'lucide-react'
 
 // Navigation Data
 const NAV_LINKS = [
@@ -40,7 +40,7 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
     }
 
     return (
-        <div className="bg-bg-page border-border absolute top-16 left-0 z-40 flex h-[calc(100vh-4rem)] w-full flex-col overflow-y-auto border-t px-4 py-6 shadow-xl duration-200 md:hidden">
+        <div className="bg-bg-page border-border absolute top-16 left-0 z-40 flex h-[calc(100vh-4rem)] w-full flex-col overflow-y-auto border-t px-4 py-6 shadow-xl duration-200 xl:hidden">
             <div className="space-y-4">
                 {/* Mobile Search */}
                 <div className="relative">
@@ -105,6 +105,12 @@ export default function MobileMenu({ isOpen, onClose, user, isAuthenticated, onL
                                 </Link>
                             </div>
 
+                            <Link href="/admin/dashboard" onClick={onClose}>
+                                <Button variant="default" size="lg" className="w-full font-bold">
+                                    <LayoutDashboard size={18} className="mr-2" />
+                                    Dashboard
+                                </Button>
+                            </Link>
                             <Link href="/profile" onClick={onClose}>
                                 <Button variant="secondary" size="lg" className="w-full font-bold">
                                     <User size={18} className="mr-2" />

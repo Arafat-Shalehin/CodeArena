@@ -1,333 +1,291 @@
-'use client'
-
 import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, MapPin, Globe, AtSign, Check, X as XIcon, Loader2, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { User, MapPin, Globe, AtSign, Edit2, X, Loader2 } from 'lucide-react'
+import { COUNTRIES } from '@/lib/countries.data'
 
-const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,25}$/
+const InlineEditField = ({
+    id,
+    label,
+    icon: Icon,
+    register,
+    error,
+    placeholder,
+    isTextArea = false,
+    charLimit,
+    watchValue = '',
+    disabled = false,
+    options = null,
+}) => {
+    const [isEditing, setIsEditing] = useState(false)
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <Label
+                    htmlFor={id}
+                    className="text-text-muted text-xs font-bold tracking-wider uppercase"
+                >
+                    {label}
+                </Label>
+                <div className="flex items-center gap-2">
+                    {isTextArea && charLimit && (
+                        <span
+                            className={`text-xs font-medium ${watchValue.length > charLimit ? 'text-warning' : 'text-text-muted'}`}
+                        >
+                            {watchValue.length || 0}/{charLimit}
+                        </span>
+                    )}
+                    {!disabled && (
+                        <button
+                            type="button"
+                            onClick={() => setIsEditing(!isEditing)}
+                            className="text-text-muted hover:text-accent transition-colors"
+                        >
+                            {isEditing ? (
+                                <X className="h-3.5 w-3.5" />
+                            ) : (
+                                <Edit2 className="h-3.5 w-3.5" />
+                            )}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="relative flex items-center gap-2">
+                <div className="relative flex-1">
+                    {Icon && (
+                        <Icon
+                            className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
+                            size={16}
+                        />
+                    )}
+                    {isTextArea ? (
+                        <textarea
+                            id={id}
+                            {...register(id)}
+                            disabled={!isEditing}
+                            rows={4}
+                            className="bg-bg-page border-border text-text-primary focus:ring-accent placeholder:text-text-muted disabled:bg-bg-subtle w-full resize-none rounded-md border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none disabled:opacity-70"
+                            placeholder={placeholder}
+                        />
+                    ) : options ? (
+                        <select
+                            id={id}
+                            {...register(id)}
+                            disabled={!isEditing}
+                            className={`bg-bg-page border-border text-text-primary focus:ring-accent placeholder:text-text-muted disabled:bg-bg-subtle w-full rounded-md border py-2 pr-3 text-sm transition-colors focus:ring-2 focus:outline-none disabled:opacity-70 ${Icon ? 'pl-10' : 'pl-3'}`}
+                        >
+                            <option value="">Global (No Country)</option>
+                            {options.map((opt) => (
+                                <option key={opt.code} value={opt.name}>
+                                    {opt.name}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <Input
+                            id={id}
+                            {...register(id)}
+                            disabled={!isEditing}
+                            className={`${Icon ? 'pl-10' : ''} disabled:bg-bg-subtle disabled:opacity-70`}
+                            placeholder={placeholder}
+                        />
+                    )}
+                </div>
+            </div>
+            {error && <p className="text-error text-xs font-medium">{error.message}</p>}
+        </div>
+    )
+}
+
+const UsernameField = ({ register, error, watch, setValue, user }) => {
+    const [isEditing, setIsEditing] = useState(false)
+    const [checkStatus, setCheckStatus] = useState('idle')
+    const [statusMessage, setStatusMessage] = useState('')
+
+    const currentInputValue = watch('name')
+
+    useEffect(() => {
+        if (!isEditing) {
+            setCheckStatus('idle')
+            setStatusMessage('')
+            return
+        }
+
+        const checkUsername = async () => {
+            if (!currentInputValue || currentInputValue.length < 3) {
+                setCheckStatus('idle')
+                setStatusMessage('Username must be 3-25 characters')
+                return
+            }
+
+            if (currentInputValue === user?.name) {
+                setCheckStatus('available')
+                setStatusMessage('This is your current username')
+                return
+            }
+
+            setCheckStatus('checking')
+            try {
+                const res = await fetch(`/api/users/check-username?username=${currentInputValue}`)
+                const data = await res.json()
+
+                if (data.canChange === false) {
+                    setCheckStatus('cooldown')
+                } else if (data.available) {
+                    setCheckStatus('available')
+                } else {
+                    setCheckStatus('taken')
+                }
+                setStatusMessage(data.message || '')
+            } catch (err) {
+                setCheckStatus('error')
+                setStatusMessage('Error checking username')
+            }
+        }
+
+        const timer = setTimeout(checkUsername, 500)
+        return () => clearTimeout(timer)
+    }, [currentInputValue, isEditing, user?.name])
+
+    return (
+        <div className="border-border bg-bg-subtle/50 mb-4 space-y-3 rounded-lg border p-5 md:col-span-2">
+            <div className="mb-2 flex items-center justify-between">
+                <div>
+                    <Label
+                        htmlFor="name"
+                        className="text-text-primary text-sm font-bold tracking-wider uppercase"
+                    >
+                        Username
+                    </Label>
+                    <p className="text-text-muted mt-0.5 text-xs">
+                        Your unique identifier. You can only change it once every 15 days.
+                    </p>
+                </div>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                        if (isEditing) {
+                            setIsEditing(false)
+                            setValue('name', user?.name || '') // revert
+                        } else {
+                            setIsEditing(true)
+                        }
+                    }}
+                >
+                    {isEditing ? 'Cancel Edit' : 'Change'}
+                </Button>
+            </div>
+
+            <div className="relative">
+                <AtSign
+                    className={`absolute top-1/2 left-3 -translate-y-1/2 transition-colors ${isEditing ? 'text-accent' : 'text-text-muted'}`}
+                    size={16}
+                />
+                <Input
+                    id="name"
+                    {...register('name')}
+                    disabled={!isEditing}
+                    className={`pl-10 font-medium ${
+                        !isEditing
+                            ? 'bg-bg-page/50 border-input opacity-100'
+                            : checkStatus === 'taken' || checkStatus === 'cooldown' || error
+                              ? 'border-error ring-error focus-visible:ring-error ring-1'
+                              : checkStatus === 'available'
+                                ? 'border-success ring-success focus-visible:ring-success ring-1'
+                                : 'border-accent ring-accent focus-visible:ring-accent ring-1'
+                    }`}
+                    placeholder="e.g. alex_rivera"
+                />
+                {isEditing && checkStatus === 'checking' && (
+                    <Loader2 className="text-text-muted absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin" />
+                )}
+            </div>
+
+            {isEditing && statusMessage && (
+                <p
+                    className={`ml-1 text-xs font-semibold ${
+                        checkStatus === 'available'
+                            ? 'text-success'
+                            : checkStatus === 'checking'
+                              ? 'text-text-muted'
+                              : 'text-error'
+                    }`}
+                >
+                    {statusMessage}
+                </p>
+            )}
+            {error && !statusMessage && (
+                <p className="text-error ml-1 text-xs font-semibold">{error.message}</p>
+            )}
+        </div>
+    )
+}
 
 export default function PersonalInfoForm({
     register,
     errors,
-    bioValue = '',
     watch,
     setValue,
-    countries = [],
+    user,
+    bioValue = '',
 }) {
-    const locationValue = watch ? watch('location') || '' : ''
-    const websiteValue = watch ? watch('website') || '' : ''
-    const countryValue = watch ? watch('country') || '' : ''
-
-    const handleClear = (field) => {
-        if (setValue) {
-            setValue(field, '', { shouldValidate: true })
-        }
-    }
-    const [showUsernameChange, setShowUsernameChange] = useState(false)
-    const [usernameAvailability, setUsernameAvailability] = useState({
-        status: 'idle', // 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
-        message: '',
-    })
-
-    const usernameValue = watch ? watch('name') : ''
-
-    // Debounced username availability check - ONLY when in change mode
-    useEffect(() => {
-        if (!showUsernameChange) {
-            setUsernameAvailability({ status: 'idle', message: '' })
-            return
-        }
-
-        if (!usernameValue || usernameValue.length < 3) {
-            setUsernameAvailability({ status: 'idle', message: '' })
-            return
-        }
-
-        if (!USERNAME_REGEX.test(usernameValue)) {
-            setUsernameAvailability({
-                status: 'invalid',
-                message: 'Only letters, numbers, and underscores allowed (3-25 chars)',
-            })
-            return
-        }
-
-        const timeoutId = setTimeout(async () => {
-            setUsernameAvailability({ status: 'checking', message: 'Checking availability...' })
-
-            try {
-                const res = await fetch(
-                    `/api/users/check-username?username=${encodeURIComponent(usernameValue)}`
-                )
-                const data = await res.json()
-
-                if (data.success) {
-                    setUsernameAvailability({
-                        status: data.available ? 'available' : 'taken',
-                        message: data.message,
-                    })
-                } else {
-                    setUsernameAvailability({
-                        status: 'invalid',
-                        message: data.message || 'Unable to check availability',
-                    })
-                }
-            } catch (error) {
-                console.error('Username check failed:', error)
-                setUsernameAvailability({
-                    status: 'idle',
-                    message: 'Unable to check. Please try again.',
-                })
-            }
-        }, 1200) // Increased debounce to 1.2s
-
-        return () => clearTimeout(timeoutId)
-    }, [usernameValue, showUsernameChange])
-
-    const getAvailabilityIcon = () => {
-        switch (usernameAvailability.status) {
-            case 'checking':
-                return <Loader2 className="text-text-muted h-4 w-4 animate-spin" />
-            case 'available':
-                return <Check className="text-success h-4 w-4" />
-            case 'taken':
-                return <X className="text-error h-4 w-4" />
-            case 'invalid':
-                return <AlertCircle className="text-warning h-4 w-4" />
-            default:
-                return null
-        }
-    }
-
-    const getAvailabilityColor = () => {
-        switch (usernameAvailability.status) {
-            case 'available':
-                return 'text-success'
-            case 'taken':
-            case 'invalid':
-                return 'text-error'
-            case 'checking':
-                return 'text-text-muted'
-            default:
-                return ''
-        }
-    }
-
     return (
         <Card className="p-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Username / Handle */}
-                <div className="space-y-2 md:col-span-2">
-                    <div className="flex items-center justify-between">
-                        <Label
-                            htmlFor="name"
-                            className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                        >
-                            Username / Handle
-                        </Label>
-                        {!showUsernameChange && (
-                            <button
-                                type="button"
-                                onClick={() => setShowUsernameChange(true)}
-                                className="text-accent hover:text-accent/80 text-xs font-bold underline-offset-4 hover:underline"
-                            >
-                                Change Username
-                            </button>
-                        )}
-                    </div>
+            <UsernameField
+                register={register}
+                error={errors.name}
+                watch={watch}
+                setValue={setValue}
+                user={user}
+            />
 
-                    <div className="relative">
-                        <AtSign
-                            className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
-                            size={16}
-                        />
-                        <Input
-                            id="name"
-                            {...register('name')}
-                            readOnly={!showUsernameChange}
-                            className={cn(
-                                'pr-10 pl-10',
-                                !showUsernameChange && 'bg-bg-muted cursor-not-allowed opacity-70',
-                                showUsernameChange &&
-                                    usernameAvailability.status === 'available' &&
-                                    'border-success focus:border-success focus:ring-success/20',
-                                showUsernameChange &&
-                                    usernameAvailability.status === 'taken' &&
-                                    'border-error focus:border-error focus:ring-error/20',
-                                showUsernameChange &&
-                                    usernameAvailability.status === 'invalid' &&
-                                    'border-warning focus:border-warning focus:ring-warning/20'
-                            )}
-                            placeholder="your_unique_handle"
-                        />
-                        <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-2">
-                            {showUsernameChange && getAvailabilityIcon()}
-                            {showUsernameChange && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowUsernameChange(false)}
-                                    className="text-text-muted hover:text-text-primary transition-colors"
-                                >
-                                    <XIcon size={14} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                    {showUsernameChange && usernameAvailability.message && (
-                        <p className={cn('text-xs font-medium', getAvailabilityColor())}>
-                            {usernameAvailability.message}
-                        </p>
-                    )}
-                    {errors.name && (
-                        <p className="text-error text-xs font-medium">{errors.name.message}</p>
-                    )}
-                    <p className="text-text-muted text-xs">
-                        Unique name used to identify you and for your profile URL. Only letters,
-                        numbers, and underscores.
-                    </p>
-                </div>
-
-                {/* Bio TextArea with Character Counter */}
-                <div className="space-y-2 md:col-span-2">
-                    <div className="flex items-center justify-between">
-                        <Label
-                            htmlFor="bio"
-                            className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                        >
-                            Bio
-                        </Label>
-                        <span
-                            className={`text-xs font-medium ${
-                                bioValue.length > 160
-                                    ? 'text-error'
-                                    : bioValue.length > 150
-                                      ? 'text-warning'
-                                      : 'text-text-muted'
-                            }`}
-                        >
-                            {bioValue.length || 0}/160
-                        </span>
-                    </div>
-                    <textarea
+            <div className="mt-2 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="md:col-span-2">
+                    <InlineEditField
                         id="bio"
-                        {...register('bio')}
-                        rows={4}
-                        className="bg-bg-page border-border text-text-primary focus:ring-accent placeholder:text-text-muted w-full resize-none rounded-md border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
+                        label="Bio"
+                        isTextArea
+                        register={register}
+                        error={errors.bio}
                         placeholder="Tell us about your coding journey..."
+                        charLimit={160}
+                        watchValue={bioValue}
                     />
-                    {errors.bio && (
-                        <p className="text-error text-xs font-medium">{errors.bio.message}</p>
-                    )}
                 </div>
 
-                {/* Location Input */}
-                <div className="space-y-2">
-                    <Label
-                        htmlFor="location"
-                        className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                    >
-                        City
-                    </Label>
-                    <div className="relative">
-                        <MapPin
-                            className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
-                            size={16}
-                        />
-                        <Input
-                            id="location"
-                            {...register('location')}
-                            className="pr-10 pl-10"
-                            placeholder="San Francisco"
-                        />
-                        {locationValue && (
-                            <button
-                                type="button"
-                                onClick={() => handleClear('location')}
-                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
-                                title="Clear city"
-                            >
-                                <XIcon size={14} />
-                            </button>
-                        )}
-                    </div>
-                    {errors.location && (
-                        <p className="text-error text-xs font-medium">{errors.location.message}</p>
-                    )}
-                </div>
+                <InlineEditField
+                    id="country"
+                    label="Country"
+                    icon={Globe}
+                    register={register}
+                    error={errors.country}
+                    options={COUNTRIES}
+                />
 
-                {/* Country Select */}
-                <div className="space-y-2">
-                    <Label
-                        htmlFor="country"
-                        className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                    >
-                        Country
-                    </Label>
-                    <div className="relative">
-                        <select
-                            id="country"
-                            {...register('country')}
-                            className="bg-bg-page border-border text-text-primary focus:ring-accent w-full rounded-md border px-3 py-2 pr-8 text-sm transition-colors focus:ring-2 focus:outline-none"
-                        >
-                            <option value="">Select a country</option>
-                            {countries.map((country) => (
-                                <option key={country.code} value={country.code}>
-                                    {country.name}
-                                </option>
-                            ))}
-                        </select>
-                        {countryValue && (
-                            <button
-                                type="button"
-                                onClick={() => handleClear('country')}
-                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
-                                title="Clear country"
-                            >
-                                <XIcon size={14} />
-                            </button>
-                        )}
-                    </div>
-                    {errors.country && (
-                        <p className="text-error text-xs font-medium">{errors.country.message}</p>
-                    )}
-                </div>
+                <InlineEditField
+                    id="location"
+                    label="City / State"
+                    icon={MapPin}
+                    register={register}
+                    error={errors.location}
+                    placeholder="e.g. San Francisco, CA"
+                />
 
-                {/* Website URL Input */}
-                <div className="space-y-2">
-                    <Label
-                        htmlFor="website"
-                        className="text-text-muted text-xs font-bold tracking-wider uppercase"
-                    >
-                        Website
-                    </Label>
-                    <div className="relative">
-                        <Globe
-                            className="text-text-muted absolute top-1/2 left-3 -translate-y-1/2"
-                            size={16}
-                        />
-                        <Input
-                            id="website"
-                            {...register('website')}
-                            className="pr-10 pl-10"
-                            placeholder="https://yourportfolio.com"
-                        />
-                        {websiteValue && (
-                            <button
-                                type="button"
-                                onClick={() => handleClear('website')}
-                                className="text-text-muted hover:text-error absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
-                                title="Clear website"
-                            >
-                                <XIcon size={14} />
-                            </button>
-                        )}
-                    </div>
-                    {errors.website && (
-                        <p className="text-error text-xs font-medium">{errors.website.message}</p>
-                    )}
-                </div>
+                <InlineEditField
+                    id="website"
+                    label="Website"
+                    icon={Globe}
+                    register={register}
+                    error={errors.website}
+                    placeholder="https://arivera.dev"
+                />
             </div>
         </Card>
     )

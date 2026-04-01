@@ -15,4 +15,12 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 export const auth = getAuth(app)
 
+/**
+ * Helper to get Firebase auth and app instances.
+ * This is used in some components that expect an async getter.
+ */
+export const getFirebaseAuth = async () => {
+    return { auth, app }
+}
+
 export default app

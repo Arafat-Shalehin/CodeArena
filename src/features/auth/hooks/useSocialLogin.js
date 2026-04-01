@@ -25,7 +25,26 @@ export function useSocialLogin() {
             const provider =
                 providerName === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider()
 
-            await signInWithPopup(auth, provider)
+            const userCredential = await signInWithPopup(auth, provider)
+            const firebaseUser = userCredential.user
+
+            // Sync with backend to set the httpOnly cookie
+            const syncRes = await fetch('/api/auth/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: firebaseUser.displayName,
+                    photoURL: firebaseUser.photoURL,
+                    authProvider: providerName,
+                }),
+            })
+
+            if (!syncRes.ok) {
+                throw new Error('Failed to sync account with server')
+            }
+
             router.push('/feed')
         } catch (err) {
             if (err.code === 'auth/account-exists-with-different-credential') {

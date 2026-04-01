@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import ProblemCard from '@/shared/components/ProblemCard'
 import { Compass } from 'lucide-react'
 
-export default function RecommendedProblems() {
+export default function RecommendedProblems({ context = 'profile' }) {
     const [recommendations, setRecommendations] = useState([])
     const [discoveryProblems, setDiscoveryProblems] = useState([])
     const [discoveryTags, setDiscoveryTags] = useState([])
@@ -15,7 +15,7 @@ export default function RecommendedProblems() {
     useEffect(() => {
         const fetchRecommendations = async () => {
             try {
-                const response = await fetch('/api/user/recommendations')
+                const response = await fetch(`/api/user/recommendations?context=${context}`)
                 if (!response.ok) {
                     throw new Error(`Server error: ${response.status}`)
                 }
@@ -39,7 +39,7 @@ export default function RecommendedProblems() {
         }
 
         fetchRecommendations()
-    }, [])
+    }, [context])
 
     if (loading) {
         return (
@@ -75,6 +75,7 @@ export default function RecommendedProblems() {
 
     const hasRecommendations = recommendations && recommendations.length > 0
     const hasDiscovery = discoveryProblems && discoveryProblems.length > 0
+    const isFeedContext = context === 'feed'
 
     if (!hasRecommendations && !hasDiscovery) {
         return (
@@ -98,18 +99,35 @@ export default function RecommendedProblems() {
             {/* Weakness-Based Recommendations (Focus Areas) */}
             {hasRecommendations && (
                 <div className="bg-bg-subtle border-border rounded-2xl border p-6 shadow-sm">
-                    <h3 className="text-text-primary mb-1 text-lg font-bold">Focus Areas</h3>
+                    <h3 className="text-text-primary mb-1 text-lg font-bold">
+                        {isFeedContext ? 'Recommended Next Steps' : 'Focus Areas'}
+                    </h3>
                     {weakTags.length > 0 ? (
                         <p className="text-text-secondary mb-6 text-sm">
-                            We noticed you&apos;ve been struggling with{' '}
-                            <span className="text-accent-text font-bold">
-                                {weakTags.join(', ')}
-                            </span>
-                            . Try these to improve your skills.
+                            {isFeedContext ? (
+                                <>
+                                    Based on your recent activity, these are smart next problems to
+                                    keep your momentum while still covering{' '}
+                                    <span className="text-accent-text font-bold">
+                                        {weakTags.join(', ')}
+                                    </span>
+                                    .
+                                </>
+                            ) : (
+                                <>
+                                    We noticed you&apos;ve been struggling with{' '}
+                                    <span className="text-accent-text font-bold">
+                                        {weakTags.join(', ')}
+                                    </span>
+                                    . Try these to improve your skills.
+                                </>
+                            )}
                         </p>
                     ) : (
                         <p className="text-text-secondary mb-6 text-sm font-medium">
-                            Tailored problems to help you sharpen your edge.
+                            {isFeedContext
+                                ? 'Fresh recommendations shaped by your recent coding rhythm.'
+                                : 'Tailored problems to help you sharpen your edge.'}
                         </p>
                     )}
 

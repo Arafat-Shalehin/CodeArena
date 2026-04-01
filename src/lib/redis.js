@@ -8,21 +8,9 @@ const isBuildPhase =
 
 // Support Railway's REDIS_URL format (primary) or individual env vars (fallback)
 const redisUrl = process.env.REDIS_URL || ''
-const isRedisTls = redisUrl.startsWith('rediss://')
-const allowInsecureTls = process.env.REDIS_TLS_INSECURE === 'true'
 
 const redisConfig = redisUrl
-    ? {
-          url: redisUrl,
-          ...(isRedisTls
-              ? {
-                    socket: {
-                        tls: true,
-                        ...(allowInsecureTls ? { rejectUnauthorized: false } : {}),
-                    },
-                }
-              : {}),
-      }
+    ? { url: redisUrl }
     : {
           host:
               process.env.REDIS_HOST ||

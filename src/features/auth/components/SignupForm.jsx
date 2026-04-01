@@ -118,7 +118,25 @@ export default function SignupForm() {
                 data.email,
                 data.password
             )
-            await updateProfile(userCredential.user, { displayName: data.username })
+            const firebaseUser = userCredential.user
+            await updateProfile(firebaseUser, { displayName: data.username })
+
+            // Sync with backend to set the httpOnly cookie
+            const syncRes = await fetch('/api/auth/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: data.username,
+                    authProvider: 'firebase',
+                }),
+            })
+
+            if (!syncRes.ok) {
+                throw new Error('Failed to sync account with server')
+            }
+
             toast.success('Account created successfully! Welcome to CodeArena.')
             router.replace(redirectTo)
         } catch (err) {
@@ -194,7 +212,7 @@ export default function SignupForm() {
                         htmlFor="email"
                         className="text-text-muted font-mono text-xs tracking-wider uppercase"
                     >
-                        User Email
+                        Email Address
                     </Label>
                     <div className="group relative">
                         <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
@@ -223,7 +241,7 @@ export default function SignupForm() {
                             htmlFor="password"
                             className="text-text-muted font-mono text-xs tracking-wider uppercase"
                         >
-                            Master Key
+                            Password
                         </Label>
                     </div>
                     <div className="group relative">
@@ -289,7 +307,7 @@ export default function SignupForm() {
                         htmlFor="confirm-password"
                         className="text-text-muted font-mono text-xs tracking-wider uppercase"
                     >
-                        Confirm Key
+                        Confirm Password
                     </Label>
                     <div className="group relative">
                         <div className="text-text-muted group-focus-within:text-accent pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors">
@@ -365,10 +383,10 @@ export default function SignupForm() {
                 >
                     {isLoading ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> INITIALIZING...
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> CREATING ACCOUNT...
                         </>
                     ) : (
-                        'INITIALIZE ACCOUNT'
+                        'CREATE ACCOUNT'
                     )}
                 </Button>
             </form>
@@ -387,7 +405,7 @@ export default function SignupForm() {
             <div className="grid grid-cols-2 gap-4">
                 <Button
                     variant="secondary"
-                    className="text-text-primary hover:text-accent w-full transition-colors"
+                    className="bg-bg-surface/50 border-border hover:bg-accent/5 hover:border-accent/20 hover:text-accent w-full border transition-all duration-300"
                     onClick={() => handleSocialLogin('google')}
                     disabled={anyLoading}
                     type="button"
@@ -414,7 +432,7 @@ export default function SignupForm() {
                 </Button>
                 <Button
                     variant="secondary"
-                    className="text-text-primary hover:text-accent w-full transition-colors"
+                    className="bg-bg-surface/50 border-border hover:bg-accent/5 hover:border-accent/20 hover:text-accent w-full border transition-all duration-300"
                     onClick={() => handleSocialLogin('github')}
                     disabled={anyLoading}
                     type="button"

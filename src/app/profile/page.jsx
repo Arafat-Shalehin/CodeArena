@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
@@ -39,35 +39,40 @@ export default function ProfilePage() {
     const [hasMoreSubmissions, setHasMoreSubmissions] = useState(true)
     const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false)
 
-    const userId = user?.id || user?._id
-
     useEffect(() => {
         if (!isLoading && !user) {
-            router.replace('/login?redirect=/profile')
+            router.replace('/login?error=unauthorized')
         }
     }, [user, isLoading, router])
 
     useEffect(() => {
-        if (userId) {
+        if (user) {
             fetchSubmissions(5, 0, true)
             // Background sync to ensure stats/heatmap are up to date
             syncUser?.()
         }
-    }, [userId, syncUser])
+    }, [user, syncUser])
 
+    /**
+     * FIX: Use functional updater for setSubmissions to avoid stale closure
+     * on submissions.length when computing hasMoreSubmissions.
+     */
     const fetchSubmissions = async (limit = 5, offset = 0, reset = false) => {
         if (!user) return
         setIsSubmissionsLoading(true)
         try {
-            const queryUrl = `/api/submissions?userId=${userId}&limit=${limit}&offset=${offset}`
+            const queryId = user._id || user.id
+            const queryUrl = `/api/submissions?userId=${queryId}&limit=${limit}&offset=${offset}`
             const res = await fetch(queryUrl)
             const data = await res.json()
             if (data.success) {
                 const newSubs = data.data || []
-                setSubmissions((prev) => (reset ? newSubs : [...prev, ...newSubs]))
-
-                const currentTotal = reset ? newSubs.length : submissions.length + newSubs.length
-                setHasMoreSubmissions(currentTotal < (data.pagination?.total || 0))
+                const total = data.pagination?.total || 0
+                setSubmissions((prev) => {
+                    const updated = reset ? newSubs : [...prev, ...newSubs]
+                    setHasMoreSubmissions(updated.length < total)
+                    return updated
+                })
             }
         } catch (err) {
             console.error('Failed to fetch submissions:', err)
@@ -85,12 +90,33 @@ export default function ProfilePage() {
         fetchSubmissions(100, 0, true)
     }
 
-    if (isLoading || !user) {
+    /**
+     * FIX (Rules of Hooks): useMemo MUST be called before any early return.
+     * Memoize the 365-item calendar array — only rebuilds when activityCalendar changes.
+     */
+    const calendarData = useMemo(() => {
+        const rawCalendar = user?.stats?.activityCalendar || {}
+        const calendar = rawCalendar instanceof Map ? Object.fromEntries(rawCalendar) : rawCalendar
+        return Array.from({ length: 365 }, (_, i) => {
+            const d = new Date()
+            d.setDate(d.getDate() - (364 - i))
+            const dateStr = d.toISOString().split('T')[0]
+            const count = calendar[dateStr] || 0
+            const level = count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 9 ? 3 : 4
+            return { date: dateStr, count, level }
+        })
+    }, [user?.stats?.activityCalendar])
+
+    if (isLoading || (!user && !isLoading)) {
         return (
             <div className="bg-bg-page flex min-h-screen items-center justify-center">
                 <Loader2 className="text-accent h-12 w-12 animate-spin" />
             </div>
         )
+    }
+
+    if (!user) {
+        return null
     }
 
     const sortedLanguages = getLanguageStats(user.stats)
@@ -173,115 +199,81 @@ export default function ProfilePage() {
                                 </h3>
 
                                 <div className="no-scrollbar flex w-full justify-start overflow-x-auto pb-4 sm:justify-center">
-                                    {(() => {
-                                        const rawCalendar = user?.stats?.activityCalendar || {}
-                                        const calendar =
-                                            rawCalendar instanceof Map
-                                                ? Object.fromEntries(rawCalendar)
-                                                : rawCalendar
-
-                                        // Ensure 365 dates
-                                        const calendarData = []
-                                        for (let i = 364; i >= 0; i--) {
-                                            const d = new Date()
-                                            d.setDate(d.getDate() - i)
-                                            const dateStr = d.toISOString().split('T')[0]
-                                            const count = calendar[dateStr] || 0
-
-                                            // Determine level 0-4
-                                            let level = 0
-                                            if (count > 0 && count <= 2) level = 1
-                                            else if (count >= 3 && count <= 5) level = 2
-                                            else if (count >= 6 && count <= 9) level = 3
-                                            else if (count >= 10) level = 4
-
-                                            calendarData.push({
-                                                date: dateStr,
-                                                count: count,
-                                                level: level,
-                                            })
-                                        }
-
-                                        return (
-                                            <div className="w-max min-w-full">
-                                                <ActivityCalendar
-                                                    data={calendarData}
-                                                    colorScheme={
-                                                        theme === 'dark' ? 'dark' : 'light'
-                                                    }
-                                                    theme={{
-                                                        light: [
-                                                            '#ebedf0',
-                                                            '#9be9a8',
-                                                            '#40c463',
-                                                            '#30a14e',
-                                                            '#216e39',
-                                                        ],
-                                                        dark: [
-                                                            '#161b22',
-                                                            '#0e4429',
-                                                            '#006d32',
-                                                            '#26a641',
-                                                            '#39d353',
-                                                        ],
-                                                    }}
-                                                    labels={{
-                                                        legend: {
-                                                            less: 'Less',
-                                                            more: 'More',
-                                                            colors: [
-                                                                'No activity',
-                                                                '1-2 submissions',
-                                                                '3-5 submissions',
-                                                                '6-9 submissions',
-                                                                '10+ submissions',
-                                                            ],
-                                                        },
-                                                        months: [
-                                                            'Jan',
-                                                            'Feb',
-                                                            'Mar',
-                                                            'Apr',
-                                                            'May',
-                                                            'Jun',
-                                                            'Jul',
-                                                            'Aug',
-                                                            'Sep',
-                                                            'Oct',
-                                                            'Nov',
-                                                            'Dec',
-                                                        ],
-                                                        weekdays: [
-                                                            'Sun',
-                                                            'Mon',
-                                                            'Tue',
-                                                            'Wed',
-                                                            'Thu',
-                                                            'Fri',
-                                                            'Sat',
-                                                        ],
-                                                        totalCount:
-                                                            '{{count}} submissions in the last year',
-                                                    }}
-                                                    fontSize={12}
-                                                    blockSize={12}
-                                                    blockMargin={4}
-                                                    blockRadius={2}
-                                                    renderBlock={(block, activity) =>
-                                                        cloneElement(block, {
-                                                            'data-tooltip-id': 'activity-tooltip',
-                                                            'data-tooltip-html': `<strong>${activity.count} submissions</strong> on ${activity.date}`,
-                                                        })
-                                                    }
-                                                />
-                                                <ReactTooltip id="activity-tooltip" />
-                                            </div>
-                                        )
-                                    })()}
+                                    <div className="w-max min-w-full">
+                                        <ActivityCalendar
+                                            data={calendarData}
+                                            colorScheme={theme === 'dark' ? 'dark' : 'light'}
+                                            theme={{
+                                                light: [
+                                                    '#ebedf0',
+                                                    '#9be9a8',
+                                                    '#40c463',
+                                                    '#30a14e',
+                                                    '#216e39',
+                                                ],
+                                                dark: [
+                                                    '#161b22',
+                                                    '#0e4429',
+                                                    '#006d32',
+                                                    '#26a641',
+                                                    '#39d353',
+                                                ],
+                                            }}
+                                            labels={{
+                                                legend: {
+                                                    less: 'Less',
+                                                    more: 'More',
+                                                    colors: [
+                                                        'No activity',
+                                                        '1-2 submissions',
+                                                        '3-5 submissions',
+                                                        '6-9 submissions',
+                                                        '10+ submissions',
+                                                    ],
+                                                },
+                                                months: [
+                                                    'Jan',
+                                                    'Feb',
+                                                    'Mar',
+                                                    'Apr',
+                                                    'May',
+                                                    'Jun',
+                                                    'Jul',
+                                                    'Aug',
+                                                    'Sep',
+                                                    'Oct',
+                                                    'Nov',
+                                                    'Dec',
+                                                ],
+                                                weekdays: [
+                                                    'Sun',
+                                                    'Mon',
+                                                    'Tue',
+                                                    'Wed',
+                                                    'Thu',
+                                                    'Fri',
+                                                    'Sat',
+                                                ],
+                                                totalCount:
+                                                    '{{count}} submissions in the last year',
+                                            }}
+                                            fontSize={12}
+                                            blockSize={12}
+                                            blockMargin={4}
+                                            blockRadius={2}
+                                            renderBlock={(block, activity) =>
+                                                cloneElement(block, {
+                                                    'data-tooltip-id': 'activity-tooltip',
+                                                    'data-tooltip-html': `<strong>${activity.count} submissions</strong> on ${activity.date}`,
+                                                })
+                                            }
+                                        />
+                                        <ReactTooltip id="activity-tooltip" />
+                                    </div>
                                 </div>
                             </section>
 
-                            <RecommendedProblems />
+                            <RecommendedProblems context="profile" />
                             <ContestPerformance performance={user.stats?.contestPerformance} />
 
                             {/* Recent Submissions */}

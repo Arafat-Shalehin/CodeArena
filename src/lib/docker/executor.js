@@ -3,7 +3,7 @@ import { Readable, PassThrough } from 'stream'
 import path from 'path'
 import { getLanguageConfig } from './languages.js'
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
-import { executeCodeWithJudge0 } from '../judge0-executor.js'
+import { executeCodeWithJudge0, checkJudge0Availability } from '../judge0-executor.js'
 
 const dockerOptions = {}
 
@@ -38,81 +38,17 @@ if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDock
 
 let docker = null
 let dockerInitError = null
-let dockerUnavailableReason = null
-let dockerReachabilityCacheUntil = 0
-
-const DOCKER_REACHABILITY_CACHE_MS = 15000
-const CLOUD_FALLBACK_LOG_PREFIX =
-    '[EXECUTOR][CLOUD_FALLBACK] Docker socket is not reachable. Falling back to Judge0.'
 
 try {
     docker = new Docker(dockerOptions)
 } catch (err) {
     // Docker unavailable (e.g., in Railway production without Docker socket)
     dockerInitError = err
-    dockerUnavailableReason = err?.message || 'Docker initialization failed'
     console.warn('⚠️  Docker not available for code execution:', err.message)
 } finally {
     // Restore it after initialization
     if (originalDockerHost) {
         process.env.DOCKER_HOST = originalDockerHost
-    }
-}
-
-function getErrorMessage(errorOrMessage) {
-    if (!errorOrMessage) return ''
-    if (typeof errorOrMessage === 'string') return errorOrMessage
-    return errorOrMessage.message || String(errorOrMessage)
-}
-
-function isDockerSocketUnreachable(errorOrMessage) {
-    const message = getErrorMessage(errorOrMessage).toLowerCase()
-    if (!message) return false
-
-    return [
-        'enoent',
-        'econnrefused',
-        'eacces',
-        'epipe',
-        'docker socket',
-        'cannot connect to the docker daemon',
-        'connect: no such file or directory',
-        'permission denied',
-        'npipe',
-        '/var/run/docker.sock',
-    ].some((token) => message.includes(token))
-}
-
-function markDockerUnavailable(errorOrMessage) {
-    dockerUnavailableReason = getErrorMessage(errorOrMessage) || 'Docker socket unreachable'
-    docker = null
-    dockerReachabilityCacheUntil = 0
-    console.warn(`${CLOUD_FALLBACK_LOG_PREFIX} reason=${dockerUnavailableReason}`)
-}
-
-async function isDockerReachable() {
-    if (!docker) {
-        return false
-    }
-
-    const now = Date.now()
-    if (now < dockerReachabilityCacheUntil) {
-        return true
-    }
-
-    try {
-        await docker.ping()
-        dockerReachabilityCacheUntil = now + DOCKER_REACHABILITY_CACHE_MS
-        return true
-    } catch (error) {
-        if (isDockerSocketUnreachable(error)) {
-            markDockerUnavailable(error)
-        } else {
-            console.warn(
-                `[EXECUTOR] Docker ping failed, using Judge0 fallback for this execution: ${getErrorMessage(error)}`
-            )
-        }
-        return false
     }
 }
 
@@ -146,7 +82,7 @@ export async function executeCode({
         console.log(`[EXECUTOR] executeCode called: language=${language}, codeLength=${code.length}, inputLength=${input.length}, isPlayground=${isPlayground}`)
 
         // Check if Docker is available
-        if (await isDockerReachable()) {
+        if (docker) {
             // Docker is available - try to use it with retry logic
             console.log('[EXECUTOR] Using Docker for code execution')
             let lastError = null
@@ -178,12 +114,6 @@ export async function executeCode({
                         return result
                     }
 
-                    // If Docker socket itself is unavailable, stop retrying and fall back to Judge0.
-                    if (isDockerSocketUnreachable(result.error)) {
-                        markDockerUnavailable(result.error)
-                        break
-                    }
-
                     // Store error for potential retry
                     lastError = result.error
 
@@ -196,11 +126,6 @@ export async function executeCode({
                     console.error(`[EXECUTOR] Docker error on attempt ${attempt}:`, error.message)
                     lastError = error.message
 
-                    if (isDockerSocketUnreachable(error)) {
-                        markDockerUnavailable(error)
-                        break
-                    }
-
                     if (attempt < maxRetries) {
                         await new Promise(resolve => setTimeout(resolve, 500))
                     }
@@ -211,9 +136,7 @@ export async function executeCode({
             console.error('[EXECUTOR] Docker execution failed after retries:', lastError)
             console.log('[EXECUTOR] Falling back to Judge0 API')
         } else {
-            console.log(
-                `[EXECUTOR] Docker not available, using Judge0 directly (${dockerUnavailableReason || dockerInitError?.message || 'no docker instance'})`
-            )
+            console.log('[EXECUTOR] Docker not available, using Judge0 directly')
         }
 
         // Docker not available or failed - fallback to Judge0
@@ -238,8 +161,8 @@ export async function executeCode({
             return {
                 ...judge0Result,
                 success: false,
-                verdict: 'FEATURE_UNSUPPORTED_IN_CLOUD',
-                error: 'Special judge is not supported in cloud fallback mode (Judge0).',
+                verdict: 'EXECUTOR_UNAVAILABLE',
+                error: 'Special judge not supported in this execution environment',
             }
         }
 
@@ -252,167 +175,6 @@ export async function executeCode({
             error: error.message,
         }
     }
-}
-
-/**
- * Execute code against multiple inputs using a single Docker container.
- * Dramatically reduces latency for multi-test-case judge runs by reusing
- * the container lifecycle instead of creating one per test case.
- *
- * Returns an array of result objects (one per input), stopping after the
- * first non-ACCEPTED verdict (fail-fast).
- *
- * Falls back to null when Docker is unavailable so the caller can use Judge0.
- */
-export async function executeMultipleInputs({
-    code,
-    files,
-    language,
-    inputs,
-    timeLimit,
-    memoryLimit,
-    outputLimit,
-    specialJudgeCode,
-    expectedOutputs,
-}) {
-    // Security check once for all inputs
-    const codeToValidate = files && files.length > 0 ? files.map((f) => f.content).join('\n') : code
-    const securityCheck = validateCodeSecurity(codeToValidate)
-    if (!securityCheck.isValid) {
-        return inputs.map(() => ({
-            success: false,
-            verdict: 'SECURITY_ERROR',
-            error: securityCheck.errors.join(', '),
-        }))
-    }
-
-    if (!docker) {
-        // Signal to caller: Docker unavailable, fall back to per-call Judge0
-        return null
-    }
-
-    const langConfig = getLanguageConfig(language)
-    const effectiveTimeLimit = timeLimit || langConfig.defaultTimeLimit
-    const effectiveMemoryLimit = memoryLimit || langConfig.defaultMemoryLimit
-    const effectiveOutputLimit = outputLimit || SANDBOX_CONFIG.execution.maxOutputSize / 1024
-
-    let container
-    try {
-        // Create and start container ONCE, writing source code and first input
-        container = await createContainer(
-            langConfig,
-            code,
-            files,
-            inputs[0] || '',
-            effectiveTimeLimit,
-            effectiveMemoryLimit,
-            effectiveOutputLimit
-        )
-    } catch (err) {
-        if (isDockerSocketUnreachable(err)) {
-            markDockerUnavailable(err)
-            return null
-        }
-
-        console.error('[EXECUTOR] executeMultipleInputs: container creation failed:', err.message)
-        return inputs.map(() => ({
-            success: false,
-            verdict: 'SYSTEM_ERROR',
-            error: err.message,
-        }))
-    }
-
-    const results = []
-    let judgeContainer = null
-    let judgeContainerInitialized = false // Track if we've attempted to create
-
-    try {
-        for (let i = 0; i < inputs.length; i++) {
-            console.log(`[EXECUTOR] 🏃 Running test case ${i + 1}/${inputs.length}...`)
-
-            // For runs after the first, overwrite input.txt inside the existing container
-            if (i > 0) {
-                const inputContent = inputs[i] || ''
-                const inputB64 = Buffer.from(inputContent).toString('base64')
-                const exec = await container.exec({
-                    Cmd: ['sh', '-c', `echo "${inputB64}" | base64 -d > /workspace/input.txt`],
-                    User: 'root',
-                })
-                // FIX: Run detached and use small delay - stream events unreliable for quick commands
-                await exec.start({ Detach: true })
-                // Give 50ms for the file write to complete (nearly instant operation)
-                await new Promise((resolve) => setTimeout(resolve, 50))
-                console.log(`[EXECUTOR] Input file written for test case ${i + 1}`)
-            }
-
-            let result
-            try {
-                console.log(`[EXECUTOR] Calling runContainer for test case ${i + 1}...`)
-                result = await runContainer(container, effectiveTimeLimit)
-                console.log(`[EXECUTOR] ✅ Test case ${i + 1} completed: verdict=${result.verdict}, time=${result.executionTime}ms`)
-            } catch (runErr) {
-                console.error(`[EXECUTOR] ❌ Test case ${i + 1} error:`, runErr.message)
-                result = { success: false, verdict: 'SYSTEM_ERROR', error: runErr.message }
-            }
-
-            // Handle special judge if provided
-            if (result.success && specialJudgeCode && expectedOutputs?.[i]) {
-                // Lazy-create special judge container on first use (once, reuse for all test cases)
-                if (!judgeContainerInitialized) {
-                    judgeContainerInitialized = true
-                    try {
-                        const langConfig = getLanguageConfig('javascript')
-                        const dockerConfig = getDockerRunConfig(langConfig.name)
-                        judgeContainer = await docker.createContainer({
-                            Image: langConfig.image,
-                            Entrypoint: ['/bin/sh', '-c'],
-                            Cmd: ['tail -f /dev/null'],
-                            ...dockerConfig,
-                            OpenStdin: true,
-                            Tty: false,
-                        })
-                        await judgeContainer.start()
-                        console.log('[EXECUTOR] Special judge container created for reuse across test cases')
-                    } catch (err) {
-                        console.error('[EXECUTOR] Failed to create special judge container:', err.message)
-                        judgeContainer = null
-                    }
-                }
-
-                const judgeResult = await runSpecialJudgeInSandbox({
-                    specialJudgeCode,
-                    input: inputs[i] || '',
-                    actualOutput: result.output,
-                    expectedOutput: expectedOutputs[i],
-                    judgeContainer: judgeContainer, // Reuse if created
-                })
-                if (!judgeResult.success) {
-                    result = {
-                        ...result,
-                        success: false,
-                        verdict: 'WRONG_ANSWER',
-                        error: judgeResult.error || 'Special judge rejected the output',
-                    }
-                }
-            }
-
-            results.push(result)
-
-            // Fail-fast: stop running further test cases on any non-ACCEPTED verdict
-            const v = (result.verdict || '').toUpperCase()
-            if (v !== 'ACCEPTED' && v !== 'SUCCESS') {
-                break
-            }
-        }
-    } finally {
-        await cleanupContainer(container)
-        if (judgeContainer) {
-            await cleanupContainer(judgeContainer)
-            console.log('[EXECUTOR] Special judge container cleaned up')
-        }
-    }
-
-    return results
 }
 
 /**
@@ -583,7 +345,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         }
         startupAttempts++
         if (startupAttempts < 10) {
-            await new Promise(resolve => setTimeout(resolve, 50))
+            await new Promise(resolve => setTimeout(resolve, 100))
         }
     }
 
@@ -610,6 +372,9 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         }
         throw new Error(`Container startup failed with ExitCode ${containerInfo?.State.ExitCode}. State: ${containerInfo?.State.Status || 'unknown'}`)
     }
+
+    // Wait a moment to make sure container is fully started
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Write files using exec
     try {
@@ -697,7 +462,6 @@ async function runContainer(container, timeLimit) {
 
     try {
         // Execute the runner script as coderunner user
-        console.log('[EXECUTOR] Starting exec for runner.sh...')
         const exec = await container.exec({
             Cmd: ['/usr/local/bin/runner.sh'],
             AttachStdout: true,
@@ -706,9 +470,7 @@ async function runContainer(container, timeLimit) {
         })
 
         // Start execution with timeout
-        console.log('[EXECUTOR] Exec created, starting stream...')
         const execStream = await exec.start({ Detach: false, Tty: false })
-        console.log('[EXECUTOR] Stream started, setting up demux...')
 
         // Collect output using PassThrough streams to handle Docker's multiplexing
         const stdoutStream = new PassThrough()
@@ -717,19 +479,17 @@ async function runContainer(container, timeLimit) {
         // Use container's modem to demultiplex the stream (separates stdout from stderr and removes headers)
         container.modem.demuxStream(execStream, stdoutStream, stderrStream)
 
-        // Use array for output collection (avoid O(n²) string concatenation)
-        const outputChunks = []
+        let output = ''
         const streamPromise = new Promise((resolve, reject) => {
             stdoutStream.on('data', (chunk) => {
-                outputChunks.push(chunk.toString('utf8'))
+                output += chunk.toString('utf8')
                 // Early check for output limit
-                const totalLength = outputChunks.reduce((sum, c) => sum + c.length, 0)
-                if (totalLength > (SANDBOX_CONFIG.execution.maxOutputSize * 1.1)) {
+                if (output.length > (SANDBOX_CONFIG.execution.maxOutputSize * 1.1)) {
                     // We let it finish or head will truncate it inside container
                 }
             })
             stderrStream.on('data', (chunk) => {
-                outputChunks.push(chunk.toString('utf8'))
+                output += chunk.toString('utf8')
             })
 
             // Resolve when the main stream ends
@@ -745,16 +505,12 @@ async function runContainer(container, timeLimit) {
         )
 
         await Promise.race([streamPromise, timeoutPromise])
-        console.log('[EXECUTOR] Stream completed, getting exit code...')
 
         const executionTime = Date.now() - startTime
 
         // Get exit code
         const inspectExec = await exec.inspect()
         const statusCode = inspectExec.ExitCode || 0
-
-        // Join collected chunks into single output string
-        const output = outputChunks.join('')
 
         // Parse output
         return parseExecutionOutput(output, statusCode, executionTime)
@@ -858,10 +614,13 @@ function extractError(output) {
 
 /**
  * Extract program output
+ * This function separates actual program stdout/stderr from internal metadata
+ * printed by the sandbox runner.
  */
 function extractOutput(output) {
+    if (!output) return ''
+
     const lines = output.split('\n')
-    let capturing = false
     const outputLines = []
 
     // Patterns to exclude from the final program output
@@ -872,19 +631,18 @@ function extractOutput(output) {
         'Compiling',
         'Executing',
         'runner.sh:',
-        '[:'
+        '[:', // Shell condition outputs
+        'COMPILATION_ERROR',
+        'RUNTIME_ERROR',
+        'TIME_LIMIT_EXCEEDED',
+        'MEMORY_LIMIT_EXCEEDED'
     ]
 
     for (const line of lines) {
-        if (line.includes('SUCCESS')) {
-            capturing = true
-            continue
-        }
-        if (capturing) {
-            const isInternal = internalPatterns.some((p) => line.includes(p))
-            if (!isInternal) {
-                outputLines.push(line)
-            }
+        // Skip lines that are purely internal marker info
+        const isInternal = internalPatterns.some((p) => line.includes(p))
+        if (!isInternal && line.trim() !== '') {
+            outputLines.push(line)
         }
     }
 
@@ -909,14 +667,12 @@ function extractMemory(output) {
 
 /**
  * Run special judge code in a dedicated sandbox
- * @param {object} judgeContainer - Optional pre-created container to reuse (for batch processing)
  */
 async function runSpecialJudgeInSandbox({
     specialJudgeCode,
     input,
     actualOutput,
     expectedOutput,
-    judgeContainer,
 }) {
     try {
         // Create a wrapper for the special judge code
@@ -930,11 +686,11 @@ try {
     const judgeFn = (function(input, output, expected) {
         ${specialJudgeCode}
     });
-
+    
     // We expect the specialJudgeCode to either 'return' a value or be a block that we can wrap
     // If it doesn't have a return, we might need to handle it.
     // Given the previous eval implementation, it's likely a block.
-
+    
     const result = judgeFn(input, output, expected);
     process.stdout.write(result ? "PASS" : "FAIL");
 } catch (e) {
@@ -943,72 +699,34 @@ try {
 }
 `
 
-        let container
-        let shouldCleanup = true
+        const langConfig = getLanguageConfig('javascript')
+        const dockerConfig = getDockerRunConfig(langConfig.name)
 
-        // If a container is provided (reuse mode), use it
-        if (judgeContainer) {
-            container = judgeContainer
-            shouldCleanup = false
-        } else {
-            // Otherwise create a new container (single-use mode, fallback)
-            const langConfig = getLanguageConfig('javascript')
-            const dockerConfig = getDockerRunConfig(langConfig.name)
-
-            container = await docker.createContainer({
-                Image: langConfig.image,
-                Entrypoint: ['node', '-e', wrapper],
-                Env: [
-                    `INPUT=${input}`,
-                    `ACTUAL_OUTPUT=${actualOutput}`,
-                    `EXPECTED_OUTPUT=${expectedOutput}`,
-                ],
-                ...dockerConfig,
-            })
-
-            await container.start()
-            shouldCleanup = true
-        }
-
-        // Execute special judge code
-        const env = [
-            `INPUT=${input}`,
-            `ACTUAL_OUTPUT=${actualOutput}`,
-            `EXPECTED_OUTPUT=${expectedOutput}`,
-        ]
-
-        const exec = await container.exec({
-            Cmd: ['node', '-e', wrapper],
-            Env: env,
-            AttachStdout: true,
-            AttachStderr: true,
-            User: 'node',
+        const container = await docker.createContainer({
+            Image: langConfig.image,
+            Entrypoint: ['node', '-e', wrapper],
+            Env: [
+                `INPUT=${input}`,
+                `ACTUAL_OUTPUT=${actualOutput}`,
+                `EXPECTED_OUTPUT=${expectedOutput}`,
+            ],
+            ...dockerConfig,
         })
 
-        const execStream = await exec.start({ Detach: false, Tty: false })
+        await container.start()
 
-        let output = ''
-        const outputPromise = new Promise((resolve, reject) => {
-            execStream.on('data', (chunk) => {
-                output += chunk.toString('utf8')
-            })
-            execStream.on('end', resolve)
-            execStream.on('close', resolve)
-            execStream.on('error', reject)
-        })
+        // Wait for completion
+        const result = await container.wait()
+        const logs = await container.logs({ stdout: true, stderr: true })
+        const outputString = logs.toString('utf8').trim()
 
-        await outputPromise
+        await cleanupContainer(container)
 
-        // Check exit code
-        const execInfo = await exec.inspect()
-        if (execInfo.ExitCode !== 0) {
-            if (shouldCleanup) await cleanupContainer(container)
-            return { success: false, error: 'Special judge crashed: ' + output }
+        if (result.StatusCode !== 0) {
+            return { success: false, error: 'Special judge crashed: ' + outputString }
         }
 
-        if (shouldCleanup) await cleanupContainer(container)
-
-        return { success: output.trim().includes('PASS') }
+        return { success: outputString.includes('PASS') }
     } catch (error) {
         console.error('Special judge execution error:', error)
         return { success: false, error: error.message }
@@ -1031,15 +749,8 @@ async function cleanupContainer(container) {
  */
 export async function checkDockerAvailability() {
     try {
-        const available = await isDockerReachable()
-        if (available) {
-            return { available: true }
-        }
-
-        return {
-            available: false,
-            error: dockerUnavailableReason || dockerInitError?.message || 'Docker unavailable',
-        }
+        await docker.ping()
+        return { available: true }
     } catch (error) {
         return { available: false, error: error.message }
     }

@@ -162,12 +162,12 @@ export default function ContestResultsPage() {
                                             <div className="col-span-2 text-right">
                                                 <span
                                                     className={`inline-flex rounded-lg px-3 py-1 text-xs font-black uppercase ${
-                                                        entry.solvedCount > 0
+                                                        entry.solvedProblemCount > 0
                                                             ? 'bg-accent/10 text-accent border-accent/20 border'
                                                             : 'bg-bg-muted text-text-muted'
                                                     }`}
                                                 >
-                                                    {entry.solvedCount || 0} Solved
+                                                    {entry.solvedProblemCount || 0} Solved
                                                 </span>
                                             </div>
                                         </div>

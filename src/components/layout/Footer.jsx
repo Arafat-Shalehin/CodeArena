@@ -24,16 +24,16 @@ const PLATFORM_LINKS = [
     { name: 'API', href: '/api-docs' },
 ]
 const COMPANY_LINKS = [
-    { name: 'About', href: '/about' },
-    { name: 'Careers', href: '/careers' },
-    { name: 'Blog', href: '/blog' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'About', href: '#' },
+    { name: 'Careers', href: '#' },
+    { name: 'Blog', href: '#' },
+    { name: 'Contact', href: '#' },
 ]
 const RESOURCES_LINKS = [
-    { name: 'Documentation', href: '/documentation' },
-    { name: 'Help Center', href: '/help' },
-    { name: 'Community', href: '/community' },
-    { name: 'Guidelines', href: '/guidelines' },
+    { name: 'Documentation', href: '#' },
+    { name: 'Help Center', href: '#' },
+    { name: 'Community', href: '#' },
+    { name: 'Guidelines', href: '#' },
 ]
 
 /**

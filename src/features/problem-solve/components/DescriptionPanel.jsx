@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import {
     Clock,
     HardDrive,
@@ -20,6 +20,8 @@ import SubmissionsTab from './SubmissionsTab'
 import SubmissionResultTab from './SubmissionResultTab'
 import { useProblemSolve } from '@/context/ProblemSolveContext'
 import { formatAcceptanceRate } from '@/lib/utils'
+
+import ReactionSystem from '@/components/reactions/ReactionSystem'
 
 const DIFFICULTY_STYLES = {
     easy: 'difficulty-easy',
@@ -43,6 +45,7 @@ function ProblemDescription({ problem }) {
                 <h2 className="text-text-primary text-2xl font-bold tracking-tight">
                     {problem.title}
                 </h2>
+                <ReactionSystem problemId={problem._id || problem.id} />
             </div>
 
             <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -153,16 +156,21 @@ function ProblemDescription({ problem }) {
 // ─── Main DescriptionPanel ──────────────────────────────────────────────────
 
 export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMaximized }) {
-    const { leftTab, setLeftTab, submissionResult } = useProblemSolve()
+    const { leftTab, setLeftTab, submissionResult, mode } = useProblemSolve()
 
     if (!problem) return null
+
+    // In contest mode, only show the description tab
+    const CONTEST_HIDDEN_TABS = new Set(['editorial', 'solutions'])
+    const visibleTabs =
+        mode === 'contest' ? TABS.filter((t) => !CONTEST_HIDDEN_TABS.has(t.key)) : TABS
 
     return (
         <>
             {/* Tab Header */}
             <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center justify-between border-b px-2">
                 <div className="flex items-center gap-0.5">
-                    {TABS.map((tab) => (
+                    {visibleTabs.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setLeftTab(tab.key)}
@@ -232,7 +240,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
             </div>
 
             {/* Content */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-5" data-lenis-prevent>
+            <div className="flex-1 overflow-y-auto p-5">
                 {leftTab === 'description' ? (
                     <ProblemDescription problem={problem} />
                 ) : leftTab === 'submissions' ? (

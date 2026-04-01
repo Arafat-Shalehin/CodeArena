@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, Clock, BarChart2, Users, Star, Bookmark } from 'lucide-react'
+import { Calendar, Clock, Users, Star, Bookmark, CheckCircle, Trophy, Zap } from 'lucide-react'
 
 function formatDate(dateString) {
     if (!dateString) return 'TBA'
@@ -23,12 +23,15 @@ function getDurationMinutes(start, end) {
  */
 const ContestCard = ({ contest = {} }) => {
     const {
+        _id,
         title = 'Untitled Contest',
         startTime,
         endTime,
         problemIds = [],
         maxParticipants,
         status = 'upcoming',
+        isCompleted = false,
+        isRegistered = false,
     } = contest
 
     const isPro = maxParticipants === null // unlimited = pro event
@@ -45,10 +48,30 @@ const ContestCard = ({ contest = {} }) => {
             <div className="mb-4 flex items-start justify-between">
                 <div
                     className={`${
-                        isPro ? 'bg-accent/10 text-accent-text' : 'bg-bg-muted text-text-secondary'
-                    } rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase`}
+                        isCompleted
+                            ? 'bg-success/10 text-success'
+                            : status === 'active'
+                              ? 'bg-accent/10 text-accent-text'
+                              : isPro
+                                ? 'bg-accent/10 text-accent-text'
+                                : 'bg-bg-muted text-text-secondary'
+                    } flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase`}
                 >
-                    {status === 'active' ? 'Live' : isPro ? 'Pro Event' : 'Registering'}
+                    {isCompleted ? (
+                        <>
+                            <CheckCircle size={10} /> Completed
+                        </>
+                    ) : isRegistered && status === 'active' ? (
+                        <>
+                            <Zap size={10} fill="currentColor" /> Active
+                        </>
+                    ) : status === 'active' ? (
+                        'Live'
+                    ) : isPro ? (
+                        'Pro Event'
+                    ) : (
+                        'Registering'
+                    )}
                 </div>
                 <Icon className="text-text-muted group-hover:text-accent size-5 transition-colors" />
             </div>
@@ -63,19 +86,19 @@ const ContestCard = ({ contest = {} }) => {
             {/* Meta */}
             <div className="mb-6 space-y-3">
                 <div className="text-text-secondary flex items-center gap-3 text-sm">
-                    <Calendar className="size-4 flex-shrink-0" />
+                    <Calendar className="size-4 shrink-0" />
                     {formatDate(startTime)}
                 </div>
                 {duration && (
                     <div className="text-text-secondary flex items-center gap-3 text-sm">
-                        <Clock className="size-4 flex-shrink-0" />
+                        <Clock className="size-4 shrink-0" />
                         {duration} min · {problemIds.length} problem
                         {problemIds.length !== 1 ? 's' : ''}
                     </div>
                 )}
                 {maxParticipants && (
                     <div className="text-text-secondary flex items-center gap-3 text-sm">
-                        <Users className="size-4 flex-shrink-0" />
+                        <Users className="size-4 shrink-0" />
                         Max {maxParticipants} participants
                     </div>
                 )}
@@ -84,14 +107,28 @@ const ContestCard = ({ contest = {} }) => {
             {/* CTA */}
             <div
                 className={`mt-auto inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
-                    status === 'active'
-                        ? 'bg-accent hover:bg-accent-hover text-white'
-                        : isPro
+                    isCompleted
+                        ? 'bg-success/10 text-success border-success/20 hover:bg-success/20 border'
+                        : status === 'active'
                           ? 'bg-accent hover:bg-accent-hover text-white'
-                          : 'bg-bg-muted text-text-primary border-border hover:bg-bg-subtle border'
+                          : isPro
+                            ? 'bg-accent hover:bg-accent-hover text-white'
+                            : 'bg-bg-muted text-text-primary border-border hover:bg-bg-subtle border'
                 }`}
             >
-                {status === 'active' ? 'Enter Arena' : 'View Contest'}
+                {isCompleted ? (
+                    <>
+                        <Trophy size={14} /> View Results
+                    </>
+                ) : isRegistered && status === 'active' ? (
+                    'Enter Arena'
+                ) : status === 'active' ? (
+                    'Join Now'
+                ) : isRegistered ? (
+                    'View Contest'
+                ) : (
+                    'View Details'
+                )}
             </div>
         </div>
     )

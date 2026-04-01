@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import {
     registerUserForContest,
     getContestParticipants,
@@ -16,21 +17,28 @@ export async function register(req, context, user) {
 
     // Extract the contest ID from params
     const { id: contestId } = await context.params
-
-    // Use the ID from the 'user' object for the registration
     const userId = user._id
 
     // Call your service with the correct IDs
-    const participant = await registerUserForContest(contestId, userId)
-
-    return Response.json({ success: true, data: participant }, { status: 201 })
+    try {
+        const participant = await registerUserForContest(contestId, userId)
+        return NextResponse.json({ success: true, data: participant }, { status: 201 })
+    } catch (error) {
+        console.error('Registration Controller Error:', error)
+        return NextResponse.json(
+            { success: false, message: error.message || 'Registration failed.' },
+            { status: error.status || 500 }
+        )
+    }
 }
 
 /**
  * GET /api/contests/[id]/participants
  * Public leaderboard
  */
-export async function getParticipants(req, { params }) {
+export async function getParticipants(req, context) {
+    const { params } = context
+    const { id: contestId } = await params
     const { searchParams } = new URL(req.url)
 
     const query = {
@@ -38,9 +46,9 @@ export async function getParticipants(req, { params }) {
         limit: searchParams.get('limit'),
     }
 
-    const result = await getContestParticipants(params.id, query)
+    const result = await getContestParticipants(contestId, query)
 
-    return Response.json({
+    return NextResponse.json({
         success: true,
         data: result.participants,
         pagination: result.pagination,
@@ -51,13 +59,13 @@ export async function getParticipants(req, { params }) {
  * GET /api/contests/[id]/check-registration
  * Requires authentication
  */
-export async function checkRegistration(req, { params }) {
+export async function checkRegistration(req, context) {
     if (!req.user) {
         throw new Error('Unauthorized.')
     }
 
+    const { id: contestId } = await context.params
     const userId = req.user.id
-    const contestId = params.id
 
     let participant = null
 
@@ -67,7 +75,7 @@ export async function checkRegistration(req, { params }) {
         participant = null
     }
 
-    return Response.json({
+    return NextResponse.json({
         success: true,
         isRegistered: !!participant,
         data: participant,

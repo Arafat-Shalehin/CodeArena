@@ -18,10 +18,7 @@ import { SETTINGS_NAV_ITEMS } from '../data/settings.data'
  */
 export default function SettingsSidebar({ activeSection, onSectionChange, className }) {
     return (
-        <aside
-            className={cn('flex w-full flex-col gap-1 md:w-64', className)}
-            aria-label="Settings navigation"
-        >
+        <aside className={cn('flex w-full flex-col gap-1 md:w-64', className)}>
             {/* Map through navigation items defined in settings.data */}
             {SETTINGS_NAV_ITEMS.map((item) => {
                 /** * Dynamically resolve the icon component from Lucide library

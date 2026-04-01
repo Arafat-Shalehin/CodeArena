@@ -31,26 +31,44 @@ export const GET = asyncHandler(async (req, context) => {
     const responseData = {}
     const selectFields = '_id name bio avatarSeed stats.score stats.globalRank'
 
+    // Get the current user's following list to check isFollowing status
+    const currentUserId = searchParams.get('currentUserId')
+    let currentUserFollowing = []
+    if (currentUserId) {
+        const currentUser = await User.findById(currentUserId).select('following')
+        currentUserFollowing = currentUser?.following?.map((fId) => fId.toString()) || []
+    }
+
     if (type === 'followers' || type === 'all') {
-        // Extract IDs from potentially complex array structure
-        const followerIds = (user.followers || []).map((f) => (f._id ? f._id : f))
-        const followers = await User.find({ _id: { $in: followerIds } })
+        const followers = await User.find({ _id: { $in: user.followers } })
             .select(selectFields)
             .limit(limit)
             .lean()
-        responseData.followers = followers
-        responseData.followersCount = followerIds.length
+
+        // Attach isFollowing status
+        const followersWithStatus = followers.map((f) => ({
+            ...f,
+            isFollowing: currentUserFollowing.includes(f._id.toString()),
+        }))
+
+        responseData.followers = followersWithStatus
+        responseData.followersCount = user.followers.length
     }
 
     if (type === 'following' || type === 'all') {
-        // Extract IDs from potentially complex array structure
-        const followingIds = (user.following || []).map((f) => (f._id ? f._id : f))
-        const following = await User.find({ _id: { $in: followingIds } })
+        const following = await User.find({ _id: { $in: user.following } })
             .select(selectFields)
             .limit(limit)
             .lean()
-        responseData.following = following
-        responseData.followingCount = followingIds.length
+
+        // Attach isFollowing status
+        const followingWithStatus = following.map((f) => ({
+            ...f,
+            isFollowing: currentUserFollowing.includes(f._id.toString()),
+        }))
+
+        responseData.following = followingWithStatus
+        responseData.followingCount = user.following.length
     }
 
     return Response.json({

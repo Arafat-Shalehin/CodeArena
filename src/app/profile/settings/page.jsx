@@ -1,7 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,8 +8,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 // Firebase
-import { auth } from '@/lib/firebase/config'
-import { updateProfile as firebaseUpdateProfile } from 'firebase/auth'
+import { getFirebaseAuth } from '@/lib/firebase/config'
 
 // Auth Context
 import { useAuth } from '@/context/AuthContext'
@@ -19,57 +17,30 @@ import { useAuth } from '@/context/AuthContext'
 import SettingsSidebar from '@/features/profile/components/SettingsSidebar'
 import PersonalInfoForm from '@/features/profile/components/PersonalInfoForm'
 import SocialProfilesForm from '@/features/profile/components/SocialProfilesForm'
+import { Button } from '@/components/ui/button'
+import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
+import Navbar from '@/components/layout/Navbar'
 import AccountSection from '@/features/profile/components/settings/AccountSection'
 import PreferencesSection from '@/features/profile/components/settings/PreferencesSection'
 import NotificationsSection from '@/features/profile/components/settings/NotificationsSection'
 import PrivacySection from '@/features/profile/components/settings/PrivacySection'
 import SubscriptionSection from '@/features/profile/components/settings/SubscriptionSection'
-import { Button } from '@/components/ui/button'
-import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
-import Navbar from '@/components/layout/Navbar'
-import { Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 // Schema
 const editProfileSchema = z.object({
     name: z
         .string()
-        .min(3, 'Username must be at least 3 characters')
-        .max(25, 'Username must be at most 25 characters')
-        .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+        .min(2, 'Display name must be at least 2 characters')
+        .max(50, 'Display name must be at most 50 characters'),
     bio: z.string().max(160, 'Bio must be at most 160 characters').optional().or(z.literal('')),
     location: z.string().max(100, 'Location is too long').optional().or(z.literal('')),
-    country: z.string().optional(),
-    website: z
-        .string()
-        .refine(
-            (val) =>
-                !val ||
-                val.startsWith('http://') ||
-                val.startsWith('https://') ||
-                val.includes('.'),
-            'Must be a valid URL (e.g., https://example.com)'
-        )
-        .optional()
-        .or(z.literal('')),
-    avatarSeed: z.string().optional(),
+    country: z.string().optional().or(z.literal('')),
+    website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
     socials: z
         .object({
-            github: z
-                .string()
-                .optional()
-                .or(z.literal(''))
-                .refine((val) => !val || /^[a-zA-Z0-9-]+$/.test(val), 'Invalid GitHub username'),
-            linkedin: z
-                .string()
-                .optional()
-                .or(z.literal(''))
-                .refine((val) => !val || /^[a-zA-Z0-9-_]+$/.test(val), 'Invalid LinkedIn ID'),
-            twitter: z
-                .string()
-                .optional()
-                .or(z.literal(''))
-                .refine((val) => !val || /^@?[a-zA-Z0-9_]+$/.test(val), 'Invalid Twitter handle'),
+            github: z.string().optional().or(z.literal('')),
+            linkedin: z.string().optional().or(z.literal('')),
+            twitter: z.string().optional().or(z.literal('')),
         })
         .optional(),
 })
@@ -90,51 +61,12 @@ const PREDEFINED_AVATARS = [
     'barbarian',
     'fighter',
     'wizard',
-    'ninja',
-    'pirate',
-    'cowboy',
-    'alien',
-    'robot',
 ]
 
-const COUNTRIES = [
-    { code: 'AE', name: 'United Arab Emirates' },
-    { code: 'AR', name: 'Argentina' },
-    { code: 'AU', name: 'Australia' },
-    { code: 'BD', name: 'Bangladesh' },
-    { code: 'BR', name: 'Brazil' },
-    { code: 'CA', name: 'Canada' },
-    { code: 'CH', name: 'Switzerland' },
-    { code: 'CN', name: 'China' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'EG', name: 'Egypt' },
-    { code: 'ES', name: 'Spain' },
-    { code: 'FR', name: 'France' },
-    { code: 'GB', name: 'United Kingdom' },
-    { code: 'IN', name: 'India' },
-    { code: 'IT', name: 'Italy' },
-    { code: 'JP', name: 'Japan' },
-    { code: 'KR', name: 'South Korea' },
-    { code: 'MX', name: 'Mexico' },
-    { code: 'NG', name: 'Nigeria' },
-    { code: 'NL', name: 'Netherlands' },
-    { code: 'PK', name: 'Pakistan' },
-    { code: 'PL', name: 'Poland' },
-    { code: 'RU', name: 'Russia' },
-    { code: 'SE', name: 'Sweden' },
-    { code: 'SG', name: 'Singapore' },
-    { code: 'TH', name: 'Thailand' },
-    { code: 'TR', name: 'Turkey' },
-    { code: 'US', name: 'United States' },
-    { code: 'VN', name: 'Vietnam' },
-    { code: 'ZA', name: 'South Africa' },
-].sort((a, b) => a.name.localeCompare(b.name))
-
 export default function SettingsPage() {
-    const { user, isLoading: authLoading, syncUser } = useAuth()
+    const { user, updateProfile: updateLocalContext, isLoading: authLoading, syncUser } = useAuth()
     const [activeSection, setActiveSection] = useState('profile')
     const [isSaved, setIsSaved] = useState(false)
-    const abortRef = useRef(null)
 
     const {
         register,
@@ -151,43 +83,43 @@ export default function SettingsPage() {
             location: '',
             country: '',
             website: '',
-            avatarSeed: '',
             socials: { github: '', linkedin: '', twitter: '' },
         },
     })
 
-    // Hydrate form once user data is available (after auth loading completes)
+    // Hydrate form once user data is available
     useEffect(() => {
-        if (user && !authLoading) {
+        if (user) {
             reset({
                 name: user.name || '',
                 bio: user.bio || '',
                 location: user.location || '',
                 country: user.country || '',
                 website: user.website || '',
-                avatarSeed: user.avatarSeed || user.name || PREDEFINED_AVATARS[0],
                 socials: {
                     github: user.socials?.github || '',
                     linkedin: user.socials?.linkedin || '',
                     twitter: user.socials?.twitter || '',
                 },
             })
+            if (!watch('avatarSeed')) {
+                setValue('avatarSeed', user.avatarSeed || user.name || PREDEFINED_AVATARS[0])
+            }
         }
-    }, [user, authLoading, reset])
+    }, [user, reset, setValue])
 
     const avatarSeed = watch('avatarSeed')
 
     const onSubmit = async (data) => {
         const userId = user?.id || user?._id
-
         if (!userId) {
+            console.error('No user ID found:', user)
             toast.error('Unable to update profile. Please log in again.')
             return
         }
 
-        // Cancel any previous in-flight submit
-        abortRef.current?.abort()
-        abortRef.current = new AbortController()
+        let responseData = null
+        let profileUpdateSuccess = false
 
         try {
             const userIdString = userId.toString()
@@ -197,52 +129,81 @@ export default function SettingsPage() {
                 location: data.location || '',
                 country: data.country || '',
                 website: data.website || '',
-                socials: {
-                    github: data.socials?.github?.trim() || '',
-                    linkedin: data.socials?.linkedin?.trim() || '',
-                    twitter: data.socials?.twitter?.trim() || '',
-                },
-                avatarSeed: data.avatarSeed,
+                socials: data.socials || { github: '', linkedin: '', twitter: '' },
+                avatarSeed,
             }
+
+            console.log('Submitting profile update:', { userId: userIdString, payload })
 
             const res = await fetch(`/api/users/${userIdString}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                signal: abortRef.current.signal,
                 body: JSON.stringify(payload),
             })
 
-            const responseText = await res.text()
-            let responseData = {}
-            try {
-                responseData = JSON.parse(responseText)
-            } catch {
-                throw new Error(
-                    `Server error (${res.status}): ${responseText || 'No response body'}`
-                )
-            }
+            console.log('Response status:', res.status, res.ok)
 
+            // Check if response is OK before trying to parse JSON
             if (!res.ok) {
-                throw new Error(responseData.message || `Failed to update profile (${res.status})`)
+                const contentType = res.headers.get('content-type')
+                let errorMessage = 'Failed to update profile'
+
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await res.json()
+                    errorMessage = responseData.message || errorMessage
+                } else {
+                    const text = await res.text()
+                    console.error('Non-JSON error response:', text)
+                    errorMessage = text || `Server error: ${res.status}`
+                }
+                throw new Error(errorMessage)
             }
 
-            // Sync Firebase displayName
-            if (auth.currentUser) {
-                await firebaseUpdateProfile(auth.currentUser, { displayName: data.name }).catch(
-                    (e) => console.error('Firebase profile sync failed:', e)
-                )
+            // Only parse JSON if the response was successful
+            const contentType = res.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+                responseData = await res.json()
+            } else {
+                throw new Error('Server returned invalid response')
             }
 
-            // Sync with server to get fresh DB data as the single source of truth
-            await syncUser()
+            console.log('Profile update successful:', responseData)
+
+            // Update Firebase display name if available
+            const firebase = await getFirebaseAuth()
+            if (firebase?.auth?.currentUser) {
+                const { updateProfile: firebaseUpdateProfile } = await import('firebase/auth')
+                await firebaseUpdateProfile(firebase.auth.currentUser, { displayName: data.name })
+            }
+
+            profileUpdateSuccess = true
+        } catch (error) {
+            if (error.name === 'AbortError') return
+            console.error('Profile update failed:', error)
+            toast.error(error.message || 'Failed to save profile. Please try again.')
+            return
+        }
+
+        if (profileUpdateSuccess) {
+            try {
+                await syncUser()
+            } catch (syncError) {
+                console.error('Sync failed:', syncError)
+            }
+
+            updateLocalContext({
+                name: data.name,
+                bio: data.bio || '',
+                location: data.location || '',
+                country: data.country || '',
+                website: data.website || '',
+                socials: data.socials,
+                avatarSeed,
+            })
 
             setIsSaved(true)
             toast.success('Changes saved successfully!')
             setTimeout(() => setIsSaved(false), 3000)
-        } catch (error) {
-            if (error.name === 'AbortError') return
-            toast.error(error.message || 'Failed to save profile. Please try again.')
         }
     }
 
@@ -279,7 +240,7 @@ export default function SettingsPage() {
                     />
 
                     {/* Content Section */}
-                    <div className="min-h-[600px] lg:col-span-9">
+                    <div className="lg:col-span-9">
                         {activeSection === 'profile' && (
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                                 <ProfilePictureCard
@@ -293,64 +254,30 @@ export default function SettingsPage() {
                                     bioValue={watch('bio')}
                                     watch={watch}
                                     setValue={setValue}
-                                    countries={COUNTRIES}
+                                    user={user}
                                 />
-                                <SocialProfilesForm
-                                    register={register}
-                                    errors={errors}
-                                    watch={watch}
-                                    setValue={setValue}
-                                />
+                                <SocialProfilesForm register={register} errors={errors} />
 
                                 <div className="border-border flex items-center justify-end gap-4 border-t pt-4">
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         className="text-text-secondary font-semibold"
-                                        onClick={() => {
-                                            if (user) {
-                                                reset({
-                                                    name: user.name || '',
-                                                    bio: user.bio || '',
-                                                    location: user.location || '',
-                                                    country: user.country || '',
-                                                    website: user.website || '',
-                                                    avatarSeed:
-                                                        user.avatarSeed ||
-                                                        user.name ||
-                                                        PREDEFINED_AVATARS[0],
-                                                    socials: {
-                                                        github: user.socials?.github || '',
-                                                        linkedin: user.socials?.linkedin || '',
-                                                        twitter: user.socials?.twitter || '',
-                                                    },
-                                                })
-                                            }
-                                        }}
+                                        onClick={() => user && reset()}
                                         disabled={isSubmitting}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         type="submit"
-                                        variant={isSaved ? 'outline' : 'default'}
-                                        className={cn(
-                                            'px-8 transition-all duration-300',
-                                            !isSaved && 'shadow-accent-glow',
-                                            isSaved &&
-                                                'border-success text-success hover:bg-success/5'
-                                        )}
+                                        variant="default"
+                                        className="shadow-accent-glow px-8"
                                         disabled={isSubmitting}
                                     >
                                         {isSubmitting ? (
                                             <span className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 Saving...
-                                            </span>
-                                        ) : isSaved ? (
-                                            <span className="animate-in fade-in zoom-in flex items-center gap-2 duration-300">
-                                                <Check className="h-4 w-4" />
-                                                Saved Changes
                                             </span>
                                         ) : (
                                             'Save Changes'

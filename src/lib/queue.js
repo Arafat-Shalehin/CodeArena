@@ -2,20 +2,9 @@ import { Queue } from 'bullmq'
 
 // Same env strategy as redis.js — Railway injects REDIS_URL; locally we leave it blank.
 const redisUrl = process.env.REDIS_URL || ''
-const isRedisTls = redisUrl.startsWith('rediss://')
-const allowInsecureTls = process.env.REDIS_TLS_INSECURE === 'true'
 
 const connection = redisUrl
-    ? {
-          url: redisUrl,
-          ...(isRedisTls
-              ? {
-                    tls: {
-                        ...(allowInsecureTls ? { rejectUnauthorized: false } : {}),
-                    },
-                }
-              : {}),
-      }
+    ? { url: redisUrl }
     : {
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -41,9 +30,7 @@ export function getQueue(name) {
                 },
                 removeOnComplete: true,
                 removeOnFail: false,
-                // Increased from 30s to 90s (configurable via env)
-                // Prevents false retry cycles for complex submissions with many test cases
-                timeout: parseInt(process.env.QUEUE_JOB_TIMEOUT_MS || '90000'),
+                timeout: 30000,
             },
         })
     }
@@ -72,13 +59,9 @@ export function getInterviewAIQueue() {
         queues['interview-ai'] = new Queue('interview-ai', {
             connection,
             defaultJobOptions: {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 2000,
-                },
-                removeOnComplete: 100,
-                removeOnFail: 50,
+                attempts: 2,
+                removeOnComplete: true,
+                removeOnFail: false,
                 timeout: 60000,
             },
         })
@@ -99,29 +82,6 @@ export function getInterviewExecutionQueue() {
         })
     }
     return queues['interview-execution']
-}
-
-export function getPlagiarismQueue() {
-    return getQueue('plagiarism-checks')
-}
-
-export function getInterviewSummarizeQueue() {
-    if (!queues['interview-summarize']) {
-        queues['interview-summarize'] = new Queue('interview-summarize', {
-            connection,
-            defaultJobOptions: {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 5000, // Recover from rate limits gracefully
-                },
-                removeOnComplete: 100,
-                removeOnFail: 50,
-                timeout: 120000, // 2 mins max
-            },
-        })
-    }
-    return queues['interview-summarize']
 }
 
 export { connection }

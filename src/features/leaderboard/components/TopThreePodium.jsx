@@ -121,7 +121,7 @@ function PodiumPosition({ entry, rank, delay }) {
                         alt={entry.userId.username}
                     />
                     <AvatarFallback
-                        className="text-xl font-bold"
+                        className="text-xl font-semibold"
                         style={{
                             background: `${c.color}20`,
                             color: c.color,
@@ -133,7 +133,7 @@ function PodiumPosition({ entry, rank, delay }) {
 
                 {/* Badge label below avatar */}
                 <span
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap shadow-sm"
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap shadow-sm"
                     style={{
                         background: c.color,
                         color: '#FFFFFF',
@@ -146,7 +146,7 @@ function PodiumPosition({ entry, rank, delay }) {
             {/* Name */}
             <Link href={`/profile/${entry.userId._id}`}>
                 <p
-                    className={`${c.nameSize} font-display hover:text-accent mb-1 cursor-pointer text-center font-bold tracking-tight transition-colors`}
+                    className={`${c.nameSize} font-display hover:text-accent mb-1 cursor-pointer text-center font-semibold tracking-tight transition-colors`}
                     style={{ color: 'var(--color-text-primary)' }}
                 >
                     {entry.userId.username}
@@ -157,17 +157,17 @@ function PodiumPosition({ entry, rank, delay }) {
             <div className="mb-4 flex items-center gap-3">
                 <div className="flex items-center gap-1.5" title="Total Points">
                     <Zap size={12} className="text-amber-500" fill="currentColor" />
-                    <span className="text-text-primary font-mono text-sm font-bold">
+                    <span className="text-text-primary font-mono text-sm font-semibold">
                         <AnimatedValue value={entry.score} delay={delay + 100} />
                     </span>
-                    <span className="text-text-muted text-[10px] font-bold tracking-wider uppercase">
+                    <span className="text-text-muted text-[10px] font-medium tracking-wider uppercase">
                         score
                     </span>
                 </div>
                 <div className="bg-border h-3 w-px" />
                 <div className="flex items-center gap-1.5" title="Problems Solved">
                     <CheckCircle2 size={12} className="text-emerald-500" />
-                    <span className="text-text-primary font-mono text-sm font-bold">
+                    <span className="text-text-primary font-mono text-sm font-semibold">
                         <AnimatedValue value={entry.submissions} delay={delay + 150} />
                     </span>
                 </div>

@@ -40,11 +40,19 @@ export default function AdminProblems() {
 
     const fetchProblems = async () => {
         try {
+            setLoading(true) // ফেচ শুরু করার আগে লোডিং ট্রু করুন
             const res = await fetch('/api/problems')
             const data = await res.json()
-            if (data.success) setProblems(data.data)
+
+            // Safety Check: নিশ্চিত করুন data.data একটি অ্যারে
+            if (data.success && Array.isArray(data.data)) {
+                setProblems(data.data)
+            } else {
+                setProblems([]) // যদি ডেটা না থাকে তবে খালি অ্যারে দিন
+            }
         } catch (error) {
             console.error('Failed to fetch problems', error)
+            setProblems([])
         } finally {
             setLoading(false)
         }
