@@ -4,9 +4,21 @@
  * The backend stores difficulty in lowercase; use normalizeDifficulty() before lookup.
  */
 export const difficultyConfig = {
-    Easy: { bar: 'bg-success', badge: 'bg-success-light text-success border-success/20', progress: 'bg-success' },
-    Medium: { bar: 'bg-warning', badge: 'bg-warning-light text-warning border-warning/20', progress: 'bg-warning' },
-    Hard: { bar: 'bg-error', badge: 'bg-error-light text-error border-error/20', progress: 'bg-error' },
+    Easy: {
+        bar: 'bg-success',
+        badge: 'bg-success-light text-success border-success/20',
+        progress: 'bg-success',
+    },
+    Medium: {
+        bar: 'bg-warning',
+        badge: 'bg-warning-light text-warning border-warning/20',
+        progress: 'bg-warning',
+    },
+    Hard: {
+        bar: 'bg-error',
+        badge: 'bg-error-light text-error border-error/20',
+        progress: 'bg-error',
+    },
 }
 
 /**

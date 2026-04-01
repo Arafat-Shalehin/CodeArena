@@ -7,8 +7,12 @@ import { Loader2, UserMinus, UserPlus, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+// Auth
+import { useAuth } from '@/context/AuthContext'
+
 export default function FollowersListModal({ type, userId, onClose }) {
     const router = useRouter()
+    const { user: currentUser } = useAuth()
     const [users, setUsers] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -23,7 +27,10 @@ export default function FollowersListModal({ type, userId, onClose }) {
             setIsLoading(true)
             setError(null)
             try {
-                const res = await fetch(`/api/users/${userId}/friends?type=${type}&limit=100`)
+                const currentUserId = currentUser?._id || currentUser?.id
+                const res = await fetch(
+                    `/api/users/${userId}/friends?type=${type}&limit=100${currentUserId ? `&currentUserId=${currentUserId}` : ''}`
+                )
                 const data = await res.json()
 
                 if (data.success) {

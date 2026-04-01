@@ -18,8 +18,7 @@ import {
     Info,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { auth } from '@/lib/firebase/config'
-import { sendPasswordResetEmail } from 'firebase/auth'
+import { getFirebaseAuth } from '@/lib/firebase/config'
 
 export default function AccountSection({ user }) {
     const [isChangingPassword, setIsChangingPassword] = useState(false)
@@ -55,6 +54,8 @@ export default function AccountSection({ user }) {
 
         setIsResetting(true)
         try {
+            const { auth } = await getFirebaseAuth()
+            const { sendPasswordResetEmail } = await import('firebase/auth')
             await sendPasswordResetEmail(auth, user.email)
             toast.success('Password reset email sent! Please check your inbox.')
         } catch (error) {

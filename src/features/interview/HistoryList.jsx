@@ -1,259 +1,223 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { format } from 'date-fns'
+import React, { useEffect, useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
     Calendar,
-    Clock,
-    Award,
-    Code2,
-    PlayCircle,
-    Loader2,
-    Sparkles,
     ChevronRight,
-    Bot,
+    Clock,
+    Trophy,
+    Gamepad2,
+    CheckCircle2,
+    AlertCircle,
+    Brain,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { format } from 'date-fns'
 
-const SkeletonCard = () => (
-    <div className="border-border bg-bg-subtle/20 flex animate-pulse flex-col items-center gap-8 rounded-[2.5rem] border p-8 backdrop-blur-xl md:flex-row">
-        <div className="bg-border/40 h-20 w-20 rounded-2xl" />
-        <div className="w-full flex-1 space-y-4">
-            <div className="bg-border/40 h-8 w-1/3 rounded-xl" />
-            <div className="bg-border/20 h-4 w-1/2 rounded-lg" />
+const listVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.06,
+            delayChildren: 0.1,
+        },
+    },
+}
+
+const itemVariants = {
+    hidden: {
+        opacity: 0,
+        y: 10,
+        filter: 'blur(4px)',
+    },
+    visible: {
+        opacity: 1,
+        y: 0,
+        filter: 'blur(0px)',
+        transition: {
+            duration: 0.5,
+            ease: [0.16, 1, 0.3, 1],
+        },
+    },
+}
+
+const StatusPill = ({ status }) => {
+    const isCompleted = status?.toLowerCase() === 'completed'
+    return (
+        <div
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] font-medium tracking-widest uppercase transition-all duration-300 ${
+                isCompleted
+                    ? 'bg-accent/5 border-accent/20 text-accent shadow-[0_0_8px_rgba(2,186,76,0.08)]'
+                    : 'border-yellow-500/20 bg-yellow-500/5 text-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.08)]'
+            }`}
+        >
+            {isCompleted ? (
+                <CheckCircle2 className="h-2.5 w-2.5" />
+            ) : (
+                <AlertCircle className="h-2.5 w-2.5" />
+            )}
+            {status || 'Unknown'}
         </div>
-        <div className="flex w-full gap-3 md:w-auto">
-            <div className="bg-border/30 h-14 w-32 rounded-2xl" />
-            <div className="bg-border/50 h-14 w-40 rounded-2xl" />
+    )
+}
+
+const SessionSkeleton = () => (
+    <div className="border-border bg-bg-subtle/30 animate-pulse space-y-4 rounded-xl border p-5">
+        <div className="flex items-center justify-between">
+            <div className="bg-bg-muted h-8 w-32 rounded-lg" />
+            <div className="bg-bg-muted h-5 w-20 rounded-full" />
+        </div>
+        <div className="bg-bg-muted h-3 w-2/3 rounded" />
+        <div className="flex gap-3 pt-2">
+            <div className="bg-bg-muted h-8 w-24 rounded-lg" />
+            <div className="bg-bg-muted h-8 w-24 rounded-lg" />
         </div>
     </div>
 )
 
 export default function HistoryList() {
+    const router = useRouter()
     const [sessions, setSessions] = useState([])
-    const [loading, setLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
         const fetchHistory = async () => {
             try {
                 const res = await fetch('/api/interview/sessions')
-                const json = await res.json()
-                if (json.success) {
-                    setSessions(json.data || [])
+                const data = await res.json()
+                if (data.success) {
+                    setSessions(data.data || [])
                 }
-            } catch (error) {
-                console.error('Failed to fetch interview history:', error)
+            } catch (err) {
+                console.error('Failed to fetch interview history:', err)
             } finally {
-                setLoading(false)
+                setIsLoading(false)
             }
         }
         fetchHistory()
     }, [])
 
-    if (loading) {
+    if (isLoading) {
         return (
-            <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
-                <div className="bg-border h-10 w-64 animate-pulse rounded" />
-                <div className="grid gap-6">
-                    <SkeletonCard />
-                    <SkeletonCard />
-                    <SkeletonCard />
-                </div>
+            <div className="grid gap-4">
+                {[1, 2, 3].map((i) => (
+                    <SessionSkeleton key={i} />
+                ))}
             </div>
         )
     }
 
-    if (sessions.length === 0) {
+    if (!sessions || sessions.length === 0) {
         return (
             <motion.div
-                initial={{ opacity: 0, y: 40 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex min-h-[600px] flex-col items-center justify-center px-4 text-center"
+                className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-2xl border border-dashed py-24 text-center"
             >
-                <div className="group relative mb-8">
-                    <div className="bg-accent/15 group-hover:bg-accent/25 absolute -inset-8 rounded-full blur-3xl transition-colors duration-700" />
-                    <div className="bg-bg-subtle/50 border-border relative rounded-[3rem] border p-12 shadow-2xl backdrop-blur-2xl transition-transform duration-500 group-hover:scale-110">
-                        <Bot className="text-accent h-20 w-20 transition-transform duration-700 group-hover:rotate-12" />
-                    </div>
+                <div className="bg-bg-page border-border mb-5 flex h-16 w-16 items-center justify-center rounded-xl border shadow-lg">
+                    <Brain className="text-text-muted h-8 w-8" />
                 </div>
-                <h3 className="text-text-primary mb-4 text-4xl font-[1000] tracking-tighter">
-                    Your Stage is Empty
+                <h3 className="text-text-primary mb-1 text-xl font-bold italic">
+                    No Records Found
                 </h3>
-                <p className="text-text-secondary mb-12 max-w-md text-lg leading-relaxed font-medium">
-                    Alex is waiting in the sandbox. Start your first session to receive elite
-                    technical coaching and performance metrics.
+                <p className="text-text-muted mb-6 max-w-sm text-xs font-medium opacity-50">
+                    Your simulation history is empty. Unlock analytics after your first session.
                 </p>
-                <Link href="/interview/new">
-                    <Button
-                        size="lg"
-                        className="bg-accent hover:bg-accent-hover shadow-accent/20 h-16 rounded-[1.5rem] px-12 text-lg font-[1000] tracking-widest text-black uppercase shadow-2xl transition-all hover:scale-105 active:scale-95"
-                    >
-                        <Sparkles className="mr-3 h-6 w-6" />
-                        Enter the Sandbox
-                    </Button>
-                </Link>
+                <Button
+                    onClick={() => router.push('/interview/new')}
+                    className="bg-accent hover:bg-accent-hover rounded-lg px-6 text-[10px] tracking-widest text-black uppercase shadow-md transition-all hover:scale-105"
+                >
+                    Start First Session
+                </Button>
             </motion.div>
         )
     }
 
     return (
-        <div className="mx-auto max-w-6xl px-4 py-5">
-            <header className="mb-12 space-y-4">
-                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-                    <div className="text-center md:text-left">
-                        <h2 className="text-text-primary text-2xl font-black tracking-tight md:text-3xl">
-                            Past Sessions
-                        </h2>
-                        <p className="text-text-muted text-sm font-medium">
-                            {sessions.length} interviews completed so far
-                        </p>
-                    </div>
-                </div>
-            </header>
-
-            <div className="grid gap-6">
-                <AnimatePresence mode="popLayout">
-                    {sessions.map((session, index) => (
-                        <motion.div
-                            key={session._id}
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ delay: index * 0.05, type: 'spring', damping: 20 }}
-                            className="group relative"
-                        >
-                            {/* Ambient Glow */}
-                            <div className="bg-accent/5 pointer-events-none absolute -inset-4 rounded-[3rem] opacity-0 blur-3xl transition-opacity duration-700 group-hover:opacity-100" />
-
-                            <div className="border-border bg-bg-subtle/30 group-hover:bg-bg-subtle/50 group-hover:border-accent/20 relative overflow-hidden rounded-[2.5rem] border p-1 shadow-2xl backdrop-blur-2xl transition-all duration-500 group-hover:-translate-y-1">
-                                <div className="flex flex-col items-center gap-8 p-6 md:flex-row md:p-8">
-                                    {/* Problem Icon */}
-                                    <div className="relative flex-shrink-0">
-                                        <div className="bg-accent/20 absolute inset-0 rounded-2xl opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
-                                        <div className="bg-bg-page border-border group-hover:border-accent/40 relative flex h-20 w-20 items-center justify-center rounded-2xl border shadow-inner transition-colors duration-500">
-                                            <Code2
-                                                className={`h-10 w-10 ${session.finalScore >= 70 ? 'text-accent' : 'text-text-muted'} transition-transform duration-500 group-hover:scale-110`}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Title & Meta */}
-                                    <div className="flex-1 space-y-4 text-center md:text-left">
-                                        <div className="space-y-1">
-                                            <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                                                <h3 className="text-text-primary group-hover:text-accent text-3xl font-black tracking-tight transition-colors">
-                                                    {session.problemIds?.[0]?.title ||
-                                                        'Session Analysis'}
-                                                </h3>
-                                                <span
-                                                    className={`rounded-full border px-3 py-1 text-[9px] font-black tracking-widest uppercase ${
-                                                        session.status === 'completed'
-                                                            ? 'border-accent/20 bg-accent/10 text-accent'
-                                                            : session.status === 'terminated'
-                                                              ? 'border-error/20 bg-error/10 text-error'
-                                                              : session.status === 'expired'
-                                                                ? 'border-warning/20 bg-warning/10 text-warning'
-                                                                : 'border-text-secondary/20 bg-text-secondary/10 text-text-secondary'
-                                                    }`}
-                                                >
-                                                    {session.status}
-                                                </span>
-                                            </div>
-                                            <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-xs font-bold tracking-wide uppercase md:justify-start">
-                                                <div className="hover:text-text-secondary flex items-center gap-1.5 transition-colors">
-                                                    <Calendar className="h-3.5 w-3.5" />
-                                                    {format(
-                                                        new Date(session.startedAt || Date.now()),
-                                                        'MMM d, yyyy'
-                                                    )}
-                                                </div>
-                                                <div className="bg-border h-1 w-1 rounded-full" />
-                                                <div className="hover:text-text-secondary flex items-center gap-1.5 transition-colors">
-                                                    <Clock className="h-3.5 w-3.5" />
-                                                    {format(
-                                                        new Date(session.startedAt || Date.now()),
-                                                        'h:mm a'
-                                                    )}
-                                                </div>
-                                                <div className="bg-border h-1 w-1 rounded-full" />
-                                                <div className="text-accent flex items-center gap-1.5">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-current" />
-                                                    {session.mode || 'Practice'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Score Display */}
-                                    {session.status === 'completed' &&
-                                        session.finalScore !== undefined && (
-                                            <div className="bg-bg-page/40 border-border flex flex-col items-center rounded-3xl border p-4 shadow-inner md:items-end">
-                                                <span className="text-text-muted mb-1 text-[10px] font-black tracking-[0.3em] uppercase">
-                                                    Final Score
-                                                </span>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span
-                                                        className={`text-4xl leading-none font-[1000] ${
-                                                            session.finalScore >= 70
-                                                                ? 'text-accent'
-                                                                : 'text-text-primary'
-                                                        }`}
-                                                    >
-                                                        {session.finalScore}
-                                                    </span>
-                                                    <span className="text-text-muted text-base font-bold">
-                                                        /100
-                                                    </span>
-                                                </div>
-                                            </div>
+        <motion.div
+            variants={listVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid gap-4"
+        >
+            <AnimatePresence>
+                {sessions.map((session) => (
+                    <motion.div
+                        key={session._id}
+                        variants={itemVariants}
+                        whileHover={{ scale: 1.005, y: -1 }}
+                        className="group border-border bg-bg-subtle/30 hover:bg-bg-subtle hover:border-accent/20 relative overflow-hidden rounded-xl border p-5 shadow-sm transition-all duration-300 hover:shadow-lg"
+                    >
+                        <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                            {/* Left: Metadata */}
+                            <div className="space-y-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div
+                                        className={`flex h-9 w-9 items-center justify-center rounded-xl border shadow-inner transition-all duration-300 group-hover:rotate-3 ${
+                                            session.mode === 'mock'
+                                                ? 'bg-accent/5 border-accent/20 text-accent'
+                                                : 'bg-bg-page border-border text-text-muted group-hover:text-text-primary'
+                                        }`}
+                                    >
+                                        {session.mode === 'mock' ? (
+                                            <Trophy className="h-4.5 w-4.5" />
+                                        ) : (
+                                            <Gamepad2 className="h-4.5 w-4.5" />
                                         )}
-
-                                    {/* Action Buttons */}
-                                    <div className="flex w-full flex-shrink-0 flex-col gap-3 sm:flex-row md:w-auto">
-                                        <Link
-                                            href={`/interview/${session._id}${session.status === 'active' ? '' : '/replay'}`}
-                                            className="w-full"
-                                        >
-                                            <Button
-                                                variant="ghost"
-                                                className="bg-bg-muted/50 hover:bg-bg-muted text-text-primary h-12 w-full rounded-xl text-xs font-black tracking-widest uppercase transition-all md:px-6"
-                                            >
-                                                {session.status === 'active' ? (
-                                                    <Sparkles className="text-accent mr-2 h-4 w-4" />
-                                                ) : (
-                                                    <PlayCircle className="text-accent mr-2 h-4 w-4" />
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <h3 className="text-text-primary group-hover:text-accent text-lg font-bold tracking-tight transition-colors">
+                                            {session.mode === 'mock'
+                                                ? 'Mock Interview'
+                                                : 'Practice Session'}
+                                        </h3>
+                                        <div className="flex items-center gap-1.5 opacity-50">
+                                            <Calendar className="h-2.5 w-2.5" />
+                                            <span className="text-[9px] font-medium tracking-widest uppercase">
+                                                {format(
+                                                    new Date(session.createdAt),
+                                                    'MMM dd, yyyy • HH:mm'
                                                 )}
-                                                {session.status === 'active'
-                                                    ? 'Resume'
-                                                    : 'View Replay'}
-                                            </Button>
-                                        </Link>
-                                        <Link
-                                            href={`/interview/${session._id}/${session.status === 'active' ? '' : 'result'}`}
-                                            className="w-full"
-                                        >
-                                            <Button
-                                                className={`h-12 w-full rounded-xl text-xs font-black tracking-widest uppercase transition-all md:px-8 ${
-                                                    session.status === 'active'
-                                                        ? 'bg-accent hover:bg-accent-hover text-black'
-                                                        : 'hover:bg-accent bg-white text-black'
-                                                } hover:shadow-accent/20 shadow-lg`}
-                                            >
-                                                {session.status === 'active'
-                                                    ? 'Join Now'
-                                                    : 'View Result'}
-                                                <ChevronRight className="ml-2 h-4 w-4" />
-                                            </Button>
-                                        </Link>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <div className="flex flex-wrap gap-3">
+                                    <div className="bg-bg-page border-border group-hover:border-accent/5 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 transition-colors">
+                                        <Clock className="text-accent h-3 w-3" />
+                                        <span className="text-text-secondary text-[9px] font-medium tracking-widest uppercase">
+                                            {session.durationMins || 0} MINS
+                                        </span>
+                                    </div>
+                                    <StatusPill status={session.status} />
+                                </div>
                             </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+
+                            {/* Right: Actions */}
+                            <div className="border-border/40 flex items-center justify-end border-t pt-4 md:border-none md:pt-0">
+                                <Button
+                                    onClick={() => router.push(`/interview/${session._id}`)}
+                                    variant="ghost"
+                                    className="border-border hover:bg-accent group/btn text-text-primary h-11 rounded-xl border px-6 text-[9px] tracking-[0.3em] uppercase transition-all duration-300 hover:scale-105 hover:text-black active:scale-95"
+                                >
+                                    {session.status === 'completed' ? 'VIEW REPORT' : 'RESUME'}
+                                    <ChevronRight className="ml-1.5 h-3 w-3 transition-transform duration-300 group-hover/btn:translate-x-1" />
+                                </Button>
+                            </div>
+                        </div>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
+
+            <div className="mt-8 text-center opacity-30">
+                <p className="text-text-muted text-[8px] font-medium tracking-[0.5em] uppercase">
+                    End of Simulation Logs
+                </p>
             </div>
-        </div>
+        </motion.div>
     )
 }

@@ -521,7 +521,7 @@ export default function ExecutionConsole({ onMaximize, onCollapse, isMaximized }
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-auto" data-lenis-prevent>
+            <div className="flex-1 overflow-y-auto">
                 {consoleTab === 'testcase' && <TestCaseTab />}
                 {consoleTab === 'result' && <TestResultTab />}
                 {consoleTab === 'ai' && !disableAI && <AiFeedbackTab />}

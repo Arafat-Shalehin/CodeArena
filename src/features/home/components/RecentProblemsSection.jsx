@@ -1,13 +1,13 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 
 // Shared Components
 import { Button } from '@/components/ui/button'
-import PropTypes from 'prop-types'
 import { useRecentProblems } from '@/hooks/useRecentProblems'
 
 // Feature Components
@@ -15,7 +15,6 @@ import ProblemCard from '@/shared/components/ProblemCard'
 
 // Data
 import { normalizeDifficulty } from '@/features/problems/data/problems.data'
-import { formatAcceptanceRate } from '@/lib/utils'
 
 /**
  * @component RecentProblemsSection
@@ -23,31 +22,29 @@ import { formatAcceptanceRate } from '@/lib/utils'
  */
 export default function RecentProblemsSection() {
     const shouldReduceMotion = useSafeReducedMotion()
-    const { problems, isLoading, error } = useRecentProblems(3)
+    const sectionRef = useRef(null)
+    const isNearViewport = useInView(sectionRef, { once: true, margin: '300px' })
+    const { problems, isLoading, error } = useRecentProblems(6, 'curated', isNearViewport)
 
     if (error) {
-        return (
-            <div className="text-error py-12 text-center">
-                Failed to load recent problems. Please try again later.
-            </div>
-        )
+        return <div className="text-text-muted py-12 text-center">Problems loading...</div>
     }
 
     return (
-        <section className="mx-auto max-w-7xl px-4 py-12">
+        <section ref={sectionRef} className="mx-auto max-w-7xl px-4 py-12">
             {/* Section Header */}
             <motion.div
                 initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
-                className="mb-16 pb-12 text-center"
+                transition={{ duration: shouldReduceMotion ? 0 : 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="mb-20 pb-4 text-center"
             >
-                <div className="mx-auto max-w-2xl">
-                    <h2 className="font-display text-text-primary mb-6 text-4xl font-extrabold tracking-tight md:text-5xl">
-                        Guided <span className="text-accent italic">Study Plans.</span>
+                <div className="mx-auto max-w-3xl">
+                    <h2 className="font-display text-text-primary mb-6 text-4xl font-bold tracking-tight [text-wrap:balance] md:text-5xl lg:text-6xl">
+                        Curated <span className="text-accent font-serif italic">challenges.</span>
                     </h2>
-                    <p className="text-text-muted text-lg leading-relaxed">
+                    <p className="text-text-muted mx-auto max-w-2xl text-base leading-relaxed font-medium [text-wrap:balance] md:text-lg">
                         Targeted learning paths curated for technical interviews. Ace the coding
                         rounds at top tech companies with structured practice.
                     </p>
@@ -55,12 +52,12 @@ export default function RecentProblemsSection() {
             </motion.div>
 
             {/* Problems Grid */}
-            <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-                {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {!isNearViewport || isLoading ? (
+                    Array.from({ length: 6 }).map((_, i) => (
                         <div
                             key={i}
-                            className="bg-bg-subtle h-[320px] w-full animate-pulse rounded-2xl border-none"
+                            className="bg-bg-subtle border-border h-[320px] w-full animate-pulse rounded-3xl border"
                         />
                     ))
                 ) : problems.length > 0 ? (
@@ -98,9 +95,9 @@ export default function RecentProblemsSection() {
             >
                 <Link href="/problems">
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         size="lg"
-                        className="btn-ghost text-accent group h-14 min-w-[200px] rounded-2xl transition-all duration-300"
+                        className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-14 min-w-[200px] rounded-full transition-all duration-300"
                     >
                         Explore Study Plans
                         <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

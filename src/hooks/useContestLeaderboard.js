@@ -13,10 +13,7 @@ export function useContestLeaderboard(contestId) {
         contestId ? `/api/contests/${contestId}/leaderboard/live` : null,
         fetcher,
         {
-            refreshInterval: () =>
-                typeof document !== 'undefined' && document.visibilityState === 'visible'
-                    ? 10000
-                    : 30000,
+            refreshInterval: 5000,
             revalidateOnFocus: true,
         }
     )

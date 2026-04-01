@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
 import { Contest } from '@/models/Contest.models'
 import { User } from '@/models/User.models'
-import { loggers } from '@/lib/logger'
+import { logger } from '@/lib/logger'
 
 /**
  * Register a user for a contest
@@ -28,7 +28,7 @@ export async function registerUserForContest(contestId, userId) {
     }
 
     if (contest.status === 'completed') {
-        loggers.contest.warn('Registration attempt on completed contest.', {
+        logger.contest.warn('Registration attempt on completed contest.', {
             contestId,
             userId,
         })
@@ -39,7 +39,7 @@ export async function registerUserForContest(contestId, userId) {
 
     const existing = await ContestParticipant.findOne({ contestId, userId })
     if (existing) {
-        loggers.contest.info('Duplicate registration request handled gracefully.', {
+        logger.contest.info('Duplicate registration request handled gracefully.', {
             contestId,
             userId,
         })
@@ -57,7 +57,7 @@ export async function registerUserForContest(contestId, userId) {
         solvedProblemIds: [],
     })
 
-    loggers.contest.info('User registered for contest.', {
+    logger.contest.info('User registered for contest.', {
         contestId,
         userId,
         participantId: participant._id,
@@ -173,7 +173,7 @@ export async function updateParticipantScore(
             })
         }
     } catch (err) {
-        loggers.contest.error('Failed to sync Redis leaderboard after score update', {
+        logger.contest.error('Failed to sync Redis leaderboard after score update', {
             contestId,
             userId,
             error: err.message,
@@ -230,7 +230,7 @@ export async function finishContestForUser(contestId, userId) {
         throw new Error('Participant not found.')
     }
 
-    loggers.contest.info('User finished contest early.', { contestId, userId })
+    logger.contest.info('User finished contest early.', { contestId, userId })
 
     return participant
 }

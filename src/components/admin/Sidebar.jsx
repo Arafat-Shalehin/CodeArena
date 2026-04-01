@@ -1,59 +1,149 @@
-// components/admin/Sidebar.jsx
-
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { LayoutDashboard, BookOpen, Trophy, Users, ShieldAlert } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation' // useRouter ইমপোর্ট করুন
+import { useAuth } from '@/context/AuthContext'
+import { LayoutDashboard, User, Settings, Trophy, Code2, Users, LogOut } from 'lucide-react'
 
-const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { name: 'Problems', icon: BookOpen, path: '/admin/problems' },
-    { name: 'Contests', icon: Trophy, path: '/admin/contests' },
-    { name: 'Users', icon: Users, path: '/admin/users' },
-    { name: 'Security Logs', icon: ShieldAlert, path: '/admin/logs' },
-]
-
-export default function Sidebar() {
+export default function AdminSidebar() {
     const pathname = usePathname()
+    const router = useRouter() // router ইনভোক করুন
+    const { logout, user } = useAuth()
+
+    // লগআউট হ্যান্ডলার ফাংশন
+    const handleLogout = async () => {
+        try {
+            await logout() // লগআউট কল করুন
+            router.push('/') // হোম পেজে পাঠিয়ে দিন
+        } catch (error) {
+            console.error('Logout failed:', error)
+        }
+    }
+
+    const mainMenuItems = [
+        {
+            title: 'Dashboard',
+            href: '/admin/dashboard',
+            icon: <LayoutDashboard size={20} />,
+        },
+        {
+            title: 'Manage Contests',
+            href: '/admin/contests',
+            icon: <Trophy size={20} />,
+        },
+        {
+            title: 'Problems',
+            href: '/admin/problems',
+            icon: <Code2 size={20} />,
+        },
+        {
+            title: 'Users List',
+            href: '/admin/users',
+            icon: <Users size={20} />,
+        },
+    ]
+
+    const accountItems = [
+        {
+            title: 'My Profile',
+            href: '/admin/profile',
+            icon: <User size={20} />,
+        },
+        {
+            title: 'Settings',
+            href: '/admin/settings',
+            icon: <Settings size={20} />,
+        },
+    ]
 
     return (
-        <aside className="bg-background flex h-full w-64 flex-col shadow-md">
-            {/* Logo */}
-            <div className="p-6 shadow-sm">
-                <h2 className="text-xl font-bold tracking-tight">CodeArena</h2>
-                <p className="text-muted-foreground mt-1 text-xs">ADMIN PANEL</p>
+        <aside className="border-border sticky top-0 flex min-h-screen w-64 flex-col border-r bg-white">
+            {/* Brand Logo */}
+            <div className="p-6">
+                <Link href="/admin/dashboard" className="flex items-center gap-2">
+                    <div className="bg-accent shadow-accent/20 flex h-9 w-9 items-center justify-center rounded-xl shadow-lg">
+                        <Code2 className="text-white" size={22} />
+                    </div>
+                    <span className="text-text-primary text-xl font-black tracking-tighter uppercase italic">
+                        Code<span className="text-accent">Arena</span>
+                    </span>
+                </Link>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 space-y-2 p-4">
-                {menuItems.map((item) => {
-                    const isActive = pathname === item.path
-                    const Icon = item.icon
+            {/* Main Navigation */}
+            <nav className="flex-1 space-y-6 px-4">
+                <div>
+                    <p className="text-text-muted mb-2 px-4 text-[10px] font-bold tracking-widest uppercase">
+                        Menu
+                    </p>
+                    <div className="space-y-1">
+                        {mainMenuItems.map((item) => (
+                            <SidebarLink
+                                key={item.href}
+                                item={item}
+                                active={pathname === item.href}
+                            />
+                        ))}
+                    </div>
+                </div>
 
-                    return (
-                        <Link key={item.name} href={item.path}>
-                            <motion.div
-                                whileHover={{ x: 4 }}
-                                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
-                                    isActive
-                                        ? 'bg-emerald-500 text-white shadow-sm'
-                                        : 'text-muted-foreground hover:bg-muted hover:shadow-sm'
-                                }`}
-                            >
-                                <Icon className="h-5 w-5" />
-                                {item.name}
-                            </motion.div>
-                        </Link>
-                    )
-                })}
+                <div>
+                    <p className="text-text-muted mb-2 px-4 text-[10px] font-bold tracking-widest uppercase">
+                        Account
+                    </p>
+                    <div className="space-y-1">
+                        {accountItems.map((item) => (
+                            <SidebarLink
+                                key={item.href}
+                                item={item}
+                                active={pathname === item.href}
+                            />
+                        ))}
+                    </div>
+                </div>
             </nav>
 
-            {/* Footer */}
-            <div className="text-muted-foreground p-4 text-xs shadow-inner">
-                v1.0.4 • Industry Standard Build
+            {/* Footer Actions: Logout & User Profile */}
+            <div className="border-border bg-bg-page/50 space-y-2 border-t p-4">
+                <button
+                    onClick={handleLogout} // আপডেট করা হ্যান্ডলার কল করুন
+                    className="group flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold text-red-500 transition-all duration-200 hover:bg-red-50"
+                >
+                    <LogOut size={20} className="transition-transform group-hover:translate-x-1" />
+                    <span className="text-sm">Logout</span>
+                </button>
+
+                <div className="border-border flex items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm">
+                    <div className="bg-accent/10 border-accent/20 text-accent flex h-9 w-9 items-center justify-center rounded-full border text-sm font-bold">
+                        {user?.name?.charAt(0) || 'A'}
+                    </div>
+                    <div className="overflow-hidden">
+                        <p className="text-text-primary truncate text-xs font-bold">
+                            {user?.name || 'Admin'}
+                        </p>
+                        <p className="text-text-muted truncate text-[10px]">
+                            {user?.email || 'admin@codearena.com'}
+                        </p>
+                    </div>
+                </div>
             </div>
         </aside>
+    )
+}
+
+function SidebarLink({ item, active }) {
+    return (
+        <Link
+            href={item.href}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 font-bold transition-all duration-200 ${
+                active
+                    ? 'bg-accent shadow-accent/25 scale-[1.02] text-white shadow-md'
+                    : 'text-text-secondary hover:bg-bg-muted hover:text-text-primary'
+            }`}
+        >
+            {item.icon}
+            <span className="text-sm">{item.title}</span>
+        </Link>
     )
 }

@@ -5,12 +5,21 @@ import { useState, useEffect } from 'react'
 // Shared Components
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { ArrowButton } from '@/components/ui/ArrowButton'
 
 // Auth
 import { useAuth } from '@/context/AuthContext'
 
 import { toast } from 'sonner'
-import { Settings, MapPin, Link as LinkIcon, Github, Linkedin, Twitter } from 'lucide-react'
+import {
+    Settings,
+    MapPin,
+    Link as LinkIcon,
+    Github,
+    Linkedin,
+    Twitter,
+    ArrowUpRight,
+} from 'lucide-react'
 import Link from 'next/link'
 import FollowersListModal from './FollowersListModal'
 
@@ -30,29 +39,7 @@ export default function ProfileHero({ user: userProp }) {
     const displayUser = userProp || authUser
     const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
 
-    const {
-        bio = '',
-        avatarSeed = name,
-        stats,
-        location,
-        country,
-        website,
-        socials,
-    } = displayUser || {}
-
-    const getFlagEmoji = (countryCode) => {
-        if (!countryCode || countryCode.length !== 2) return ''
-        const codePoints = countryCode
-            .toUpperCase()
-            .split('')
-            .map((char) => 127397 + char.charCodeAt(0))
-        try {
-            return String.fromCodePoint(...codePoints)
-        } catch (e) {
-            return ''
-        }
-    }
-    const countryFlag = getFlagEmoji(country)
+    const { bio = '', avatarSeed = name, stats, location, website, socials } = displayUser || {}
 
     const isOwnProfile =
         authUser &&
@@ -82,12 +69,12 @@ export default function ProfileHero({ user: userProp }) {
     const [isFollowing, setIsFollowing] = useState(checkIsFollowing(displayUser))
     const [friendsModalType, setFriendsModalType] = useState(null) // 'followers' | 'following' | null
 
-    // Sync follow state if displayUser changes from network fetch
+    // Sync state if displayUser changes from network fetch
     useEffect(() => {
         setFollowersCount(displayUser?.followers?.length || 0)
         setFollowingCount(displayUser?.following?.length || 0)
         setIsFollowing(checkIsFollowing(displayUser))
-    }, [displayUser?.followers?.length, displayUser?.following?.length, currentUserId])
+    }, [displayUser, currentUserId])
 
     const handleFollowToggle = async () => {
         if (!authUser) {
@@ -114,9 +101,6 @@ export default function ProfileHero({ user: userProp }) {
                 // Read truth from server to ensure sync
                 if (data.data?.followersCount !== undefined) {
                     setFollowersCount(data.data.followersCount)
-                }
-                if (data.data?.followingCount !== undefined) {
-                    setFollowingCount(data.data.followingCount)
                 }
                 setIsFollowing(data.data.following)
                 toast.success(data.data.following ? `Following ${name}` : `Unfollowed ${name}`)
@@ -163,7 +147,7 @@ export default function ProfileHero({ user: userProp }) {
                                 alt={`${name}'s avatar`}
                                 className="rounded-2xl object-cover"
                             />
-                            <AvatarFallback className="bg-bg-muted text-text-primary rounded-2xl text-4xl font-bold">
+                            <AvatarFallback className="bg-bg-muted text-text-primary rounded-2xl text-4xl font-semibold">
                                 {(name || 'U').substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                         </Avatar>
@@ -173,13 +157,10 @@ export default function ProfileHero({ user: userProp }) {
                     <div className="flex max-w-[400px] flex-col items-center space-y-4 md:items-start">
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                                <h1
-                                    suppressHydrationWarning
-                                    className="text-text-primary text-3xl font-bold tracking-tight drop-shadow-sm"
-                                >
+                                <h1 className="text-text-primary text-3xl font-semibold tracking-tight drop-shadow-sm">
                                     {name}
                                 </h1>
-                                <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold tracking-wider uppercase">
+                                <span className="bg-warning-light text-warning border-warning/20 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-wider uppercase">
                                     🏆 #{rank}
                                 </span>
                             </div>
@@ -189,7 +170,7 @@ export default function ProfileHero({ user: userProp }) {
                                     onClick={() => setFriendsModalType('followers')}
                                     className="hover:text-accent flex items-center gap-1 transition-colors"
                                 >
-                                    <span className="text-text-primary font-bold">
+                                    <span className="text-text-primary font-semibold">
                                         {followersCount}
                                     </span>
                                     <span className="text-text-secondary font-medium">
@@ -201,7 +182,7 @@ export default function ProfileHero({ user: userProp }) {
                                     onClick={() => setFriendsModalType('following')}
                                     className="hover:text-accent flex items-center gap-1 transition-colors"
                                 >
-                                    <span className="text-text-primary font-bold">
+                                    <span className="text-text-primary font-semibold">
                                         {followingCount}
                                     </span>
                                     <span className="text-text-secondary font-medium">
@@ -211,10 +192,7 @@ export default function ProfileHero({ user: userProp }) {
                             </div>
 
                             {bio ? (
-                                <p
-                                    suppressHydrationWarning
-                                    className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left"
-                                >
+                                <p className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left">
                                     {bio}
                                 </p>
                             ) : isOwnProfile ? (
@@ -224,23 +202,16 @@ export default function ProfileHero({ user: userProp }) {
                             ) : null}
                         </div>
 
-                        {/* Quick info: City & Country & Website */}
-                        {(location || country || website) && (
+                        {/* Quick info: Location & Website */}
+                        {(location || website) && (
                             <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-sm md:justify-start">
-                                {(location || countryFlag) && (
+                                {location && (
                                     <div
                                         className="hover:text-text-primary flex items-center gap-1.5 transition-colors"
                                         title="Location"
                                     >
                                         <MapPin size={16} className="text-accent/70" />
-                                        <span className="flex items-center gap-1.5">
-                                            {location}
-                                            {countryFlag && (
-                                                <span className="text-lg leading-none">
-                                                    {countryFlag}
-                                                </span>
-                                            )}
-                                        </span>
+                                        <span>{location}</span>
                                     </div>
                                 )}
                                 {safeWebsiteUrl && (
@@ -255,7 +226,7 @@ export default function ProfileHero({ user: userProp }) {
                                             rel="noopener noreferrer"
                                             className="hover:underline"
                                         >
-                                            {website?.replace(/^https?:\/\//, '') || website}
+                                            {website.replace(/^https?:\/\//, '')}
                                         </a>
                                     </div>
                                 )}
@@ -282,7 +253,7 @@ export default function ProfileHero({ user: userProp }) {
                                 variant={isFollowing ? 'outline' : 'default'}
                                 onClick={handleFollowToggle}
                                 disabled={isFollowLoading}
-                                className={`w-full md:w-auto ${!isFollowing ? 'bg-accent hover:bg-accent-hover shadow-accent-glow text-white' : ''}`}
+                                className="w-full md:w-auto"
                             >
                                 {isFollowLoading ? '...' : isFollowing ? 'Unfollow' : 'Follow'}
                             </Button>
@@ -290,21 +261,20 @@ export default function ProfileHero({ user: userProp }) {
                         {isOwnProfile && (
                             <Link href="/profile/settings" className="w-full md:w-auto">
                                 <Button
-                                    variant="secondary"
-                                    className="bg-bg-page hover:bg-bg-subtle text-text-primary border-border h-10 w-full border px-8 py-2 font-semibold shadow-sm transition-all md:w-auto"
+                                    variant="outline"
+                                    className="bg-bg-page text-text-secondary hover:text-accent hover:border-accent/20 group border-border hover:bg-accent-light h-11 w-full min-w-[160px] rounded-full transition-all duration-300 md:w-auto"
                                 >
                                     <Settings className="mr-2 h-4 w-4" /> Edit Profile
+                                    <ArrowUpRight className="ml-2 h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                                 </Button>
                             </Link>
                         )}
                     </div>
 
                     {/* Social Icons only */}
-                    {(socials?.github?.trim() ||
-                        socials?.linkedin?.trim() ||
-                        socials?.twitter?.trim()) && (
+                    {(socials?.github || socials?.linkedin || socials?.twitter) && (
                         <div className="flex items-center justify-center gap-4 md:justify-end">
-                            {socials?.github?.trim() && (
+                            {socials?.github && (
                                 <a
                                     href={`https://github.com/${socials.github}`}
                                     target="_blank"
@@ -315,7 +285,7 @@ export default function ProfileHero({ user: userProp }) {
                                     <Github size={20} />
                                 </a>
                             )}
-                            {socials?.linkedin?.trim() && (
+                            {socials?.linkedin && (
                                 <a
                                     href={`https://linkedin.com/in/${socials.linkedin}`}
                                     target="_blank"
@@ -326,7 +296,7 @@ export default function ProfileHero({ user: userProp }) {
                                     <Linkedin size={20} />
                                 </a>
                             )}
-                            {socials?.twitter?.trim() && (
+                            {socials?.twitter && (
                                 <a
                                     href={`https://twitter.com/${socials.twitter.replace('@', '')}`}
                                     target="_blank"

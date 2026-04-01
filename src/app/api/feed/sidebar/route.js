@@ -4,12 +4,31 @@ import { User } from '@/models/User.models'
 import { Problem } from '@/models/Problem.models'
 import { Contest } from '@/models/Contest.models'
 import { protect } from '@/middlewares/auth.middleware'
+import { redisClient } from '@/lib/redis'
 
-export const dynamic = 'force-dynamic'
+// Cache sidebar data for 5 minutes to reduce database load
+const SIDEBAR_CACHE_TTL = 300
 
 export async function GET(req) {
     try {
         await dbConnect()
+
+        // Try to get cached sidebar data (use generic cache for all users)
+        const cacheKey = 'sidebar:generic'
+        if (redisClient.isOpen) {
+            try {
+                const cached = await redisClient.get(cacheKey)
+                if (cached) {
+                    return NextResponse.json({
+                        success: true,
+                        source: 'cache',
+                        data: JSON.parse(cached),
+                    })
+                }
+            } catch (cacheErr) {
+                console.warn('[SidebarAPI] Cache get error:', cacheErr.message)
+            }
+        }
 
         // 1. Authenticate user to filter out themselves and followed users from suggestions
         const user = await protect(req)
@@ -23,8 +42,7 @@ export async function GET(req) {
             }
         }
 
-        // 2. Fetch Trending Problems
-        // Problems with the highest total submissions
+        // 2. Fetch Trending Problems - using index on totalSubmissions
         const trendingProblems = await Problem.find()
             .sort({ totalSubmissions: -1 })
             .limit(3)
@@ -37,18 +55,17 @@ export async function GET(req) {
         const suggestedUsers = await User.aggregate([
             { $match: excludeFilter },
             { $sample: { size: 3 } }, // Randomly sample active users
-            { $project: { name: 1, avatarSeed: 1, bio: 1, 'stats.globalRank': 1 } },
+            { $project: { name: 1, avatarSeed: 1, bio: 1, 'stats.globalRank': 1, country: 1 } },
         ])
 
-        // 4. Fetch Upcoming Contests
+        // 4. Fetch Upcoming Contests - add index on status + startTime
         const upcomingContests = await Contest.find({ status: 'upcoming' })
             .sort({ startTime: 1 })
             .limit(2)
             .select('title startTime maxParticipants')
             .lean()
 
-        // 5. Fetch Top Contributors
-        // Top users globally by score
+        // 5. Fetch Top Contributors - using index on stats.score
         const topContributors = await User.find()
             .sort({ 'stats.score': -1 })
             .limit(3)
@@ -62,7 +79,16 @@ export async function GET(req) {
             topContributors,
         }
 
-        return NextResponse.json({ success: true, data: sidebarData })
+        // Cache the result for 5 minutes
+        if (redisClient.isOpen) {
+            try {
+                await redisClient.setEx(cacheKey, SIDEBAR_CACHE_TTL, JSON.stringify(sidebarData))
+            } catch (cacheErr) {
+                console.warn('[SidebarAPI] Cache set error:', cacheErr.message)
+            }
+        }
+
+        return NextResponse.json({ success: true, source: 'fresh', data: sidebarData })
     } catch (error) {
         console.error('Sidebar Data Error:', error)
         return NextResponse.json({ success: false, message: 'Server Error' }, { status: 500 })

@@ -1,34 +1,8 @@
 {
-    "$schema": "https://railway.com/railway.schema.json",
-    "services": [
-        {
-            "name": "codearena-api",
-            "build": {
-                "builder": "dockerfile",
-                "dockerfilePath": "Dockerfile"
-            },
-            "deploy": {
-                "startCommand": "npm run start:api",
-                "healthcheckPath": "/api/health",
-                "restartPolicyType": "on_failure"
-            },
-            "variables": {
-                "PROCESS_TYPE": "API"
-            }
-        },
-        {
-            "name": "codearena-worker",
-            "build": {
-                "builder": "dockerfile",
-                "dockerfilePath": "Dockerfile"
-            },
-            "deploy": {
-                "startCommand": "npm run start:worker",
-                "restartPolicyType": "on_failure"
-            },
-            "variables": {
-                "PROCESS_TYPE": "WORKER"
-            }
-        }
-    ]
+    "build": {
+        "builder": "dockerfile"
+    },
+    "deploy": {
+        "startCommand": "node server.js"
+    }
 }

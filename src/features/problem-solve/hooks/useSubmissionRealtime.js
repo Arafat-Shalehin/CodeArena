@@ -4,91 +4,6 @@ import { useEffect } from 'react'
 import { io } from 'socket.io-client'
 import { toast } from 'sonner'
 
-/**
- * useSubmissionRealtime Hook
- *
- * Manages real-time communication with the submission judging server via Socket.IO.
- * This hook handles the entire lifecycle of submission tracking, from initial submission
- * to final verdict, including live test case progress updates.
- *
- * ─── Architecture Overview ──────────────────────────────────────────────────────
- *
- * Connection Flow:
- * 1. Creates Socket.IO connection to realtime server (port 3002)
- * 2. Joins user-specific room for notifications
- * 3. Joins problem-specific room for context
- * 4. Joins submission-specific room when code is submitted
- *
- * Socket Events Received:
- * - submission_status: Live progress during judging (case-by-case updates)
- * - judging_started: Notification that judging has begun
- * - test_case_result: Individual test case completion
- * - test_case_result_batched: Batched test case results (optimized)
- * - final_verdict: Final submission result (ACCEPTED, WA, TLE, etc.)
- * - execution_completed: Direct execution (Run button) results
- * - submission_update: General submission state updates
- *
- * Socket Events Sent:
- * - join_room: Subscribe to a specific room (user, problem, submission)
- * - leave_room: Unsubscribe from a room when switching problems
- *
- * ─── Submission Lifecycle ───────────────────────────────────────────────────────
- *
- * 1. User clicks "Submit" → POST /api/submissions
- * 2. API creates submission record, returns submissionId
- * 3. Frontend joins `submission_${submissionId}` room
- * 4. Backend worker picks up submission, emits `judging_started`
- * 5. Worker processes test cases, emits `test_case_result` for each
- * 6. Worker completes all cases, emits `final_verdict`
- * 7. Frontend displays results, navigates to submission details
- *
- * ─── Retry Logic ────────────────────────────────────────────────────────────────
- *
- * Socket room joining uses exponential backoff retry:
- * - Max attempts: 50
- * - Retry delay: 100ms
- * - Total timeout: ~5 seconds before giving up
- *
- * Fallback polling:
- * - If no final verdict within 30 seconds, poll /api/submissions/:id
- * - Ensures users get results even if socket events are lost
- *
- * ─── State Management ───────────────────────────────────────────────────────────
- *
- * Uses refs to track:
- * - activeSubmissionRoomRef: Current submission room to avoid duplicate handling
- * - finalVerdictHandledRef: Prevents processing duplicate final_verdict events
- * - lastFinalSubmissionIdRef: Tracks last processed submission for deduplication
- *
- * @param {Object} params - Hook parameters
- * @param {Object} params.user - Current authenticated user
- * @param {string} params.problemId - ID of the problem being solved
- * @param {Function} params.setSocket - Setter for socket instance
- * @param {Function} params.setLatestSubmissionEvent - Setter for latest event
- * @param {Function} params.setSubmissionResult - Setter for submission results
- * @param {Function} params.setIsSubmitting - Setter for submitting state
- * @param {Function} params.setIsRunning - Setter for running state
- * @param {Function} params.setTestResult - Setter for test result state
- * @param {Function} params.viewSubmissionDetails - Function to fetch submission details
- * @param {Function} params.setLeftTab - Function to switch left panel tabs
- * @param {Function} params.syncUser - Function to sync user stats after acceptance
- * @param {Object} params.activeSubmissionRoomRef - Ref tracking active submission room
- * @param {Object} params.finalVerdictHandledRef - Ref preventing duplicate verdicts
- * @param {Object} params.lastFinalSubmissionIdRef - Ref for submission deduplication
- *
- * @returns {void}
- */
-
-/**
- * Get stage badge text for submission progress
- *
- * Maps internal stage names to user-friendly status messages.
- *
- * @param {string} stage - Current judging stage
- * @param {number} currentCase - Current test case number (1-indexed)
- * @param {number} totalCount - Total number of test cases
- * @returns {string} Formatted status badge text
- */
 function getStageBadge(stage, currentCase, totalCount) {
     if (stage === 'compile' || stage === 'compiling' || stage === 'queued') {
         return '[ ⟳ ] Compiling...'
@@ -400,37 +315,6 @@ export function useSubmissionRealtime({
 
         newSocket.on('test_case_result', (data) => {
             console.log('[Socket] Test case result:', data)
-
-            if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
-                return
-            }
-
-            const normalizedStatus = String(data.status || '').toLowerCase()
-            const totalCount = data.total ?? data.totalCount
-            const currentCase = data.current ?? data.caseNumber
-            const failedAtCase =
-                data.failedAtCase ||
-                data.failedCase ||
-                (normalizedStatus === 'failed' ? currentCase : null)
-            const stage = normalizedStatus === 'failed' ? 'finalizing' : data.stage || 'running'
-
-            updateRunningState({
-                ...data,
-                totalCount,
-                currentCase,
-                failedAtCase,
-                stage,
-                stageBadge: getStageBadge(stage, currentCase, totalCount),
-            })
-
-            if (normalizedStatus === 'failed' && currentCase) {
-                toast.error(`Failed at test case ${currentCase}`)
-            }
-        })
-
-        // Optimized batched test case result (new format)
-        newSocket.on('test_case_result_batched', (data) => {
-            console.log('[Socket] Test case result (batched):', data)
 
             if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
                 return

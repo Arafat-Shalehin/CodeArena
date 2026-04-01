@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import Lenis from 'lenis'
 import { usePathname } from 'next/navigation'
 
@@ -11,29 +11,8 @@ import { usePathname } from 'next/navigation'
  */
 export function SmoothScroll({ children }) {
     const pathname = usePathname()
-    const lenisRef = useRef(null)
-    const rafRef = useRef(null)
-    const disableLenis = pathname?.startsWith('/feed')
 
     useEffect(() => {
-        if (disableLenis) {
-            if (rafRef.current) {
-                cancelAnimationFrame(rafRef.current)
-                rafRef.current = null
-            }
-            if (lenisRef.current) {
-                lenisRef.current.destroy()
-                lenisRef.current = null
-            }
-            document.documentElement.classList.remove(
-                'lenis',
-                'lenis-smooth',
-                'lenis-stopped',
-                'lenis-scrolling'
-            )
-            return
-        }
-
         // Initialize Lenis
         const lenis = new Lenis({
             duration: 1.2,
@@ -46,40 +25,25 @@ export function SmoothScroll({ children }) {
             infinite: false,
             autoResize: true,
         })
-        lenisRef.current = lenis
 
         // Synchronize Lenis with RequestAnimationFrame
         function raf(time) {
             lenis.raf(time)
-            rafRef.current = requestAnimationFrame(raf)
+            requestAnimationFrame(raf)
         }
 
-        rafRef.current = requestAnimationFrame(raf)
+        requestAnimationFrame(raf)
 
         // Cleanup on unmount
         return () => {
-            if (rafRef.current) {
-                cancelAnimationFrame(rafRef.current)
-            }
             lenis.destroy()
-            lenisRef.current = null
         }
-    }, [disableLenis])
+    }, [])
 
     // Reset scroll position on route change
     useEffect(() => {
-        if (disableLenis) {
-            window.scrollTo(0, 0)
-            return
-        }
-
-        if (lenisRef.current) {
-            lenisRef.current.scrollTo(0, { immediate: true })
-            return
-        }
-
         window.scrollTo(0, 0)
-    }, [pathname, disableLenis])
+    }, [pathname])
 
     return <>{children}</>
 }

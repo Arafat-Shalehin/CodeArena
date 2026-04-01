@@ -3,7 +3,6 @@ import dbConnect from '@/lib/mongodb'
 import { Submission } from '@/models/Submission.models'
 import { protect } from '@/middlewares/auth.middleware'
 import mongoose from 'mongoose'
-import { resolveNotificationActorName } from '@/services/notification.service'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +60,6 @@ export async function POST(req, { params }) {
             // NEW: Send Real-time Notification to the submission owner
             const { sendNotification } = await import('@/services/notification.service')
             if (submission.userId.toString() !== userIdStr) {
-                const actorName = await resolveNotificationActorName(user)
                 // Get problem title for the message if possible
                 const { Problem } = await import('@/models/Problem.models')
                 const problem = await Problem.findById(submission.problemId).select('title')
@@ -70,7 +68,7 @@ export async function POST(req, { params }) {
                     recipientId: submission.userId,
                     senderId: user._id,
                     type: 'social',
-                    message: `${actorName} congratulated you on your solution for "${problem?.title || 'a problem'}"`,
+                    message: `${user.name} congratulated you on your solution for "${problem?.title || 'a problem'}"`,
                     link: `/problems/${submission.problemId}`,
                     metadata: {
                         submissionId: submission._id,

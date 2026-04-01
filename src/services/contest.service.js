@@ -164,8 +164,6 @@ export async function updateContest(id, data) {
         validateDates(data.startTime, data.endTime)
     }
 
-    const previousContest = await Contest.findById(id)
-
     const contest = await Contest.findByIdAndUpdate(id, data, {
         new: true,
         runValidators: true,
@@ -182,45 +180,21 @@ export async function updateContest(id, data) {
         updatedFields: Object.keys(data),
     })
 
-    // --- Post-Contest Plagiarism Sweep ---
-    if (
-        previousContest &&
-        previousContest.status !== 'completed' &&
-        contest.status === 'completed'
-    ) {
-        try {
-            const { Submission } = await import('@/models/Submission.models')
-            const { getPlagiarismQueue } = await import('@/lib/queue')
-            const plagiarismQueue = getPlagiarismQueue()
-
-            const submissions = await Submission.find({
-                contestId: contest._id,
-                verdict: 'ACCEPTED',
-            }).select('_id')
-
-            for (const sub of submissions) {
-                await plagiarismQueue.add(
-                    'check-plagiarism',
-                    { submissionId: sub._id.toString() },
-                    {
-                        jobId: `plagiarism-sweep-${sub._id}`,
-                        attempts: 2,
-                        backoff: { type: 'fixed', delay: 5000 },
-                    }
-                )
-            }
-            console.log(
-                `[CONTEST SERVICE] Enqueued ${submissions.length} plagiarism sweep jobs for contest ${contest._id}`
-            )
-        } catch (err) {
-            console.error('[CONTEST SERVICE] Failed to enqueue plagiarism sweep job', err)
-        }
-    }
-
     if (redisClient.isOpen) {
         const listKeys = await redisClient.keys('contest:list:*')
         if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
         await redisClient.del(`contest:${id}:detail`).catch(() => {})
+
+        // Publish update event for real-time synchronization
+        await redisClient
+            .publish(
+                'contest_updates',
+                JSON.stringify({
+                    type: 'contest:updated',
+                    contestId: id.toString(),
+                })
+            )
+            .catch((err) => console.error('[CONTEST SERVICE] Redis publish error:', err))
     }
 
     return contest
@@ -247,6 +221,17 @@ export async function deleteContest(id) {
         const listKeys = await redisClient.keys('contest:list:*')
         if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
         await redisClient.del(`contest:${id}:detail`).catch(() => {})
+
+        // Publish update event so clients can redirect or update
+        await redisClient
+            .publish(
+                'contest_updates',
+                JSON.stringify({
+                    type: 'contest:deleted',
+                    contestId: id.toString(),
+                })
+            )
+            .catch((err) => console.error('[CONTEST SERVICE] Redis publish error (delete):', err))
     }
 
     return contest

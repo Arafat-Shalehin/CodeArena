@@ -21,6 +21,8 @@ import SubmissionResultTab from './SubmissionResultTab'
 import { useProblemSolve } from '@/context/ProblemSolveContext'
 import { formatAcceptanceRate } from '@/lib/utils'
 
+import ReactionSystem from '@/components/reactions/ReactionSystem'
+
 const DIFFICULTY_STYLES = {
     easy: 'difficulty-easy',
     medium: 'difficulty-medium',
@@ -43,6 +45,7 @@ function ProblemDescription({ problem }) {
                 <h2 className="text-text-primary text-2xl font-bold tracking-tight">
                     {problem.title}
                 </h2>
+                <ReactionSystem problemId={problem._id || problem.id} />
             </div>
 
             <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -237,7 +240,7 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
             </div>
 
             {/* Content */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-5" data-lenis-prevent>
+            <div className="flex-1 overflow-y-auto p-5">
                 {leftTab === 'description' ? (
                     <ProblemDescription problem={problem} />
                 ) : leftTab === 'submissions' ? (

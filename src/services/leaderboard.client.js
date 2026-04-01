@@ -1,11 +1,11 @@
 /**
  * Leaderboard Client Service
- * 
+ *
  * Provides an interface for client-side components to fetch leaderboard data.
  * Currently uses mock data to avoid server-side dependency issues in hooks.
  */
 
-import { leaderboardUsers, leaderboardStats } from '@/features/leaderboard/data/leaderboard.data';
+import { leaderboardUsers, leaderboardStats } from '@/features/leaderboard/data/leaderboard.data'
 
 export const leaderboardService = {
     /**
@@ -13,9 +13,9 @@ export const leaderboardService = {
      * @returns {Promise<Array>}
      */
     getRankings: async () => {
-        // Simulate API delay for realistic behavior if needed, 
+        // Simulate API delay for realistic behavior if needed,
         // but for now returning directly for simplicity.
-        return leaderboardUsers;
+        return leaderboardUsers
     },
 
     /**
@@ -23,6 +23,6 @@ export const leaderboardService = {
      * @returns {Promise<Array>}
      */
     getStats: async () => {
-        return leaderboardStats;
-    }
-};
+        return leaderboardStats
+    },
+}

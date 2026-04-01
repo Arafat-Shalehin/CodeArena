@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect } from 'react'
 import useSWR from 'swr'
+import { io } from 'socket.io-client'
 import { useContest } from '@/hooks/useContest'
 import { useContestTimer } from '@/hooks/useContestTimer'
 import ContestDetailHero from './ContestDetailHero'
@@ -15,7 +16,7 @@ import { useAuth } from '@/context/AuthContext'
  */
 export default function ContestDetailPage({ contestId }) {
     const { user: currentUser } = useAuth()
-    const { contest, isLoading, error } = useContest(contestId)
+    const { contest, isLoading, error, mutate } = useContest(contestId)
     const { data: participantsData } = useSWR(
         contestId ? `/api/contests/${contestId}/participants?limit=5` : null,
         (url) => fetch(url).then((r) => r.json()),
@@ -41,6 +42,34 @@ export default function ContestDetailPage({ contestId }) {
 
     const isRegistered = regData?.isRegistered || false
     const totalParticipants = participantsData?.pagination?.total || participants.length
+
+    // Real-time synchronization
+    useEffect(() => {
+        if (!contestId) return
+
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002', {
+            reconnection: true,
+        })
+
+        socket.on('connect', () => {
+            console.log(`[ContestDetail] Joined room contest_${contestId}`)
+            socket.emit('join_room', `contest_${contestId}`)
+        })
+
+        socket.on('contest:updated', (data) => {
+            console.log('[ContestDetail] Contest updated, refreshing state...', data)
+            mutate()
+        })
+
+        socket.on('contest:deleted', () => {
+            console.log('[ContestDetail] Contest deleted, redirecting...')
+            window.location.href = '/contests'
+        })
+
+        return () => {
+            socket.disconnect()
+        }
+    }, [contestId, mutate])
 
     useContestTimer(contest?.startTime, contest?.endTime) // pre-warm timer
 

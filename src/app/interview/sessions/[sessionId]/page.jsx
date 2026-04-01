@@ -75,7 +75,7 @@ export default function InterviewSessionPage() {
                 <p className="text-text-muted text-sm">{error || 'Session not found.'}</p>
                 <button
                     onClick={() => router.push('/feed')}
-                    className="bg-accent hover:bg-accent/80 rounded-md px-6 py-2 text-sm font-semibold text-white"
+                    className="rounded-md bg-[#2cbb5d] px-6 py-2 text-sm font-semibold text-white hover:bg-[#26a34f]"
                 >
                     Go Home
                 </button>

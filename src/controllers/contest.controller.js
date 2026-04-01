@@ -75,17 +75,21 @@ export async function update(req, { params }) {
         const contest = await updateContest(id, body)
         return Response.json({ success: true, data: contest })
     } catch (error) {
-        const status = error.message.includes('not found') ? 404 : 400
+        const status = error.status || 400
         return Response.json({ success: false, message: error.message }, { status })
     }
 }
 
 /**
  * DELETE /api/contests/[id]
- * Performs a soft delete
  */
 export async function remove(req, { params }) {
-    const { id } = await params
-    await deleteContest(id)
-    return Response.json({ success: true, message: 'Contest deleted.' })
+    try {
+        const { id } = await params
+        await deleteContest(id)
+        return Response.json({ success: true, message: 'Contest deleted.' })
+    } catch (error) {
+        const status = error.status || 400
+        return Response.json({ success: false, message: error.message }, { status })
+    }
 }

@@ -1,113 +1,59 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Terminal, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
  * @component CodeEditorPreview
- * @description A visual representation of a code editor with a self-typing Python solution.
+ * @description A visual representation of a code editor with an instantly visiblethon solution.
  */
+const CODE_LINES = [
+    {
+        tokens: [
+            { text: 'def', color: 'text-accent font-bold' },
+            { text: ' ', color: '' },
+            { text: 'solve_challenge', color: 'text-info' },
+            { text: '(data):', color: '' },
+        ],
+    },
+    {
+        tokens: [{ text: '    # Optimized complexity: O(log N)', color: 'text-text-muted italic' }],
+    },
+    {
+        tokens: [
+            { text: '    left, right = ', color: '' },
+            { text: '0', color: 'text-emerald-500 dark:text-emerald-400' },
+            { text: ', ', color: '' },
+            { text: 'len', color: 'text-emerald-500 dark:text-emerald-400' },
+            { text: '(data)', color: '' },
+        ],
+    },
+    {
+        tokens: [
+            { text: '    ', color: '' },
+            { text: 'while', color: 'text-accent font-bold' },
+            { text: ' left < right:', color: '' },
+        ],
+    },
+    {
+        tokens: [
+            { text: '        mid = (left + right) // ', color: '' },
+            { text: '2', color: 'text-emerald-500 dark:text-emerald-400' },
+        ],
+    },
+    {
+        tokens: [
+            { text: '    ', color: '' },
+            { text: 'return', color: 'text-accent font-bold' },
+            { text: ' "CodeArena Legend"', color: 'text-amber-500' },
+        ],
+    },
+]
+
 export default function CodeEditorPreview({ className }) {
     const language = 'python' // Static preview language
-    const [currentLineIndex, setCurrentLineIndex] = useState(0)
-    const [currentCharIndex, setCurrentCharIndex] = useState(0)
-
-    const codeLines = [
-        {
-            text: 'def solve_challenge(data):',
-            tokens: [
-                { text: 'def', color: 'text-accent font-bold' },
-                { text: ' ', color: '' },
-                { text: 'solve_challenge', color: 'text-info' },
-                { text: '(data):', color: '' },
-            ],
-        },
-        {
-            text: '    # Optimized complexity: O(log N)',
-            tokens: [
-                { text: '    # Optimized complexity: O(log N)', color: 'text-text-muted italic' },
-            ],
-        },
-        {
-            text: '    left, right = 0, len(data)',
-            tokens: [
-                { text: '    left, right = ', color: '' },
-                { text: '0', color: 'text-emerald-500 dark:text-emerald-400' },
-                { text: ', ', color: '' },
-                { text: 'len', color: 'text-emerald-500 dark:text-emerald-400' },
-                { text: '(data)', color: '' },
-            ],
-        },
-        {
-            text: '    while left < right:',
-            tokens: [
-                { text: '    ', color: '' },
-                { text: 'while', color: 'text-accent font-bold' },
-                { text: ' left < right:', color: '' },
-            ],
-        },
-        {
-            text: '        mid = (left + right) // 2',
-            tokens: [
-                { text: '        mid = (left + right) // ', color: '' },
-                { text: '2', color: 'text-emerald-500 dark:text-emerald-400' },
-            ],
-        },
-        {
-            text: '    return "CodeArena Legend"',
-            tokens: [
-                { text: '    ', color: '' },
-                { text: 'return', color: 'text-accent font-bold' },
-                { text: ' "CodeArena Legend"', color: 'text-amber-500' },
-            ],
-        },
-    ]
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (currentLineIndex < codeLines.length) {
-                const currentLine = codeLines[currentLineIndex].text
-                if (currentCharIndex < currentLine.length) {
-                    setCurrentCharIndex((prev) => prev + 1)
-                } else {
-                    const lineDelay = setTimeout(() => {
-                        setCurrentLineIndex((prev) => prev + 1)
-                        setCurrentCharIndex(0)
-                    }, 400)
-                    return () => clearTimeout(lineDelay)
-                }
-            }
-        }, 35)
-        return () => clearTimeout(timer)
-    }, [currentLineIndex, currentCharIndex, codeLines.length])
-
-    const getLineContent = (lineIdx) => {
-        const fullLine = codeLines[lineIdx]
-        if (lineIdx > currentLineIndex) return null
-        if (lineIdx < currentLineIndex) {
-            return fullLine.tokens.map((t, i) => (
-                <span key={i} className={t.color}>
-                    {t.text}
-                </span>
-            ))
-        }
-
-        let currentLength = 0
-        return fullLine.tokens.map((t, i) => {
-            const start = currentLength
-            currentLength += t.text.length
-            if (currentCharIndex <= start) return null
-            const visibleText = t.text.slice(0, currentCharIndex - start)
-            return (
-                <span key={i} className={t.color}>
-                    {visibleText}
-                </span>
-            )
-        })
-    }
 
     return (
         <div className={cn('group relative [perspective:2000px]', className)}>
@@ -122,11 +68,10 @@ export default function CodeEditorPreview({ className }) {
             />
 
             <motion.div
-                initial={{ rotateX: 45, y: 100, opacity: 0, scale: 0.9 }}
+                initial={false}
                 animate={{ rotateX: 0, y: 0, opacity: 1, scale: 1 }}
                 transition={{
-                    duration: 1.4,
-                    delay: 0.2,
+                    duration: 0.55,
                     ease: [0.16, 1, 0.3, 1],
                 }}
                 className="bg-bg-page border-border relative overflow-hidden rounded-3xl border-2 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-3xl"
@@ -157,20 +102,18 @@ export default function CodeEditorPreview({ className }) {
                 {/* Editor Content Area */}
                 <div className="p-8 font-mono text-[14px] leading-relaxed">
                     <div className="space-y-1.5">
-                        {codeLines.map((_, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.5 + idx * 0.1 }}
-                                className="flex gap-6"
-                            >
+                        {CODE_LINES.map((line, idx) => (
+                            <div key={idx} className="flex gap-6">
                                 <span className="text-text-muted/30 w-5 text-right select-none">
                                     {idx + 1}
                                 </span>
                                 <div className="min-h-[1.5em]">
-                                    {getLineContent(idx)}
-                                    {idx === currentLineIndex && (
+                                    {line.tokens.map((token, tokenIndex) => (
+                                        <span key={tokenIndex} className={token.color}>
+                                            {token.text}
+                                        </span>
+                                    ))}
+                                    {idx === CODE_LINES.length - 1 && (
                                         <motion.span
                                             animate={{ opacity: [1, 0] }}
                                             transition={{ duration: 0.8, repeat: Infinity }}
@@ -178,15 +121,15 @@ export default function CodeEditorPreview({ className }) {
                                         />
                                     )}
                                 </div>
-                            </motion.div>
+                            </div>
                         ))}
                     </div>
 
                     {/* Editor Footer / AI Analysis Preview */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={false}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 2.5, duration: 0.8 }}
+                        transition={{ duration: 0.25 }}
                         className="border-border mt-10 flex items-center justify-between border-t pt-8"
                     >
                         <div className="flex items-center gap-6">

@@ -8,6 +8,7 @@ import {
 } from '@/services/user.service'
 import { createResponseWithCookie, createResponseClearCookie } from '@/lib/cookie'
 import { signToken } from '@/lib/jwt'
+import { NextResponse } from 'next/server'
 
 /**
  * POST /api/auth/login
@@ -32,12 +33,7 @@ export async function createUser(req) {
     const user = await registerUser(body)
 
     // Auto-login: sign a token and set the cookie
-    const token = signToken({
-        id: user.id,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-    })
+    const token = signToken({ id: user.id, role: user.role })
 
     return createResponseWithCookie({ success: true, data: { user } }, token, 201)
 }
@@ -83,46 +79,28 @@ export async function removeUser(req, { params }) {
  * PUT /api/users/[id]
  */
 export async function updateUserDetails(req, { params }) {
-    try {
-        const resolvedParams = await params
+    const resolvedParams = await params
+    const body = await req.json()
 
-        let body
-        try {
-            body = await req.json()
-        } catch (e) {
-            console.error('Failed to parse request body:', e)
-            return Response.json(
-                { success: false, message: 'Invalid request body' },
-                { status: 400 }
-            )
-        }
+    console.log('updateUserDetails called:', {
+        params: resolvedParams,
+        body,
+        userId: req.user?.id,
+        userRole: req.user?.role,
+    })
 
-        console.log('updateUserDetails called:', {
-            params: resolvedParams,
-            body,
-            userId: req.user?.id,
-            userRole: req.user?.role,
-        })
-
-        // Ensure the req.user exists and matches the ID (or is admin)
-        // Assuming req.user is populated by protect middleware
-        const userId = req.user?.id || req.user?._id
-        if (userId && userId.toString() !== resolvedParams.id && req.user.role !== 'admin') {
-            return Response.json(
-                { success: false, message: 'Not authorized to update this profile' },
-                { status: 403 }
-            )
-        }
-
-        const updatedUser = await updateUser(resolvedParams.id, body)
-        return Response.json({ success: true, data: updatedUser })
-    } catch (error) {
-        console.error('updateUserDetails error:', error)
-        return Response.json(
-            { success: false, message: error.message || 'Internal server error' },
-            { status: error.status || 500 }
+    // Ensure the req.user exists and matches the ID (or is admin)
+    // Assuming req.user is populated by protect middleware
+    const userId = req.user?.id || req.user?._id
+    if (userId && userId.toString() !== resolvedParams.id && req.user.role !== 'admin') {
+        return NextResponse.json(
+            { success: false, message: 'Not authorized to update this profile' },
+            { status: 403 }
         )
     }
+
+    const updatedUser = await updateUser(resolvedParams.id, body)
+    return NextResponse.json({ success: true, data: updatedUser })
 }
 
 /**

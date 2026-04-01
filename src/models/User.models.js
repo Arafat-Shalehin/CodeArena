@@ -10,14 +10,16 @@ const userSchema = new mongoose.Schema(
             trim: true,
             lowercase: true,
         },
+        username: {
+            type: String,
+            unique: [true, 'Username already exists.'],
+            trim: true,
+            lowercase: true,
+            sparse: true,
+        },
         name: {
             type: String,
             required: [true, 'Name is required for creating a account'],
-            unique: [true, 'Name already exists.'],
-            trim: true,
-            minlength: [3, 'Name must be at least 3 characters'],
-            maxlength: [25, 'Name must be at most 25 characters'],
-            match: [/^[a-zA-Z0-9_]+$/, 'Name can only contain letters, numbers, and underscores'],
         },
         password: {
             type: String,
@@ -56,6 +58,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        lastUsernameChange: {
+            type: Date,
+            default: null,
+        },
         website: {
             type: String,
             default: '',
@@ -69,6 +75,7 @@ const userSchema = new mongoose.Schema(
             totalSubmissions: { type: Number, default: 0 },
             accepted: { type: Number, default: 0 }, // Unique problems solved
             score: { type: Number, default: 0 },
+            globalRank: { type: Number, default: 0 },
             weeklyGoal: { type: Number, default: 10 },
             solvedProblems: [
                 {
@@ -114,14 +121,6 @@ const userSchema = new mongoose.Schema(
                     solved: { type: Number, default: 0 },
                     failed: { type: Number, default: 0 },
                     uniqueProblems: { type: Number, default: 0 },
-                    avgTime: { type: Number, default: 0 },
-                    avgAttempts: { type: Number, default: 0 },
-                    firstAttemptSuccessRate: { type: Number, default: 0 },
-                    accuracyTrend: {
-                        type: String,
-                        enum: ['improving', 'stable', 'declining'],
-                        default: 'stable',
-                    },
                     lastAttemptDate: { type: Date, default: null },
                     recentSolveStreak: { type: Number, default: 0 },
                 },
@@ -138,48 +137,104 @@ const userSchema = new mongoose.Schema(
             default: 0,
         },
         preferences: {
-            language: { type: String, default: 'en' },
-            timezone: { type: String, default: 'UTC' },
-            theme: { type: String, default: 'system' },
-            weeklyGoal: { type: Number, default: 10 },
+            type: new mongoose.Schema(
+                {
+                    language: { type: String, default: 'en' },
+                    timezone: { type: String, default: 'UTC' },
+                    theme: { type: String, default: 'system' },
+                    weeklyGoal: { type: Number, default: 10 },
+                },
+                { _id: false }
+            ),
+            default: () => ({
+                language: 'en',
+                timezone: 'UTC',
+                theme: 'system',
+                weeklyGoal: 10,
+            }),
         },
         notificationSettings: {
-            emailSubmissions: { type: Boolean, default: true },
-            emailContests: { type: Boolean, default: true },
-            emailFollowers: { type: Boolean, default: true },
-            emailWeekly: { type: Boolean, default: false },
-            pushSubmissions: { type: Boolean, default: true },
-            pushContests: { type: Boolean, default: true },
-            pushFollowers: { type: Boolean, default: false },
-            notifyAchievements: { type: Boolean, default: true },
-            notifyMentions: { type: Boolean, default: true },
-            notifyComments: { type: Boolean, default: true },
+            type: new mongoose.Schema(
+                {
+                    emailSubmissions: { type: Boolean, default: true },
+                    emailContests: { type: Boolean, default: true },
+                    emailFollowers: { type: Boolean, default: true },
+                    emailWeekly: { type: Boolean, default: false },
+                    pushSubmissions: { type: Boolean, default: true },
+                    pushContests: { type: Boolean, default: true },
+                    pushFollowers: { type: Boolean, default: false },
+                    notifyAchievements: { type: Boolean, default: true },
+                    notifyMentions: { type: Boolean, default: true },
+                    notifyComments: { type: Boolean, default: true },
+                },
+                { _id: false }
+            ),
+            default: () => ({
+                emailSubmissions: true,
+                emailContests: true,
+                emailFollowers: true,
+                emailWeekly: false,
+                pushSubmissions: true,
+                pushContests: true,
+                pushFollowers: false,
+                notifyAchievements: true,
+                notifyMentions: true,
+                notifyComments: true,
+            }),
         },
         privacySettings: {
-            profileVisibility: {
-                type: String,
-                enum: ['public', 'followers', 'private'],
-                default: 'public',
-            },
-            showStats: { type: Boolean, default: true },
-            showSubmissions: { type: Boolean, default: true },
-            showContestHistory: { type: Boolean, default: true },
-            showFollowers: { type: Boolean, default: true },
-            allowMessaging: { type: Boolean, default: true },
-            indexProfile: { type: Boolean, default: true },
+            type: new mongoose.Schema(
+                {
+                    profileVisibility: {
+                        type: String,
+                        enum: ['public', 'followers', 'private'],
+                        default: 'public',
+                    },
+                    showStats: { type: Boolean, default: true },
+                    showSubmissions: { type: Boolean, default: true },
+                    showContestHistory: { type: Boolean, default: true },
+                    showFollowers: { type: Boolean, default: true },
+                    allowMessaging: { type: Boolean, default: true },
+                    indexProfile: { type: Boolean, default: true },
+                },
+                { _id: false }
+            ),
+            default: () => ({
+                profileVisibility: 'public',
+                showStats: true,
+                showSubmissions: true,
+                showContestHistory: true,
+                showFollowers: true,
+                allowMessaging: true,
+                indexProfile: true,
+            }),
         },
         subscription: {
-            plan: { type: String, enum: ['free', 'pro', 'teams'], default: 'free' },
-            status: {
-                type: String,
-                enum: ['active', 'cancelled', 'cancelling', 'past_due'],
-                default: 'active',
-            },
-            stripeCustomerId: { type: String, default: null },
-            stripeSubscriptionId: { type: String, default: null },
-            currentPeriodStart: { type: Date, default: null },
-            currentPeriodEnd: { type: Date, default: null },
-            cancelAtPeriodEnd: { type: Boolean, default: false },
+            type: new mongoose.Schema(
+                {
+                    plan: {
+                        type: String,
+                        enum: ['free', 'pro', 'teams'],
+                        default: 'free',
+                    },
+                    status: {
+                        type: String,
+                        enum: ['active', 'cancelled', 'cancelling', 'past_due'],
+                        default: 'active',
+                    },
+                    currentPeriodEnd: { type: Date, default: null },
+                    cancelAtPeriodEnd: { type: Boolean, default: false },
+                    stripeCustomerId: { type: String, default: null },
+                    stripeSubscriptionId: { type: String, default: null },
+                },
+                { _id: false }
+            ),
+            default: () => ({
+                plan: 'free',
+                status: 'active',
+                currentPeriodEnd: null,
+                cancelAtPeriodEnd: false,
+            }),
         },
     },
     { timestamps: true }
@@ -198,5 +253,13 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (password) {
     return bcrypt.compare(password, this.password)
 }
+
+// Database indexes for common query patterns (email and name are auto-indexed via unique: true)
+userSchema.index({ 'stats.score': -1 }) // For leaderboard sorting
+userSchema.index({ 'stats.accepted': -1 }) // For problems solved ranking
+userSchema.index({ following: 1 }) // For feed queries (users you follow)
+userSchema.index({ followers: 1 }) // For follower queries
+userSchema.index({ createdAt: -1 }) // For newest users
+userSchema.index({ role: 1 }) // For role-based queries
 
 export const User = mongoose.models.User || mongoose.model('User', userSchema)

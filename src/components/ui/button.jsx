@@ -6,24 +6,24 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-    'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex items-center justify-center whitespace-nowrap text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
     {
         variants: {
             variant: {
                 default:
-                    'bg-accent text-white hover:bg-accent-hover shadow-sm hover:shadow-md transition-all duration-300',
-                destructive: 'bg-error text-white hover:bg-red-700',
+                    'bg-accent text-white hover:bg-accent-hover shadow-accent-glow rounded-xl font-medium ring-offset-background transition-all duration-300',
+                destructive: 'bg-error text-white hover:bg-red-700 rounded-xl font-medium',
                 outline:
-                    'border border-border bg-bg-page hover:bg-accent hover:text-white hover:border-accent/50 transition-colors',
+                    'bg-transparent border border-border text-text-primary font-medium rounded-xl ring-offset-background hover:bg-accent hover:text-black hover:border-transparent transition-all duration-300',
                 secondary:
-                    'bg-bg-subtle text-text-primary hover:bg-bg-muted border border-border shadow-sm',
-                ghost: 'hover:bg-bg-subtle hover:text-text-primary',
-                link: 'text-accent underline-offset-4 hover:underline',
+                    'bg-bg-subtle/50 border border-border text-text-primary font-medium rounded-xl ring-offset-background hover:bg-accent hover:text-black hover:border-transparent transition-all duration-300 shadow-sm',
+                ghost: 'text-text-secondary hover:bg-accent-light/30 hover:text-accent-text font-medium rounded-xl transition-all duration-300',
+                link: 'text-accent underline-offset-4 hover:underline font-medium',
             },
             size: {
                 default: 'h-11 px-5 py-2.5',
-                sm: 'h-9 rounded-md px-3',
-                lg: 'h-14 rounded-lg px-8 text-base',
+                sm: 'h-9 px-3 text-xs',
+                lg: 'h-14 px-8 text-base',
                 icon: 'h-10 w-10',
             },
             fullWidth: {
@@ -74,7 +74,7 @@ const Button = React.forwardRef(
         const Comp = asChild ? Slot : 'button'
         return (
             <Comp
-                className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+                className={cn(buttonVariants({ variant, size, fullWidth }), className)}
                 ref={ref}
                 disabled={isLoading || props.disabled}
                 {...props}

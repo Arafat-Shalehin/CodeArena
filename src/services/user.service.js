@@ -12,8 +12,13 @@ import { redisClient } from '@/lib/redis'
  */
 export async function registerUser(data) {
     try {
+        const name = data.name.trim()
+        const username =
+            data.username?.trim().toLowerCase() || name.toLowerCase().replace(/\s+/g, '_')
+
         const safeData = {
-            name: data.name,
+            name,
+            username,
             email: data.email,
             password: data.password,
             role: 'user',
@@ -25,6 +30,7 @@ export async function registerUser(data) {
             id: user._id,
             email: user.email,
             name: user.name,
+            username: user.username,
             role: user.role,
         }
     } catch (error) {
@@ -94,8 +100,6 @@ export async function loginUser(email, password) {
     const token = signToken({
         id: user._id,
         role: user.role,
-        name: user.name,
-        email: user.email,
     })
 
     return {
@@ -157,7 +161,7 @@ export async function getUserById(id) {
 }
 
 /**
- * Deletes a user by ID and cleans up all references in other users.
+ * Deletes a user by ID.
  * @param {string} id - User ID.
  * @returns {Promise<Object>} The deleted user object.
  * @throws {Error} If user is not found.
@@ -169,12 +173,6 @@ export async function deleteUser(id) {
         err.status = 404
         throw err
     }
-
-    // Cleanup references in other users
-    await User.updateMany(
-        { $or: [{ followers: id }, { following: id }] },
-        { $pull: { followers: id, following: id } }
-    )
 
     // Invalidate cache
     if (redisClient.isOpen) {
@@ -193,28 +191,98 @@ export async function deleteUser(id) {
  */
 export async function updateUser(id, updateData) {
     // Only allow updating specific profile fields to prevent privilege escalation
-    const allowedFields = ['name', 'bio', 'location', 'country', 'website', 'socials', 'avatarSeed']
+    const allowedFields = [
+        'bio',
+        'location',
+        'country',
+        'website',
+        'socials',
+        'avatarSeed',
+        'username',
+    ]
     const safeData = {}
 
     console.log('updateUser called with:', { id, updateData, allowedFields })
 
-    for (const field of allowedFields) {
-        if (updateData[field] !== undefined) {
-            safeData[field] = updateData[field]
+    // ── Display Name (name) change — gated logic ──────────────────────────────────
+    if (updateData.name !== undefined) {
+        const currentUser = await User.findById(id).select('name lastUsernameChange username')
+        if (!currentUser) {
+            const err = new Error('User not found')
+            err.status = 404
+            throw err
+        }
+
+        const newName = updateData.name.trim()
+        const nameChanged = newName !== currentUser.name
+
+        if (nameChanged) {
+            // 1. Enforce 15-day cooldown
+            if (currentUser.lastUsernameChange) {
+                const msSinceChange =
+                    Date.now() - new Date(currentUser.lastUsernameChange).getTime()
+                const daysSinceChange = msSinceChange / (1000 * 60 * 60 * 24)
+                if (daysSinceChange < 15) {
+                    const daysRemaining = Math.ceil(15 - daysSinceChange)
+                    const err = new Error(
+                        `You can only change your name once every 15 days. Please wait ${daysRemaining} more day${daysRemaining === 1 ? '' : 's'}.`
+                    )
+                    err.status = 429
+                    throw err
+                }
+            }
+
+            safeData.name = newName
+            safeData.lastUsernameChange = new Date()
+
+            // If username is not set, set it to a sanitized version of the new name
+            if (!currentUser.username && !updateData.username) {
+                const baseUsername = newName.toLowerCase().replace(/[^a-z0-9]/g, '')
+                const existing = await User.findOne({
+                    username: baseUsername,
+                    _id: { $ne: id },
+                }).select('_id')
+                if (!existing) {
+                    safeData.username = baseUsername
+                }
+            }
         }
     }
 
-    // Handle username (name) change - check for uniqueness
-    if (safeData.name) {
-        const existingUser = await User.findOne({ name: safeData.name })
-        if (existingUser && existingUser._id.toString() !== id.toString()) {
-            const err = new Error('Username is already taken. Please choose another one.')
-            err.status = 400
+    // ── Handle Username ──────────────────────────────────
+    if (updateData.username !== undefined) {
+        const newUsername = updateData.username.trim().toLowerCase()
+        const existing = await User.findOne({ username: newUsername, _id: { $ne: id } }).select(
+            '_id'
+        )
+        if (existing) {
+            const err = new Error('This username is already taken. Please choose another.')
+            err.status = 409
             throw err
+        }
+        safeData.username = newUsername
+    }
+
+    for (const field of allowedFields) {
+        if (updateData[field] !== undefined) {
+            if (field === 'socials') {
+                // Handle nested socials update
+                Object.keys(updateData.socials).forEach((key) => {
+                    safeData[`socials.${key}`] = updateData.socials[key]
+                })
+            } else {
+                safeData[field] = updateData[field]
+            }
         }
     }
 
     console.log('safeData to update:', safeData)
+
+    if (Object.keys(safeData).length === 0) {
+        // Nothing to update — return current user without a write
+        const user = await User.findById(id).select('-password')
+        return user
+    }
 
     const user = await User.findByIdAndUpdate(
         id,
@@ -262,9 +330,7 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
         throw err
     }
 
-    const isFollowing = currentUser.following.some(
-        (id) => id.toString() === targetUserId.toString()
-    )
+    const isFollowing = currentUser.following.includes(targetUserId)
 
     if (isFollowing) {
         // Unfollow
@@ -280,19 +346,10 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
-
-        // Invalidate Redis cache
-        if (redisClient.isOpen) {
-            await Promise.all([
-                redisClient.del(`user:${currentUserId}:profile`),
-                redisClient.del(`user:${targetUserId}:profile`),
-            ]).catch(console.error)
-        }
-
         return {
             following: false,
             followersCount: updatedTargetUser.followers.length,
-            followingCount: updatedTargetUser.following.length,
+            followingCount: updatedTargetUser.following.length, // Returns target user's stats
         }
     } else {
         // Follow
@@ -308,14 +365,6 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
-
-        // Invalidate Redis cache
-        if (redisClient.isOpen) {
-            await Promise.all([
-                redisClient.del(`user:${currentUserId}:profile`),
-                redisClient.del(`user:${targetUserId}:profile`),
-            ]).catch(console.error)
-        }
 
         // NEW: Follower Notification
         const { sendNotification } = await import('@/services/notification.service')
@@ -377,22 +426,32 @@ export async function syncUserStats(userId) {
     const acceptedCount = solvedProblems.length
 
     // 3. Solved Distribution and Score (Easy, Medium, Hard)
+    // OPTIMIZATION: Fetch all problems ONCE with both difficulty and tags
+    const allProblemIds = Array.from(new Set([...solvedProblems, ...attemptedProblems]))
+    const allProblems = await Problem.find({ _id: { $in: allProblemIds } })
+        .select('difficulty tags')
+        .lean()
+
+    const problemMapWithData = new Map(allProblems.map((p) => [p._id.toString(), p]))
+
     const solvedDistribution = { easy: 0, medium: 0, hard: 0 }
     let calculatedScore = 0
 
     if (solvedProblems.length > 0) {
-        const problems = await Problem.find({ _id: { $in: solvedProblems } }).select('difficulty')
         const pointsMap = { easy: 10, medium: 20, hard: 50 }
 
-        problems.forEach((p) => {
-            const diff = p.difficulty?.toLowerCase() || 'medium'
-            if (solvedDistribution[diff] !== undefined) {
-                solvedDistribution[diff]++
+        solvedProblems.forEach((pId) => {
+            const problem = problemMapWithData.get(pId)
+            if (problem) {
+                const diff = problem.difficulty?.toLowerCase() || 'medium'
+                if (solvedDistribution[diff] !== undefined) {
+                    solvedDistribution[diff]++
+                }
+                calculatedScore += pointsMap[diff] || 20
             }
-            // Add points according to difficulty mapping, fallback to medium points
-            calculatedScore += pointsMap[diff] || 20
         })
     }
+
     // 4. Activity Calendar
     // Rule: Increment count for EVERY accepted submission on a given day (not just unique problems)
     const activityCalendar = new Map()
@@ -406,9 +465,7 @@ export async function syncUserStats(userId) {
 
     // 5. Performance Stats Per Tag (Crucial for Recommendations)
     const performanceStats = new Map()
-    const problemIdsForTags = Array.from(problemMap.keys())
-    const problemsWithTags = await Problem.find({ _id: { $in: problemIdsForTags } }).select('tags')
-    const problemTagMap = new Map(problemsWithTags.map((p) => [p._id.toString(), p.tags || []]))
+    const problemTagMap = problemMapWithData // Reuse the same map
 
     // Sort submissions by date to calculate streaks and last attempt accurately
     const sortedSubmissions = [...submissions].sort(
@@ -459,18 +516,8 @@ export async function syncUserStats(userId) {
         })
     })
 
-    // 6. Final Clean up of followers/following (Ensure no orphan IDs)
-    const currentUser = await User.findById(userId).select('followers following')
-    const [freshFollowers, freshFollowing] = await Promise.all([
-        User.find({ _id: { $in: currentUser?.followers || [] } }).select('_id'),
-        User.find({ _id: { $in: currentUser?.following || [] } }).select('_id'),
-    ])
-
-    const validFollowerIds = freshFollowers.map((f) => f._id)
-    const validFollowingIds = freshFollowing.map((f) => f._id)
-
-    // Update User Record
-    const updatedUser = await User.findByIdAndUpdate(
+    // 6. Update User Record
+    const user = await User.findByIdAndUpdate(
         userId,
         {
             $set: {
@@ -482,34 +529,10 @@ export async function syncUserStats(userId) {
                 'stats.solvedDistribution': solvedDistribution,
                 'stats.activityCalendar': Object.fromEntries(activityCalendar),
                 performanceStats: finalPerformanceStats,
-                followers: validFollowerIds,
-                following: validFollowingIds,
             },
         },
         { new: true }
     ).select('-password')
 
-    // Invalidate cache
-    if (redisClient.isOpen) {
-        await redisClient.del(`user:${userId}:profile`).catch(console.error)
-    }
-
-    // 7. Notify leaderboard of score change via Redis Pub/Sub
-    try {
-        if (redisClient.isOpen) {
-            await redisClient.publish(
-                'leaderboard_updates',
-                JSON.stringify({
-                    type: 'score_changed',
-                    userId: updatedUser._id,
-                    newScore: calculatedScore,
-                    timestamp: new Date(),
-                })
-            )
-        }
-    } catch (pubErr) {
-        console.warn('[User Service] Failed to publish leaderboard update:', pubErr.message)
-    }
-
-    return updatedUser
+    return user
 }
