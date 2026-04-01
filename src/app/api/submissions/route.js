@@ -10,25 +10,35 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Initialize workers on module load if in development
+let isWorkerInitialized = false
+let workerInitPromise = null
+
 async function ensureWorkersInitialized() {
-    if (globalThis._workersInitialized) return
+    if (isWorkerInitialized || globalThis._workersInitialized) return
+    if (workerInitPromise) return workerInitPromise
 
-    console.log('[API ROUTE] Initializing workers...')
-    try {
-        const { initSubmissionWorker } = await import('@/services/submission.worker')
-        const { initStatsWorker } = await import('@/services/stats.worker')
-        const { initAIWorker } = await import('@/services/ai.worker')
-        const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
+    workerInitPromise = (async () => {
+        console.log('[API ROUTE] Initializing workers...')
+        try {
+            const { initSubmissionWorker } = await import('@/services/submission.worker')
+            const { initStatsWorker } = await import('@/services/stats.worker')
+            const { initAIWorker } = await import('@/services/ai.worker')
+            const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
 
-        initSubmissionWorker()
-        initStatsWorker()
-        initAIWorker()
-        initInterviewAIWorker()
-        globalThis._workersInitialized = true
-        console.log('[API ROUTE] >>> Workers Successfully Initialized')
-    } catch (err) {
-        console.error('[API ROUTE] Failed to initialize workers:', err.message)
-    }
+            initSubmissionWorker()
+            initStatsWorker()
+            initAIWorker()
+            initInterviewAIWorker()
+            isWorkerInitialized = true
+            globalThis._workersInitialized = true
+            console.log('[API ROUTE] >>> Workers Successfully Initialized')
+        } catch (err) {
+            console.error('[API ROUTE] Failed to initialize workers:', err.message)
+            workerInitPromise = null // Reset on failure to allow retry
+        }
+    })()
+
+    return workerInitPromise
 }
 
 // Initialize workers on first request

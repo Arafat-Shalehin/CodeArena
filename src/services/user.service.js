@@ -474,7 +474,17 @@ export async function syncUserStats(userId) {
 
     sortedSubmissions.forEach((sub) => {
         const pId = sub.problemId.toString()
-        const tags = problemTagMap.get(pId) || []
+        const problem = problemTagMap.get(pId)
+        const rawTags = problem?.tags
+        const tags = (Array.isArray(rawTags) ? rawTags : rawTags ? [rawTags] : [])
+            .map((tag) => {
+                if (typeof tag === 'string') return tag.trim()
+                if (tag && typeof tag === 'object') {
+                    return (tag.name || tag.tag || '').toString().trim()
+                }
+                return ''
+            })
+            .filter(Boolean)
         const verdict = (sub.verdict || '').toUpperCase()
         const isAccepted = verdict === 'ACCEPTED'
 

@@ -13,22 +13,36 @@ export async function GET(req) {
     try {
         await dbConnect()
 
-        // 1. Authenticate user
-        const user = await protect(req)
-        if (!user || (!user.following && !user.followers)) {
-            // Need the full user document with 'following' array populated
-            const fullUser = await User.findById(user._id).select('following').lean()
-            user.following = fullUser?.following || []
+        // 1. Authenticate user when possible.
+        // If token is invalid/missing, continue as a public feed instead of failing hard.
+        let user = null
+        try {
+            user = await protect(req)
+        } catch (authError) {
+            if (authError?.status !== 401) {
+                throw authError
+            }
         }
 
-        // We also want to see our own posts in the feed
-        const feedIds = [...(user.following || []), user._id]
+        let followingIds = []
+        if (user?._id) {
+            const fullUser = await User.findById(user._id).select('following').lean()
+            followingIds = fullUser?.following || []
+        }
+
+        // Authenticated: followed users + self.
+        // Anonymous/new session: fall back to global recent activity.
+        const feedIds = user?._id ? [...followingIds, user._id] : null
 
         // 2. Fetch recent successful submissions from followed users + self
-        const recentSubmissionsPromise = Submission.find({
-            userId: { $in: feedIds },
+        const recentSubmissionsQuery = {
             verdict: { $in: ['accepted', 'ACCEPTED'] },
-        })
+        }
+        if (feedIds) {
+            recentSubmissionsQuery.userId = { $in: feedIds }
+        }
+
+        const recentSubmissionsPromise = Submission.find(recentSubmissionsQuery)
             .sort({ createdAt: -1 })
             .limit(20)
             .populate({
@@ -42,9 +56,9 @@ export async function GET(req) {
             .lean()
 
         // 3. Fetch recent posts from followed users + self
-        const recentPostsPromise = Post.find({
-            userId: { $in: feedIds },
-        })
+        const recentPostsQuery = feedIds ? { userId: { $in: feedIds } } : {}
+
+        const recentPostsPromise = Post.find(recentPostsQuery)
             .sort({ createdAt: -1 })
             .limit(10)
             .populate({
@@ -79,26 +93,30 @@ export async function GET(req) {
                 executionTime: sub.executionTime,
                 memoryUsed: sub.memoryUsed,
                 likes: sub.likes?.length || 0,
-                hasLiked: (sub.likes || []).some(
-                    (id) => id && id.toString() === user._id.toString()
-                ),
+                hasLiked: user?._id
+                    ? (sub.likes || []).some((id) => id && id.toString() === user._id.toString())
+                    : false,
                 createdAt: sub.createdAt,
             }))
 
-        const formattedPosts = recentPosts.map((post) => ({
-            id: post._id,
-            _id: post._id,
-            type: 'post',
-            user: {
-                _id: post.userId._id,
-                name: post.userId.name,
-                avatarSeed: post.userId.avatarSeed,
-            },
-            content: post.content,
-            likes: post.likes?.length || 0,
-            hasLiked: (post.likes || []).some((id) => id && id.toString() === user._id.toString()),
-            createdAt: post.createdAt,
-        }))
+        const formattedPosts = recentPosts
+            .filter((post) => post.userId)
+            .map((post) => ({
+                id: post._id,
+                _id: post._id,
+                type: 'post',
+                user: {
+                    _id: post.userId._id,
+                    name: post.userId.name,
+                    avatarSeed: post.userId.avatarSeed,
+                },
+                content: post.content,
+                likes: post.likes?.length || 0,
+                hasLiked: user?._id
+                    ? (post.likes || []).some((id) => id && id.toString() === user._id.toString())
+                    : false,
+                createdAt: post.createdAt,
+            }))
 
         const feed = [...formattedSubmissions, formattedPosts]
             .flat()

@@ -5,7 +5,7 @@ import { User } from '@/models/User.models'
 import { Submission } from '@/models/Submission.models'
 import { Problem } from '@/models/Problem.models'
 import { TestCase } from '@/models/TestCase.models'
-import { executeCode } from '@/lib/docker/executor'
+import { executeCode, executeMultipleInputs } from '@/lib/docker/executor'
 import { redisClient } from '@/lib/redis'
 import { VERDICTS } from '@/lib/evaluation/verdicts'
 import { updateParticipantScore } from '@/services/contestParticipant.service'
@@ -240,173 +240,319 @@ export function initSubmissionWorker() {
                             .catch(console.error)
                     }
 
-                    for (let i = 0; i < totalCount; i++) {
-                        const testCase = testCases[i]
-                        console.log(
-                            `[WORKER] Processing test case ${i + 1}/${totalCount} with input length: ${testCase.input?.length || 0}`
-                        )
+                    const inputs = testCases.map((tc) => tc.input || '')
+                    const expectedOutputs = testCases.map((tc) => tc.expectedOutput)
 
-                        // Execute code (including special judge if enabled)
-                        const result = await executeCode({
-                            code: submission.code,
-                            files: submission.files || [],
-                            language: submission.language,
-                            input: testCase.input || '',
-                            timeLimit: problem.timeLimit,
-                            memoryLimit: problem.memoryLimit,
-                            // Pass special judge details to executor for secure sandboxed execution
-                            specialJudgeCode:
-                                problem.judgeType === 'special' ? problem.specialJudgeCode : null,
-                            expectedOutput: testCase.expectedOutput,
-                            isPlayground: false, // Don't convert ACCEPTED to EXECUTED for submit
-                        })
-
-                        maxTime = Math.max(maxTime, result.executionTime || 0)
-                        maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
-
-                        // Normalize result verdict to our enum
-                        let resultVerdict = result.verdict.toUpperCase()
-
-                        if (resultVerdict === 'SUCCESS' || resultVerdict === 'ACCEPTED') {
-                            if (!problem.judgeType || problem.judgeType === 'exact') {
-                                // Compare exact match ignoring spacing variations
-                                const normalizeOutput = (str) =>
-                                    (str || '').trim().split(/\s+/).join(' ')
-                                const actual = normalizeOutput(result.output)
-                                const expected = normalizeOutput(testCase.expectedOutput)
-
-                                if (actual !== expected) {
-                                    resultVerdict = VERDICTS.WRONG_ANSWER
-                                    result.error = 'Output does not match expected output'
-                                }
-                            }
-                        }
-
-                        if (resultVerdict === 'SUCCESS') {
-                            resultVerdict = VERDICTS.ACCEPTED
-                        }
-
-                        // 4. Update individual test case result
-                        console.log(
-                            `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
-                        )
-                        const caseResult = {
-                            caseNumber: i + 1,
-                            testCaseId: testCase._id,
-                            verdict: resultVerdict,
-                            time: result.executionTime || 0,
-                            memory: result.memoryUsed || 0,
-                            error: result.error || '',
-                            isSample: testCase.isSample || false,
-                        }
-
-                        // Only store actual output for sample test cases (for UI feedback)
-                        if (testCase.isSample) {
-                            caseResult.actualOutput = result.output
-                        }
-
-                        testCaseResults.push(caseResult)
-
-                        // 📊 Real-time progress update via Redis pub/sub
-                        if (redisClient.isOpen) {
-                            const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
-                            const passStatus = isPassedCase ? 'AC' : 'WA'
-                            const progressPercent = Math.round(((i + 1) / totalCount) * 100)
-
-                            redisClient
-                                .publish(
-                                    'submission_updates',
-                                    JSON.stringify({
-                                        type: 'test_case_result',
-                                        event: 'TEST_CASE_RESULT',
-                                        submissionId,
-                                        userId: submission.userId,
-                                        problemId: submission.problemId,
-                                        current: i + 1,
-                                        total: totalCount,
-                                        caseNumber: i + 1,
-                                        status: isPassedCase ? 'PASSED' : 'FAILED',
-                                        verdict: resultVerdict,
-                                        executionTime: result.executionTime || 0,
-                                        memoryUsed: result.memoryUsed || 0,
-                                        progress: progressPercent,
-                                        message: `Running Case ${i + 1}/${totalCount}...`,
-                                    })
-                                )
-                                .catch(console.error)
-
-                            redisClient
-                                .publish(
-                                    'submission_updates',
-                                    JSON.stringify({
-                                        type: 'test_case_completed',
-                                        submissionId,
-                                        userId: submission.userId,
-                                        caseNumber: i + 1,
-                                        totalTestCases: totalCount,
-                                        verdict: resultVerdict,
-                                        progress: progressPercent,
-                                        message: `Test case ${i + 1}/${totalCount}: ${passStatus} (${result.executionTime}ms)`,
-                                        problemId: submission.problemId,
-                                    })
-                                )
-                                .catch(console.error)
-                        }
-
-                        if (resultVerdict === 'SUCCESS' || resultVerdict === VERDICTS.ACCEPTED) {
-                            // If it's a success, it means it passed either exact match (default)
-                            // or the special judge (inside Docker)
-                            passedCount++
-                        } else {
-                            // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
-                            finalVerdict = resultVerdict
-                            firstError = result.error
-                            failedCaseNumber = i + 1
+                    let results = await executeMultipleInputs({
+                        code: submission.code,
+                        files: submission.files || [],
+                        language: submission.language,
+                        inputs,
+                        expectedOutputs,
+                        timeLimit: problem.timeLimit,
+                        memoryLimit: problem.memoryLimit,
+                        specialJudgeCode:
+                            problem.judgeType === 'special' ? problem.specialJudgeCode : null,
+                        onProgress: async (result, i) => {
+                            const testCase = testCases[i]
                             console.log(
-                                `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
+                                `[WORKER] Processing test case ${i + 1}/${totalCount} with input length: ${testCase.input?.length || 0}`
                             )
 
-                            // Send fail-fast event immediately
+                            maxTime = Math.max(maxTime, result.executionTime || 0)
+                            maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
+
+                            // Normalize result verdict to our enum
+                            let resultVerdict = result.verdict.toUpperCase()
+
+                            if (resultVerdict === 'SUCCESS' || resultVerdict === 'ACCEPTED') {
+                                if (!problem.judgeType || problem.judgeType === 'exact') {
+                                    // Compare exact match ignoring spacing variations
+                                    const normalizeOutput = (str) =>
+                                        (str || '').trim().split(/\s+/).join(' ')
+                                    const actual = normalizeOutput(result.output)
+                                    const expected = normalizeOutput(testCase.expectedOutput)
+
+                                    if (actual !== expected) {
+                                        resultVerdict = VERDICTS.WRONG_ANSWER
+                                        result.error = 'Output does not match expected output'
+                                    }
+                                }
+                            }
+
+                            if (resultVerdict === 'SUCCESS') {
+                                resultVerdict = VERDICTS.ACCEPTED
+                            }
+
+                            // 4. Update individual test case result
+                            console.log(
+                                `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
+                            )
+                            const caseResult = {
+                                caseNumber: i + 1,
+                                testCaseId: testCase._id,
+                                verdict: resultVerdict,
+                                time: result.executionTime || 0,
+                                memory: result.memoryUsed || 0,
+                                error: result.error || '',
+                                isSample: testCase.isSample || false,
+                            }
+
+                            // Only store actual output for sample test cases (for UI feedback)
+                            if (testCase.isSample) {
+                                caseResult.actualOutput = result.output
+                            }
+
+                            testCaseResults.push(caseResult)
+
+                            // 📊 Real-time progress update via Redis pub/sub
                             if (redisClient.isOpen) {
-                                redisClient
-                                    .publish(
-                                        'submission_updates',
-                                        JSON.stringify({
-                                            type: 'test_case_failed',
-                                            submissionId,
-                                            userId: submission.userId,
-                                            caseNumber: i + 1,
-                                            totalTestCases: totalCount,
-                                            verdict: resultVerdict,
-                                            message: `❌ Failed at test case ${i + 1}/${totalCount}: ${resultVerdict}`,
-                                            problemId: submission.problemId,
-                                        })
-                                    )
-                                    .catch(console.error)
+                                const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
+                                const passStatus = isPassedCase ? 'AC' : 'WA'
+                                const progressPercent = Math.round(((i + 1) / totalCount) * 100)
 
                                 redisClient
                                     .publish(
                                         'submission_updates',
                                         JSON.stringify({
-                                            type: 'final_verdict',
-                                            event: 'FINAL_VERDICT',
+                                            type: 'test_case_result_batched',
+                                            event: 'TEST_CASE_RESULT_BATCHED',
                                             submissionId,
                                             userId: submission.userId,
                                             problemId: submission.problemId,
-                                            status: 'completed',
-                                            verdict: resultVerdict,
-                                            failedCase: i + 1,
                                             current: i + 1,
                                             total: totalCount,
-                                            progress: Math.round(((i + 1) / totalCount) * 100),
-                                            error: result.error || '',
-                                            closeRoom: true,
+                                            caseNumber: i + 1,
+                                            status: isPassedCase ? 'PASSED' : 'FAILED',
+                                            verdict: resultVerdict,
+                                            executionTime: result.executionTime || 0,
+                                            memoryUsed: result.memoryUsed || 0,
+                                            progress: progressPercent,
+                                            message: `Running Case ${i + 1}/${totalCount}...`,
                                         })
                                     )
                                     .catch(console.error)
-                                finalVerdictEmitted = true
                             }
-                            break
+
+                            if (
+                                resultVerdict === 'SUCCESS' ||
+                                resultVerdict === VERDICTS.ACCEPTED
+                            ) {
+                                // If it's a success, it means it passed either exact match (default)
+                                // or the special judge (inside Docker)
+                                passedCount++
+                            } else {
+                                // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
+                                finalVerdict = resultVerdict
+                                firstError = result.error
+                                failedCaseNumber = i + 1
+                                console.log(
+                                    `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
+                                )
+
+                                // Send fail-fast event immediately
+                                if (redisClient.isOpen) {
+                                    redisClient
+                                        .publish(
+                                            'submission_updates',
+                                            JSON.stringify({
+                                                type: 'test_case_failed',
+                                                submissionId,
+                                                userId: submission.userId,
+                                                caseNumber: i + 1,
+                                                totalTestCases: totalCount,
+                                                verdict: resultVerdict,
+                                                message: `❌ Failed at test case ${i + 1}/${totalCount}: ${resultVerdict}`,
+                                                problemId: submission.problemId,
+                                            })
+                                        )
+                                        .catch(console.error)
+
+                                    redisClient
+                                        .publish(
+                                            'submission_updates',
+                                            JSON.stringify({
+                                                type: 'final_verdict',
+                                                event: 'FINAL_VERDICT',
+                                                submissionId,
+                                                userId: submission.userId,
+                                                problemId: submission.problemId,
+                                                status: 'completed',
+                                                verdict: resultVerdict,
+                                                failedCase: i + 1,
+                                                current: i + 1,
+                                                total: totalCount,
+                                                progress: Math.round(((i + 1) / totalCount) * 100),
+                                                error: result.error || '',
+                                                closeRoom: true,
+                                            })
+                                        )
+                                        .catch(console.error)
+                                    finalVerdictEmitted = true
+                                }
+                                return true
+                            }
+                        },
+                    })
+
+                    // Fallback to sequential execution if Docker is unavailable
+                    if (!results) {
+                        for (let i = 0; i < totalCount; i++) {
+                            const testCase = testCases[i]
+                            console.log(
+                                `[WORKER] Processing test case ${i + 1}/${totalCount} with input length: ${testCase.input?.length || 0} (Fallback to executeCode)`
+                            )
+
+                            // Execute code (including special judge if enabled)
+                            const result = await executeCode({
+                                code: submission.code,
+                                files: submission.files || [],
+                                language: submission.language,
+                                input: testCase.input || '',
+                                timeLimit: problem.timeLimit,
+                                memoryLimit: problem.memoryLimit,
+                                // Pass special judge details to executor for secure sandboxed execution
+                                specialJudgeCode:
+                                    problem.judgeType === 'special'
+                                        ? problem.specialJudgeCode
+                                        : null,
+                                expectedOutput: testCase.expectedOutput,
+                                isPlayground: false, // Don't convert ACCEPTED to EXECUTED for submit
+                            })
+
+                            maxTime = Math.max(maxTime, result.executionTime || 0)
+                            maxMemory = Math.max(maxMemory, result.memoryUsed || 0)
+
+                            // Normalize result verdict to our enum
+                            let resultVerdict = result.verdict.toUpperCase()
+
+                            if (resultVerdict === 'SUCCESS' || resultVerdict === 'ACCEPTED') {
+                                if (!problem.judgeType || problem.judgeType === 'exact') {
+                                    // Compare exact match ignoring spacing variations
+                                    const normalizeOutput = (str) =>
+                                        (str || '').trim().split(/\s+/).join(' ')
+                                    const actual = normalizeOutput(result.output)
+                                    const expected = normalizeOutput(testCase.expectedOutput)
+
+                                    if (actual !== expected) {
+                                        resultVerdict = VERDICTS.WRONG_ANSWER
+                                        result.error = 'Output does not match expected output'
+                                    }
+                                }
+                            }
+
+                            if (resultVerdict === 'SUCCESS') {
+                                resultVerdict = VERDICTS.ACCEPTED
+                            }
+
+                            // 4. Update individual test case result
+                            console.log(
+                                `[WORKER] Test Case ${i + 1}/${totalCount}: ${resultVerdict} (${result.executionTime}ms)`
+                            )
+                            const caseResult = {
+                                caseNumber: i + 1,
+                                testCaseId: testCase._id,
+                                verdict: resultVerdict,
+                                time: result.executionTime || 0,
+                                memory: result.memoryUsed || 0,
+                                error: result.error || '',
+                                isSample: testCase.isSample || false,
+                            }
+
+                            // Only store actual output for sample test cases (for UI feedback)
+                            if (testCase.isSample) {
+                                caseResult.actualOutput = result.output
+                            }
+
+                            testCaseResults.push(caseResult)
+
+                            // 📊 Real-time progress update via Redis pub/sub
+                            if (redisClient.isOpen) {
+                                const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
+                                const passStatus = isPassedCase ? 'AC' : 'WA'
+                                const progressPercent = Math.round(((i + 1) / totalCount) * 100)
+
+                                redisClient
+                                    .publish(
+                                        'submission_updates',
+                                        JSON.stringify({
+                                            type: 'test_case_result_batched',
+                                            event: 'TEST_CASE_RESULT_BATCHED',
+                                            submissionId,
+                                            userId: submission.userId,
+                                            problemId: submission.problemId,
+                                            current: i + 1,
+                                            total: totalCount,
+                                            caseNumber: i + 1,
+                                            status: isPassedCase ? 'PASSED' : 'FAILED',
+                                            verdict: resultVerdict,
+                                            executionTime: result.executionTime || 0,
+                                            memoryUsed: result.memoryUsed || 0,
+                                            progress: progressPercent,
+                                            message: `Running Case ${i + 1}/${totalCount}...`,
+                                        })
+                                    )
+                                    .catch(console.error)
+                            }
+
+                            if (
+                                resultVerdict === 'SUCCESS' ||
+                                resultVerdict === VERDICTS.ACCEPTED
+                            ) {
+                                // If it's a success, it means it passed either exact match (default)
+                                // or the special judge (inside Docker)
+                                passedCount++
+                            } else {
+                                // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
+                                finalVerdict = resultVerdict
+                                firstError = result.error
+                                failedCaseNumber = i + 1
+                                console.log(
+                                    `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
+                                )
+
+                                // Send fail-fast event immediately
+                                if (redisClient.isOpen) {
+                                    redisClient
+                                        .publish(
+                                            'submission_updates',
+                                            JSON.stringify({
+                                                type: 'test_case_failed',
+                                                submissionId,
+                                                userId: submission.userId,
+                                                caseNumber: i + 1,
+                                                totalTestCases: totalCount,
+                                                verdict: resultVerdict,
+                                                message: `❌ Failed at test case ${i + 1}/${totalCount}: ${resultVerdict}`,
+                                                problemId: submission.problemId,
+                                            })
+                                        )
+                                        .catch(console.error)
+
+                                    redisClient
+                                        .publish(
+                                            'submission_updates',
+                                            JSON.stringify({
+                                                type: 'final_verdict',
+                                                event: 'FINAL_VERDICT',
+                                                submissionId,
+                                                userId: submission.userId,
+                                                problemId: submission.problemId,
+                                                status: 'completed',
+                                                verdict: resultVerdict,
+                                                failedCase: i + 1,
+                                                current: i + 1,
+                                                total: totalCount,
+                                                progress: Math.round(((i + 1) / totalCount) * 100),
+                                                error: result.error || '',
+                                                closeRoom: true,
+                                            })
+                                        )
+                                        .catch(console.error)
+                                    finalVerdictEmitted = true
+                                }
+                                break
+                            }
                         }
                     }
                 }
@@ -662,23 +808,23 @@ export function initSubmissionWorker() {
                         }
 
                         // AI analysis stays decoupled in queue.
-                        if (process.env.ENABLE_AI_ANALYSIS === 'true') {
-                            try {
-                                await getAIAnalysisQueue().add('analyze-code', {
-                                    submissionId,
-                                    userId: submission.userId,
-                                    problemId: submission.problemId,
-                                    code: submission.code,
-                                    language: submission.language,
-                                    problemTitle: problem.title,
-                                    verdict: finalVerdict,
-                                    executionTime: maxTime,
-                                    memoryUsed: maxMemory,
-                                })
-                            } catch (err) {
-                                console.error('[WORKER] Failed to dispatch AI analysis job:', err)
-                            }
+                        // if (process.env.ENABLE_AI_ANALYSIS === 'true') {
+                        try {
+                            await getAIAnalysisQueue().add('analyze-code', {
+                                submissionId,
+                                userId: submission.userId,
+                                problemId: submission.problemId,
+                                code: submission.code,
+                                language: submission.language,
+                                problemTitle: problem.title,
+                                verdict: finalVerdict,
+                                executionTime: maxTime,
+                                memoryUsed: maxMemory,
+                            })
+                        } catch (err) {
+                            console.error('[WORKER] Failed to dispatch AI analysis job:', err)
                         }
+                        // }
 
                         // Judging notification should not block queue throughput.
                         const { sendNotification } = await import('@/services/notification.service')

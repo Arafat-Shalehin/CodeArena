@@ -20,7 +20,7 @@ export function initAIWorker() {
             } = job.data
 
             try {
-                if (process.env.ENABLE_AI_ANALYSIS !== 'true') return { skipped: true }
+                // if (process.env.ENABLE_AI_ANALYSIS !== 'true') return { skipped: true }
 
                 console.log(`[AI WORKER] Analyzing submission ${submissionId}`)
 

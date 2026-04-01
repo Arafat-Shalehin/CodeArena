@@ -600,7 +600,7 @@ function ProblemSolveProviderInner({
                 console.error('AI feedback error:', err)
                 execution.setTestResultData({ aiFeedback: { error: err.message } })
             } finally {
-                execution.setIsAiLoading(true)
+                execution.setIsAiLoading(false)
             }
         },
         [

@@ -119,6 +119,7 @@ export async function initSocketServer() {
                                 const roomRoutedEvents = new Set([
                                     'submission_status',
                                     'judging_started',
+                                    'test_case_result_batched',
                                     'test_case_result',
                                     'test_case_completed',
                                     'test_case_failed',
@@ -143,8 +144,19 @@ export async function initSocketServer() {
                                         `[Socket.IO] Room ${submissionRoom} has ${clientCount} connected clients`
                                     )
 
-                                    serverIo.to(submissionRoom).emit(data.type, data)
-                                    serverIo.to(userId).emit(data.type, data)
+                                    if (data.type === 'test_case_result_batched') {
+                                        // Unpack batched event into two separate events for the client
+                                        serverIo.to(submissionRoom).emit('test_case_result', data)
+                                        serverIo.to(userId).emit('test_case_result', data)
+
+                                        serverIo
+                                            .to(submissionRoom)
+                                            .emit('test_case_completed', data)
+                                        serverIo.to(userId).emit('test_case_completed', data)
+                                    } else {
+                                        serverIo.to(submissionRoom).emit(data.type, data)
+                                        serverIo.to(userId).emit(data.type, data)
+                                    }
 
                                     if (data.type === 'final_verdict' && data.closeRoom) {
                                         serverIo

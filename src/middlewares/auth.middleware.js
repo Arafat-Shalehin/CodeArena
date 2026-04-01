@@ -33,9 +33,9 @@ function extractToken(req) {
     }
 
     // 2️⃣ Fallback to httpOnly cookie
-    // আপনার প্রোজেক্টে কুকির নাম 'token' হলে এখানেও 'token' দিন
+    // Prefer the canonical cookie used by the app to avoid stale legacy cookie collisions.
     const cookieToken =
-        req.cookies.get('token')?.value || req.cookies.get('codearena_access_token')?.value
+        req.cookies.get('codearena_access_token')?.value || req.cookies.get('token')?.value
 
     if (cookieToken) {
         return cookieToken

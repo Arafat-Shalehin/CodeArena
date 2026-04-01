@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
         }
 
-        // If verdict is not AC or TLE, we didn't run AI analysis
+        /*
         if (
             submission.verdict &&
             submission.verdict !== 'accepted' &&
@@ -38,6 +38,7 @@ export async function GET(request, { params }) {
                 feedback: null,
             })
         }
+        */
 
         // If we expect feedback but it hasn't arrived yet (Gemini is still processing)
         if (!submission.aiFeedback) {

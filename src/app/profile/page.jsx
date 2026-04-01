@@ -45,13 +45,15 @@ export default function ProfilePage() {
         }
     }, [user, isLoading, router])
 
+    // Only fetch/sync when user ID changes to prevent infinite rendering loops
     useEffect(() => {
-        if (user) {
+        if (user?._id || user?.id) {
             fetchSubmissions(5, 0, true)
             // Background sync to ensure stats/heatmap are up to date
             syncUser?.()
         }
-    }, [user, syncUser])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?._id, user?.id])
 
     /**
      * FIX: Use functional updater for setSubmissions to avoid stale closure

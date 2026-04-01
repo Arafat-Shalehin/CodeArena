@@ -88,25 +88,27 @@ import { createResponseWithCookie } from '@/lib/cookie'
 export async function POST(request) {
     try {
         const body = await request.json()
-        const { email, displayName, photoURL } = body
+        const { email, displayName, photoURL, uid } = body
 
-        if (!email) {
+        if (!email && !uid) {
             return NextResponse.json(
-                { success: false, error: 'Email is required' },
+                { success: false, error: 'Email or UID is required' },
                 { status: 400 }
             )
         }
 
+        const exactEmail = email || `${uid}@firebase.codearena.com`
+
         await dbConnect()
 
         // ১. ইউজার ডাটাবেস থেকে খুঁজে বের করা (সর্বশেষ রোল সহ)
-        let user = await User.findOne({ email }).select('+role')
+        let user = await User.findOne({ email: exactEmail }).select('+role')
 
         if (!user) {
             // নতুন ইউজার তৈরির লজিক
             let baseUsername = displayName
                 ? displayName.toLowerCase().replace(/[^a-z0-9]/g, '')
-                : email.split('@')[0].replace(/[^a-z0-9]/g, '')
+                : exactEmail.split('@')[0].replace(/[^a-z0-9]/g, '')
 
             // Ensure unique username
             let existingUser = await User.findOne({ name: baseUsername })
@@ -118,7 +120,7 @@ export async function POST(request) {
             }
 
             user = await User.create({
-                email,
+                email: exactEmail,
                 name: uniqueName,
                 role: 'user', // ডিফল্ট রোল
                 avatarSeed: photoURL || uniqueName,

@@ -46,7 +46,7 @@ export function useNotification() {
             setUnreadCount((prev) => prev + 1)
 
             // Play a subtle sound
-            const audio = new Audio('/sounds/notification.mp3')
+            const audio = new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
             audio.play().catch(() => {}) // Ignore if browser blocks autoplay
 
             // Show Toast

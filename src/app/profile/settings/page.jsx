@@ -106,7 +106,8 @@ export default function SettingsPage() {
                 setValue('avatarSeed', user.avatarSeed || user.name || PREDEFINED_AVATARS[0])
             }
         }
-    }, [user, reset, setValue])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?._id, reset, setValue])
 
     const avatarSeed = watch('avatarSeed')
 
@@ -211,7 +212,7 @@ export default function SettingsPage() {
         return (
             <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
                 <Navbar />
-                <main className="flex flex-grow items-center justify-center">
+                <main className="flex grow items-center justify-center">
                     <Loader2 className="text-accent h-8 w-8 animate-spin" />
                 </main>
             </div>
@@ -221,7 +222,7 @@ export default function SettingsPage() {
     return (
         <div className="bg-bg-page site-gradient flex min-h-screen flex-col">
             <Navbar />
-            <main className="mx-auto w-full max-w-7xl flex-grow px-4 pt-2 pb-12 md:px-6">
+            <main className="mx-auto w-full max-w-7xl grow px-4 pt-2 pb-12 md:px-6">
                 <div className="mb-10">
                     <h1 className="text-text-primary text-3xl font-bold tracking-tight">
                         Profile Information
