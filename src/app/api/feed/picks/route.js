@@ -11,7 +11,24 @@ export async function GET(req) {
     try {
         await dbConnect()
 
-        const userAuth = await protect(req)
+        let userAuth = null
+        try {
+            userAuth = await protect(req)
+        } catch (authError) {
+            if (authError?.status !== 401) {
+                throw authError
+            }
+        }
+
+        if (!userAuth?.id) {
+            return NextResponse.json({
+                success: true,
+                data: {
+                    picks: [],
+                },
+            })
+        }
+
         const user = await User.findById(userAuth.id).select('stats performanceStats').lean()
         const picks = await recommendationService.getRecommendations(userAuth.id, 4, {
             user,
@@ -25,7 +42,9 @@ export async function GET(req) {
             },
         })
     } catch (error) {
-        console.error('Daily Picks API Error:', error)
+        if (error?.status !== 401) {
+            console.error('Daily Picks API Error:', error)
+        }
 
         const status = error.status || 500
         const message = error.message || 'Failed to fetch daily picks'

@@ -30,8 +30,17 @@ export async function GET(req) {
             }
         }
 
-        // 1. Authenticate user to filter out themselves and followed users from suggestions
-        const user = await protect(req)
+        // 1. Authenticate user to filter out themselves and followed users from suggestions.
+        // If token is missing/invalid, continue as anonymous instead of failing the entire sidebar API.
+        let user = null
+        try {
+            user = await protect(req)
+        } catch (authError) {
+            if (authError?.status !== 401) {
+                throw authError
+            }
+        }
+
         let followingIds = []
         if (user) {
             if (!user.following) {

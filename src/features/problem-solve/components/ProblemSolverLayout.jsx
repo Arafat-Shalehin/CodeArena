@@ -514,7 +514,7 @@ function InnerLayout({
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
-export default function ProblemSolverLayout({ problemId, contestId }) {
+export default function ProblemSolverLayout({ problemId, contestId, initialProblem }) {
     const router = useRouter()
 
     // Get cached data from Zustand
@@ -523,9 +523,16 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
     // Start with quicker loading if cache exists for same problem
     const shouldShowCached = zustandStore.cachedProblem?._id === problemId
 
-    const [problem, setProblem] = useState(shouldShowCached ? zustandStore.cachedProblem : null)
+    // Server Component provides `initialProblem` which is the freshest data. Otherwise use cache.
+    const startingProblem = initialProblem || (shouldShowCached ? zustandStore.cachedProblem : null)
+
+    const [problem, setProblem] = useState(startingProblem)
     const [problems, setProblems] = useState(zustandStore.cachedProblems || [])
-    const [isLoading, setIsLoading] = useState(!shouldShowCached)
+
+    // We only need to load if we don't have problem list (initialProblem covers the problem data)
+    const needsProblemList =
+        !zustandStore.cachedProblems || zustandStore.cachedProblems.length === 0
+    const [isLoading, setIsLoading] = useState(!startingProblem || needsProblemList)
     const [error, setError] = useState(null)
 
     useEffect(() => {
@@ -535,24 +542,30 @@ export default function ProblemSolverLayout({ problemId, contestId }) {
 
         const loadData = async () => {
             try {
-                if (isMounted) setIsLoading(true)
+                if (isMounted && (!problem || needsProblemList)) {
+                    setIsLoading(true)
+                }
 
-                // Always fetch the current problem (can change quickly)
-                console.log('[ProblemSolver] Fetching problem data for:', problemId)
-                const problemRes = await fetch(`/api/problems/${problemId}`, {
-                    signal: controller.signal,
-                })
-                const problemData = await problemRes.json()
-
-                if (problemData.success) {
-                    console.log('[ProblemSolver] Problem loaded:', problemId)
-                    if (isMounted) setProblem(problemData.data)
-                    // Use getState() to avoid re-renders from object reference changes
-                    useProblemSolveStore.getState().setCachedProblem(problemData.data)
-                    if (isMounted) setError(null)
+                if (initialProblem) {
+                    useProblemSolveStore.getState().setCachedProblem(initialProblem)
                 } else {
-                    console.error('[ProblemSolver] Problem fetch failed:', problemData.error)
-                    if (isMounted) setError(problemData.error || 'Failed to load problem')
+                    // Only fetch problem data if SSR didn't provide it
+                    console.log('[ProblemSolver] Fetching problem data for:', problemId)
+                    const problemRes = await fetch(`/api/problems/${problemId}`, {
+                        signal: controller.signal,
+                    })
+                    const problemData = await problemRes.json()
+
+                    if (problemData.success) {
+                        console.log('[ProblemSolver] Problem loaded:', problemId)
+                        if (isMounted) setProblem(problemData.data)
+                        // Use getState() to avoid re-renders from object reference changes
+                        useProblemSolveStore.getState().setCachedProblem(problemData.data)
+                        if (isMounted) setError(null)
+                    } else {
+                        console.error('[ProblemSolver] Problem fetch failed:', problemData.error)
+                        if (isMounted) setError(problemData.error || 'Failed to load problem')
+                    }
                 }
 
                 // Load problem list only if not cached
