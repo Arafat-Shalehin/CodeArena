@@ -7,7 +7,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 # Disable husky in Docker
 ENV HUSKY=0
-RUN npm ci || (echo "npm ci failed, falling back to npm install" && npm install)
+RUN npm ci --include=optional || (echo "npm ci failed, falling back to npm install" && npm install)
+# Alpine (musl) builds can miss Lightning CSS native binary via optional dependency resolution.
+# Install it explicitly so Next/Tailwind PostCSS can load correctly during `next build`.
+RUN npm install --no-save lightningcss-linux-x64-musl@1.31.1
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
