@@ -4,8 +4,8 @@ import { protect } from '@/middlewares/auth.middleware'
 import { User } from '@/models/User.models'
 import { recommendationService } from '@/services/recommendation.service'
 
-// Use revalidation for better caching - data refreshes every 5 minutes
-export const revalidate = 300
+// Authenticated endpoint (uses request headers/cookies), must be dynamic.
+export const dynamic = 'force-dynamic'
 
 export async function GET(req) {
     try {

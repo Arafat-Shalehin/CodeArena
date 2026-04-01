@@ -30,6 +30,7 @@ export default function SettingsSidebar({ activeSection, onSectionChange, classN
                     <button
                         key={item.id}
                         onClick={() => onSectionChange(item.id)}
+                        aria-current={activeSection === item.id ? 'page' : undefined}
                         className={cn(
                             'flex items-center gap-3 rounded-md px-4 py-2.5 text-left text-sm font-medium transition-colors',
                             activeSection === item.id

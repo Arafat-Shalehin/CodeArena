@@ -51,3 +51,7 @@ next-env.d.ts
 
 # local-only workspace
 hf-space-worker/
+
+# local notes
+muzahid_contribution_report.md
+muzahid_contribuion_report.md
