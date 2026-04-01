@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Bell, MessageSquare, Trophy, Code2, Sparkles, Loader2 } from 'lucide-react'
 import { useNotification } from '@/hooks/useNotification'
 import { formatDistanceToNow } from 'date-fns'
-import Link from 'next/link'
 
 const TYPE_ICONS = {
     social: <MessageSquare className="h-4 w-4 text-blue-500" />,
@@ -14,10 +14,39 @@ const TYPE_ICONS = {
 }
 
 export default function NotificationBell() {
-    const { notifications, unreadCount, hasMore, loading, loadingMore, loadMore, markAllAsRead } =
-        useNotification()
+    const router = useRouter()
+    const {
+        notifications,
+        unreadCount,
+        hasMore,
+        loading,
+        loadingMore,
+        loadMore,
+        markAllAsRead,
+        markNotificationAsRead,
+    } = useNotification()
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef(null)
+
+    const normalizeMessage = (message = '') => {
+        if (!message) return ''
+        return message.replace(/^undefined\s+/i, 'Someone ')
+    }
+
+    const handleNotificationClick = async (notif) => {
+        await markNotificationAsRead(notif._id)
+        setIsOpen(false)
+        if (notif.link) {
+            router.push(notif.link)
+        }
+    }
+
+    const handleNotificationKeyDown = (event, notif) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            handleNotificationClick(notif)
+        }
+    }
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -47,20 +76,29 @@ export default function NotificationBell() {
             </button>
 
             {isOpen && (
-                <div className="bg-bg-page border-border animate-fade-up absolute right-0 z-[100] mt-2 w-80 overflow-hidden rounded-xl border shadow-2xl">
-                    <div className="flex items-center justify-between border-b p-4">
-                        <h3 className="text-sm font-bold">Notifications</h3>
+                <div
+                    data-lenis-prevent
+                    className="bg-bg-page border-border animate-fade-up absolute right-0 z-100 mt-2 w-104 overflow-hidden rounded-2xl border shadow-[0_24px_48px_rgba(0,0,0,0.18)]"
+                >
+                    <div className="border-border flex items-center justify-between border-b px-4 py-3">
+                        <h3 className="text-text-primary text-[1.85rem] leading-none font-bold">
+                            Notifications
+                        </h3>
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllAsRead}
-                                className="text-accent text-xs font-semibold hover:underline"
+                                className="text-accent hover:text-accent-hover text-sm font-semibold"
                             >
                                 Mark all as read
                             </button>
                         )}
                     </div>
 
-                    <div className="no-scrollbar max-h-[400px] overflow-y-auto">
+                    <div
+                        data-lenis-prevent
+                        onWheelCapture={(e) => e.stopPropagation()}
+                        className="custom-scrollbar max-h-[78vh] space-y-1 overflow-y-auto p-2"
+                    >
                         {loading ? (
                             <div className="flex items-center justify-center px-6 py-10">
                                 <Loader2 className="text-text-muted h-5 w-5 animate-spin" />
@@ -68,37 +106,62 @@ export default function NotificationBell() {
                         ) : notifications.length > 0 ? (
                             <div className="flex flex-col">
                                 {notifications.map((notif) => (
-                                    <Link
+                                    <div
                                         key={notif._id}
-                                        href={notif.link || '#'}
-                                        onClick={() => setIsOpen(false)}
-                                        className={`group border-border/50 hover:bg-bg-subtle flex gap-3 border-b p-4 transition-colors ${!notif.isRead ? 'bg-accent/5' : ''}`}
+                                        onClick={() => handleNotificationClick(notif)}
+                                        onKeyDown={(event) =>
+                                            handleNotificationKeyDown(event, notif)
+                                        }
+                                        role="button"
+                                        tabIndex={0}
+                                        className={`group focus:ring-accent/40 relative mb-1 flex w-full cursor-pointer gap-3 rounded-xl px-3 py-3 text-left transition-colors focus:ring-2 focus:outline-none ${
+                                            !notif.isRead
+                                                ? 'bg-accent/5 hover:bg-accent/10'
+                                                : 'hover:bg-bg-subtle'
+                                        }`}
                                     >
-                                        <div className="mt-0.5 shrink-0 transition-transform group-hover:scale-110">
+                                        <div className="bg-bg-subtle border-border mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-transform group-hover:scale-105">
                                             {TYPE_ICONS[notif.type] || (
-                                                <Bell className="text-text-muted h-4 w-4" />
+                                                <Bell className="text-text-muted h-5 w-5" />
                                             )}
                                         </div>
-                                        <div className="flex flex-col gap-1 overflow-hidden">
-                                            <p className="text-text-primary text-xs leading-relaxed">
-                                                {notif.message}
+                                        <div className="min-w-0 flex-1 overflow-hidden">
+                                            <p
+                                                className={`leading-snug ${
+                                                    notif.isRead
+                                                        ? 'text-text-secondary text-[14px] font-medium'
+                                                        : 'text-text-primary text-[14px] font-semibold'
+                                                }`}
+                                            >
+                                                {normalizeMessage(notif.message)}
                                             </p>
-                                            <span className="text-text-muted text-[10px] font-medium">
+                                            <span className="text-text-muted mt-1 block text-[11px] font-medium">
                                                 {formatDistanceToNow(new Date(notif.createdAt), {
                                                     addSuffix: true,
                                                 })}
                                             </span>
+                                            {!notif.isRead && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        markNotificationAsRead(notif._id)
+                                                    }}
+                                                    className="text-accent hover:text-accent-hover mt-1 text-[11px] font-semibold"
+                                                >
+                                                    Mark as read
+                                                </button>
+                                            )}
                                         </div>
                                         {!notif.isRead && (
-                                            <div className="bg-accent mt-1 ml-auto size-2 shrink-0 rounded-full" />
+                                            <div className="bg-accent absolute top-1/2 right-3 h-2.5 w-2.5 -translate-y-1/2 rounded-full" />
                                         )}
-                                    </Link>
+                                    </div>
                                 ))}
                                 {hasMore && (
                                     <button
                                         onClick={loadMore}
                                         disabled={loadingMore}
-                                        className="text-accent hover:bg-bg-subtle border-border flex items-center justify-center gap-2 border-b px-4 py-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="text-accent hover:bg-bg-subtle mx-2 mt-2 mb-2 flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         {loadingMore ? (
                                             <>
@@ -125,18 +188,6 @@ export default function NotificationBell() {
                             </div>
                         )}
                     </div>
-
-                    {notifications.length > 0 && (
-                        <div className="border-border bg-bg-subtle/50 border-t p-2 text-center">
-                            <Link
-                                href="/notifications"
-                                onClick={() => setIsOpen(false)}
-                                className="text-accent hover:text-accent-hover block py-1.5 text-xs font-bold transition-colors"
-                            >
-                                View All Activity
-                            </Link>
-                        </div>
-                    )}
                 </div>
             )}
         </div>

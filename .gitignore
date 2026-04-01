@@ -9,6 +9,8 @@
 .dockerignore
 .gitignore
 
+muzahid_contribuion_report.md
+
 # dependencies
 /node_modules
 /.pnp

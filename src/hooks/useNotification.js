@@ -138,6 +138,38 @@ export function useNotification() {
         }
     }
 
+    const markNotificationAsRead = useCallback(
+        async (notificationId) => {
+            if (!notificationId) return
+
+            let decremented = false
+            setNotifications((prev) =>
+                prev.map((n) => {
+                    if (n._id !== notificationId) return n
+                    if (!n.isRead) decremented = true
+                    return { ...n, isRead: true }
+                })
+            )
+            if (decremented) {
+                setUnreadCount((prev) => Math.max(0, prev - 1))
+            }
+
+            try {
+                const res = await fetch(`/api/notifications/${notificationId}/read`, {
+                    method: 'PATCH',
+                })
+
+                if (!res.ok) {
+                    throw new Error('Failed to mark notification as read')
+                }
+            } catch (error) {
+                console.error('Error marking notification as read:', error)
+                fetchNotifications()
+            }
+        },
+        [fetchNotifications]
+    )
+
     return {
         notifications,
         unreadCount,
@@ -146,6 +178,7 @@ export function useNotification() {
         loadingMore,
         loadMore,
         markAllAsRead,
+        markNotificationAsRead,
         refresh: fetchNotifications,
     }
 }

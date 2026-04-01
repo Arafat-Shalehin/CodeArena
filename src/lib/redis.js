@@ -1,6 +1,10 @@
 import { createClient } from 'redis'
 
 const globalForRedis = globalThis
+const isBuildPhase =
+    process.env.SKIP_REDIS === 'true' ||
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.npm_lifecycle_event === 'build'
 
 // Support Railway's REDIS_URL format (primary) or individual env vars (fallback)
 const redisUrl = process.env.REDIS_URL || ''
@@ -42,10 +46,12 @@ redisClient.on('reconnecting', () => {
 })
 
 redisClient.on('error', (err) => {
-    console.error('Redis Error', err)
+    if (!isBuildPhase) {
+        console.error('Redis Error', err)
+    }
 })
 
-// Connect once
-if (!redisClient.isOpen) {
+// Build-time static rendering should not require live Redis.
+if (!isBuildPhase && !redisClient.isOpen) {
     redisClient.connect().catch(console.error)
 }

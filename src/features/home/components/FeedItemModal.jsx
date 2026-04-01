@@ -91,16 +91,17 @@ export default function FeedItemModal({
                 const data = await res.json()
                 if (data.success) {
                     const nextChunk = data.data || []
-                    setComments((prev) => (reset ? nextChunk : [...prev, ...nextChunk]))
+                    let nextCount = data.totalCount ?? 0
+                    setComments((prev) => {
+                        const nextComments = reset ? nextChunk : [...prev, ...nextChunk]
+                        nextCount = data.totalCount ?? nextComments.length
+                        return nextComments
+                    })
                     setCommentsHasMore(Boolean(data.pagination?.hasMore))
                     setCommentsNextCursor(data.pagination?.nextCursor || null)
                     setCommentsFetched(true)
-                    setCommentCount((prev) => {
-                        const nextCount =
-                            data.totalCount ?? (reset ? nextChunk.length : prev + nextChunk.length)
-                        onStatsChange?.(item.id || item._id, { commentCount: nextCount })
-                        return nextCount
-                    })
+                    setCommentCount(nextCount)
+                    onStatsChange?.(item.id || item._id, { commentCount: nextCount })
                 }
             } catch (err) {
                 console.error('Failed to fetch comments:', err)
@@ -203,14 +204,15 @@ export default function FeedItemModal({
             })
             const data = await res.json()
             if (data.success) {
+                let nextCount = data.commentCount ?? 0
                 setComments((prev) => {
-                    const next = [data.data, ...prev]
-                    const nextCount = data.commentCount ?? next.length
-                    setCommentCount(nextCount)
-                    onStatsChange?.(item.id || item._id, {
-                        commentCount: nextCount,
-                    })
-                    return next
+                    const nextComments = [data.data, ...prev]
+                    nextCount = data.commentCount ?? nextComments.length
+                    return nextComments
+                })
+                setCommentCount(nextCount)
+                onStatsChange?.(item.id || item._id, {
+                    commentCount: nextCount,
                 })
                 setCommentText('')
             }
@@ -234,10 +236,10 @@ export default function FeedItemModal({
             <DialogContent
                 showCloseButton={false}
                 data-lenis-prevent
-                className="w-[min(98vw,1320px)] max-w-none !gap-0 border-none bg-transparent p-0 shadow-none"
+                className="w-[min(98vw,1320px)] max-w-none gap-0! border-none bg-transparent p-0 shadow-none"
             >
                 <DialogTitle className="sr-only">{modalTitle}</DialogTitle>
-                <div className="bg-bg-page border-border text-text-primary mx-auto flex h-[86vh] w-full max-w-[1050px] flex-col overflow-hidden rounded-3xl border shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
+                <div className="bg-bg-page border-border text-text-primary mx-auto flex h-[86vh] w-full max-w-262.5 flex-col overflow-hidden rounded-3xl border shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
                     <div className="border-border flex items-center justify-between border-b px-4 py-3 sm:px-6">
                         <div className="w-10" />
                         <h2 className="truncate text-center text-xl font-bold">{modalTitle}</h2>
