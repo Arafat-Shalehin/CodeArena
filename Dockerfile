@@ -1,19 +1,17 @@
 # Multi-stage Dockerfile for Next.js
 
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 # Disable husky in Docker
 ENV HUSKY=0
 RUN npm ci --include=optional || (echo "npm ci failed, falling back to npm install" && npm install)
-# Alpine (musl) builds can miss Lightning CSS native binary via optional dependency resolution.
-# Install it explicitly so Next/Tailwind PostCSS can load correctly during `next build`.
-RUN npm install --no-save lightningcss-linux-x64-musl@1.31.1
+# Ensure native bindings are present in Linux/glibc CI/build environments.
+RUN npm install --no-save lightningcss-linux-x64-gnu@1.31.1 @tailwindcss/oxide-linux-x64-gnu@4.2.1
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -21,6 +19,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PROCESS_TYPE=API
 ENV SKIP_REDIS=true
+ENV SKIP_WORKER_INIT=true
+ENV SKIP_FIREBASE_INIT=true
 
 # Build-time NEXT_PUBLIC_* values
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
@@ -39,7 +39,7 @@ ENV NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
 RUN npm run build
 
 # Stage 3: Runner
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
