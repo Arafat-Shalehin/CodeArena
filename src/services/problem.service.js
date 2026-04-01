@@ -445,3 +445,28 @@ export async function deleteProblem(id) {
         session.endSession()
     }
 }
+/**
+ * Fetch problems grouped by their tags for the explore or admin page.
+ * Added to resolve build error.
+ */
+export async function getProblemsGroupedByTag() {
+    try {
+        const results = await Problem.aggregate([
+            { $unwind: '$tags' },
+            {
+                $group: {
+                    _id: '$tags',
+                    problems: {
+                        $push: { _id: '$_id', title: '$title', difficulty: '$difficulty' },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+            { $sort: { count: -1 } },
+        ])
+        return results
+    } catch (error) {
+        console.error('Error in getProblemsGroupedByTag:', error)
+        return []
+    }
+}

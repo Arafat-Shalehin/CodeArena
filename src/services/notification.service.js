@@ -189,3 +189,20 @@ export async function checkUpcomingContests() {
         console.error('[NotificationService] Contest reminder check failed:', err)
     }
 }
+/**
+ * Resolves the display name of the actor (user) associated with a notification.
+ * This is required by the API routes to prevent build errors.
+ */
+export async function resolveNotificationActorName(actorId) {
+    try {
+        if (!actorId) return 'System'
+
+        const { User } = await import('@/models/User.models')
+        const user = await User.findById(actorId).select('name')
+
+        return user ? user.name : 'Unknown User'
+    } catch (error) {
+        console.error('[NotificationService] Error resolving actor name:', error)
+        return 'User'
+    }
+}
