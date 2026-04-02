@@ -40,6 +40,18 @@ const redisConfig = redisUrl
       }
 
 let publisher = null
+const INTERVIEW_STREAM_PUBLISH_EVERY = Math.max(
+    1,
+    Number.parseInt(process.env.INTERVIEW_STREAM_PUBLISH_EVERY || '4', 10) || 4
+)
+const INTERVIEW_STREAM_STATE_WRITE_EVERY = Math.max(
+    1,
+    Number.parseInt(process.env.INTERVIEW_STREAM_STATE_WRITE_EVERY || '12', 10) || 12
+)
+const INTERVIEW_STREAM_LIVENESS_CHECK_EVERY = Math.max(
+    1,
+    Number.parseInt(process.env.INTERVIEW_STREAM_LIVENESS_CHECK_EVERY || '25', 10) || 25
+)
 
 async function getPublisher() {
     if (!publisher) {
@@ -380,6 +392,7 @@ export function initInterviewAIWorker() {
             let fullResponse = ''
             const messageId = job.data.messageId || crypto.randomUUID()
             let sequence = 0
+            let pendingChunk = ''
 
             try {
                 if (job.name === 'process-chat') {
@@ -402,9 +415,12 @@ export function initInterviewAIWorker() {
                     for await (const chunk of aiStream) {
                         fullResponse += chunk
                         chunkCount++
+                        if (job.name === 'process-chat') {
+                            pendingChunk += chunk
+                        }
 
-                        // Liveness Guard: Check if session is still active every 10 chunks
-                        if (chunkCount % 10 === 0) {
+                        // Liveness Guard: Check if session is still active periodically
+                        if (chunkCount % INTERVIEW_STREAM_LIVENESS_CHECK_EVERY === 0) {
                             const sessionCheck = await InterviewSession.findById(sessionId)
                                 .select('status')
                                 .lean()
@@ -422,25 +438,36 @@ export function initInterviewAIWorker() {
 
                         if (job.name === 'process-chat') {
                             sequence++
-                            await pub.publish(
-                                channel,
-                                JSON.stringify({
-                                    chunk,
-                                    done: false,
-                                    messageId,
-                                    sequence,
-                                })
-                            )
+                            const shouldPublishChunk =
+                                sequence % INTERVIEW_STREAM_PUBLISH_EVERY === 0 ||
+                                pendingChunk.length >= 300
+                            const shouldPersistState =
+                                sequence % INTERVIEW_STREAM_STATE_WRITE_EVERY === 0
 
-                            // Persist partial stream to Redis for rehydration, expires in 60s
-                            const streamKey = `interview:stream:${sessionId}`
-                            await pub.hSet(streamKey, {
-                                messageId,
-                                content: fullResponse,
-                                sequence,
-                                lastUpdated: Date.now(),
-                            })
-                            await pub.expire(streamKey, 60)
+                            if (shouldPublishChunk && pendingChunk) {
+                                await pub.publish(
+                                    channel,
+                                    JSON.stringify({
+                                        chunk: pendingChunk,
+                                        done: false,
+                                        messageId,
+                                        sequence,
+                                    })
+                                )
+                                pendingChunk = ''
+                            }
+
+                            // Persist partial stream snapshot less frequently to reduce Redis commands
+                            if (shouldPersistState) {
+                                const streamKey = `interview:stream:${sessionId}`
+                                await pub.hSet(streamKey, {
+                                    messageId,
+                                    content: fullResponse,
+                                    sequence,
+                                    lastUpdated: Date.now(),
+                                })
+                                await pub.expire(streamKey, 60)
+                            }
 
                             // Limit log noise: only log if you want every chunk or maybe every 10th chunk
                             // Let's log every chunk as requested
@@ -459,6 +486,20 @@ export function initInterviewAIWorker() {
                 } finally {
                     // 4. Finalise
                     if (job.name === 'process-chat') {
+                        if (pendingChunk) {
+                            sequence++
+                            await pub.publish(
+                                channel,
+                                JSON.stringify({
+                                    chunk: pendingChunk,
+                                    done: false,
+                                    messageId,
+                                    sequence,
+                                })
+                            )
+                            pendingChunk = ''
+                        }
+
                         sequence++
                         await pub.publish(
                             channel,
