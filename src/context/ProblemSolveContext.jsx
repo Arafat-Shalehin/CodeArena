@@ -146,11 +146,13 @@ function ProblemSolveProviderInner({
     }, [problemId])
 
     // Initialize test input from problem
+    const firstSampleTestInput = problem?.sampleTestCases?.[0]?.input || ''
+    const setTestInput = execution.setTestInput
+
     useEffect(() => {
-        if (problem?.sampleTestCases?.length > 0) {
-            execution.setTestInput(problem.sampleTestCases[0].input || '')
-        }
-    }, [problem, execution])
+        if (!problem?.sampleTestCases?.length) return
+        setTestInput(firstSampleTestInput)
+    }, [problemId, firstSampleTestInput, setTestInput])
 
     // ─── Run Code (Direct Execution - No Submission Record) ───────────────────
     const runCode = useCallback(async () => {
