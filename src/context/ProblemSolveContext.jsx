@@ -129,6 +129,7 @@ function ProblemSolveProviderInner({
             execution.setTestResultData(null)
             execution.setLastSubmittedCode('')
             execution.setLastAnalyzedCode('')
+            execution.setLastAnalyzedVerdict('')
 
             if (realtime.socket && activeSubmissionRoomRef.current) {
                 realtime.socket.emit('leave_room', activeSubmissionRoomRef.current)
@@ -552,10 +553,13 @@ function ProblemSolveProviderInner({
 
             const currentCodeHash = codeHash(codeToAnalyze)
             const lastAnalyzedHash = codeHash(execution.lastAnalyzedCode)
+            const currentVerdict = (execution.testResult?.verdict || 'UNKNOWN').toUpperCase()
+            const lastAnalyzedVerdict = (execution.lastAnalyzedVerdict || '').toUpperCase()
 
-            // Check if we already analyzed this exact code - no need to refetch
+            // Reuse cached AI feedback only when both code AND verdict context match.
             if (
                 currentCodeHash === lastAnalyzedHash &&
+                currentVerdict === lastAnalyzedVerdict &&
                 execution.testResultData?.aiFeedback &&
                 !execution.testResultData.aiFeedback.error
             ) {
@@ -587,6 +591,7 @@ function ProblemSolveProviderInner({
                 if (data.success) {
                     // 🔥 MARK THIS CODE AS ANALYZED
                     execution.setLastAnalyzedCode(codeToAnalyze)
+                    execution.setLastAnalyzedVerdict(currentVerdict)
                     execution.setTestResultData({ aiFeedback: data.feedback })
                     // 💾 Save AI feedback to Zustand for persistence
                     zustandStore.setAiFeedback(data.feedback)
@@ -609,6 +614,11 @@ function ProblemSolveProviderInner({
             codeEditor.code,
             codeEditor.language,
             problem?.title,
+            execution.lastSubmittedCode,
+            execution.lastSubmittedLanguage,
+            execution.lastAnalyzedCode,
+            execution.lastAnalyzedVerdict,
+            execution.testResultData?.aiFeedback,
             execution.testResult?.verdict,
             execution.testResult?.time,
             execution.testResult?.memory,
