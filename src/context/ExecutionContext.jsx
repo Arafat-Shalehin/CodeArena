@@ -16,6 +16,7 @@ export function ExecutionProvider({ children }) {
     const [lastSubmittedCode, setLastSubmittedCode] = useState('')
     const [lastSubmittedLanguage, setLastSubmittedLanguage] = useState('')
     const [lastAnalyzedCode, setLastAnalyzedCode] = useState('')
+    const [lastAnalyzedVerdict, setLastAnalyzedVerdict] = useState('')
     const [submissionIdForAi, setSubmissionIdForAi] = useState(null)
 
     const value = useMemo(
@@ -42,6 +43,8 @@ export function ExecutionProvider({ children }) {
             setLastSubmittedLanguage,
             lastAnalyzedCode,
             setLastAnalyzedCode,
+            lastAnalyzedVerdict,
+            setLastAnalyzedVerdict,
             submissionIdForAi,
             setSubmissionIdForAi,
         }),
@@ -57,6 +60,7 @@ export function ExecutionProvider({ children }) {
             lastSubmittedCode,
             lastSubmittedLanguage,
             lastAnalyzedCode,
+            lastAnalyzedVerdict,
             submissionIdForAi,
         ]
     )
