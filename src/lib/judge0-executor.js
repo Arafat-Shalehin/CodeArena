@@ -6,8 +6,38 @@
  * where Docker socket is not accessible.
  */
 
-const JUDGE0_API_URL = process.env.JUDGE0_API_URL || 'https://judge0-ce.p.rapidapi.com'
+const JUDGE0_API_URL = process.env.JUDGE0_API_URL || 'https://ce.judge0.com'
 const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY || ''
+const JUDGE0_AUTH_HEADER = process.env.JUDGE0_AUTH_HEADER || 'X-Auth-Token'
+
+function isRapidApiUrl(url) {
+    try {
+        return new URL(url).hostname.includes('rapidapi.com')
+    } catch {
+        return false
+    }
+}
+
+function buildJudge0Headers({ includeContentType = false } = {}) {
+    const headers = {}
+
+    if (includeContentType) {
+        headers['Content-Type'] = 'application/json'
+    }
+
+    if (!JUDGE0_API_KEY) {
+        return headers
+    }
+
+    if (isRapidApiUrl(JUDGE0_API_URL)) {
+        headers['X-RapidAPI-Key'] = JUDGE0_API_KEY
+        headers['X-RapidAPI-Host'] = process.env.JUDGE0_RAPIDAPI_HOST || 'judge0-ce.p.rapidapi.com'
+        return headers
+    }
+
+    headers[JUDGE0_AUTH_HEADER] = JUDGE0_API_KEY
+    return headers
+}
 
 // Language ID mappings for Judge0
 const LANGUAGE_ID_MAP = {
@@ -23,23 +53,20 @@ const LANGUAGE_ID_MAP = {
  */
 export async function checkJudge0Availability() {
     try {
-        if (!JUDGE0_API_KEY) {
-            console.warn('⚠️  Judge0 API Key not configured')
+        if (isRapidApiUrl(JUDGE0_API_URL) && !JUDGE0_API_KEY) {
+            console.warn('Judge0 RapidAPI key not configured')
             return false
         }
 
         // Simple health check
         const response = await fetch(`${JUDGE0_API_URL}/languages`, {
             method: 'GET',
-            headers: {
-                'X-RapidAPI-Key': JUDGE0_API_KEY,
-                'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
-            },
+            headers: buildJudge0Headers(),
         })
 
         return response.ok
     } catch (err) {
-        console.warn('⚠️  Judge0 availability check failed:', err.message)
+        console.warn('Judge0 availability check failed:', err.message)
         return false
     }
 }
@@ -63,11 +90,11 @@ export async function executeCodeWithJudge0({
     memoryLimit = 512000,
 }) {
     try {
-        if (!JUDGE0_API_KEY) {
+        if (isRapidApiUrl(JUDGE0_API_URL) && !JUDGE0_API_KEY) {
             return {
                 success: false,
                 verdict: 'EXECUTOR_UNAVAILABLE',
-                error: 'Judge0 API not configured. Docker executor unavailable.',
+                error: 'Judge0 RapidAPI key is missing. Set JUDGE0_API_KEY or use https://ce.judge0.com.',
             }
         }
 
@@ -86,11 +113,7 @@ export async function executeCodeWithJudge0({
         // Create submission
         const createResponse = await fetch(`${JUDGE0_API_URL}/submissions`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-RapidAPI-Key': JUDGE0_API_KEY,
-                'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
-            },
+            headers: buildJudge0Headers({ includeContentType: true }),
             body: JSON.stringify({
                 language_id: languageId,
                 source_code: code,
@@ -115,10 +138,7 @@ export async function executeCodeWithJudge0({
 
             const statusResponse = await fetch(`${JUDGE0_API_URL}/submissions/${token}`, {
                 method: 'GET',
-                headers: {
-                    'X-RapidAPI-Key': JUDGE0_API_KEY,
-                    'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
-                },
+                headers: buildJudge0Headers(),
             })
 
             if (!statusResponse.ok) {

@@ -541,6 +541,12 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         await image.inspect()
         console.log(`[EXECUTOR] ✅ Docker image exists: ${langConfig.image}`)
     } catch (imgError) {
+        if (isDockerSocketUnreachable(imgError)) {
+            // Let caller fall back to Judge0 when Docker daemon/socket is unreachable.
+            markDockerUnavailable(imgError)
+            throw imgError
+        }
+
         console.error(`[EXECUTOR] ❌ Docker image not found: ${langConfig.image}`)
         console.error(`[EXECUTOR] Error: ${imgError.message}`)
 
