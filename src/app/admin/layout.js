@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/admin/Sidebar'
-import { motion } from 'framer-motion'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Menu, Bell } from 'lucide-react'
+import { Menu, Bell, Loader2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useAuth } from '@/context/AuthContext'
@@ -14,7 +14,26 @@ import Link from 'next/link'
 
 export default function AdminLayout({ children }) {
     const [open, setOpen] = useState(false)
-    const { user } = useAuth()
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+
+    useEffect(() => {
+        if (!isLoading && (!user || user.role !== 'admin')) {
+            router.replace('/')
+        }
+    }, [user, isLoading, router])
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="text-accent h-10 w-10 animate-spin" />
+            </div>
+        )
+    }
+
+    if (!user || user.role !== 'admin') {
+        return null
+    }
 
     return (
         <div className="bg-bg-page text-text-primary flex min-h-screen w-full font-sans">
@@ -92,13 +111,13 @@ export default function AdminLayout({ children }) {
 
                 {/* Page Content */}
                 <main className="w-full flex-1 p-4 md:p-8">
-                    <motion.div
+                    <div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mx-auto max-w-7xl"
                     >
                         {children}
-                    </motion.div>
+                    </div>
                 </main>
             </div>
         </div>

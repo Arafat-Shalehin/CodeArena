@@ -223,7 +223,7 @@ export default function DashboardHome({ user: initialUser }) {
                 )}
             >
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:col-span-3 lg:flex">
+                <aside className="no-scrollbar hidden h-[calc(100vh-5rem)] flex-col gap-6 overflow-y-auto pt-8 pr-1 pb-8 lg:col-span-3 lg:flex">
                     {/* Quick Stats Card */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <p className="text-text-muted mb-4 text-xs font-bold tracking-wider uppercase">
@@ -397,7 +397,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </aside>
 
                 {/* MAIN FEED (6 cols on desktop) */}
-                <section className="col-span-1 flex flex-col gap-6 px-1 pt-8 pb-8 lg:col-span-6">
+                <section className="no-scrollbar col-span-1 flex h-[calc(100vh-5rem)] flex-col gap-6 overflow-y-auto px-1 pt-8 pb-8 lg:col-span-6">
                     {/* Mobile Only: Progress/Streak Banner */}
                     <div className="from-accent/10 to-bg-subtle border-accent/20 rounded-lg border bg-gradient-to-r p-4 shadow-sm lg:hidden">
                         <div className="mb-2 flex items-center justify-between">
@@ -494,7 +494,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </section>
 
                 {/* RIGHT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:col-span-3 lg:flex">
+                <aside className="no-scrollbar hidden h-[calc(100vh-5rem)] flex-col gap-6 overflow-y-auto pt-8 pb-8 pl-1 lg:col-span-3 lg:flex">
                     {/* Trending Problems */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <h4 className="text-text-primary mb-4 flex items-center gap-2 font-semibold">
