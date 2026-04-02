@@ -9,12 +9,11 @@ import {
     CheckCircle2,
     List,
     User as UserIcon,
-    Settings2,
-    Sparkles,
 } from 'lucide-react'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import NotificationBell from '@/components/layout/NotificationBell'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 export default function SolverNavbar({
     setShowProblemList,
@@ -74,7 +73,7 @@ export default function SolverNavbar({
                 <button
                     onClick={runCode}
                     disabled={isRunning}
-                    className="bg-bg-muted hover:bg-border flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50 sm:gap-1.5 sm:px-4"
+                    className="border-border bg-bg-page text-text-primary hover:bg-bg-muted hover:border-accent/30 flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 sm:gap-1.5 sm:px-4"
                     aria-label="Run code"
                 >
                     {isRunning ? (
@@ -100,9 +99,9 @@ export default function SolverNavbar({
             </div>
             {/* Right */}
             <div className="flex items-center gap-1 text-gray-400 sm:gap-2">
-                <button className="hover:bg-bg-muted hover:text-text-primary hidden rounded p-1 transition-colors sm:block">
-                    <Settings2 size={18} />
-                </button>
+                <div className="hidden sm:block">
+                    <ThemeToggle className="scale-90" />
+                </div>
 
                 <div className="bg-border hidden h-6 w-px sm:block" />
                 <div className="hidden sm:block">
