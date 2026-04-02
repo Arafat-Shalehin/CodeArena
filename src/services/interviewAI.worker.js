@@ -15,6 +15,7 @@
 
 import { Worker } from 'bullmq'
 import { createClient } from 'redis'
+import crypto from 'crypto'
 import { connection } from '@/lib/queue'
 import dbConnect from '@/lib/mongodb'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
@@ -23,6 +24,7 @@ import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewResult } from '@/models/InterviewResult.model'
 import { buildPrompt, buildScorecardPrompt } from '@/services/aiConversation.service'
 import { generateInterviewChatResponse } from '@/lib/ai/interviewGroqClient'
+import { releaseProcessingLock } from '@/services/interviewSession.service'
 
 // ── Redis publisher (separate client; cannot share the subscriber client) ──────
 const redisUrl = process.env.REDIS_URL || ''
@@ -59,30 +61,36 @@ export function interviewAIChannel(sessionId) {
     return `interview:ai:${sessionId}`
 }
 
-function extractJSON(rawText) {
+export function extractJSON(rawText) {
     if (!rawText) throw new Error('Empty AI response')
 
-    // Find the first occurrence of '{' and the last occurrence of '}'
-    const startIndex = rawText.indexOf('{')
-    const endIndex = rawText.lastIndexOf('}')
+    // 1. Precise extraction from markdown code blocks if present
+    const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/)
+    const jsonCandidate = codeBlockMatch ? codeBlockMatch[1].trim() : rawText.trim()
+
+    // 2. Find the first occurrence of '{' and the last occurrence of '}'
+    const startIndex = jsonCandidate.indexOf('{')
+    const endIndex = jsonCandidate.lastIndexOf('}')
 
     if (startIndex === -1 || endIndex === -1) {
-        console.error('[extractJSON] Raw text with no JSON object:', rawText)
+        console.error('[extractJSON] Raw text with no JSON object. Full response:', rawText)
         throw new Error('No valid JSON object found in AI response')
     }
 
-    const jsonCandidate = rawText.substring(startIndex, endIndex + 1).trim()
+    const cleanedCandidate = jsonCandidate.substring(startIndex, endIndex + 1).trim()
 
     try {
-        return JSON.parse(jsonCandidate)
+        return JSON.parse(cleanedCandidate)
     } catch (parseError) {
-        console.error('[extractJSON] Parse failed for candidate:', jsonCandidate)
-        // Try one more thing: strip backticks if they somehow leaked into the candidate
-        const ultraClean = jsonCandidate.replace(/`/g, '').trim()
+        console.error('[extractJSON] Parse failed for cleaned candidate:', cleanedCandidate)
+        // 3. Last ditch: strip all backticks and try again
+        const ultraClean = cleanedCandidate.replace(/`/g, '').trim()
         try {
             return JSON.parse(ultraClean)
         } catch (e) {
-            throw new Error(`Failed to parse JSON: ${parseError.message}`)
+            throw new Error(
+                `Failed to parse JSON after multiple cleaning attempts: ${parseError.message}`
+            )
         }
     }
 }
@@ -104,7 +112,13 @@ export function initInterviewAIWorker() {
             } = job.data
 
             console.log(
-                `[InterviewAI Worker] v2.1 Processing job ${job.id} (${job.name}) for session ${sessionId}`
+                JSON.stringify({
+                    event: 'WORKER_JOB_STARTED',
+                    jobId: job.id,
+                    jobName: job.name,
+                    sessionId,
+                    timestamp: new Date().toISOString(),
+                })
             )
 
             await dbConnect()
@@ -222,7 +236,8 @@ export function initInterviewAIWorker() {
                         scorecardData.overallScore
                     )
 
-                    // a. Update result document
+                    const currentSession = await InterviewSession.findById(sessionId)
+
                     const result = await InterviewResult.findOneAndUpdate(
                         { sessionId },
                         {
@@ -242,27 +257,24 @@ export function initInterviewAIWorker() {
                         },
                         { upsert: true, new: true }
                     )
-                    console.log('[InterviewAI Worker] Saved result document:', result._id)
+                    console.log(
+                        `[InterviewAI Worker] Saved result document: ${result._id} for session ${sessionId}`
+                    )
 
-                    // b. Update session document: status -> completed, finalScore -> overallScore
-                    // If the original session status was already set (expired/terminated), keep it.
-                    // Only set to 'completed' if it was generically ending.
-                    const currentSession = await InterviewSession.findById(sessionId)
-                    const finalStatus = ['expired', 'terminated'].includes(currentSession?.status)
-                        ? currentSession.status
-                        : 'completed'
-
+                    // Force session status to finalise so the UI doesn't hang in "Pending"
                     await InterviewSession.findByIdAndUpdate(sessionId, {
-                        status: finalStatus,
+                        status: ['expired', 'terminated'].includes(currentSession?.status)
+                            ? currentSession.status
+                            : 'completed',
                         currentPhase: 'completed',
-                        finalScore: scorecardData.overallScore || 0,
+                        finalScore: result.overallScore,
                         endedAt: new Date(),
                     })
 
                     const pub = await getPublisher()
                     await pub.publish(
                         interviewAIChannel(sessionId),
-                        JSON.stringify({ scorecard: result, phase: 'completed' })
+                        JSON.stringify({ scorecard: result, phase: 'completed', done: true })
                     )
 
                     return { success: true, type: 'scorecard' }
@@ -366,90 +378,215 @@ export function initInterviewAIWorker() {
             const pub = await getPublisher()
             const channel = interviewAIChannel(sessionId)
             let fullResponse = ''
+            const messageId = job.data.messageId || crypto.randomUUID()
+            let sequence = 0
 
-            const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
-
-            // If it's a submission analysis, we might want to stream it or just send it at once.
-            // Following 'interview:ai_analysis' requirement, we'll stream internally and then emit final.
-            for await (const chunk of aiStream) {
-                fullResponse += chunk
-                // Only stream for chat messages; for analysis, we'll send the full object at the end
+            try {
                 if (job.name === 'process-chat') {
-                    await pub.publish(channel, JSON.stringify({ chunk, done: false }))
-                }
-            }
-
-            // 4. Finalise
-            if (job.name === 'process-chat') {
-                await pub.publish(channel, JSON.stringify({ chunk: '', done: true }))
-            } else {
-                // Emission for submission analysis
-                await pub.publish(channel, JSON.stringify({ analysis: fullResponse }))
-            }
-
-            // [PART 3] Check for Wrap-up signal
-            if (fullResponse.includes('<WRAP_UP />')) {
-                const { transitionPhase } = await import('./interviewSession.service')
-                await transitionPhase(sessionId, 'completed')
-            }
-
-            // 5. Persist the full response to DB
-            await InterviewMessage.create({
-                sessionId,
-                role: 'ai',
-                phase: currentPhase,
-                content: fullResponse,
-                ts: new Date(),
-            })
-
-            // 6. Update session phase if it was a submission
-            if (job.name === 'process-submission-analysis') {
-                // Advance to evaluation (feedback) phase using centralized service
-                const { transitionPhase } = await import('./interviewSession.service')
-                await transitionPhase(sessionId, 'evaluation')
-
-                // b. Emit phase change to client
-                const pub = await getPublisher()
-                await pub.publish(
-                    interviewAIChannel(sessionId),
-                    JSON.stringify({ phase: 'evaluation' })
-                )
-            }
-
-            // 7. Handle Interactive Phase Transitions (Intro -> QA -> Coding)
-            if (job.name === 'process-chat') {
-                const userMessages = history.filter((m) => m.role === 'user')
-
-                if (session.currentPhase === 'intro') {
-                    // Move to QA after the first user greeting
-                    const { transitionPhase } = await import('./interviewSession.service')
-                    await transitionPhase(sessionId, 'qa')
-
-                    const pub = await getPublisher()
-                    await pub.publish(
-                        interviewAIChannel(sessionId),
-                        JSON.stringify({ phase: 'qa' })
+                    console.log(
+                        JSON.stringify({
+                            event: 'AI_STREAM_START',
+                            jobId: job.id,
+                            sessionId,
+                            messageId,
+                            timestamp: new Date().toISOString(),
+                        })
                     )
-                } else if (session.currentPhase === 'qa') {
-                    const qaCount = userMessages.filter((m) => m.phase === 'qa').length
-                    if (qaCount >= 2) {
-                        // Move to coding after 2 QA turns
-                        const { transitionPhase } = await import('./interviewSession.service')
-                        await transitionPhase(sessionId, 'coding')
+                }
 
-                        const pub = await getPublisher()
+                const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
+
+                // If it's a submission analysis, we might want to stream it or just send it at once.
+                try {
+                    let chunkCount = 0
+                    for await (const chunk of aiStream) {
+                        fullResponse += chunk
+                        chunkCount++
+
+                        // Liveness Guard: Check if session is still active every 10 chunks
+                        if (chunkCount % 10 === 0) {
+                            const sessionCheck = await InterviewSession.findById(sessionId)
+                                .select('status')
+                                .lean()
+                            if (
+                                sessionCheck &&
+                                (sessionCheck.status === 'terminated' ||
+                                    sessionCheck.status === 'completed')
+                            ) {
+                                console.log(
+                                    `[AI Worker] Session ${sessionId} is ${sessionCheck.status}. Stopping stream.`
+                                )
+                                break
+                            }
+                        }
+
+                        if (job.name === 'process-chat') {
+                            sequence++
+                            await pub.publish(
+                                channel,
+                                JSON.stringify({
+                                    chunk,
+                                    done: false,
+                                    messageId,
+                                    sequence,
+                                })
+                            )
+
+                            // Persist partial stream to Redis for rehydration, expires in 60s
+                            const streamKey = `interview:stream:${sessionId}`
+                            await pub.hSet(streamKey, {
+                                messageId,
+                                content: fullResponse,
+                                sequence,
+                                lastUpdated: Date.now(),
+                            })
+                            await pub.expire(streamKey, 60)
+
+                            // Limit log noise: only log if you want every chunk or maybe every 10th chunk
+                            // Let's log every chunk as requested
+                            console.log(
+                                JSON.stringify({
+                                    event: 'AI_STREAM_CHUNK',
+                                    jobId: job.id,
+                                    sessionId,
+                                    messageId,
+                                    sequence,
+                                    timestamp: new Date().toISOString(),
+                                })
+                            )
+                        }
+                    }
+                } finally {
+                    // 4. Finalise
+                    if (job.name === 'process-chat') {
+                        sequence++
                         await pub.publish(
-                            interviewAIChannel(sessionId),
-                            JSON.stringify({ phase: 'coding' })
+                            channel,
+                            JSON.stringify({
+                                chunk: '',
+                                done: true,
+                                messageId,
+                                sequence,
+                            })
                         )
+
+                        // Clear the partial stream cache
+                        await pub.del(`interview:stream:${sessionId}`)
+
+                        console.log(
+                            JSON.stringify({
+                                event: 'AI_STREAM_END',
+                                jobId: job.id,
+                                sessionId,
+                                messageId,
+                                timestamp: new Date().toISOString(),
+                            })
+                        )
+                    } else {
+                        // Emission for submission analysis
+                        await pub.publish(channel, JSON.stringify({ analysis: fullResponse }))
                     }
                 }
-            }
 
-            console.log(
-                `[InterviewAI Worker] Job ${job.id} complete – ${fullResponse.length} chars generated for session ${sessionId}`
-            )
-            return { success: true, length: fullResponse.length }
+                // [PART 3] Check for Wrap-up signal
+                if (fullResponse.includes('<WRAP_UP />')) {
+                    const { transitionPhase } = await import('./interviewSession.service')
+                    await transitionPhase(sessionId, 'completed')
+                    // Signal the frontend room that the session is terminal
+                    await pub.publish(
+                        channel,
+                        JSON.stringify({ terminal: true, status: 'completed' })
+                    )
+                }
+
+                // 5. Persist the full response to DB
+                await InterviewMessage.create({
+                    id: messageId, // Standardized ID field
+                    sessionId,
+                    role: 'ai',
+                    phase: currentPhase,
+                    content: fullResponse,
+                    ts: new Date(),
+                })
+
+                // 6. Update session phase if it was a submission
+                if (job.name === 'process-submission-analysis') {
+                    // Advance to evaluation (feedback) phase using centralized service
+                    const { transitionPhase } = await import('./interviewSession.service')
+                    await transitionPhase(sessionId, 'evaluation')
+
+                    // b. Emit phase change to client
+                    await pub.publish(
+                        interviewAIChannel(sessionId),
+                        JSON.stringify({ phase: 'evaluation' })
+                    )
+                }
+
+                // 7. Handle Interactive Phase Transitions (Intro -> QA -> Coding)
+                if (job.name === 'process-chat') {
+                    const userMessages = history.filter((m) => m.role === 'user')
+
+                    if (session.currentPhase === 'intro') {
+                        // Move to QA after the first user greeting
+                        const { transitionPhase } = await import('./interviewSession.service')
+                        await transitionPhase(sessionId, 'qa')
+
+                        await pub.publish(
+                            interviewAIChannel(sessionId),
+                            JSON.stringify({ phase: 'qa' })
+                        )
+                    } else if (session.currentPhase === 'qa') {
+                        const qaCount = userMessages.filter((m) => m.phase === 'qa').length
+                        if (qaCount >= 2) {
+                            // Move to coding after 2 QA turns
+                            const { transitionPhase } = await import('./interviewSession.service')
+                            await transitionPhase(sessionId, 'coding')
+
+                            await pub.publish(
+                                interviewAIChannel(sessionId),
+                                JSON.stringify({ phase: 'coding' })
+                            )
+                        }
+                    }
+                }
+
+                console.log(
+                    JSON.stringify({
+                        event: 'WORKER_JOB_COMPLETED',
+                        jobId: job.id,
+                        jobName: job.name,
+                        sessionId,
+                        responseLength: fullResponse.length,
+                        timestamp: new Date().toISOString(),
+                    })
+                )
+
+                return { success: true, length: fullResponse.length }
+            } catch (err) {
+                if (job.name === 'process-chat') {
+                    console.log(
+                        JSON.stringify({
+                            event: 'AI_STREAM_ERROR',
+                            jobId: job.id,
+                            sessionId,
+                            messageId,
+                            error: err.message,
+                            timestamp: new Date().toISOString(),
+                        })
+                    )
+                }
+                throw err
+            } finally {
+                // Release processing lock if this was a chat job to guarantee cleanup
+                if (job.name === 'process-chat') {
+                    await releaseProcessingLock(sessionId).catch((err) =>
+                        console.error(
+                            '[InterviewAI Worker] Failed to release lock on completion/finally:',
+                            err
+                        )
+                    )
+                }
+            }
         },
         {
             connection,
@@ -473,10 +610,20 @@ export function initInterviewAIWorker() {
                         JSON.stringify({
                             chunk: 'Sorry, I encountered an error. Please try again.',
                             done: true,
+                            error: 'System error processing AI stream',
                         })
                     )
                 )
                 .catch(() => {})
+                .finally(() => {
+                    releaseProcessingLock(sessionId).catch((err) =>
+                        console.error('[InterviewAI Worker] Failed to release lock on error:', err)
+                    )
+                    // Clear the partial stream cache if it errors out
+                    getPublisher()
+                        .then((pub) => pub.del(`interview:stream:${sessionId}`))
+                        .catch(() => {})
+                })
         }
     })
 

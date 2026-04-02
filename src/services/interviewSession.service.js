@@ -11,6 +11,61 @@ import { getInterviewAIQueue } from '../lib/queue.js'
 import { buildPrompt } from './aiConversation.service.js'
 import { generateInterviewChatResponse } from '../lib/ai/interviewGroqClient.js'
 
+// ── Session State Machine Constants ─────────────────────────────────────────────
+export const RESUMABLE_STATUSES = ['active', 'paused']
+export const TERMINAL_STATUSES = ['completed', 'terminated', 'expired']
+
+export function isResumable(status) {
+    return RESUMABLE_STATUSES.includes(status)
+}
+
+export function hasReport(status) {
+    return TERMINAL_STATUSES.includes(status)
+}
+
+const MAX_LOCK_TIME = 45_000 // 45 seconds to allow for 30s timeout + some buffer
+
+/**
+ * Acquires an atomic processing lock on a session.
+ * Returns the session if lock acquired, null if already locked or session is terminal.
+ */
+export async function acquireProcessingLock(sessionId) {
+    const session = await InterviewSession.findOneAndUpdate(
+        {
+            _id: sessionId,
+            status: { $in: RESUMABLE_STATUSES },
+            $or: [
+                { isProcessing: false },
+                {
+                    isProcessing: true,
+                    lockAcquiredAt: { $lt: new Date(Date.now() - MAX_LOCK_TIME) },
+                },
+            ],
+        },
+        { $set: { isProcessing: true, lastActivityAt: new Date(), lockAcquiredAt: new Date() } },
+        { new: true }
+    )
+    return session // null if not found or already processing
+}
+
+/**
+ * Releases the processing lock on a session.
+ */
+export async function releaseProcessingLock(sessionId) {
+    await InterviewSession.findByIdAndUpdate(sessionId, {
+        $set: { isProcessing: false, lastActivityAt: new Date(), lockAcquiredAt: null },
+    })
+}
+
+/**
+ * Updates lastActivityAt for the session.
+ */
+export async function updateActivity(sessionId) {
+    await InterviewSession.findByIdAndUpdate(sessionId, {
+        $set: { lastActivityAt: new Date() },
+    })
+}
+
 /**
  * Valid phases enforcing strict order transitions if necessary
  */
@@ -63,6 +118,7 @@ export async function createSession(userId, mode = 'practice', durationMins = 60
         status: 'active',
         currentPhase: 'intro',
         startedAt: new Date(),
+        lastActivityAt: new Date(),
     })
 
     try {
@@ -204,6 +260,9 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
         // --- Success path: Transitioned from active ---
         await deleteInterviewState(sessionId)
 
+        // 🔒 Force release processing lock to allow immediate session cleanup
+        await releaseProcessingLock(sessionId)
+
         // Centralized Scorecard generation trigger
         const queue = getInterviewAIQueue()
         await queue.add(
@@ -241,8 +300,26 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
 
 /**
  * Terminates a session explicitly (e.g. user aborts).
+ * This also attempts to purge any pending AI processing jobs to save LLM tokens.
  */
 export async function terminateSession(sessionId) {
+    try {
+        const queue = getInterviewAIQueue()
+        // BullMQ: Find jobs for this sessionId and remove them from 'active' and 'waiting'
+        const jobs = await queue.getJobs(['active', 'waiting', 'delayed'])
+        for (const job of jobs) {
+            if (job.data?.sessionId?.toString() === sessionId.toString()) {
+                console.log(`[terminateSession] Cancelling job ${job.id} for session ${sessionId}`)
+                await job.remove()
+            }
+        }
+    } catch (err) {
+        console.warn(
+            `[terminateSession] Failed to clean up BullMQ jobs for ${sessionId}:`,
+            err.message
+        )
+    }
+
     return await transitionPhase(sessionId, 'completed', { status: 'terminated' })
 }
 

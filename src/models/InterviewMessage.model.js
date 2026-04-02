@@ -8,6 +8,12 @@ const interviewMessageSchema = new mongoose.Schema(
             required: true,
             index: true,
         },
+        id: {
+            type: String,
+            unique: true,
+            sparse: true,
+            index: true,
+        },
         role: {
             type: String,
             enum: ['ai', 'user', 'system'],

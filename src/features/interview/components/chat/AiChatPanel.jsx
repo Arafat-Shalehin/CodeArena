@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Bot, User as UserIcon, Loader2, AlertCircle, Send, Mic, MicOff } from 'lucide-react'
-import { useInterview } from '../../context/InterviewContext'
 import { useVoiceInput } from '../../hooks/useVoiceInput'
 
 export default function AiChatPanel({
@@ -10,8 +9,10 @@ export default function AiChatPanel({
     currentPhase,
     socket,
     setIsAiTyping,
+    sessionId,
+    wsToken,
 }) {
-    const { sessionId, wsToken, socket: interviewSocket } = useInterview()
+    const interviewSocket = socket // Use the passed socket prop as the interviewSocket for voice input
     const {
         isListening,
         transcript,
@@ -95,7 +96,7 @@ export default function AiChatPanel({
     return (
         <div className="flex h-full flex-col">
             {/* Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center gap-2 border-b px-4">
+            <div className="border-border bg-bg-subtle flex h-[42px] shrink-0 items-center gap-2 border-b px-4">
                 <Bot size={16} className="text-accent" />
                 <span className="text-text-primary text-xs font-bold">AI Interviewer</span>
                 <span className="bg-accent/10 border-accent/20 text-accent ml-auto rounded-full border px-2 py-0.5 text-[9px] font-black tracking-tighter uppercase">
@@ -126,7 +127,7 @@ export default function AiChatPanel({
                             className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                         >
                             <div
-                                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                                     isUser
                                         ? 'bg-accent/20 text-accent'
                                         : 'bg-purple-500/20 text-purple-400'
@@ -157,7 +158,7 @@ export default function AiChatPanel({
 
                 {isAiTyping && !error && (
                     <div className="flex gap-2.5">
-                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
                             <Bot size={14} />
                         </div>
                         <div className="bg-bg-muted flex items-center gap-1 rounded-2xl rounded-tl-none px-4 py-3">
@@ -170,7 +171,7 @@ export default function AiChatPanel({
 
                 {error && (
                     <div className="flex gap-2.5">
-                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-red-500/20 text-xs text-red-400">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-xs text-red-400">
                             <AlertCircle size={14} />
                         </div>
                         <div className="flex max-w-[80%] flex-col rounded-2xl rounded-tl-none border border-red-500/50 bg-red-500/10 px-3 py-2 text-[13px] leading-relaxed text-red-400">
@@ -196,7 +197,13 @@ export default function AiChatPanel({
                         ref={textareaRef}
                         rows={1}
                         value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
+                        onChange={(e) => {
+                            setDraft(e.target.value)
+                            // Voice/typing conflict: cancel voice if user starts typing manually
+                            if (isListening && e.target.value.length > 0) {
+                                toggleListening()
+                            }
+                        }}
                         onKeyDown={handleKey}
                         placeholder={
                             isListening ? 'Listening...' : 'Ask the AI or explain your approach…'
@@ -208,7 +215,7 @@ export default function AiChatPanel({
                         <button
                             onClick={toggleListening}
                             title={isListening ? 'Stop Voice Input' : 'Start Voice Input'}
-                            className={`flex-shrink-0 rounded-lg p-1.5 transition-all ${
+                            className={`shrink-0 rounded-lg p-1.5 transition-all ${
                                 isListening
                                     ? 'animate-pulse bg-red-500/20 text-red-400'
                                     : 'text-text-muted hover:text-text-primary hover:bg-white/5'
@@ -219,7 +226,7 @@ export default function AiChatPanel({
                         <button
                             onClick={submit}
                             disabled={!draft.trim() || isAiTyping || isListening}
-                            className="text-accent hover:bg-accent/10 flex-shrink-0 rounded-lg p-1.5 transition-colors disabled:opacity-40"
+                            className="text-accent hover:bg-accent/10 shrink-0 rounded-lg p-1.5 transition-colors disabled:opacity-40"
                         >
                             <Send size={16} />
                         </button>

@@ -44,21 +44,48 @@ const itemVariants = {
     },
 }
 
+// ── Session State Helpers (must match backend) ─────────────────────────────────
+const RESUMABLE_STATUSES = ['active', 'paused']
+const TERMINAL_STATUSES = ['completed', 'terminated', 'expired']
+const isResumable = (status) => RESUMABLE_STATUSES.includes(status)
+const hasReport = (status) => TERMINAL_STATUSES.includes(status)
+
+const STATUS_STYLES = {
+    completed: {
+        icon: CheckCircle2,
+        className: 'bg-accent/5 border-accent/20 text-accent shadow-[0_0_8px_rgba(2,186,76,0.08)]',
+    },
+    active: {
+        icon: AlertCircle,
+        className:
+            'border-blue-500/20 bg-blue-500/5 text-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.08)]',
+    },
+    paused: {
+        icon: AlertCircle,
+        className:
+            'border-yellow-500/20 bg-yellow-500/5 text-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.08)]',
+    },
+    terminated: {
+        icon: AlertCircle,
+        className:
+            'border-red-500/20 bg-red-500/5 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.08)]',
+    },
+    expired: {
+        icon: AlertCircle,
+        className:
+            'border-orange-500/20 bg-orange-500/5 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.08)]',
+    },
+}
+
 const StatusPill = ({ status }) => {
-    const isCompleted = status?.toLowerCase() === 'completed'
+    const normalizedStatus = status?.toLowerCase() || 'unknown'
+    const config = STATUS_STYLES[normalizedStatus] || STATUS_STYLES.expired
+    const Icon = config.icon
     return (
         <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] font-medium tracking-widest uppercase transition-all duration-300 ${
-                isCompleted
-                    ? 'bg-accent/5 border-accent/20 text-accent shadow-[0_0_8px_rgba(2,186,76,0.08)]'
-                    : 'border-yellow-500/20 bg-yellow-500/5 text-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.08)]'
-            }`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] font-medium tracking-widest uppercase transition-all duration-300 ${config.className}`}
         >
-            {isCompleted ? (
-                <CheckCircle2 className="h-2.5 w-2.5" />
-            ) : (
-                <AlertCircle className="h-2.5 w-2.5" />
-            )}
+            <Icon className="h-2.5 w-2.5" />
             {status || 'Unknown'}
         </div>
     )
@@ -200,11 +227,17 @@ export default function HistoryList() {
                             {/* Right: Actions */}
                             <div className="border-border/40 flex items-center justify-end border-t pt-4 md:border-none md:pt-0">
                                 <Button
-                                    onClick={() => router.push(`/interview/${session._id}`)}
+                                    onClick={() => {
+                                        if (isResumable(session.status)) {
+                                            router.push(`/interview/${session._id}`)
+                                        } else if (hasReport(session.status)) {
+                                            router.push(`/interview/${session._id}/result`)
+                                        }
+                                    }}
                                     variant="ghost"
                                     className="border-border hover:bg-accent group/btn text-text-primary h-11 rounded-xl border px-6 text-[9px] tracking-[0.3em] uppercase transition-all duration-300 hover:scale-105 hover:text-black active:scale-95"
                                 >
-                                    {session.status === 'completed' ? 'VIEW REPORT' : 'RESUME'}
+                                    {isResumable(session.status) ? 'RESUME' : 'VIEW REPORT'}
                                     <ChevronRight className="ml-1.5 h-3 w-3 transition-transform duration-300 group-hover/btn:translate-x-1" />
                                 </Button>
                             </div>
