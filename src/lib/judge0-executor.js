@@ -108,7 +108,9 @@ export async function executeCodeWithJudge0({
         }
 
         // Convert timeLimit from ms to seconds (Judge0 expects seconds)
-        const cpuTimeLimit = Math.ceil(timeLimit / 1000)
+        const cpuTimeLimit = Math.max(1, Math.ceil((Number(timeLimit) || 1000) / 1000))
+        const normalizedMemoryLimitKb = Math.max(16 * 1024, Number(memoryLimit) || 256 * 1024)
+        const memoryLimitMb = Math.max(16, Math.floor(normalizedMemoryLimitKb / 1024))
 
         // Create submission
         const createResponse = await fetch(`${JUDGE0_API_URL}/submissions`, {
@@ -119,7 +121,7 @@ export async function executeCodeWithJudge0({
                 source_code: code,
                 stdin: input,
                 cpu_time_limit: cpuTimeLimit,
-                memory_limit: Math.floor(memoryLimit / 1024), // Convert KB to MB
+                memory_limit: memoryLimitMb, // Judge0 expects MB
             }),
         })
 

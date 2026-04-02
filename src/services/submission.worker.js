@@ -95,6 +95,14 @@ export function initSubmissionWorker() {
                 if (!problem) {
                     throw new Error(`Problem ${submission.problemId} not found`)
                 }
+                const normalizedTimeLimitMs = Math.max(
+                    100,
+                    Number.parseInt(problem.timeLimit || '1000', 10) || 1000
+                )
+                const normalizedMemoryLimitKb = Math.max(
+                    16 * 1024,
+                    Number.parseInt(problem.memoryLimit || `${256 * 1024}`, 10) || 256 * 1024
+                )
 
                 // 3. Fetch all test cases for the problem
                 const testCases = await TestCase.find({ problemId: submission.problemId }).sort({
@@ -147,8 +155,8 @@ export function initSubmissionWorker() {
                         files: submission.files || [],
                         language: submission.language,
                         input: submission.customInput || '',
-                        timeLimit: problem.timeLimit,
-                        memoryLimit: problem.memoryLimit,
+                        timeLimit: normalizedTimeLimitMs,
+                        memoryLimit: normalizedMemoryLimitKb,
                         isPlayground: true, // Don't judge, just execute
                     })
 
@@ -253,8 +261,8 @@ export function initSubmissionWorker() {
                         language: submission.language,
                         inputs,
                         expectedOutputs,
-                        timeLimit: problem.timeLimit,
-                        memoryLimit: problem.memoryLimit,
+                        timeLimit: normalizedTimeLimitMs,
+                        memoryLimit: normalizedMemoryLimitKb,
                         specialJudgeCode:
                             problem.judgeType === 'special' ? problem.specialJudgeCode : null,
                         onProgress: async (result, i) => {
@@ -399,8 +407,8 @@ export function initSubmissionWorker() {
                                 files: submission.files || [],
                                 language: submission.language,
                                 input: testCase.input || '',
-                                timeLimit: problem.timeLimit,
-                                memoryLimit: problem.memoryLimit,
+                                timeLimit: normalizedTimeLimitMs,
+                                memoryLimit: normalizedMemoryLimitKb,
                                 // Pass special judge details to executor for secure sandboxed execution
                                 specialJudgeCode:
                                     problem.judgeType === 'special'

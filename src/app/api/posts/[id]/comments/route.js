@@ -21,13 +21,7 @@ export async function GET(req, { params }) {
 
         const post = await Post.findById(id)
             .select('comments')
-            .populate({
-                path: 'comments',
-                populate: {
-                    path: 'userId',
-                    select: 'name avatarSeed',
-                },
-            })
+            .populate('comments.userId', 'name avatarSeed')
             .lean()
 
         if (!post) {
@@ -104,13 +98,7 @@ export async function POST(req, { params }) {
         await post.save()
 
         // Populate the newly added comment's user info
-        await post.populate({
-            path: 'comments',
-            populate: {
-                path: 'userId',
-                select: 'name avatarSeed',
-            },
-        })
+        await post.populate('comments.userId', 'name avatarSeed')
 
         // Get the newly added comment with populated user info
         const newComment = post.comments[post.comments.length - 1].toObject()
