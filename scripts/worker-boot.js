@@ -17,16 +17,48 @@ function isRedisLimitError(error) {
     return message.includes('ERR max requests limit exceeded')
 }
 
+function isRedisConnectionStartupError(error) {
+    const message = String(error?.message || error || '').toLowerCase()
+    const code = String(error?.code || '').toUpperCase()
+
+    return (
+        message.includes('connection timeout') ||
+        message.includes('connect timeout') ||
+        message.includes('econnrefused') ||
+        message.includes('enotfound') ||
+        message.includes('socket closed unexpectedly') ||
+        code === 'ECONNREFUSED' ||
+        code === 'ENOTFOUND' ||
+        code === 'ETIMEDOUT'
+    )
+}
+
+function shouldKeepAliveOnRedisStartupError() {
+    return (process.env.DISABLE_WORKERS_ON_REDIS_TIMEOUT || 'true') === 'true'
+}
+
 function buildRedisConfig() {
     const redisUrl = process.env.REDIS_URL || ''
+    const connectTimeout = parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || '10000', 10)
+    const allowInsecureTls = process.env.REDIS_TLS_INSECURE === 'true'
+
     if (redisUrl) {
-        return { url: redisUrl }
+        const isTlsUrl = redisUrl.startsWith('rediss://')
+        return {
+            url: redisUrl,
+            socket: {
+                connectTimeout,
+                ...(isTlsUrl ? { tls: true } : {}),
+                ...(isTlsUrl && allowInsecureTls ? { rejectUnauthorized: false } : {}),
+            },
+        }
     }
 
     return {
         socket: {
             host: process.env.REDIS_HOST || 'localhost',
             port: parseInt(process.env.REDIS_PORT || '6379', 10),
+            connectTimeout,
         },
         password: process.env.REDIS_PASSWORD || undefined,
     }
@@ -50,14 +82,24 @@ async function canStartWorkersWithCurrentRedisQuota() {
             return false
         }
 
+        if (isRedisConnectionStartupError(error) && shouldKeepAliveOnRedisStartupError()) {
+            console.error(
+                '[WorkerBoot] Redis is unreachable during startup. Skipping worker startup and keeping container alive.'
+            )
+            console.error(
+                '[WorkerBoot] Set DISABLE_WORKERS_ON_REDIS_TIMEOUT=false to fail fast instead.'
+            )
+            return false
+        }
+
         throw error
     }
 }
 
 process.on('uncaughtException', (error) => {
-    if (isRedisLimitError(error)) {
+    if (isRedisLimitError(error) || isRedisConnectionStartupError(error)) {
         console.error(
-            '[WorkerBoot] Ignoring uncaught Redis quota error to keep health endpoint alive.'
+            '[WorkerBoot] Ignoring uncaught Redis startup/runtime error to keep health endpoint alive.'
         )
         return
     }
@@ -67,9 +109,9 @@ process.on('uncaughtException', (error) => {
 })
 
 process.on('unhandledRejection', (reason) => {
-    if (isRedisLimitError(reason)) {
+    if (isRedisLimitError(reason) || isRedisConnectionStartupError(reason)) {
         console.error(
-            '[WorkerBoot] Ignoring unhandled Redis quota rejection to keep health endpoint alive.'
+            '[WorkerBoot] Ignoring unhandled Redis startup/runtime rejection to keep health endpoint alive.'
         )
         return
     }
@@ -173,6 +215,13 @@ startWorkers().catch((error) => {
     if (isRedisLimitError(error)) {
         console.error(
             '[WorkerBoot] Redis quota exceeded during startup. Workers are disabled until quota resets.'
+        )
+        return
+    }
+
+    if (isRedisConnectionStartupError(error) && shouldKeepAliveOnRedisStartupError()) {
+        console.error(
+            '[WorkerBoot] Redis connection failed during startup. Workers are disabled until Redis becomes reachable.'
         )
         return
     }
