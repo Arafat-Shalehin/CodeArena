@@ -342,15 +342,19 @@ export function initSubmissionWorker() {
                                 // or the special judge (inside Docker)
                                 passedCount++
                             } else {
-                                // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
-                                finalVerdict = resultVerdict
-                                firstError = result.error
-                                failedCaseNumber = i + 1
+                                // Record the first failure, but keep running remaining cases so the
+                                // UI can display a complete result set.
+                                if (!failedCaseNumber) {
+                                    finalVerdict = resultVerdict
+                                    firstError = result.error
+                                    failedCaseNumber = i + 1
+                                }
+
                                 console.log(
-                                    `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
+                                    `[WORKER] Test case ${i + 1} failed with ${resultVerdict}, continuing evaluation`
                                 )
 
-                                // Send fail-fast event immediately
+                                // Send per-case failure progress immediately.
                                 if (redisClient.isOpen) {
                                     redisClient
                                         .publish(
@@ -367,30 +371,7 @@ export function initSubmissionWorker() {
                                             })
                                         )
                                         .catch(console.error)
-
-                                    redisClient
-                                        .publish(
-                                            'submission_updates',
-                                            JSON.stringify({
-                                                type: 'final_verdict',
-                                                event: 'FINAL_VERDICT',
-                                                submissionId,
-                                                userId: submission.userId,
-                                                problemId: submission.problemId,
-                                                status: 'completed',
-                                                verdict: resultVerdict,
-                                                failedCase: i + 1,
-                                                current: i + 1,
-                                                total: totalCount,
-                                                progress: Math.round(((i + 1) / totalCount) * 100),
-                                                error: result.error || '',
-                                                closeRoom: true,
-                                            })
-                                        )
-                                        .catch(console.error)
-                                    finalVerdictEmitted = true
                                 }
-                                return true
                             }
                         },
                     })
@@ -503,15 +484,18 @@ export function initSubmissionWorker() {
                                 // or the special judge (inside Docker)
                                 passedCount++
                             } else {
-                                // ⚡ FAIL-FAST: Stop on first failure (no need to run remaining test cases)
-                                finalVerdict = resultVerdict
-                                firstError = result.error
-                                failedCaseNumber = i + 1
+                                // Record the first failure, but continue running all cases.
+                                if (!failedCaseNumber) {
+                                    finalVerdict = resultVerdict
+                                    firstError = result.error
+                                    failedCaseNumber = i + 1
+                                }
+
                                 console.log(
-                                    `[WORKER] ⚡ FAIL-FAST: Test case ${i + 1} failed with ${resultVerdict}, stopping evaluation`
+                                    `[WORKER] Test case ${i + 1} failed with ${resultVerdict}, continuing evaluation`
                                 )
 
-                                // Send fail-fast event immediately
+                                // Send per-case failure progress immediately.
                                 if (redisClient.isOpen) {
                                     redisClient
                                         .publish(
@@ -528,30 +512,7 @@ export function initSubmissionWorker() {
                                             })
                                         )
                                         .catch(console.error)
-
-                                    redisClient
-                                        .publish(
-                                            'submission_updates',
-                                            JSON.stringify({
-                                                type: 'final_verdict',
-                                                event: 'FINAL_VERDICT',
-                                                submissionId,
-                                                userId: submission.userId,
-                                                problemId: submission.problemId,
-                                                status: 'completed',
-                                                verdict: resultVerdict,
-                                                failedCase: i + 1,
-                                                current: i + 1,
-                                                total: totalCount,
-                                                progress: Math.round(((i + 1) / totalCount) * 100),
-                                                error: result.error || '',
-                                                closeRoom: true,
-                                            })
-                                        )
-                                        .catch(console.error)
-                                    finalVerdictEmitted = true
                                 }
-                                break
                             }
                         }
                     }
@@ -596,11 +557,9 @@ export function initSubmissionWorker() {
                         }))
                         eventData.passedCount = passedCount
                         eventData.totalCount = totalCount
+                        eventData.progress = 100
                         if (failedCaseNumber) {
                             eventData.failedCase = failedCaseNumber
-                            eventData.progress = Math.round((failedCaseNumber / totalCount) * 100)
-                        } else {
-                            eventData.progress = 100
                         }
                     }
 
@@ -623,17 +582,9 @@ export function initSubmissionWorker() {
                                     executionTime: maxTime,
                                     memoryUsed: maxMemory,
                                     failedCase: failedCaseNumber,
-                                    current:
-                                        submission.type === 'submit'
-                                            ? failedCaseNumber || totalCount
-                                            : 1,
+                                    current: submission.type === 'submit' ? totalCount : 1,
                                     total: submission.type === 'submit' ? totalCount : 1,
-                                    progress:
-                                        submission.type === 'submit'
-                                            ? failedCaseNumber
-                                                ? Math.round((failedCaseNumber / totalCount) * 100)
-                                                : 100
-                                            : 100,
+                                    progress: submission.type === 'submit' ? 100 : 100,
                                     error: firstError || '',
                                     closeRoom: true,
                                 })

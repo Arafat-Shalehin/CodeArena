@@ -259,8 +259,8 @@ export async function executeCode({
  * Dramatically reduces latency for multi-test-case judge runs by reusing
  * the container lifecycle instead of creating one per test case.
  *
- * Returns an array of result objects (one per input), stopping after the
- * first non-ACCEPTED verdict (fail-fast).
+ * Returns an array of result objects (one per input), running every input
+ * unless the caller explicitly requests an early stop.
  *
  * Falls back to null when Docker is unavailable so the caller can use Judge0.
  */
@@ -337,19 +337,39 @@ export async function executeMultipleInputs({
                 const inputB64 = Buffer.from(inputContent).toString('base64')
                 const exec = await container.exec({
                     Cmd: ['sh', '-c', `echo "${inputB64}" | base64 -d > /workspace/input.txt`],
+                    AttachStdout: true,
+                    AttachStderr: true,
                     User: 'root',
                 })
-                // FIX: Run detached and use small delay - stream events unreliable for quick commands
-                await exec.start({ Detach: true })
-                // Give 50ms for the file write to complete (nearly instant operation)
-                await new Promise((resolve) => setTimeout(resolve, 50))
+
+                // Wait for the file write to complete synchronously using streams
+                const stream = await exec.start({ Detach: false, Tty: false })
+                await new Promise((resolve, reject) => {
+                    const timeoutId = setTimeout(
+                        () => reject(new Error('Timed out while updating input file in container')),
+                        5000
+                    )
+                    const finish = () => {
+                        clearTimeout(timeoutId)
+                        resolve()
+                    }
+                    stream.on('end', finish)
+                    stream.on('close', finish)
+                    stream.on('error', (error) => {
+                        clearTimeout(timeoutId)
+                        reject(error)
+                    })
+                    stream.resume()
+                })
+
                 console.log(`[EXECUTOR] Input file written for test case ${i + 1}`)
             }
 
             let result
             try {
                 console.log(`[EXECUTOR] Calling runContainer for test case ${i + 1}...`)
-                result = await runContainer(container, effectiveTimeLimit)
+                const skipCompile = i > 0 // Skip compilation for subsequent runs
+                result = await runContainer(container, effectiveTimeLimit, skipCompile)
                 console.log(`[EXECUTOR] ✅ Test case ${i + 1} completed: verdict=${result.verdict}, time=${result.executionTime}ms`)
             } catch (runErr) {
                 console.error(`[EXECUTOR] ❌ Test case ${i + 1} error:`, runErr.message)
@@ -399,13 +419,8 @@ export async function executeMultipleInputs({
 
             results.push(result)
 
-            // Let caller handle verdict adjustment and stop condition
+            // Let the caller decide whether to stop early.
             let abortExec = false
-            const v = (result.verdict || '').toUpperCase()
-            if (v !== 'ACCEPTED' && v !== 'SUCCESS') {
-                abortExec = true
-            }
-
             if (onProgress) {
                 const callerAbort = await onProgress(result, i)
                 if (callerAbort !== undefined) abortExec = callerAbort
@@ -641,8 +656,21 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
             })
 
             await new Promise((resolve, reject) => {
-                stream.on('end', resolve)
-                stream.on('error', reject)
+                const timeoutId = setTimeout(
+                    () => reject(new Error('Timed out while writing files into container')),
+                    8000
+                )
+                const finish = () => {
+                    clearTimeout(timeoutId)
+                    resolve()
+                }
+                stream.on('end', finish)
+                stream.on('close', finish)
+                stream.on('error', (error) => {
+                    clearTimeout(timeoutId)
+                    reject(error)
+                })
+                stream.resume()
             })
 
             return output
@@ -668,6 +696,12 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         if (input) {
             const inputB64 = Buffer.from(input).toString('base64')
             await runExec(`echo "${inputB64}" | base64 -d > /workspace/input.txt`)
+        }
+
+        // Dynamically inject SKIP_COMPILE support into the runner scripts 
+        // just in case the executor images haven't been rebuilt yet.
+        if (langConfig.name === 'cpp' || langConfig.name === 'java') {
+            await runExec(`if grep -q "echo \\"Compiling" /usr/local/bin/runner.sh && ! grep -q "SKIP_COMPILE" /usr/local/bin/runner.sh; then sed -i '/^echo "Compiling/i if [ "$SKIP_COMPILE" != "1" ]; then' /usr/local/bin/runner.sh || true && sed -i '/^echo "Executing/i fi' /usr/local/bin/runner.sh || true; fi`, 'root');
         }
 
         // Ensure workspace is fully writable by everyone (including coderunner)
@@ -703,17 +737,19 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
 /**
  * Run container and collect results
  */
-async function runContainer(container, timeLimit) {
+async function runContainer(container, timeLimit, skipCompile = false) {
     const startTime = Date.now()
+    let timeoutId = null
 
     try {
         // Execute the runner script as coderunner user
-        console.log('[EXECUTOR] Starting exec for runner.sh...')
+        console.log(`[EXECUTOR] Starting exec for runner.sh... (skipCompile=${skipCompile})`)
         const exec = await container.exec({
             Cmd: ['/usr/local/bin/runner.sh'],
             AttachStdout: true,
             AttachStderr: true,
             User: 'coderunner',
+            Env: skipCompile ? ['SKIP_COMPILE=1'] : [],
         })
 
         // Start execution with timeout
@@ -751,9 +787,12 @@ async function runContainer(container, timeLimit) {
             execStream.on('error', reject)
         })
 
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIME_LIMIT_EXCEEDED')), timeLimit + 1000)
-        )
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(
+                () => reject(new Error('TIME_LIMIT_EXCEEDED')),
+                timeLimit + 1000
+            )
+        })
 
         await Promise.race([streamPromise, timeoutPromise])
         console.log('[EXECUTOR] Stream completed, getting exit code...')
@@ -790,6 +829,10 @@ async function runContainer(container, timeLimit) {
             }
         }
         throw error
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId)
+        }
     }
 }
 
