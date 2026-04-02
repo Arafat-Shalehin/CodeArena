@@ -156,31 +156,37 @@ const userSchema = new mongoose.Schema(
         notificationSettings: {
             type: new mongoose.Schema(
                 {
-                    emailSubmissions: { type: Boolean, default: true },
-                    emailContests: { type: Boolean, default: true },
-                    emailFollowers: { type: Boolean, default: true },
-                    emailWeekly: { type: Boolean, default: false },
                     pushSubmissions: { type: Boolean, default: true },
                     pushContests: { type: Boolean, default: true },
                     pushFollowers: { type: Boolean, default: false },
                     notifyAchievements: { type: Boolean, default: true },
-                    notifyMentions: { type: Boolean, default: true },
                     notifyComments: { type: Boolean, default: true },
                 },
                 { _id: false }
             ),
             default: () => ({
-                emailSubmissions: true,
-                emailContests: true,
-                emailFollowers: true,
-                emailWeekly: false,
                 pushSubmissions: true,
                 pushContests: true,
                 pushFollowers: false,
                 notifyAchievements: true,
-                notifyMentions: true,
                 notifyComments: true,
             }),
+        },
+        pushSubscriptions: {
+            type: [
+                new mongoose.Schema(
+                    {
+                        endpoint: { type: String, required: true },
+                        keys: {
+                            p256dh: { type: String, required: true },
+                            auth: { type: String, required: true },
+                        },
+                        createdAt: { type: Date, default: Date.now },
+                    },
+                    { _id: false }
+                ),
+            ],
+            default: [],
         },
         privacySettings: {
             type: new mongoose.Schema(
@@ -194,8 +200,6 @@ const userSchema = new mongoose.Schema(
                     showSubmissions: { type: Boolean, default: true },
                     showContestHistory: { type: Boolean, default: true },
                     showFollowers: { type: Boolean, default: true },
-                    allowMessaging: { type: Boolean, default: true },
-                    indexProfile: { type: Boolean, default: true },
                 },
                 { _id: false }
             ),
@@ -205,8 +209,6 @@ const userSchema = new mongoose.Schema(
                 showSubmissions: true,
                 showContestHistory: true,
                 showFollowers: true,
-                allowMessaging: true,
-                indexProfile: true,
             }),
         },
         subscription: {

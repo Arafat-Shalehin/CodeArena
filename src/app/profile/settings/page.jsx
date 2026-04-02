@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button'
 import ProfilePictureCard from '@/features/profile/components/ProfilePictureCard'
 import Navbar from '@/components/layout/Navbar'
 import AccountSection from '@/features/profile/components/settings/AccountSection'
-import PreferencesSection from '@/features/profile/components/settings/PreferencesSection'
 import NotificationsSection from '@/features/profile/components/settings/NotificationsSection'
 import PrivacySection from '@/features/profile/components/settings/PrivacySection'
 import SubscriptionSection from '@/features/profile/components/settings/SubscriptionSection'
@@ -119,56 +118,37 @@ export default function SettingsPage() {
             return
         }
 
-        let responseData = null
-        let profileUpdateSuccess = false
+        const payload = {
+            name: data.name,
+            bio: data.bio || '',
+            location: data.location || '',
+            country: data.country || '',
+            website: data.website || '',
+            socials: {
+                github: (data.socials?.github || '').trim(),
+                linkedin: (data.socials?.linkedin || '').trim(),
+                twitter: (data.socials?.twitter || '').trim(),
+            },
+            avatarSeed,
+        }
+
+        console.log('[Settings] Submitting profile update:', { userId: userId.toString(), payload })
 
         try {
-            const userIdString = userId.toString()
-            const payload = {
-                name: data.name,
-                bio: data.bio || '',
-                location: data.location || '',
-                country: data.country || '',
-                website: data.website || '',
-                socials: data.socials || { github: '', linkedin: '', twitter: '' },
-                avatarSeed,
-            }
-
-            console.log('Submitting profile update:', { userId: userIdString, payload })
-
-            const res = await fetch(`/api/users/${userIdString}`, {
+            const res = await fetch(`/api/users/${userId.toString()}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             })
 
-            console.log('Response status:', res.status, res.ok)
+            const responseData = await res.json()
 
-            // Check if response is OK before trying to parse JSON
             if (!res.ok) {
-                const contentType = res.headers.get('content-type')
-                let errorMessage = 'Failed to update profile'
-
-                if (contentType && contentType.includes('application/json')) {
-                    responseData = await res.json()
-                    errorMessage = responseData.message || errorMessage
-                } else {
-                    const text = await res.text()
-                    console.error('Non-JSON error response:', text)
-                    errorMessage = text || `Server error: ${res.status}`
-                }
-                throw new Error(errorMessage)
+                console.error('[Settings] API error:', responseData)
+                throw new Error(responseData.message || `Server error: ${res.status}`)
             }
 
-            // Only parse JSON if the response was successful
-            const contentType = res.headers.get('content-type')
-            if (contentType && contentType.includes('application/json')) {
-                responseData = await res.json()
-            } else {
-                throw new Error('Server returned invalid response')
-            }
-
-            console.log('Profile update successful:', responseData)
+            console.log('[Settings] API response:', responseData)
 
             // Update Firebase display name if available
             const firebase = await getFirebaseAuth()
@@ -177,34 +157,31 @@ export default function SettingsPage() {
                 await firebaseUpdateProfile(firebase.auth.currentUser, { displayName: data.name })
             }
 
-            profileUpdateSuccess = true
-        } catch (error) {
-            if (error.name === 'AbortError') return
-            console.error('Profile update failed:', error)
-            toast.error(error.message || 'Failed to save profile. Please try again.')
-            return
-        }
-
-        if (profileUpdateSuccess) {
-            try {
-                await syncUser()
-            } catch (syncError) {
-                console.error('Sync failed:', syncError)
-            }
-
+            // Update local context FIRST with the values we just saved
             updateLocalContext({
                 name: data.name,
                 bio: data.bio || '',
                 location: data.location || '',
                 country: data.country || '',
                 website: data.website || '',
-                socials: data.socials,
+                socials: payload.socials,
                 avatarSeed,
             })
+
+            // Sync in background to ensure consistency
+            try {
+                await syncUser()
+            } catch (syncError) {
+                console.error('[Settings] Sync failed:', syncError)
+            }
 
             setIsSaved(true)
             toast.success('Changes saved successfully!')
             setTimeout(() => setIsSaved(false), 3000)
+        } catch (error) {
+            if (error.name === 'AbortError') return
+            console.error('[Settings] Profile update failed:', error)
+            toast.error(error.message || 'Failed to save profile. Please try again.')
         }
     }
 
@@ -257,14 +234,39 @@ export default function SettingsPage() {
                                     setValue={setValue}
                                     user={user}
                                 />
-                                <SocialProfilesForm register={register} errors={errors} />
+                                <SocialProfilesForm
+                                    register={register}
+                                    errors={errors}
+                                    watch={watch}
+                                    setValue={setValue}
+                                    user={user}
+                                />
 
                                 <div className="border-border flex items-center justify-end gap-4 border-t pt-4">
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         className="text-text-secondary font-semibold"
-                                        onClick={() => user && reset()}
+                                        onClick={() => {
+                                            if (user) {
+                                                reset({
+                                                    name: user.name || '',
+                                                    bio: user.bio || '',
+                                                    location: user.location || '',
+                                                    country: user.country || '',
+                                                    website: user.website || '',
+                                                    socials: {
+                                                        github: user.socials?.github || '',
+                                                        linkedin: user.socials?.linkedin || '',
+                                                        twitter: user.socials?.twitter || '',
+                                                    },
+                                                    avatarSeed:
+                                                        user.avatarSeed ||
+                                                        user.name ||
+                                                        PREDEFINED_AVATARS[0],
+                                                })
+                                            }
+                                        }}
                                         disabled={isSubmitting}
                                     >
                                         Cancel
@@ -289,9 +291,12 @@ export default function SettingsPage() {
                         )}
 
                         {activeSection === 'account' && <AccountSection user={user} />}
-                        {activeSection === 'preferences' && <PreferencesSection user={user} />}
-                        {activeSection === 'notifications' && <NotificationsSection user={user} />}
-                        {activeSection === 'privacy' && <PrivacySection user={user} />}
+                        {activeSection === 'notifications' && (
+                            <NotificationsSection user={user} syncUser={syncUser} />
+                        )}
+                        {activeSection === 'privacy' && (
+                            <PrivacySection user={user} syncUser={syncUser} />
+                        )}
                         {activeSection === 'subscription' && <SubscriptionSection user={user} />}
                     </div>
                 </div>

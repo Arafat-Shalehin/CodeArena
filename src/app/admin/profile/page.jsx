@@ -87,18 +87,18 @@ export default function AdminProfilePage() {
             <StatsGrid user={user} />
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-                <div className="space-y-8 lg:col-span-4">
+                <div className="space-y-8 lg:order-1 lg:col-span-4">
                     <ProblemStats user={user} />
                     <Achievements achievements={user.stats?.achievements} />
                 </div>
 
-                <div className="space-y-8 lg:col-span-8">
+                <div className="space-y-8 lg:order-2 lg:col-span-8">
                     <div className="bg-bg-subtle border-border overflow-hidden rounded-2xl border p-6 shadow-sm">
                         <h3 className="text-text-primary mb-4 font-bold">Submission Activity</h3>
                         <div className="no-scrollbar flex justify-start overflow-x-auto">
                             <ActivityCalendar
                                 data={calendarData}
-                                // থিম অবজেক্টটি ফিক্স করা হয়েছে
+                                // থিম অবজেক্টটি ফিক্স করা হয়েছে
                                 theme={{
                                     light: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
                                     dark: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'],
@@ -117,6 +117,9 @@ export default function AdminProfilePage() {
                             <ReactTooltip id="activity-tooltip" />
                         </div>
                     </div>
+                </div>
+
+                <div className="space-y-8 lg:order-3 lg:col-span-4">
                     <RecentSubmissions submissions={submissions} />
                 </div>
             </div>

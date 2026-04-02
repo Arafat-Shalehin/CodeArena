@@ -5,9 +5,15 @@ import { User } from '@/models/User.models'
 
 export const GET = asyncHandler(async (req, { params }) => {
     await dbConnect()
+    const resolvedParams = await params
     const user = await protect(req)
 
-    const targetUser = await User.findById(params.id).select('preferences')
+    const userId = user.id || user._id
+    if (userId.toString() !== resolvedParams.id && user.role !== 'admin') {
+        return Response.json({ success: false, message: 'Not authorized' }, { status: 403 })
+    }
+
+    const targetUser = await User.findById(resolvedParams.id).select('preferences')
 
     if (!targetUser) {
         return Response.json({ success: false, message: 'User not found' }, { status: 404 })
@@ -18,9 +24,10 @@ export const GET = asyncHandler(async (req, { params }) => {
 
 export const PUT = asyncHandler(async (req, { params }) => {
     await dbConnect()
+    const resolvedParams = await params
     const user = await protect(req)
 
-    if (user.id !== params.id && user.role !== 'admin') {
+    if (user.id !== resolvedParams.id && user.role !== 'admin') {
         return Response.json({ success: false, message: 'Not authorized' }, { status: 403 })
     }
 
@@ -35,7 +42,7 @@ export const PUT = asyncHandler(async (req, { params }) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-        params.id,
+        resolvedParams.id,
         { $set: { preferences } },
         { new: true }
     ).select('preferences')

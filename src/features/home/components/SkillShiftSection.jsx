@@ -58,7 +58,7 @@ export default function SkillShiftSection() {
                     </h2>
 
                     {/* STATS */}
-                    <div className="mx-auto mb-16 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="mx-auto mb-16 grid max-w-4xl grid-cols-3 gap-4">
                         <StatCard
                             value={2500}
                             suffix="+"
@@ -121,21 +121,21 @@ function StatCard({ value, suffix, label, icon }) {
     return (
         <motion.div
             whileHover={{ y: -4, borderColor: 'var(--color-accent)' }}
-            className="bg-bg-subtle border-border relative flex flex-col items-center justify-center rounded-xl border p-8 transition-[border-color,transform,shadow] duration-300"
+            className="bg-bg-subtle border-border relative flex flex-col items-center justify-center rounded-xl border p-4 transition-[border-color,transform,shadow] duration-300 sm:p-8"
         >
             <div
-                className="text-accent bg-accent/10 mb-5 flex size-12 items-center justify-center rounded-lg"
+                className="text-accent bg-accent/10 mb-3 flex size-8 items-center justify-center rounded-lg sm:mb-5 sm:size-12"
                 aria-hidden="true"
             >
                 {icon}
             </div>
 
-            <span className="text-text-primary mb-1 font-mono text-4xl font-bold tabular-nums sm:text-5xl">
+            <span className="text-text-primary mb-1 font-mono text-2xl font-bold tabular-nums sm:text-4xl sm:text-5xl">
                 {formatNumber(count)}
                 {suffix}
             </span>
 
-            <span className="text-text-muted text-xs font-medium tracking-widest uppercase">
+            <span className="text-text-muted text-[10px] font-medium tracking-widest uppercase sm:text-xs">
                 {label}
             </span>
 

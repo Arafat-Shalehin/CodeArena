@@ -79,7 +79,7 @@ const FallingLight = React.memo(({ count = 8 }) => {
 export default React.memo(function Hero() {
     const shouldReduceMotion = useSafeReducedMotion()
     const decorativeStreakCount = shouldReduceMotion ? 0 : 8
-    const { isAuthenticated } = useAuth()
+    const { isAuthenticated, isLoading } = useAuth()
 
     return (
         <section className="hero-gradient relative overflow-hidden pt-18 pb-0 transition-[transform,opacity] duration-700">
@@ -105,7 +105,7 @@ export default React.memo(function Hero() {
             {decorativeStreakCount > 0 && <FallingLight count={decorativeStreakCount} />}
 
             <div className="relative z-10 mx-auto -mt-20 flex max-w-7xl flex-col items-center px-4 lg:-mt-24">
-                {/* Top Section: Content */}
+                {/* Top Section: Content — loads first */}
                 <motion.div
                     initial={shouldReduceMotion ? 'visible' : 'hidden'}
                     animate="visible"
@@ -114,8 +114,8 @@ export default React.memo(function Hero() {
                         visible: {
                             opacity: 1,
                             transition: {
-                                staggerChildren: shouldReduceMotion ? 0 : 0.12,
-                                delayChildren: shouldReduceMotion ? 0 : 0.2,
+                                staggerChildren: shouldReduceMotion ? 0 : 0.1,
+                                delayChildren: shouldReduceMotion ? 0 : 0.15,
                             },
                         },
                     }}
@@ -130,7 +130,7 @@ export default React.memo(function Hero() {
                                     visible: {
                                         y: 0,
                                         opacity: 1,
-                                        transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                                        transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
                                     },
                                 }}
                                 className="mr-[0.2em] inline-block"
@@ -144,7 +144,7 @@ export default React.memo(function Hero() {
                                     visible: {
                                         y: 0,
                                         opacity: 1,
-                                        transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                                        transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
                                     },
                                 }}
                                 className="text-accent inline-block font-serif italic drop-shadow-[0_0_15px_rgba(0,200,83,0.3)]"
@@ -164,9 +164,8 @@ export default React.memo(function Hero() {
                                     y: 0,
                                     filter: 'blur(0px)',
                                     transition: {
-                                        duration: 0.8,
+                                        duration: 0.7,
                                         ease: [0.16, 1, 0.3, 1],
-                                        delay: 0.25,
                                     },
                                 },
                             }}
@@ -186,7 +185,7 @@ export default React.memo(function Hero() {
                             visible: {
                                 opacity: 1,
                                 y: 0,
-                                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                                transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
                             },
                         }}
                         className="flex flex-col items-center justify-center gap-8 pt-6"
@@ -197,13 +196,27 @@ export default React.memo(function Hero() {
                                 href={isAuthenticated ? '/feed' : '/problems'}
                                 className="w-full sm:w-auto"
                             >
-                                <PatternButton className="h-14 w-full sm:w-auto">
-                                    {isAuthenticated ? 'Go to Feed' : 'Start Solving'}
+                                <PatternButton className="h-10 w-full px-4 py-2 text-sm sm:h-12 sm:w-auto sm:px-12 sm:py-4 sm:text-base">
+                                    {isLoading
+                                        ? 'Go to Feed'
+                                        : isAuthenticated
+                                          ? 'Go to Feed'
+                                          : 'Start Solving'}
                                 </PatternButton>
                             </Link>
                         </div>
                         {/* Status Tags */}
-                        <div className="text-text-muted flex flex-wrap items-center justify-center gap-3 text-[10px] font-medium tracking-[0.18em] uppercase opacity-90 sm:text-xs">
+                        <motion.div
+                            variants={{
+                                hidden: { opacity: 0, y: 10 },
+                                visible: {
+                                    opacity: 0.9,
+                                    y: 0,
+                                    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+                                },
+                            }}
+                            className="text-text-muted flex flex-wrap items-center justify-center gap-3 text-[10px] font-medium tracking-[0.18em] uppercase sm:text-xs"
+                        >
                             <Link href="/problems">
                                 <span className="bg-bg-subtle border-border/40 hover:bg-accent/10 hover:text-accent cursor-pointer rounded-full border px-4 py-1.5 backdrop-blur-sm transition-all hover:scale-105 active:scale-95">
                                     2,500+ Problems
@@ -219,7 +232,7 @@ export default React.memo(function Hero() {
                                     AI Interviewer
                                 </span>
                             </Link>
-                        </div>
+                        </motion.div>
                     </motion.div>
 
                     {/* Language Support Showcase */}
@@ -228,10 +241,10 @@ export default React.memo(function Hero() {
                             hidden: { opacity: 0 },
                             visible: {
                                 opacity: 1,
-                                transition: { duration: 1, delay: 0.4 },
+                                transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
                             },
                         }}
-                        className="text-text-muted pointer-events-auto mt-4 mb-1 flex flex-col items-center gap-4 transition-all duration-300"
+                        className="text-text-muted pointer-events-auto mt-4 mb-8 flex flex-col items-center gap-4 transition-all duration-300 sm:mb-[5px]"
                     >
                         <p className="text-xs font-bold tracking-widest [text-wrap:balance] uppercase opacity-70">
                             Supported Execution Environments
@@ -271,9 +284,25 @@ export default React.memo(function Hero() {
                     </motion.div>
                 </motion.div>
 
-                <ScrollRevealCard className="w-full">
-                    <CodeEditorPreview className="h-full w-full" />
-                </ScrollRevealCard>
+                {/* Code Editor Preview — loads after text components */}
+                <motion.div
+                    initial={
+                        shouldReduceMotion
+                            ? { opacity: 1, y: 0, scale: 1 }
+                            : { opacity: 0, y: 40, scale: 0.95 }
+                    }
+                    animate={shouldReduceMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                        duration: 0.9,
+                        ease: [0.16, 1, 0.3, 1],
+                        delay: shouldReduceMotion ? 0 : 0.6,
+                    }}
+                    className="w-full"
+                >
+                    <ScrollRevealCard className="w-full">
+                        <CodeEditorPreview className="h-full w-full" />
+                    </ScrollRevealCard>
+                </motion.div>
             </div>
         </section>
     )

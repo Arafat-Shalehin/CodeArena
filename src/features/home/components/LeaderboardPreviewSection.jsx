@@ -61,25 +61,6 @@ export default function LeaderboardPreviewSection() {
                             Climb the ranks, earn reputation, and become a CodeArena legend.
                         </p>
                     </div>
-
-                    <div className="border-border grid grid-cols-2 gap-8 border-t pt-8">
-                        <div>
-                            <div className="text-text-primary text-3xl font-black tabular-nums">
-                                1.2k+
-                            </div>
-                            <div className="text-text-muted mt-1 text-xs font-bold tracking-widest uppercase">
-                                Daily Sprints
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-text-primary text-3xl font-black tabular-nums">
-                                $50k+
-                            </div>
-                            <div className="text-text-muted mt-1 text-xs font-bold tracking-widest uppercase">
-                                Prize Pools
-                            </div>
-                        </div>
-                    </div>
                 </motion.div>
 
                 {/* Right: Leaderboard Card */}

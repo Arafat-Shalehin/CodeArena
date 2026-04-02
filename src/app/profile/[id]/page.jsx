@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 
 // Shared Layout
 import Navbar from '@/components/layout/Navbar'
-import { Dot, Loader2 } from 'lucide-react'
+import { Dot, Loader2, Lock } from 'lucide-react'
 
 // Profile Components
 import ProfileHero from '@/features/profile/components/ProfileHero'
@@ -76,10 +76,27 @@ export default function PublicProfilePage({ params }) {
 
         if (!authLoading) {
             fetchUser()
-            // If viewing own profile, trigger a stats sync to ensure consistency
-            if (currentUser && currentUser._id === id) {
-                fetch('/api/user/sync', { method: 'POST' }).catch(console.error)
-            }
+            // Trigger stats sync to ensure activityCalendar is up to date
+            fetch('/api/user/sync', { method: 'POST' })
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.success) {
+                        // Refetch user to get updated stats
+                        fetch(`/api/users/${id}`)
+                            .then((r) => r.json())
+                            .then((d) => {
+                                if (d.success && d.data) {
+                                    setUser((prev) => ({
+                                        ...prev,
+                                        ...d.data,
+                                        avatarSeed: d.data.avatarSeed || d.data.name,
+                                    }))
+                                }
+                            })
+                            .catch(console.error)
+                    }
+                })
+                .catch(console.error)
         }
     }, [id, currentUser, authLoading, router])
 
@@ -133,6 +150,18 @@ export default function PublicProfilePage({ params }) {
 
     const sortedLanguages = getLanguageStats(user.stats)
 
+    // Privacy access control
+    const isOwnProfile = currentUser && (currentUser._id === id || currentUser.id === id)
+    const isAdmin = currentUser?.role === 'admin'
+    const visibility = user.privacySettings?.profileVisibility || 'public'
+    const privacy = user.privacySettings || {}
+    const isFollowing = currentUser?.following?.includes(id)
+    const canViewFull =
+        isOwnProfile ||
+        isAdmin ||
+        visibility === 'public' ||
+        (visibility === 'followers' && isFollowing)
+
     return (
         <div className="bg-bg-page text-text-primary min-h-screen font-sans">
             <Navbar />
@@ -140,13 +169,53 @@ export default function PublicProfilePage({ params }) {
             <main className="max-w-container mx-auto px-4 py-8 md:px-6">
                 <ProfileHero user={user} />
 
+                {/* Followers-only or private: show restricted notice */}
+                {!canViewFull && (
+                    <div className="bg-accent/5 border-accent/20 mb-8 flex items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm">
+                        <Lock className="text-accent h-4 w-4 shrink-0" />
+                        <span className="text-text-secondary">
+                            {visibility === 'followers'
+                                ? 'Only followers can see the full profile. Follow to unlock.'
+                                : "This user's profile is private."}
+                        </span>
+                    </div>
+                )}
+
                 <div className="space-y-8">
-                    <StatsGrid user={user} />
+                    {/* Stats — hidden if showStats is false */}
+                    {privacy.showStats !== false && <StatsGrid user={user} />}
 
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
                         {/* Left Column (4/12) */}
                         <div className="order-2 space-y-8 lg:order-1 lg:col-span-4">
-                            <ProblemStats user={user} />
+                            {privacy.showStats !== false && <ProblemStats user={user} />}
+
+                            {/* Recent Submissions — hidden if showSubmissions is false */}
+                            {privacy.showSubmissions !== false && (
+                                <section className="bg-bg-subtle border-border overflow-hidden rounded-2xl border shadow-sm">
+                                    <div className="border-border flex items-center justify-between border-b px-6 py-5">
+                                        <h3 className="text-text-primary text-lg font-bold">
+                                            Recent Submissions
+                                        </h3>
+                                        <button
+                                            onClick={handleViewAll}
+                                            className="text-accent text-xs font-bold hover:underline"
+                                        >
+                                            View All
+                                        </button>
+                                    </div>
+                                    <RecentSubmissions submissions={submissions} />
+                                    {hasMoreSubmissions && (
+                                        <button
+                                            onClick={handleLoadMore}
+                                            disabled={isSubmissionsLoading}
+                                            className="bg-bg-muted/50 text-text-muted hover:bg-bg-muted border-border w-full border-t py-4 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-50"
+                                        >
+                                            {isSubmissionsLoading ? 'Loading...' : 'Load More'}
+                                        </button>
+                                    )}
+                                </section>
+                            )}
 
                             {/* Languages */}
                             {sortedLanguages.length > 0 && (
@@ -155,40 +224,43 @@ export default function PublicProfilePage({ params }) {
                                         Languages
                                     </h3>
                                     <div className="bg-bg-muted mb-6 flex h-2.5 w-full overflow-hidden rounded-full">
-                                        {sortedLanguages.map((language, index) => (
+                                        {sortedLanguages.map((lang, index) => (
                                             <div
-                                                key={language.language}
-                                                className={
-                                                    index === 0
-                                                        ? 'bg-accent'
-                                                        : index === 1
-                                                          ? 'bg-warning'
-                                                          : index === 2
-                                                            ? 'bg-info'
-                                                            : 'bg-success'
-                                                }
-                                                style={{ width: `${language.percentage}%` }}
+                                                key={lang.name}
+                                                className={`${LANGUAGE_COLORS[index % LANGUAGE_COLORS.length]} h-full transition-all`}
+                                                style={{ width: `${lang.percentage}%` }}
                                             />
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                                        {sortedLanguages.map((language, index) => (
+                                    <div className="space-y-3">
+                                        {sortedLanguages.map((lang) => (
                                             <div
-                                                key={language.language}
+                                                key={lang.name}
                                                 className="flex items-center justify-between"
                                             >
-                                                <span className="text-text-secondary flex items-center text-xs font-semibold">
-                                                    <Dot
-                                                        className={
-                                                            LANGUAGE_COLORS[index] ||
-                                                            'text-text-muted'
-                                                        }
-                                                        size={24}
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className={`h-2 w-2 rounded-full ${
+                                                            lang.name === 'Python'
+                                                                ? 'bg-[#3572A5]'
+                                                                : lang.name === 'JavaScript'
+                                                                  ? 'bg-[#F7DF1E]'
+                                                                  : lang.name === 'C++'
+                                                                    ? 'bg-[#00599C]'
+                                                                    : lang.name === 'Java'
+                                                                      ? 'bg-[#5382a1]'
+                                                                      : 'bg-text-muted'
+                                                        }`}
                                                     />
-                                                    {language.language}
-                                                </span>
-                                                <span className="text-text-muted text-[10px] font-bold">
-                                                    {language.percentage}%
+                                                    <span className="text-text-secondary text-sm">
+                                                        {lang.name}
+                                                    </span>
+                                                </div>
+                                                <span className="text-text-primary text-sm font-medium">
+                                                    {lang.count}{' '}
+                                                    <span className="text-text-muted">
+                                                        ({lang.percentage}%)
+                                                    </span>
                                                 </span>
                                             </div>
                                         ))}
@@ -196,153 +268,110 @@ export default function PublicProfilePage({ params }) {
                                 </section>
                             )}
 
-                            <Achievements achievements={user.stats?.achievements} />
+                            {/* Achievements */}
+                            <Achievements user={user} />
                         </div>
 
                         {/* Right Column (8/12) */}
                         <div className="order-1 space-y-8 lg:order-2 lg:col-span-8">
-                            {/* Submission Activity Section */}
+                            {/* Activity Heatmap */}
                             <section className="bg-bg-subtle border-border overflow-hidden rounded-2xl border p-6 shadow-sm">
-                                <h3 className="text-text-primary mb-6 text-lg font-bold">
+                                <h3 className="text-text-primary mb-4 text-lg font-bold">
                                     Submission Activity
                                 </h3>
-
-                                <div className="no-scrollbar flex w-full justify-start overflow-x-auto pb-4 sm:justify-center">
-                                    {(() => {
-                                        const rawCalendar = user?.stats?.activityCalendar || {}
-                                        const calendar =
-                                            rawCalendar instanceof Map
-                                                ? Object.fromEntries(rawCalendar)
-                                                : rawCalendar
-
-                                        // Ensure 365 dates
-                                        const calendarData = []
-                                        for (let i = 364; i >= 0; i--) {
-                                            const d = new Date()
-                                            d.setDate(d.getDate() - i)
-                                            const dateStr = d.toISOString().split('T')[0]
-                                            const count = calendar[dateStr] || 0
-
-                                            // Determine level 0-4
-                                            let level = 0
-                                            if (count > 0 && count <= 2) level = 1
-                                            else if (count >= 3 && count <= 5) level = 2
-                                            else if (count >= 6 && count <= 9) level = 3
-                                            else if (count >= 10) level = 4
-
-                                            calendarData.push({
-                                                date: dateStr,
-                                                count: count,
-                                                level: level,
-                                            })
-                                        }
-
-                                        return (
-                                            <div className="w-max min-w-full">
-                                                <ActivityCalendar
-                                                    data={calendarData}
-                                                    colorScheme={
-                                                        theme === 'dark' ? 'dark' : 'light'
-                                                    }
-                                                    theme={{
-                                                        light: [
-                                                            '#ebedf0',
-                                                            '#9be9a8',
-                                                            '#40c463',
-                                                            '#30a14e',
-                                                            '#216e39',
-                                                        ],
-                                                        dark: [
-                                                            '#161b22',
-                                                            '#0e4429',
-                                                            '#006d32',
-                                                            '#26a641',
-                                                            '#39d353',
-                                                        ],
-                                                    }}
-                                                    labels={{
-                                                        legend: {
-                                                            less: 'Less',
-                                                            more: 'More',
-                                                            colors: [
-                                                                'No activity',
-                                                                '1-2 submissions',
-                                                                '3-5 submissions',
-                                                                '6-9 submissions',
-                                                                '10+ submissions',
-                                                            ],
-                                                        },
-                                                        months: [
-                                                            'Jan',
-                                                            'Feb',
-                                                            'Mar',
-                                                            'Apr',
-                                                            'May',
-                                                            'Jun',
-                                                            'Jul',
-                                                            'Aug',
-                                                            'Sep',
-                                                            'Oct',
-                                                            'Nov',
-                                                            'Dec',
-                                                        ],
-                                                        weekdays: [
-                                                            'Sun',
-                                                            'Mon',
-                                                            'Tue',
-                                                            'Wed',
-                                                            'Thu',
-                                                            'Fri',
-                                                            'Sat',
-                                                        ],
-                                                        totalCount:
-                                                            '{{count}} submissions in the last year',
-                                                    }}
-                                                    fontSize={12}
-                                                    blockSize={12}
-                                                    blockMargin={4}
-                                                    blockRadius={2}
-                                                    renderBlock={(block, activity) =>
-                                                        React.cloneElement(block, {
-                                                            'data-tooltip-id': 'activity-tooltip',
-                                                            'data-tooltip-html': `<strong>${activity.count} submissions</strong> on ${activity.date}`,
-                                                        })
-                                                    }
+                                <div className="flex justify-center">
+                                    <ActivityCalendar
+                                        data={(() => {
+                                            const cal = user?.stats?.activityCalendar || {}
+                                            const entries =
+                                                cal instanceof Map
+                                                    ? Array.from(cal.entries())
+                                                    : Object.entries(cal)
+                                            return entries.map(([date, count]) => ({
+                                                date,
+                                                count: typeof count === 'number' ? count : 0,
+                                                level:
+                                                    typeof count === 'number'
+                                                        ? count === 0
+                                                            ? 0
+                                                            : count <= 2
+                                                              ? 1
+                                                              : count <= 5
+                                                                ? 2
+                                                                : count <= 8
+                                                                  ? 3
+                                                                  : 4
+                                                        : 0,
+                                            }))
+                                        })()}
+                                        theme={{
+                                            light: [
+                                                '#ebedf0',
+                                                '#9be9a8',
+                                                '#40c463',
+                                                '#30a14e',
+                                                '#216e39',
+                                            ],
+                                            dark: [
+                                                '#161b22',
+                                                '#0e4429',
+                                                '#006d32',
+                                                '#26a641',
+                                                '#39d353',
+                                            ],
+                                        }}
+                                        colorScheme={theme === 'dark' ? 'dark' : 'light'}
+                                        blockSize={13}
+                                        blockMargin={4}
+                                        blockRadius={4}
+                                        fontSize={12}
+                                        labels={{
+                                            totalCount: '{{count}} submissions in the last year',
+                                            legend: {
+                                                less: 'Less',
+                                                more: 'More',
+                                            },
+                                            months: [
+                                                'Jan',
+                                                'Feb',
+                                                'Mar',
+                                                'Apr',
+                                                'May',
+                                                'Jun',
+                                                'Jul',
+                                                'Aug',
+                                                'Sep',
+                                                'Oct',
+                                                'Nov',
+                                                'Dec',
+                                            ],
+                                            weekdays: [
+                                                'Sun',
+                                                'Mon',
+                                                'Tue',
+                                                'Wed',
+                                                'Thu',
+                                                'Fri',
+                                                'Sat',
+                                            ],
+                                        }}
+                                        renderBlock={(block, activity) => (
+                                            <div {...block}>
+                                                <ReactTooltip
+                                                    anchorSelect={`[data-date="${activity.date}"]`}
+                                                    content={`${activity.count} submissions on ${activity.date}`}
+                                                    place="top"
+                                                    className="!border-border !bg-bg-subtle !text-text-primary !rounded-md !border !px-3 !py-1.5 !text-sm !shadow-lg"
                                                 />
-                                                <ReactTooltip id="activity-tooltip" />
                                             </div>
-                                        )
-                                    })()}
+                                        )}
+                                    />
                                 </div>
                             </section>
 
-                            <RecommendedProblems context="profile" />
-                            <ContestPerformance performance={user.stats?.contestPerformance} />
-
-                            {/* Recent Submissions */}
-                            <section className="bg-bg-subtle border-border overflow-hidden rounded-2xl border shadow-sm">
-                                <div className="border-border flex items-center justify-between border-b px-6 py-5">
-                                    <h3 className="text-text-primary text-lg font-bold">
-                                        Recent Submissions
-                                    </h3>
-                                    <button
-                                        onClick={handleViewAll}
-                                        className="text-accent text-xs font-bold hover:underline"
-                                    >
-                                        View All
-                                    </button>
-                                </div>
-                                <RecentSubmissions submissions={submissions} />
-                                {hasMoreSubmissions && (
-                                    <button
-                                        onClick={handleLoadMore}
-                                        disabled={isSubmissionsLoading}
-                                        className="bg-bg-muted/50 text-text-muted hover:bg-bg-muted border-border w-full border-t py-4 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-50"
-                                    >
-                                        {isSubmissionsLoading ? 'Loading...' : 'Load More'}
-                                    </button>
-                                )}
-                            </section>
+                            {privacy.showContestHistory !== false && (
+                                <ContestPerformance performance={user.stats?.contestPerformance} />
+                            )}
                         </div>
                     </div>
                 </div>

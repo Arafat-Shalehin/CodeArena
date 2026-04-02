@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { TrendingUp, Calendar, Award, Check, UserPlus, Trophy, Loader2 } from 'lucide-react'
+import { TrendingUp, Calendar, Award, UserPlus, UserCheck, Trophy, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { format } from 'date-fns'
@@ -100,20 +100,20 @@ export default function DashboardRightSidebar({
                                     className={cn(
                                         'ml-2 h-6 shrink-0 border-none px-3 text-[10px] font-bold transition-all',
                                         sugg.isFollowing
-                                            ? 'text-success bg-success/10'
-                                            : 'bg-accent-light text-accent-text hover:bg-accent hover:text-white'
+                                            ? 'bg-success/10 text-success hover:bg-error/10 hover:text-error'
+                                            : 'bg-accent/10 text-accent hover:bg-accent hover:text-white'
                                     )}
                                 >
                                     {followLoading[sugg._id] ? (
                                         <Loader2 className="h-3 w-3 animate-spin" />
                                     ) : sugg.isFollowing ? (
                                         <>
-                                            <Check className="mr-1 h-3 w-3" />
+                                            <UserCheck className="mr-1 h-3 w-3" />
                                             Following
                                         </>
                                     ) : (
                                         <>
-                                            <UserPlus className="mt-[-1px] mr-1 h-3 w-3" />
+                                            <UserPlus className="mr-1 h-3 w-3" />
                                             Follow
                                         </>
                                     )}

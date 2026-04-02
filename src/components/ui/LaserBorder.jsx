@@ -42,21 +42,25 @@ export function LaserBorder({
                     stroke={color}
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
-                    initial={{ pathLength: 0, opacity: 0 }}
+                    initial={{ pathLength: 0, opacity: 0, pathOffset: 0 }}
                     animate={
                         isHovered
                             ? {
-                                  pathLength: [0, 1],
+                                  pathLength: 1,
                                   opacity: [0, 1, 1, 0],
                                   pathOffset: [0, 1],
                               }
-                            : { opacity: 0 }
+                            : { pathLength: 0, opacity: 0, pathOffset: 0 }
                     }
-                    transition={{
-                        duration: duration,
-                        repeat: Infinity,
-                        ease: 'linear',
-                    }}
+                    transition={
+                        isHovered
+                            ? {
+                                  duration: duration,
+                                  repeat: Infinity,
+                                  ease: 'linear',
+                              }
+                            : { duration: 0.3 }
+                    }
                 />
 
                 {/* Glow point (Trailing the laser) */}
@@ -68,17 +72,25 @@ export function LaserBorder({
                         isHovered
                             ? {
                                   opacity: [0, 1, 1, 0],
+                                  offsetDistance: ['0%', '100%'],
                               }
-                            : { opacity: 0 }
+                            : { opacity: 0, offsetDistance: '0%' }
                     }
-                    transition={{ duration: 0.2 }}
+                    transition={
+                        isHovered
+                            ? {
+                                  duration: duration,
+                                  repeat: Infinity,
+                                  ease: 'linear',
+                                  opacity: { duration: 0.2 },
+                              }
+                            : { duration: 0.3 }
+                    }
                     style={{
                         offsetPath: `path("${path}")`,
                         offsetRotate: 'auto',
                     }}
-                >
-                    <animateMotion dur={`${duration}s`} repeatCount="indefinite" path={path} />
-                </motion.circle>
+                />
             </svg>
         </div>
     )

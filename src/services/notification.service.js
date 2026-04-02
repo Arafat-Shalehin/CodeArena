@@ -1,5 +1,7 @@
 import { Notification } from '@/models/Notification.models'
+import { User } from '@/models/User.models'
 import { redisClient } from '@/lib/redis'
+import { sendPushToUser } from '@/lib/web-push'
 
 /**
  * Send a notification to a specific user
@@ -10,6 +12,7 @@ import { redisClient } from '@/lib/redis'
  * @param {string} data.message - Main text
  * @param {string} data.link - Target URL (optional)
  * @param {Object} data.metadata - Additional info (optional)
+ * @param {boolean} data.skipPush - Skip push notification delivery (default: false)
  */
 export async function sendNotification(data) {
     try {
@@ -25,7 +28,6 @@ export async function sendNotification(data) {
 
         // 2. Publish to Redis for Socket.IO instances to pick up
         if (redisClient.isOpen) {
-            // Invalidate notification cache
             const cachePattern = `notifications:${data.recipientId}:*`
             try {
                 const keys = await redisClient.keys(cachePattern)
@@ -46,10 +48,44 @@ export async function sendNotification(data) {
             )
         }
 
+        // 3. Send push notification if not skipped
+        if (!data.skipPush) {
+            const recipient = await User.findById(data.recipientId).select(
+                'pushSubscriptions notificationSettings'
+            )
+
+            if (recipient && recipient.pushSubscriptions?.length > 0) {
+                const settings = recipient.notificationSettings || {}
+                const shouldPush =
+                    data.type === 'contest'
+                        ? settings.pushContests !== false
+                        : data.type === 'social'
+                          ? settings.pushFollowers !== false
+                          : true
+
+                if (shouldPush) {
+                    const pushPayload = {
+                        title: 'CodeArena',
+                        body: data.message,
+                        link: data.link || '/',
+                        tag: `${data.type}-${data.recipientId}`,
+                    }
+
+                    const expired = await sendPushToUser(recipient.pushSubscriptions, pushPayload)
+
+                    // Clean up expired subscriptions
+                    if (expired.length > 0) {
+                        await User.findByIdAndUpdate(data.recipientId, {
+                            $pull: { pushSubscriptions: { endpoint: { $in: expired } } },
+                        })
+                    }
+                }
+            }
+        }
+
         return notification
     } catch (error) {
         console.error('[NotificationService] Error sending notification:', error)
-        // We don't throw error here to avoid blocking main execution flow
         return null
     }
 }

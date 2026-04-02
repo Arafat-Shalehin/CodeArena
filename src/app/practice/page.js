@@ -78,7 +78,8 @@ const TAG_ICONS = {
 }
 
 function getTagIcon(tag) {
-    const Icon = TAG_ICONS[tag?.toLowerCase()] || Hash
+    const key = String(tag || '').toLowerCase()
+    const Icon = TAG_ICONS[key] || Hash
     return <Icon className="text-accent h-5 w-5" />
 }
 
@@ -118,13 +119,15 @@ export default function PracticePage() {
     }, [])
 
     const filtered = tagGroups.filter((g) => {
-        const matchesSearch = g.tag.toLowerCase().includes(searchQuery.toLowerCase())
+        const tag = String(g?.tag || '')
+        const searchTerm = String(searchQuery || '').toLowerCase()
+        const matchesSearch = tag.toLowerCase().includes(searchTerm)
         const matchesDifficulty =
-            selectedDifficulty === 'all' || g.difficulties[selectedDifficulty] > 0
+            selectedDifficulty === 'all' || (g.difficulties?.[selectedDifficulty] || 0) > 0
         return matchesSearch && matchesDifficulty
     })
 
-    const totalProblems = tagGroups.reduce((sum, g) => sum + g.count, 0)
+    const totalProblems = tagGroups.reduce((sum, g) => sum + (g.count || 0), 0)
 
     return (
         <div className="bg-bg-page site-gradient text-text-primary flex min-h-screen flex-col font-sans">
@@ -178,9 +181,10 @@ export default function PracticePage() {
                             </div>
                         ) : viewMode === 'grid' ? (
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                                {filtered.map((group) => (
-                                    <TagCard key={group.tag} group={group} />
-                                ))}
+                                {filtered.map((group, index) => {
+                                    const key = group.tag || group.id || `tag-${index}`
+                                    return <TagCard key={key} group={group} />
+                                })}
                             </div>
                         ) : (
                             <div className="border-border bg-bg-page overflow-hidden rounded-xl border shadow-sm">
@@ -206,9 +210,10 @@ export default function PracticePage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filtered.map((group) => (
-                                                <TagRow key={group.tag} group={group} />
-                                            ))}
+                                            {filtered.map((group, index) => {
+                                                const key = group.tag || group.id || `tag-${index}`
+                                                return <TagRow key={key} group={group} />
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -221,10 +226,15 @@ export default function PracticePage() {
     )
 }
 
-function DifficultyBar({ difficulties, count }) {
-    const easyPct = (difficulties.easy / count) * 100
-    const medPct = (difficulties.medium / count) * 100
-    const hardPct = (difficulties.hard / count) * 100
+function DifficultyBar({ difficulties = {}, count = 0 }) {
+    const easyCount = Number(difficulties?.easy || 0)
+    const medCount = Number(difficulties?.medium || 0)
+    const hardCount = Number(difficulties?.hard || 0)
+    const total = Number(count || easyCount + medCount + hardCount || 1)
+
+    const easyPct = (easyCount / total) * 100
+    const medPct = (medCount / total) * 100
+    const hardPct = (hardCount / total) * 100
 
     return (
         <div className="flex items-center gap-3">
@@ -236,9 +246,9 @@ function DifficultyBar({ difficulties, count }) {
                 </div>
             </div>
             <div className="flex items-center gap-2 text-[10px] font-bold">
-                <span className="text-success">{difficulties.easy}E</span>
-                <span className="text-warning">{difficulties.medium}M</span>
-                <span className="text-error">{difficulties.hard}H</span>
+                <span className="text-success">{easyCount}E</span>
+                <span className="text-warning">{medCount}M</span>
+                <span className="text-error">{hardCount}H</span>
             </div>
         </div>
     )

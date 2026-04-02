@@ -6,8 +6,14 @@ import { User } from '@/models/User.models'
 export const GET = asyncHandler(async (req, { params }) => {
     await dbConnect()
     const user = await protect(req)
+    const resolvedParams = await params
 
-    const targetUser = await User.findById(params.id).select('notificationSettings')
+    const userId = user.id || user._id
+    if (userId.toString() !== resolvedParams.id && user.role !== 'admin') {
+        return Response.json({ success: false, message: 'Not authorized' }, { status: 403 })
+    }
+
+    const targetUser = await User.findById(resolvedParams.id).select('notificationSettings')
 
     if (!targetUser) {
         return Response.json({ success: false, message: 'User not found' }, { status: 404 })
@@ -19,35 +25,40 @@ export const GET = asyncHandler(async (req, { params }) => {
 export const PUT = asyncHandler(async (req, { params }) => {
     await dbConnect()
     const user = await protect(req)
+    const resolvedParams = await params
 
-    if (user.id !== params.id && user.role !== 'admin') {
+    const userId = user.id || user._id
+    if (userId.toString() !== resolvedParams.id && user.role !== 'admin') {
         return Response.json({ success: false, message: 'Not authorized' }, { status: 403 })
     }
 
     const body = await req.json()
     const allowedFields = [
-        'emailSubmissions',
-        'emailContests',
-        'emailFollowers',
-        'emailWeekly',
         'pushSubmissions',
         'pushContests',
         'pushFollowers',
         'notifyAchievements',
-        'notifyMentions',
         'notifyComments',
     ]
-    const notificationSettings = {}
+    const safeData = {}
 
     for (const field of allowedFields) {
         if (body[field] !== undefined) {
-            notificationSettings[field] = body[field]
+            safeData[`notificationSettings.${field}`] =
+                typeof body[field] === 'boolean' ? body[field] : false
         }
     }
 
+    if (Object.keys(safeData).length === 0) {
+        return Response.json(
+            { success: false, message: 'No valid fields to update' },
+            { status: 400 }
+        )
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
-        params.id,
-        { $set: { notificationSettings } },
+        resolvedParams.id,
+        { $set: safeData },
         { new: true }
     ).select('notificationSettings')
 

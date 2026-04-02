@@ -1,3 +1,5 @@
+import { CheckCircle, Trophy, Swords, Globe } from 'lucide-react'
+
 /**
  * Generates the stats status cards from a user's stats object.
  * Matches the backend Users collection `stats` field.
@@ -7,7 +9,7 @@
  * @param {number} stats.score - Contest rating / ELO score.
  * @param {number} stats.contestsParticipated - Number of contests entered.
  * @param {number} stats.globalRank - Global leaderboard position.
- * @returns {Array<{label: string, value: string, border: string}>}
+ * @returns {Array<{label: string, value: string, border: string, icon: React.ElementType}>}
  */
 export function getStatusCards(stats) {
     return [
@@ -15,13 +17,25 @@ export function getStatusCards(stats) {
             label: 'Problems Solved',
             value: String(stats?.accepted ?? 0),
             border: 'border-success',
+            icon: CheckCircle,
         },
-        { label: 'Contest Rating', value: String(stats?.score ?? 0), border: 'border-accent' },
+        {
+            label: 'Contest Rating',
+            value: String(stats?.score ?? 0),
+            border: 'border-accent',
+            icon: Trophy,
+        },
         {
             label: 'Participated',
             value: String(stats?.contestsParticipated ?? 0),
             border: 'border-info',
+            icon: Swords,
         },
-        { label: 'Global Rank', value: `#${stats?.globalRank ?? '—'}`, border: 'border-warning' },
+        {
+            label: 'Global Rank',
+            value: `#${stats?.globalRank ?? '—'}`,
+            border: 'border-warning',
+            icon: Globe,
+        },
     ]
 }
