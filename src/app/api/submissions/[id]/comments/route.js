@@ -21,13 +21,7 @@ export async function GET(req, { params }) {
 
         const submission = await Submission.findById(id)
             .select('comments')
-            .populate({
-                path: 'comments',
-                populate: {
-                    path: 'userId',
-                    select: 'name avatarSeed',
-                },
-            })
+            .populate('comments.userId', 'name avatarSeed')
             .lean()
 
         if (!submission) {
@@ -95,6 +89,11 @@ export async function POST(req, { params }) {
             )
         }
 
+        // Initialize comments for older documents if missing
+        if (!submission.comments) {
+            submission.comments = []
+        }
+
         // Create comment using Mongoose's subdocument creation
         const comment = submission.comments.create({
             userId: user._id,
@@ -105,13 +104,7 @@ export async function POST(req, { params }) {
         await submission.save()
 
         // Populate the newly added comment's user info
-        await submission.populate({
-            path: 'comments',
-            populate: {
-                path: 'userId',
-                select: 'name avatarSeed',
-            },
-        })
+        await submission.populate('comments.userId', 'name avatarSeed')
 
         // Get the newly added comment with populated user info
         const newComment = submission.comments[submission.comments.length - 1].toObject()

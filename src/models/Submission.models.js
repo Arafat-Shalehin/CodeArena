@@ -65,6 +65,22 @@ const submissionSchema = new mongoose.Schema(
             ],
         },
         likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        comments: [
+            {
+                userId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'User',
+                },
+                text: {
+                    type: String,
+                    trim: true,
+                },
+                createdAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
         executionTime: { type: Number }, // ms
         memoryUsed: { type: Number }, // KB
         error: { type: String }, // Compilation or Runtime error details
@@ -100,6 +116,14 @@ const submissionSchema = new mongoose.Schema(
 
 submissionSchema.index({ userId: 1, problemId: 1 })
 submissionSchema.index({ contestId: 1 })
+
+const existingSubmissionModel = mongoose.models.Submission
+
+// In long-lived dev processes, Mongoose can keep an old compiled schema.
+// If the cached model is missing newer paths (like comments), recompile it.
+if (existingSubmissionModel && !existingSubmissionModel.schema.path('comments')) {
+    delete mongoose.models.Submission
+}
 
 export const Submission =
     mongoose.models.Submission || mongoose.model('Submission', submissionSchema)

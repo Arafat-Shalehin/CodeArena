@@ -93,6 +93,7 @@ export async function GET(req) {
                 executionTime: sub.executionTime,
                 memoryUsed: sub.memoryUsed,
                 likes: sub.likes?.length || 0,
+                commentCount: sub.comments?.length || 0,
                 hasLiked: user?._id
                     ? (sub.likes || []).some((id) => id && id.toString() === user._id.toString())
                     : false,
@@ -112,6 +113,7 @@ export async function GET(req) {
                 },
                 content: post.content,
                 likes: post.likes?.length || 0,
+                commentCount: post.comments?.length || 0,
                 hasLiked: user?._id
                     ? (post.likes || []).some((id) => id && id.toString() === user._id.toString())
                     : false,

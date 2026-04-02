@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { MessageCircle, Heart, Zap, Sparkles, Flame } from 'lucide-react'
+import { MessageCircle, Sparkles, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatDistanceToNow } from 'date-fns'
@@ -61,7 +61,7 @@ const getDynamicStory = (item) => {
     return pool[seed % pool.length]
 }
 
-export default function FeedItem({ item, getDifficultyClass }) {
+export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
     const [congratulated, setCongratulated] = useState(item.hasLiked || false)
     const [likeCount, setLikeCount] = useState(item.likes || 0)
     const [isLoading, setIsLoading] = useState(false)
@@ -139,6 +139,14 @@ export default function FeedItem({ item, getDifficultyClass }) {
         [congratulated, isLoading, item.id, item._id, isPost]
     )
 
+    const handleOpenDetail = useCallback(
+        (focusComments = false) => {
+            if (!onOpenDetail) return
+            onOpenDetail(item, { focusComments })
+        },
+        [item, onOpenDetail]
+    )
+
     return (
         <div className="bg-bg-subtle border-border duration-normal rounded-lg border p-6 shadow-sm transition-shadow hover:shadow">
             <div
@@ -204,6 +212,15 @@ export default function FeedItem({ item, getDifficultyClass }) {
             {/* Story/Flex Message or Post Content */}
             <div
                 className={`bg-bg-page border-border mb-5 rounded-md border p-3 ${isPost ? 'border-none bg-transparent !p-0' : ''}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenDetail(false)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleOpenDetail(false)
+                    }
+                }}
             >
                 {isPost ? (
                     <p className="text-text-primary text-[15px] leading-relaxed whitespace-pre-wrap">
@@ -245,10 +262,11 @@ export default function FeedItem({ item, getDifficultyClass }) {
                 <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => handleOpenDetail(true)}
                     className="bg-bg-page border-border text-text-secondary hover:bg-bg-muted hover:text-text-primary h-8 text-xs font-semibold"
                 >
                     <MessageCircle className="mr-1.5 h-3 w-3" />
-                    Discuss
+                    {item.commentCount > 0 ? `${item.commentCount}` : 'Discuss'}
                 </Button>
             </div>
         </div>
