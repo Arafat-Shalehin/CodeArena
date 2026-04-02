@@ -454,11 +454,14 @@ export async function syncUserStats(userId) {
     }
 
     // 4. Activity Calendar
-    // Rule: Increment count for EVERY accepted submission on a given day (not just unique problems)
+    // Rule: Increment for every finished real submission attempt (submit),
+    // not only ACCEPTED verdicts.
     const activityCalendar = new Map()
     submissions.forEach((sub) => {
-        const verdict = (sub.verdict || '').toUpperCase()
-        if (verdict === 'ACCEPTED') {
+        const isRealSubmission = sub.type === 'submit'
+        const status = (sub.status || '').toLowerCase()
+        const isFinished = status === 'completed' || status === 'error'
+        if (isRealSubmission && isFinished && sub.createdAt) {
             const date = sub.createdAt.toISOString().split('T')[0]
             activityCalendar.set(date, (activityCalendar.get(date) || 0) + 1)
         }
@@ -544,6 +547,11 @@ export async function syncUserStats(userId) {
         },
         { new: true }
     ).select('-password')
+
+    // Ensure profile pages don't read stale stats from Redis cache.
+    if (redisClient.isOpen) {
+        await redisClient.del(`user:${userId}:profile`).catch(() => {})
+    }
 
     return user
 }

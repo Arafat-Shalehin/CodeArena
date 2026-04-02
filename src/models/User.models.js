@@ -239,7 +239,11 @@ const userSchema = new mongoose.Schema(
             }),
         },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+        toJSON: { flattenMaps: true },
+        toObject: { flattenMaps: true },
+    }
 )
 
 userSchema.pre('save', async function (next) {
