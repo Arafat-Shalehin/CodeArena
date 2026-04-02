@@ -54,15 +54,13 @@ export default function RootLayout({ children }) {
                 className="bg-bg-page site-gradient text-text-primary font-sans antialiased transition-colors duration-300"
             >
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-                    <SmoothScroll>
-                        <HydrationWrapper>
-                            <AuthProvider>
-                                <CodeEditorProvider>{children}</CodeEditorProvider>
-                            </AuthProvider>
-                        </HydrationWrapper>
-                        <Toaster position="top-center" />
-                        <ServiceWorkerRegistration />
-                    </SmoothScroll>
+                    <HydrationWrapper>
+                        <AuthProvider>
+                            <CodeEditorProvider>{children}</CodeEditorProvider>
+                        </AuthProvider>
+                    </HydrationWrapper>
+                    <Toaster position="top-center" />
+                    <ServiceWorkerRegistration />
                 </ThemeProvider>
             </body>
         </html>

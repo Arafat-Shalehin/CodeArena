@@ -97,63 +97,57 @@ export default function AdminProblems() {
             return matchesSearch && matchesFilter
         })
     }, [problems, search, filterDifficulty])
-
     const totalPages = Math.ceil(filteredProblems.length / itemsPerPage)
     const paginatedProblems = filteredProblems.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     )
 
-    const getDifficultyStyle = (level) => {
-        const difficulty = level?.toLowerCase()
-        if (difficulty === 'easy') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-        if (difficulty === 'medium') return 'bg-amber-100 text-amber-700 border-amber-200'
-        return 'bg-rose-100 text-rose-700 border-rose-200'
-    }
-
     if (loading) {
         return (
             <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
-                <Loader2 className="h-10 w-10 animate-spin text-[#00bc7d]" />
-                <p className="text-sm font-medium text-slate-500">Loading...</p>
+                <Loader2 className="text-accent h-10 w-10 animate-spin" />
+                <p className="text-text-muted text-sm font-semibold tracking-wide">
+                    Initializing Problem Bank...
+                </p>
             </div>
         )
     }
 
     return (
-        <div className="space-y-6 p-4 md:p-8">
+        <div className="bg-bg-page animate-in fade-in space-y-8 p-6 duration-700 md:p-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                        Manage Problems
+                    <h1 className="text-text-primary text-3xl font-bold tracking-tight">
+                        Problem Bank
                     </h1>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-text-muted text-sm font-medium">
                         Create and manage your coding challenges.
                     </p>
                 </div>
 
-                {/* FIXED: Removed asChild and used Link directly with Button styles */}
                 <Link href="/admin/problems/create">
-                    <Button className="flex items-center gap-2 bg-[#00bc7d] shadow-md hover:bg-[#00a36c]">
-                        <Plus className="h-4 w-4" /> Add Problem
+                    <Button className="bg-accent hover:bg-accent/90 h-11 rounded-lg px-8 font-semibold text-white shadow-sm">
+                        <Plus className="mr-2 h-4 w-4" /> Add Problem
                     </Button>
                 </Link>
             </div>
 
-            <Card className="border-none bg-white/60 shadow-sm backdrop-blur-md">
+            <Card className="border-border bg-bg-subtle rounded-xl shadow-sm">
                 <CardContent className="flex flex-col gap-4 p-4 md:flex-row">
                     <div className="relative flex-1">
-                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                         <Input
                             placeholder="Search problems..."
-                            className="pl-10"
+                            className="input-base pl-10 font-medium"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <select
-                        className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 md:w-[180px]"
+                        className="bg-bg-page border-border text-text-primary focus:ring-accent/20 h-10 w-full rounded-lg border px-3 py-2 text-sm font-medium outline-none focus:ring-2 md:w-[180px]"
                         onChange={(e) => setFilterDifficulty(e.target.value)}
+                        value={filterDifficulty}
                     >
                         <option value="All">All Difficulty</option>
                         <option value="easy">Easy</option>
@@ -163,86 +157,93 @@ export default function AdminProblems() {
                 </CardContent>
             </Card>
 
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-border bg-bg-page overflow-hidden rounded-xl border shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="border-b bg-slate-50/80 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
+                    <table className="w-full text-left">
+                        <thead className="bg-bg-subtle border-border text-text-muted border-b text-[10px] font-bold tracking-widest uppercase">
                             <tr>
-                                <th className="p-4">Title</th>
-                                <th className="p-4">Difficulty</th>
-                                <th className="p-4 text-center">Submissions</th>
-                                <th className="p-4 text-right">Action</th>
+                                <th className="px-6 py-4">Title</th>
+                                <th className="px-6 py-4">Difficulty</th>
+                                <th className="px-6 py-4 text-center">Submissions</th>
+                                <th className="px-6 py-4 text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-border divide-y">
                             <AnimatePresence mode="wait">
                                 {paginatedProblems.map((p) => (
                                     <motion.tr
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         key={p._id}
-                                        className="transition-colors hover:bg-slate-50/50"
+                                        className="hover:bg-bg-subtle/50 group transition-colors"
                                     >
-                                        <td className="p-4">
-                                            <div className="font-bold text-slate-800">
+                                        <td className="px-6 py-5">
+                                            <div className="text-text-primary text-sm font-semibold">
                                                 {p.title}
                                             </div>
-                                            <div className="font-mono text-[10px] text-slate-400">
-                                                ID: {p._id.slice(-6)}
+                                            <div className="text-text-muted mt-1 text-[10px] font-medium tracking-wider uppercase">
+                                                UID: {p._id.slice(-6)}
                                             </div>
                                         </td>
-                                        <td className="p-4">
-                                            <Badge
-                                                variant="outline"
-                                                className={getDifficultyStyle(p.difficulty)}
+                                        <td className="px-6 py-5">
+                                            <span
+                                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${
+                                                    p.difficulty?.toLowerCase() === 'easy'
+                                                        ? 'bg-success-light text-success'
+                                                        : p.difficulty?.toLowerCase() === 'medium'
+                                                          ? 'bg-warning-light text-warning'
+                                                          : 'bg-error-light text-error'
+                                                }`}
                                             >
                                                 {p.difficulty}
-                                            </Badge>
+                                            </span>
                                         </td>
-                                        <td className="p-4 text-center">
+                                        <td className="px-6 py-5 text-center">
                                             <div className="flex flex-col items-center">
-                                                <span className="font-mono text-xs font-bold text-slate-600">
+                                                <span className="text-text-primary text-xs font-bold">
                                                     {p.acceptedSubmissions || 0} /{' '}
                                                     {p.totalSubmissions || 0}
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="p-4 text-right">
+                                        <td className="px-6 py-5 text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8"
+                                                        className="text-text-secondary hover:text-accent hover:bg-bg-subtle h-8 w-8"
                                                     >
-                                                        <MoreVertical className="h-4 w-4" />
+                                                        <MoreVertical size={16} />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-48">
-                                                    {/* FIXED: No asChild here, simplified Links */}
-                                                    <DropdownMenuItem>
+                                                <DropdownMenuContent
+                                                    align="end"
+                                                    className="border-border bg-bg-page w-48 rounded-lg shadow-xl"
+                                                >
+                                                    <DropdownMenuItem className="hover:bg-bg-subtle cursor-pointer transition-colors">
                                                         <Link
                                                             href={`/admin/problems/edit/${p._id}`}
-                                                            className="flex w-full items-center"
+                                                            className="text-text-primary flex w-full items-center gap-2 py-2 text-sm font-semibold"
                                                         >
-                                                            <Edit3 className="mr-2 h-4 w-4 text-blue-500" />{' '}
+                                                            <Edit3 className="text-accent h-4 w-4" />{' '}
                                                             Edit Details
                                                         </Link>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
+                                                    <DropdownMenuItem className="hover:bg-bg-subtle cursor-pointer transition-colors">
                                                         <Link
                                                             href={`/admin/problems/${p._id}/testcases`}
-                                                            className="flex w-full items-center text-emerald-600"
+                                                            className="text-text-primary flex w-full items-center gap-2 py-2 text-sm font-semibold"
                                                         >
-                                                            <Database className="mr-2 h-4 w-4" />{' '}
+                                                            <Database className="text-info h-4 w-4" />{' '}
                                                             Testcases
                                                         </Link>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={() => handleDelete(p._id)}
-                                                        className="cursor-pointer text-rose-600 focus:bg-rose-50"
+                                                        className="text-error hover:bg-error-light cursor-pointer gap-2 py-2.5 text-sm font-semibold transition-colors"
                                                     >
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        <Trash2 className="h-4 w-4" /> Delete
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -254,26 +255,28 @@ export default function AdminProblems() {
                     </table>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-6 py-4">
-                    <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">
+                <div className="border-border bg-bg-subtle/30 flex items-center justify-between border-t p-6">
+                    <p className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
                         Page {currentPage} of {totalPages || 1}
                     </p>
                     <div className="flex gap-2">
                         <Button
-                            variant="outline"
-                            size="sm"
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage((prev) => prev - 1)}
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-lg text-xs font-bold"
+                        >
+                            <ChevronLeft size={14} className="mr-1" /> Prev
+                        </Button>
+                        <Button
                             disabled={currentPage === totalPages || totalPages === 0}
                             onClick={() => setCurrentPage((prev) => prev + 1)}
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg text-xs font-bold"
                         >
-                            <ChevronRight className="h-4 w-4" />
+                            Next <ChevronRight size={14} className="ml-1" />
                         </Button>
                     </div>
                 </div>
