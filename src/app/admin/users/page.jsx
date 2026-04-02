@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
 
             {/* স্ট্যাটাস কার্ডস */}
             <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="border-border rounded-3xl border bg-white p-6 shadow-sm">
+                <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
                     <p className="text-text-muted mb-2 text-[10px] font-black tracking-widest uppercase">
                         Total Accounts
                     </p>
@@ -160,37 +160,37 @@ export default function AdminUsersPage() {
                         <h2 className="text-text-primary text-4xl leading-none font-black">
                             {users.length}
                         </h2>
-                        <Users className="size-8 text-gray-100" />
+                        <Users className="text-muted-foreground size-8" />
                     </div>
                 </div>
 
-                <div className="border-border rounded-3xl border border-l-4 border-l-red-500 bg-white p-6 shadow-sm">
+                <div className="border-border border-l-destructive bg-card rounded-3xl border border-l-4 p-6 shadow-sm">
                     <p className="text-text-muted mb-2 text-[10px] font-black tracking-widest uppercase">
                         Admins
                     </p>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-4xl leading-none font-black text-red-600">
+                        <h2 className="text-destructive text-4xl leading-none font-black">
                             {adminCount}
                         </h2>
-                        <ShieldAlert className="size-8 text-red-100" />
+                        <ShieldAlert className="text-destructive/30 size-8" />
                     </div>
                 </div>
 
-                <div className="border-border rounded-3xl border border-l-4 border-l-blue-500 bg-white p-6 shadow-sm">
+                <div className="border-border border-l-primary bg-card rounded-3xl border border-l-4 p-6 shadow-sm">
                     <p className="text-text-muted mb-2 text-[10px] font-black tracking-widest uppercase">
                         Regular Users
                     </p>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-4xl leading-none font-black text-blue-600">
+                        <h2 className="text-primary text-4xl leading-none font-black">
                             {normalUserCount}
                         </h2>
-                        <UserCheck className="size-8 text-blue-100" />
+                        <UserCheck className="text-primary/30 size-8" />
                     </div>
                 </div>
             </div>
 
             {/* সার্চ বার */}
-            <div className="border-border mb-8 flex max-w-md items-center gap-4 rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="border-border bg-card mb-8 flex max-w-md items-center gap-4 rounded-2xl border p-4 shadow-sm">
                 <Search className="text-text-muted ml-2 size-5" />
                 <Input
                     placeholder="Search by name or email..."
@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
             </div>
 
             {/* টেবিল */}
-            <div className="border-border overflow-hidden rounded-3xl border bg-white shadow-sm">
+            <div className="border-border bg-card overflow-hidden rounded-3xl border shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left">
                         <thead className="bg-bg-page/50 border-border text-text-muted border-b text-[10px] font-black tracking-widest uppercase">
@@ -240,8 +240,8 @@ export default function AdminUsersPage() {
                                             <span
                                                 className={`inline-flex items-center rounded-lg border px-3 py-1 text-[10px] font-black tracking-widest uppercase ${
                                                     user.role === 'admin'
-                                                        ? 'border-red-100 bg-red-50 text-red-600'
-                                                        : 'border-blue-100 bg-blue-50 text-blue-600'
+                                                        ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                                                        : 'border-primary/30 bg-primary/10 text-primary'
                                                 }`}
                                             >
                                                 {user.role}
