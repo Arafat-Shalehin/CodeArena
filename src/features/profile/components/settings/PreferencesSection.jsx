@@ -47,21 +47,28 @@ export default function PreferencesSection({ user, onSave }) {
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    const userId = user?._id || user?.id
+
     useEffect(() => {
         if (user?.preferences) {
-            setPreferences({
+            const prefs = {
                 language: user.preferences.language || 'en',
                 timezone: user.preferences.timezone || 'UTC',
                 theme: user.preferences.theme || 'system',
                 weeklyGoal: user.preferences.weeklyGoal || 10,
-            })
+            }
+            setPreferences(prefs)
+            // Apply saved theme on mount
+            if (prefs.theme !== theme) {
+                setTheme(prefs.theme)
+            }
         }
     }, [user])
 
     const handleSave = async () => {
         setIsSubmitting(true)
         try {
-            const res = await fetch(`/api/users/${user._id}/preferences`, {
+            const res = await fetch(`/api/users/${userId}/preferences`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -74,10 +81,8 @@ export default function PreferencesSection({ user, onSave }) {
                 throw new Error(data.message || 'Failed to save preferences')
             }
 
-            if (preferences.theme !== 'system') {
-                setTheme(preferences.theme)
-            }
-
+            // Apply theme on save (including 'system')
+            setTheme(preferences.theme)
             toast.success('Preferences saved successfully')
             if (onSave) onSave(preferences)
         } catch (error) {

@@ -45,6 +45,8 @@ export default function AccountSection({ user }) {
     // We'll also check if the user object explicitly says they don't have one if the API provides it.
     const hasPassword = user?.authProvider === 'local' || !!user?.hasPassword
 
+    const userId = user?._id || user?.id
+
     const togglePasswordVisibility = (field) => {
         setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }))
     }
@@ -109,7 +111,7 @@ export default function AccountSection({ user }) {
 
         setIsSubmitting(true)
         try {
-            const res = await fetch(`/api/users/${user._id}/change-password`, {
+            const res = await fetch(`/api/users/${userId}/change-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -171,7 +173,7 @@ export default function AccountSection({ user }) {
 
         setIsSubmitting(true)
         try {
-            const res = await fetch(`/api/users/${user._id}`, {
+            const res = await fetch(`/api/users/${userId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             })

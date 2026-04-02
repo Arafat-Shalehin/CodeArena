@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Loader2, Bell, Mail, MessageSquare, Award } from 'lucide-react'
+import { Loader2, Bell, MessageSquare } from 'lucide-react'
 
 function ToggleSwitch({ checked, onChange, label, description }) {
     return (
@@ -33,42 +33,51 @@ function ToggleSwitch({ checked, onChange, label, description }) {
     )
 }
 
-export default function NotificationsSection({ user }) {
+export default function NotificationsSection({ user, syncUser }) {
+    const userId = user?._id || user?.id
     const [notifications, setNotifications] = useState({
-        emailSubmissions: true,
-        emailContests: true,
-        emailFollowers: true,
-        emailWeekly: false,
         pushSubmissions: true,
         pushContests: true,
         pushFollowers: false,
         notifyAchievements: true,
-        notifyMentions: true,
         notifyComments: true,
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
         if (user?.notificationSettings) {
-            setNotifications({
-                emailSubmissions: user.notificationSettings.emailSubmissions ?? true,
-                emailContests: user.notificationSettings.emailContests ?? true,
-                emailFollowers: user.notificationSettings.emailFollowers ?? true,
-                emailWeekly: user.notificationSettings.emailWeekly ?? false,
-                pushSubmissions: user.notificationSettings.pushSubmissions ?? true,
-                pushContests: user.notificationSettings.pushContests ?? true,
-                pushFollowers: user.notificationSettings.pushFollowers ?? false,
-                notifyAchievements: user.notificationSettings.notifyAchievements ?? true,
-                notifyMentions: user.notificationSettings.notifyMentions ?? true,
-                notifyComments: user.notificationSettings.notifyComments ?? true,
+            setNotifications((prev) => {
+                const s = user.notificationSettings
+                const next = {
+                    pushSubmissions: s.pushSubmissions ?? true,
+                    pushContests: s.pushContests ?? true,
+                    pushFollowers: s.pushFollowers ?? false,
+                    notifyAchievements: s.notifyAchievements ?? true,
+                    notifyComments: s.notifyComments ?? true,
+                }
+                if (
+                    next.pushSubmissions !== prev.pushSubmissions ||
+                    next.pushContests !== prev.pushContests ||
+                    next.pushFollowers !== prev.pushFollowers ||
+                    next.notifyAchievements !== prev.notifyAchievements ||
+                    next.notifyComments !== prev.notifyComments
+                ) {
+                    return next
+                }
+                return prev
             })
         }
-    }, [user])
+    }, [user?.notificationSettings])
 
     const handleSave = async () => {
+        if (!userId) {
+            toast.error('Unable to save settings. Please log in again.')
+            return
+        }
+
         setIsSubmitting(true)
         try {
-            const res = await fetch(`/api/users/${user._id}/notifications`, {
+            const res = await fetch(`/api/users/${userId}/notifications`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -82,6 +91,8 @@ export default function NotificationsSection({ user }) {
             }
 
             toast.success('Notification settings saved')
+            syncUser?.()
+            syncUser?.()
         } catch (error) {
             toast.error(error.message)
         } finally {
@@ -91,47 +102,6 @@ export default function NotificationsSection({ user }) {
 
     return (
         <div className="space-y-6">
-            {/* Email Notifications */}
-            <Card className="p-6">
-                <div className="mb-6 flex items-center gap-3">
-                    <Mail className="text-accent" size={20} />
-                    <h3 className="text-text-primary text-lg font-semibold">Email Notifications</h3>
-                </div>
-
-                <div className="space-y-6">
-                    <ToggleSwitch
-                        checked={notifications.emailSubmissions}
-                        onChange={(val) =>
-                            setNotifications({ ...notifications, emailSubmissions: val })
-                        }
-                        label="Submission Results"
-                        description="Get notified when your code is accepted or rejected"
-                    />
-                    <ToggleSwitch
-                        checked={notifications.emailContests}
-                        onChange={(val) =>
-                            setNotifications({ ...notifications, emailContests: val })
-                        }
-                        label="Contest Updates"
-                        description="Reminders and results for contests you're participating in"
-                    />
-                    <ToggleSwitch
-                        checked={notifications.emailFollowers}
-                        onChange={(val) =>
-                            setNotifications({ ...notifications, emailFollowers: val })
-                        }
-                        label="New Followers"
-                        description="When someone follows your profile"
-                    />
-                    <ToggleSwitch
-                        checked={notifications.emailWeekly}
-                        onChange={(val) => setNotifications({ ...notifications, emailWeekly: val })}
-                        label="Weekly Digest"
-                        description="Weekly summary of your progress and activity"
-                    />
-                </div>
-            </Card>
-
             {/* Push Notifications */}
             <Card className="p-6">
                 <div className="mb-6 flex items-center gap-3">
@@ -184,14 +154,6 @@ export default function NotificationsSection({ user }) {
                         }
                         label="Achievements"
                         description="Badges and milestones unlocked"
-                    />
-                    <ToggleSwitch
-                        checked={notifications.notifyMentions}
-                        onChange={(val) =>
-                            setNotifications({ ...notifications, notifyMentions: val })
-                        }
-                        label="Mentions"
-                        description="When someone mentions you in comments"
                     />
                     <ToggleSwitch
                         checked={notifications.notifyComments}

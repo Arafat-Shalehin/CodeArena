@@ -1,7 +1,6 @@
 export const SETTINGS_NAV_ITEMS = [
     { icon: 'User', label: 'Profile', id: 'profile' },
     { icon: 'Settings', label: 'Account', id: 'account' },
-    { icon: 'Sliders', label: 'Preferences', id: 'preferences' },
     { icon: 'Bell', label: 'Notifications', id: 'notifications' },
     { icon: 'Lock', label: 'Privacy', id: 'privacy' },
     { icon: 'CreditCard', label: 'Subscription', id: 'subscription' },

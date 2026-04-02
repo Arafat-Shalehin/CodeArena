@@ -521,14 +521,18 @@ export default function ProblemSolverLayout({ problemId, contestId, initialProbl
 
                 if (isMounted) setIsLoading(false)
             } catch (err) {
-                console.error('[ProblemSolver] Fetch error:', err)
-                if (isMounted) {
-                    if (err?.name === 'AbortError') {
+                if (err?.name === 'AbortError') {
+                    // Expected operation cancellation (timeout or unmount) - avoid noisy console logs
+                    if (isMounted) {
                         setError('Request timeout. Please retry.')
-                    } else {
-                        setError('Network error')
+                        setIsLoading(false)
                     }
-                    setIsLoading(false)
+                } else {
+                    console.error('[ProblemSolver] Fetch error:', err)
+                    if (isMounted) {
+                        setError('Network error')
+                        setIsLoading(false)
+                    }
                 }
             } finally {
                 clearTimeout(timeoutId)

@@ -57,7 +57,19 @@ export const DELETE = asyncHandler(async (req, context) => {
     await dbConnect()
     const user = await protect(req)
     req.user = user
-    await authorize(['admin'])(req)
+
+    const resolvedParams = await context.params
+    const targetId = resolvedParams.id
+    const userId = user.id || user._id
+
+    // Allow users to delete their own account, or admins to delete any account
+    if (userId.toString() !== targetId && user.role !== 'admin') {
+        return NextResponse.json(
+            { success: false, message: 'Not authorized to delete this account' },
+            { status: 403 }
+        )
+    }
+
     return removeUser(req, context)
 })
 

@@ -27,9 +27,21 @@ const interviewSessionSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['active', 'completed', 'expired', 'terminated'],
+            enum: ['active', 'paused', 'completed', 'expired', 'terminated'],
             default: 'active',
             index: true,
+        },
+        isProcessing: {
+            type: Boolean,
+            default: false,
+        },
+        lockAcquiredAt: {
+            type: Date,
+            default: null,
+        },
+        lastActivityAt: {
+            type: Date,
+            default: Date.now,
         },
         currentPhase: {
             type: String,

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useInterviewSocket } from '../hooks/useInterviewSocket'
@@ -44,6 +44,7 @@ export function InterviewProvider({
     const [currentPhase, setCurrentPhase] = useState('intro')
 
     // ── Local UI state ────────────────────────────────────────────────────────
+    const lastSequenceMap = useRef({})
     const [isAiTyping, setIsAiTyping] = useState(false)
     const [isRunning, setIsRunning] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -84,6 +85,29 @@ export function InterviewProvider({
                     if (json.data.codeLanguage) setLanguage(json.data.codeLanguage)
                     if (json.data.status) setSessionStatus(json.data.status)
                     if (json.data.currentPhase) setCurrentPhase(json.data.currentPhase)
+
+                    if (json.data.currentStreamingMessage) {
+                        const sm = json.data.currentStreamingMessage
+                        if (sm.messageId) lastSequenceMap.current[sm.messageId] = sm.sequence
+
+                        setMessages((prev) => {
+                            // Only append if it doesn't exist
+                            const exists = prev.some(
+                                (m) => m.messageId === sm.messageId || m.content === sm.content
+                            )
+                            if (exists) return prev
+                            return [
+                                ...prev,
+                                {
+                                    role: 'ai',
+                                    content: sm.content,
+                                    streaming: true,
+                                    messageId: sm.messageId,
+                                },
+                            ]
+                        })
+                        setIsAiTyping(true)
+                    }
                 }
             } catch (err) {
                 console.error('[Interview] Rehydration failed:', err)
@@ -102,21 +126,35 @@ export function InterviewProvider({
     useEffect(() => {
         if (!socket || isRehydrating) return
 
-        const handleAiStream = ({ chunk, done }) => {
+        // Hardened AI streaming handler with messageId + sequence idempotency
+        const handleAiStream = ({ chunk, done, messageId, sequence, error: streamError }) => {
+            // Idempotency: skip duplicate sequences
+            if (messageId && sequence) {
+                if (!lastSequenceMap.current[messageId]) {
+                    lastSequenceMap.current[messageId] = 0
+                }
+                if (sequence <= lastSequenceMap.current[messageId]) return
+                lastSequenceMap.current[messageId] = sequence
+            }
+
             if (!done) {
                 setIsAiTyping(true)
                 setMessages((prev) => {
                     const last = prev[prev.length - 1]
 
-                    // 1. If last message is already an AI message being streamed, append to it
+                    // 1. Append to existing streaming AI message
                     if (last && last.role === 'ai' && last.streaming) {
-                        // Idempotency check: if the chunk is identical to the current content (likely a full sim-stream), skip appending
+                        if (messageId && last.messageId && last.messageId !== messageId) {
+                            return [
+                                ...prev,
+                                { role: 'ai', content: chunk, streaming: true, messageId },
+                            ]
+                        }
                         if (last.content === chunk) return prev
                         return [...prev.slice(0, -1), { ...last, content: last.content + chunk }]
                     }
 
-                    // 2. Specialized Check: If the last message is a static AI intro (from initial state),
-                    // move it to streaming mode instead of appending a duplicate.
+                    // 2. Specialized Check: static AI intro -> upgrade to streaming
                     if (
                         last &&
                         last.role === 'ai' &&
@@ -127,19 +165,49 @@ export function InterviewProvider({
                         return [...prev.slice(0, -1), { ...last, streaming: true }]
                     }
 
-                    // 3. Fallback: create a new AI message and start streaming
+                    // 3. Fallback: create new streaming message
                     const isErr = chunk.includes('Sorry, I')
                     return [
                         ...prev,
-                        { role: 'ai', content: chunk, streaming: true, isError: isErr },
+                        { role: 'ai', content: chunk, streaming: true, isError: isErr, messageId },
                     ]
                 })
             } else {
                 setIsAiTyping(false)
+                lastProcessedSequence = 0
+
+                // Handle streaming error payload
+                if (streamError) {
+                    setMessages((prev) => {
+                        const last = prev[prev.length - 1]
+                        if (last?.streaming) {
+                            const finalContent = last.content || streamError
+                            return [
+                                ...prev.slice(0, -1),
+                                { ...last, content: finalContent, streaming: false, isError: true },
+                            ]
+                        }
+                        return [...prev, { role: 'ai', content: streamError, isError: true }]
+                    })
+                    return
+                }
+
                 setMessages((prev) => {
                     const last = prev[prev.length - 1]
-                    if (last?.streaming)
+                    if (last?.streaming) {
+                        if (!last.content) {
+                            return [
+                                ...prev.slice(0, -1),
+                                {
+                                    ...last,
+                                    content: 'Something went wrong. Please retry.',
+                                    streaming: false,
+                                    isError: true,
+                                },
+                            ]
+                        }
                         return [...prev.slice(0, -1), { ...last, streaming: false }]
+                    }
                     return prev
                 })
             }
@@ -262,15 +330,46 @@ export function InterviewProvider({
         }
     }, [socket, isRehydrating, sessionId, router, onEnd])
 
+    // ── Hard timeout for stuck AI streaming ──────────────────────────────────
+    const MAX_STREAM_TIME = 30_000
+    useEffect(() => {
+        if (!isAiTyping) return
+        const timer = setTimeout(() => {
+            console.warn('[InterviewContext] AI stream timeout — forcing reset')
+            setIsAiTyping(false)
+            setMessages((prev) => {
+                const last = prev[prev.length - 1]
+                if (last?.streaming) {
+                    return [
+                        ...prev.slice(0, -1),
+                        {
+                            ...last,
+                            content: last.content || 'AI response timed out. Please try again.',
+                            streaming: false,
+                            isError: !last.content,
+                        },
+                    ]
+                }
+                return prev
+            })
+            toast.error('AI response timed out. Please try sending your message again.')
+        }, MAX_STREAM_TIME)
+        return () => clearTimeout(timer)
+    }, [isAiTyping])
+
     // ── 3) Handlers ───────────────────────────────────────────────────────────
     const handleSendMessage = useCallback(
         (content) => {
             if (!socket || sessionStatus !== 'active') return
+            if (isAiTyping) {
+                toast.error('Please wait for the AI to finish responding.')
+                return
+            }
             setMessages((prev) => [...prev, { role: 'user', content, phase: currentPhase }])
             setIsAiTyping(true)
             socket.emit('interview:chat_message', { content, phase: currentPhase })
         },
-        [socket, sessionStatus, currentPhase]
+        [socket, sessionStatus, currentPhase, isAiTyping]
     )
 
     const handleRun = useCallback(() => {

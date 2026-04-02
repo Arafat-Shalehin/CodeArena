@@ -19,6 +19,9 @@ import {
     Linkedin,
     Twitter,
     ArrowUpRight,
+    UserPlus,
+    UserCheck,
+    Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import FollowersListModal from './FollowersListModal'
@@ -39,7 +42,15 @@ export default function ProfileHero({ user: userProp }) {
     const displayUser = userProp || authUser
     const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
 
-    const { bio = '', avatarSeed = name, stats, location, website, socials } = displayUser || {}
+    const {
+        bio = '',
+        avatarSeed = name,
+        stats,
+        location,
+        website,
+        socials,
+        country,
+    } = displayUser || {}
 
     const isOwnProfile =
         authUser &&
@@ -129,10 +140,21 @@ export default function ProfileHero({ user: userProp }) {
         }
     })()
 
+    // Country code to flag emoji mapping
+    const getFlagEmoji = (countryCode) => {
+        if (!countryCode) return null
+        const codePoints = countryCode
+            .toUpperCase()
+            .split('')
+            .map((char) => 127397 + char.charCodeAt())
+        return String.fromCodePoint(...codePoints)
+    }
+    const flagEmoji = getFlagEmoji(country)
+
     return (
         <div className="border-border relative mb-8 overflow-hidden rounded-2xl border p-6 md:p-8">
             {/* Glass-Gradient Background */}
-            <div className="from-accent-light via-bg-page to-info-light absolute inset-0 z-0 bg-gradient-to-r opacity-50" />
+            <div className="from-accent/20 via-bg-page/95 to-accent-light/15 absolute inset-0 z-0 bg-gradient-to-r opacity-60" />
             <div className="absolute inset-0 z-0 backdrop-blur-xl" />
 
             <div className="relative z-10 flex flex-col items-center justify-between gap-8 md:flex-row md:items-start">
@@ -165,31 +187,33 @@ export default function ProfileHero({ user: userProp }) {
                                 </span>
                             </div>
 
-                            <div className="mt-1 mb-2 flex items-center justify-center gap-4 text-sm font-medium md:justify-start">
-                                <button
-                                    onClick={() => setFriendsModalType('followers')}
-                                    className="hover:text-accent flex items-center gap-1 transition-colors"
-                                >
-                                    <span className="text-text-primary font-semibold">
-                                        {followersCount}
-                                    </span>
-                                    <span className="text-text-secondary font-medium">
-                                        Followers
-                                    </span>
-                                </button>
-                                <span className="text-text-muted">•</span>
-                                <button
-                                    onClick={() => setFriendsModalType('following')}
-                                    className="hover:text-accent flex items-center gap-1 transition-colors"
-                                >
-                                    <span className="text-text-primary font-semibold">
-                                        {followingCount}
-                                    </span>
-                                    <span className="text-text-secondary font-medium">
-                                        Following
-                                    </span>
-                                </button>
-                            </div>
+                            {displayUser?.privacySettings?.showFollowers !== false && (
+                                <div className="mt-1 mb-2 flex items-center justify-center gap-4 text-sm font-medium md:justify-start">
+                                    <button
+                                        onClick={() => setFriendsModalType('followers')}
+                                        className="hover:text-accent flex items-center gap-1 transition-colors"
+                                    >
+                                        <span className="text-text-primary font-semibold">
+                                            {followersCount}
+                                        </span>
+                                        <span className="text-text-secondary font-medium">
+                                            Followers
+                                        </span>
+                                    </button>
+                                    <span className="text-text-muted">•</span>
+                                    <button
+                                        onClick={() => setFriendsModalType('following')}
+                                        className="hover:text-accent flex items-center gap-1 transition-colors"
+                                    >
+                                        <span className="text-text-primary font-semibold">
+                                            {followingCount}
+                                        </span>
+                                        <span className="text-text-secondary font-medium">
+                                            Following
+                                        </span>
+                                    </button>
+                                </div>
+                            )}
 
                             {bio ? (
                                 <p className="text-text-secondary text-center text-sm leading-relaxed font-medium md:text-left">
@@ -202,16 +226,21 @@ export default function ProfileHero({ user: userProp }) {
                             ) : null}
                         </div>
 
-                        {/* Quick info: Location & Website */}
-                        {(location || website) && (
+                        {/* Quick info: Location, Country Flag & Website */}
+                        {(location || country || website) && (
                             <div className="text-text-muted flex flex-wrap items-center justify-center gap-4 text-sm md:justify-start">
-                                {location && (
+                                {(location || country) && (
                                     <div
                                         className="hover:text-text-primary flex items-center gap-1.5 transition-colors"
                                         title="Location"
                                     >
                                         <MapPin size={16} className="text-accent/70" />
-                                        <span>{location}</span>
+                                        {location && <span>{location}</span>}
+                                        {country && (
+                                            <span className="text-lg leading-none" title={country}>
+                                                {flagEmoji || '🏳️'}
+                                            </span>
+                                        )}
                                     </div>
                                 )}
                                 {safeWebsiteUrl && (
@@ -249,14 +278,29 @@ export default function ProfileHero({ user: userProp }) {
                     {/* Action Button */}
                     <div className="mb-8 flex w-full justify-center md:justify-end">
                         {!isOwnProfile && (
-                            <Button
-                                variant={isFollowing ? 'outline' : 'default'}
+                            <button
                                 onClick={handleFollowToggle}
                                 disabled={isFollowLoading}
-                                className="w-full md:w-auto"
+                                className={`group flex h-11 w-full min-w-[160px] items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-300 md:w-auto ${
+                                    isFollowing
+                                        ? 'bg-bg-subtle/80 text-text-primary border-border hover:border-error/40 hover:bg-error/10 hover:text-error border backdrop-blur-sm'
+                                        : 'bg-accent shadow-accent/25 hover:bg-accent-hover hover:shadow-accent/40 text-white shadow-lg'
+                                } disabled:opacity-50`}
                             >
-                                {isFollowLoading ? '...' : isFollowing ? 'Unfollow' : 'Follow'}
-                            </Button>
+                                {isFollowLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : isFollowing ? (
+                                    <>
+                                        <UserCheck className="h-4 w-4 transition-transform group-hover:scale-110" />
+                                        Following
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserPlus className="h-4 w-4 transition-transform group-hover:scale-110" />
+                                        Follow
+                                    </>
+                                )}
+                            </button>
                         )}
                         {isOwnProfile && (
                             <Link href="/profile/settings" className="w-full md:w-auto">

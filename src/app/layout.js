@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
+import ServiceWorkerRegistration from '@/components/providers/ServiceWorkerRegistration'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -60,6 +61,7 @@ export default function RootLayout({ children }) {
                             </AuthProvider>
                         </HydrationWrapper>
                         <Toaster position="top-center" />
+                        <ServiceWorkerRegistration />
                     </SmoothScroll>
                 </ThemeProvider>
             </body>

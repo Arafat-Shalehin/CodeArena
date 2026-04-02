@@ -1,14 +1,4 @@
-/**
- * Interview Socket Namespace — /interview
- *
- * Architecture:
- *  - Auth: JWT wsToken verification via middleware
- *  - AI Chat: offloaded to `interview-ai` BullMQ queue (interviewAI.worker.js),
- *             results streamed back to this socket via Redis Pub/Sub
- *  - Code Run/Submit: direct Docker executor call (latency is bounded)
- *  - Snapshots: direct DB write
- */
-
+import crypto from 'crypto'
 import { verifyWsToken } from '@/lib/auth/wsToken'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
@@ -19,52 +9,34 @@ import { executeCode } from '@/lib/docker/executor'
 import { getInterviewAIQueue, getInterviewExecutionQueue } from '@/lib/queue'
 import { interviewAIChannel } from '@/services/interviewAI.worker'
 import { interviewExecutionChannel } from '@/services/interviewExecution.worker'
-import { createClient } from 'redis'
-
-// ── Dedicated subscriber factory ───────────────────────────────────────────────
-// Each connected socket gets its own subscriber client so it can subscribe to
-// its session channel without interfering with other connections.
-
-const redisUrl = process.env.REDIS_URL || ''
-const redisConfig = redisUrl
-    ? { url: redisUrl }
-    : {
-          socket: {
-              host: process.env.REDIS_HOST || 'localhost',
-              port: parseInt(process.env.REDIS_PORT || '6379'),
-          },
-          password: process.env.REDIS_PASSWORD || undefined,
-      }
+import {
+    acquireProcessingLock,
+    releaseProcessingLock,
+    updateActivity,
+    TERMINAL_STATUSES,
+} from '@/services/interviewSession.service'
+import { redisClient } from '@/lib/redis'
 
 let sharedSubscriber = null
 const sessionRefCount = new Map()
 
 async function getSharedSubscriber() {
     if (sharedSubscriber) return sharedSubscriber
-    const client = createClient(redisConfig)
+    const client = redisClient.duplicate()
     client.on('error', (err) => console.error('[Interview NS] Redis shared sub error:', err))
     await client.connect()
     sharedSubscriber = client
     return sharedSubscriber
 }
 
-function createSubscriber() {
-    // Legacy function, no longer used per-socket
-    return getSharedSubscriber()
-}
-
-// ── Namespace ──────────────────────────────────────────────────────────────────
-
 export function registerInterviewNamespace(io) {
     const interviewNs = io.of('/interview')
 
-    // Middleware for authentication
+    // ── Auth middleware ────────────────────────────────────────────────────────
     interviewNs.use(async (socket, next) => {
         try {
             const token = socket.handshake.auth?.token || socket.handshake.query?.token
-            if (!token) {
-                return next(new Error('Authentication error: Token missing'))
-            }
+            if (!token) return next(new Error('Authentication error: Token missing'))
 
             const decoded = verifyWsToken(token)
             if (!decoded || !decoded.sessionId || !decoded.userId) {
@@ -84,53 +56,77 @@ export function registerInterviewNamespace(io) {
         const roomName = `interview:${sessionId}`
 
         console.log(
-            `[Socket.IO /interview] User ${socket.userId} connected to session ${sessionId}`
+            JSON.stringify({
+                event: 'SOCKET_CONNECTED',
+                sessionId,
+                userId: socket.userId,
+                timestamp: new Date().toISOString(),
+            })
         )
 
-        // ── Shared Redis subscriber for this namespace ──────────────────────────
-        // Subscribes once per sessionId and broadcasts to the session room.
+        // ✅ FIX: Join the room immediately on connection.
+        // Previously this was gated behind interview:join which meant
+        // Redis chunks emitted before that event fired were lost forever.
+        socket.join(roomName)
+        console.log(`[Interview NS] Socket joined room: ${roomName}`)
+
+        // ✅ FIX: Set up Redis subscription immediately on connection,
+        // not inside interview:join. All chunks now reach the room.
         try {
             const sub = await getSharedSubscriber()
-            const channel = interviewAIChannel(sessionId)
+            const aiChannel = interviewAIChannel(sessionId)
+            const execChannel = interviewExecutionChannel(sessionId)
 
-            // Increment ref count
             const currentCount = sessionRefCount.get(sessionId) || 0
             sessionRefCount.set(sessionId, currentCount + 1)
 
             if (currentCount === 0) {
-                const aiChannel = interviewAIChannel(sessionId)
-                const execChannel = interviewExecutionChannel(sessionId)
-
                 console.log(
                     `[Interview NS] Subscribing to Redis channels: ${aiChannel}, ${execChannel}`
                 )
 
-                // Subscription handler
                 const messageHandler = (message, channel) => {
                     try {
                         const parsed = JSON.parse(message)
-                        const ns = interviewNs
                         const targetRoom = `interview:${sessionId}`
 
-                        // a. AI Related events
                         if (channel === aiChannel) {
                             if (parsed.analysis) {
-                                ns.to(targetRoom).emit('interview:ai_analysis', parsed)
+                                interviewNs.to(targetRoom).emit('interview:ai_analysis', parsed)
                             } else if (parsed.scorecard) {
-                                ns.to(targetRoom).emit('interview:scorecard', parsed.scorecard)
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:scorecard', parsed.scorecard)
                             } else if (parsed.phase) {
-                                ns.to(targetRoom).emit('interview:phase_change', parsed.phase)
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:phase_change', parsed.phase)
                             } else if (parsed.chunk !== undefined) {
-                                ns.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
+                                interviewNs.to(targetRoom).emit('interview:ai_stream_chunk', parsed)
+                                if (parsed.done) {
+                                    releaseProcessingLock(sessionId).catch((err) =>
+                                        console.error(
+                                            '[Interview NS] releaseProcessingLock error:',
+                                            err
+                                        )
+                                    )
+                                }
+                            } else if (parsed.terminal) {
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:session_terminal', parsed)
                             }
                         }
 
-                        // b. Code Execution events
                         if (channel === execChannel) {
                             if (parsed.jobType === 'run') {
-                                ns.to(targetRoom).emit('interview:run_result', parsed.result)
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:run_result', parsed.result)
                             } else if (parsed.jobType === 'submit') {
-                                ns.to(targetRoom).emit('interview:submission_result', parsed.result)
+                                interviewNs
+                                    .to(targetRoom)
+                                    .emit('interview:submission_result', parsed.result)
                             }
                         }
                     } catch (err) {
@@ -143,23 +139,24 @@ export function registerInterviewNamespace(io) {
             }
         } catch (err) {
             console.error(
-                `[Interview NS] Failed to manage subscription for session ${sessionId}:`,
+                `[Interview NS] Failed to set up subscription for session ${sessionId}:`,
                 err
             )
         }
 
-        // 1. Client joins their dedicated session room
-        socket.on('interview:join', async () => {
-            socket.join(roomName)
-            console.log(`[Socket.IO /interview] Socket joined room: ${roomName}`)
+        // ── interview:join kept for client backward compatibility — now a no-op ──
+        // The socket is already in the room and Redis is already subscribed above.
+        // Do not move any logic back in here.
+        socket.on('interview:join', () => {
+            // Intentionally empty. Room join and Redis subscription
+            // now happen on connection. Client may still emit this event.
         })
 
-        // 2. Client sends a code snapshot (for playback/history)
+        // ── 1. Code snapshot ───────────────────────────────────────────────────
         socket.on('interview:code_snapshot', async (payload) => {
             try {
                 await dbConnect()
                 const { problemId, language, code, snapshotType } = payload
-
                 await InterviewSnapshot.create({
                     sessionId,
                     problemId,
@@ -173,12 +170,11 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        // 3. Client attempts to run code (Refactored to Background Worker)
+        // ── 2. Run code ────────────────────────────────────────────────────────
         socket.on('interview:run', async (payload) => {
             try {
                 const { code, language, problemId } = payload
                 const queue = getInterviewExecutionQueue()
-
                 await queue.add('run', {
                     sessionId,
                     userId: socket.userId,
@@ -187,8 +183,6 @@ export function registerInterviewNamespace(io) {
                     problemId,
                     jobType: 'run',
                 })
-
-                // Note: Result will come via Redis Pub/Sub subscriber
             } catch (error) {
                 console.error('[Socket.IO] Run Enqueue Error:', error)
                 socket.emit('interview:run_result', {
@@ -199,7 +193,7 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        // 4. Client attempts to submit code (Refactored to Background Worker)
+        // ── 3. Submit code ─────────────────────────────────────────────────────
         socket.on('interview:submit', async (payload) => {
             try {
                 await dbConnect()
@@ -223,9 +217,6 @@ export function registerInterviewNamespace(io) {
                     problemId,
                     jobType: 'submit',
                 })
-
-                // Result persistence and AI analysis trigger are now handled by
-                // interviewExecution.worker.js to keep this namespace non-blocking.
             } catch (error) {
                 console.error('[Socket.IO] Submit Enqueue Error:', error)
                 socket.emit('interview:submission_result', {
@@ -236,13 +227,34 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        // 5. Client sends a chat message → enqueue AI job
+        // ── 4. Chat message ────────────────────────────────────────────────────
         socket.on('interview:chat_message', async (payload) => {
             try {
                 await dbConnect()
-                const { content, phase } = payload
+                const { content, phase, messageId } = payload
 
-                // a. Persist the user turn immediately so the worker sees it
+                const currentSession = await InterviewSession.findById(sessionId)
+                if (currentSession?.isProcessing) {
+                    return socket.emit('error', 'Wait for AI response')
+                }
+
+                const lockedSession = await acquireProcessingLock(sessionId)
+                if (!lockedSession) {
+                    console.log(
+                        JSON.stringify({
+                            event: 'CHAT_REJECTED_LOCKED',
+                            sessionId,
+                            userId: socket.userId,
+                            timestamp: new Date().toISOString(),
+                        })
+                    )
+                    return socket.emit('interview:ai_stream_chunk', {
+                        chunk: '',
+                        done: true,
+                        error: 'AI is already responding. Please wait.',
+                    })
+                }
+
                 await InterviewMessage.create({
                     sessionId,
                     role: 'user',
@@ -251,18 +263,28 @@ export function registerInterviewNamespace(io) {
                     ts: new Date(),
                 })
 
-                // b. Enqueue the AI processing job
-                //    The worker will publish chunks to the Redis channel this
-                //    socket is already subscribed to → client gets the stream.
+                await updateActivity(sessionId)
+
                 const queue = getInterviewAIQueue()
                 await queue.add('process-chat', {
                     sessionId,
                     userId: socket.userId,
                     content,
                     phase: phase || 'coding',
+                    messageId,
                 })
+
+                console.log(
+                    JSON.stringify({
+                        event: 'AI_STREAM_ENQUEUED',
+                        sessionId,
+                        userId: socket.userId,
+                        timestamp: new Date().toISOString(),
+                    })
+                )
             } catch (error) {
                 console.error('[Socket.IO] Chat enqueue error:', error)
+                releaseProcessingLock(sessionId).catch(() => {})
                 socket.emit('interview:ai_stream_chunk', {
                     chunk: 'Sorry, I hit a snag. Please try again.',
                     done: true,
@@ -270,13 +292,17 @@ export function registerInterviewNamespace(io) {
             }
         })
 
-        // Clean up subscriber on disconnect
+        // ── 5. Disconnect cleanup ──────────────────────────────────────────────
         socket.on('disconnect', async () => {
             console.log(
-                `[Socket.IO /interview] User ${socket.userId} disconnected from session ${sessionId}`
+                JSON.stringify({
+                    event: 'SOCKET_DISCONNECTED',
+                    sessionId,
+                    userId: socket.userId,
+                    timestamp: new Date().toISOString(),
+                })
             )
 
-            // Decrement ref count
             const currentCount = sessionRefCount.get(sessionId) || 0
             if (currentCount > 1) {
                 sessionRefCount.set(sessionId, currentCount - 1)

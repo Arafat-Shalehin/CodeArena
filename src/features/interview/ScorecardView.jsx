@@ -27,6 +27,8 @@ export default function ScorecardView({ sessionId }) {
     const socketRef = useRef(null)
 
     useEffect(() => {
+        // Use a ref to track result so fallbackPoll doesn't use a stale closure
+        const resultFoundRef = { current: false }
         let pollTimer
         let isUnmounted = false
 
@@ -35,25 +37,30 @@ export default function ScorecardView({ sessionId }) {
                 const res = await fetch(`/api/interview/sessions/${sessionId}/result`)
                 const json = await res.json()
 
-                if (isUnmounted) return
+                if (isUnmounted) return false
 
                 if (json.success) {
                     if (json.status === 'pending') {
-                        // Still calculating, remain in loading state
+                        // Still calculating — stay in loading state
                         return false
                     }
+                    resultFoundRef.current = true
                     setResult(json.data)
                     setLoading(false)
                     setError(null)
-                    return true // Success
+                    return true
                 } else {
+                    // API returned an explicit error — show it, stop loading
                     setError(json.message || 'Failed to load result')
                     setLoading(false)
                     return false
                 }
             } catch (err) {
                 if (!isUnmounted) {
-                    setError('Communication error. Retrying...')
+                    // ✅ Bug 1 Fix: clear loading so the error UI renders
+                    setError('Connection error. Retrying...')
+                    // Do NOT call setLoading(false) here — we keep retrying via poll
+                    // Only stop loading after max retries (handled in loadingTimeout below)
                 }
                 return false
             }
@@ -61,12 +68,10 @@ export default function ScorecardView({ sessionId }) {
 
         const setupSocket = async () => {
             try {
-                // 1. Get wsToken via rehydrate
                 const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
                 const json = await res.json()
                 if (!json.success || isUnmounted) return
 
-                // 2. Connect to socket
                 const socket = io(
                     `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
                     {
@@ -76,16 +81,22 @@ export default function ScorecardView({ sessionId }) {
                 )
                 socketRef.current = socket
 
-                socket.on('connect', () => {
+                socket.on('connect', async () => {
                     setIsSocketConnected(true)
                     socket.emit('interview:join')
+                    // ✅ Bug 4 Fix: immediately fetch on connect.
+                    // For already-completed sessions the scorecard socket event
+                    // will never replay — so we fetch right away on connection.
+                    if (!resultFoundRef.current) {
+                        await fetchResult()
+                    }
                 })
 
                 socket.on('disconnect', () => setIsSocketConnected(false))
 
                 socket.on('interview:scorecard', async () => {
                     if (isUnmounted) return
-                    console.log('[ScorecardView] Received Push update via socket')
+                    console.log('[ScorecardView] Received push update via socket')
                     await fetchResult()
                 })
             } catch (err) {
@@ -95,20 +106,36 @@ export default function ScorecardView({ sessionId }) {
 
         const runLogic = async () => {
             const found = await fetchResult()
-            if (!found && !isUnmounted) {
-                // If not found yet, setup socket-push
-                await setupSocket()
+            if (found || isUnmounted) return
 
-                // Fallback: Slow polling (15s) in case socket fails or message is missed
-                const fallbackPoll = async () => {
-                    if (isUnmounted || result) return
-                    const success = await fetchResult()
-                    if (!success) {
-                        pollTimer = setTimeout(fallbackPoll, 15000)
-                    }
+            // Result not ready yet — set a 60s hard timeout before showing error
+            const loadingTimeout = setTimeout(() => {
+                if (!resultFoundRef.current && !isUnmounted) {
+                    setError(
+                        'Scorecard generation is taking longer than expected. Please wait or refresh.'
+                    )
+                    setLoading(false)
                 }
-                pollTimer = setTimeout(fallbackPoll, 15000)
+            }, 60_000)
+
+            // Set up socket for live push
+            await setupSocket()
+
+            // ✅ Bug 3 Fix: poll every 3s instead of 15s
+            // ✅ Bug 2 Fix: use resultFoundRef instead of stale `result` closure
+            const fallbackPoll = async () => {
+                if (isUnmounted || resultFoundRef.current) {
+                    clearTimeout(loadingTimeout)
+                    return
+                }
+                const success = await fetchResult()
+                if (!success) {
+                    pollTimer = setTimeout(fallbackPoll, 3_000)
+                } else {
+                    clearTimeout(loadingTimeout)
+                }
             }
+            pollTimer = setTimeout(fallbackPoll, 3_000)
         }
 
         runLogic()

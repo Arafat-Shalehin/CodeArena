@@ -266,20 +266,21 @@ export async function updateUser(id, updateData) {
     for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
             if (field === 'socials') {
-                // Handle nested socials update
-                Object.keys(updateData.socials).forEach((key) => {
-                    safeData[`socials.${key}`] = updateData.socials[key]
-                })
+                // Use $set with dot notation for each nested field
+                const s = updateData.socials || {}
+                safeData['socials.github'] = typeof s.github === 'string' ? s.github.trim() : ''
+                safeData['socials.linkedin'] =
+                    typeof s.linkedin === 'string' ? s.linkedin.trim() : ''
+                safeData['socials.twitter'] = typeof s.twitter === 'string' ? s.twitter.trim() : ''
             } else {
                 safeData[field] = updateData[field]
             }
         }
     }
 
-    console.log('safeData to update:', safeData)
+    console.log('[updateUser] safeData to update:', safeData)
 
     if (Object.keys(safeData).length === 0) {
-        // Nothing to update — return current user without a write
         const user = await User.findById(id).select('-password')
         return user
     }
@@ -296,12 +297,12 @@ export async function updateUser(id, updateData) {
         throw err
     }
 
-    // Invalidate cache
+    console.log('[updateUser] Updated user socials:', user.socials)
+
     if (redisClient.isOpen) {
         await redisClient.del(`user:${id}:profile`).catch(console.error)
     }
 
-    console.log('Updated user:', user)
     return user
 }
 
