@@ -18,6 +18,15 @@ const AuthContext = createContext(/** @type {AuthContextValue} */ (undefined))
 
 const STORAGE_KEY = 'codearena_auth_user_preferences'
 
+function sanitizeLocalPreferences(prefs) {
+    if (!prefs || typeof prefs !== 'object') return {}
+    const clean = { ...prefs }
+    // Never allow locally cached dynamic stats to overwrite DB truth.
+    delete clean.stats
+    delete clean.performanceStats
+    return clean
+}
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -29,7 +38,11 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY)
-            if (stored) setLocalPreferences(JSON.parse(stored))
+            if (stored) {
+                const sanitized = sanitizeLocalPreferences(JSON.parse(stored))
+                setLocalPreferences(sanitized)
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized))
+            }
         } catch {}
     }, [])
 
@@ -92,7 +105,7 @@ export function AuthProvider({ children }) {
     // 3. Merging Preferences when they change (Independent of Auth listener)
     useEffect(() => {
         if (user && Object.keys(localPreferences).length > 0) {
-            setUser((prev) => ({ ...prev, ...localPreferences }))
+            setUser((prev) => ({ ...prev, ...sanitizeLocalPreferences(localPreferences) }))
         }
     }, [localPreferences])
 
@@ -117,15 +130,12 @@ export function AuthProvider({ children }) {
 
     const updateProfile = useCallback((updatedData) => {
         setLocalPreferences((prev) => {
-            const newPrefs = { ...prev, ...updatedData }
-            delete newPrefs.stats // Never persist dynamic stats in local preferences
-            return newPrefs
+            return sanitizeLocalPreferences({ ...prev, ...updatedData })
         })
 
         // Persist to localStorage outside of the setState updater
         const currentPrefs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-        const merged = { ...currentPrefs, ...updatedData }
-        delete merged.stats // Never persist dynamic stats
+        const merged = sanitizeLocalPreferences({ ...currentPrefs, ...updatedData })
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
 
         setUser((prevUser) => {
@@ -161,7 +171,7 @@ export function AuthProvider({ children }) {
                     id: userId,
                     _id: userId,
                     // Merge local preferences but let DB fields take precedence for profile fields
-                    ...localPreferences,
+                    ...sanitizeLocalPreferences(localPreferences),
                     // Always prefer DB socials, bio, location, website, avatarSeed, privacySettings over stale local values
                     socials: dbUser.socials || localPreferences.socials,
                     bio: dbUser.bio ?? localPreferences.bio,
