@@ -26,6 +26,7 @@ import { formatDistanceToNow, format } from 'date-fns'
 import DailyPicks from './DailyPicks'
 import RecommendedProblems from '@/features/profile/components/RecommendedProblems'
 import FeedItem from './FeedItem'
+import FeedItemModal from './FeedItemModal'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +48,9 @@ export default function DashboardHome({ user: initialUser }) {
     const [isPostModalOpen, setIsPostModalOpen] = useState(false)
     const [postContent, setPostContent] = useState('')
     const [isPosting, setIsPosting] = useState(false)
+    const [selectedFeedItem, setSelectedFeedItem] = useState(null)
+    const [isFeedItemModalOpen, setIsFeedItemModalOpen] = useState(false)
+    const [modalCommentsOpen, setModalCommentsOpen] = useState(false)
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -163,12 +167,59 @@ export default function DashboardHome({ user: initialUser }) {
         return 'bg-error-light text-error'
     }
 
+    const handleOpenFeedItemModal = (item, options = {}) => {
+        setSelectedFeedItem(item)
+        setModalCommentsOpen(Boolean(options.focusComments))
+        setIsFeedItemModalOpen(true)
+    }
+
+    const handleCloseFeedItemModal = () => {
+        setIsFeedItemModalOpen(false)
+        setSelectedFeedItem(null)
+        setModalCommentsOpen(false)
+    }
+
+    const handleFeedItemStatsChange = (itemId, patch) => {
+        if (!itemId || !patch) return
+
+        setFeed((prev) =>
+            prev.map((entry) => {
+                const currentId = String(entry.id || entry._id)
+                if (currentId !== String(itemId)) return entry
+
+                return {
+                    ...entry,
+                    ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
+                    ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
+                    ...(patch.commentCount !== undefined
+                        ? { commentCount: patch.commentCount }
+                        : {}),
+                }
+            })
+        )
+
+        setSelectedFeedItem((prev) => {
+            if (!prev) return prev
+            const currentId = String(prev.id || prev._id)
+            if (currentId !== String(itemId)) return prev
+
+            return {
+                ...prev,
+                ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
+                ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
+                ...(patch.commentCount !== undefined ? { commentCount: patch.commentCount } : {}),
+            }
+        })
+    }
+
     return (
         <div className="max-w-container mx-auto w-full px-4 pb-8 md:px-6">
             <div
                 className={cn(
                     'grid grid-cols-1 gap-6 transition-all duration-300 lg:grid-cols-12',
-                    isPostModalOpen ? 'pointer-events-none opacity-60 blur-[2px]' : ''
+                    isPostModalOpen || (isFeedItemModalOpen && selectedFeedItem)
+                        ? 'pointer-events-none opacity-60 blur-[2px]'
+                        : ''
                 )}
             >
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
@@ -419,6 +470,7 @@ export default function DashboardHome({ user: initialUser }) {
                                 key={item._id}
                                 item={item}
                                 getDifficultyClass={getDifficultyClass}
+                                onOpenDetail={handleOpenFeedItemModal}
                             />
                         ))
                     ) : (
@@ -635,6 +687,17 @@ export default function DashboardHome({ user: initialUser }) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {selectedFeedItem && (
+                <FeedItemModal
+                    isOpen={isFeedItemModalOpen}
+                    onClose={handleCloseFeedItemModal}
+                    item={selectedFeedItem}
+                    getDifficultyClass={getDifficultyClass}
+                    onStatsChange={handleFeedItemStatsChange}
+                    initialShowComments={modalCommentsOpen}
+                />
             )}
         </div>
     )
