@@ -3,33 +3,29 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { io } from 'socket.io-client'
 import {
-    BookOpen,
-    MessageSquare,
-    Code,
-    Terminal,
-    User,
-    Settings,
-    ChevronRight,
     Loader2,
     Clock,
     Tag,
     Star,
-    Send,
-    Bot,
-    User as UserIcon,
     GripVertical,
-    ChevronLeft,
     AlertCircle,
     WifiOff,
     RefreshCw,
     LogOut,
     AlertTriangle,
+    Target,
+    Sparkles,
+    Trophy,
+    MessageSquare,
+    Code,
+    Bot,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { useAuth } from '@/context/AuthContext'
 import EditorPanel from './EditorPanel'
+import AiChatPanel from './components/chat/AiChatPanel'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -136,136 +132,7 @@ function ProblemPanel({ problem }) {
     )
 }
 
-// ─── AiChatPanel ─────────────────────────────────────────────────────────────
-
-function AiChatPanel({ messages, onSend, isAiTyping, currentPhase }) {
-    const [draft, setDraft] = useState('')
-    const bottomRef = useRef(null)
-
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages, isAiTyping])
-
-    const submit = () => {
-        const trimmed = draft.trim()
-        if (!trimmed) return
-        onSend(trimmed)
-        setDraft('')
-    }
-
-    const handleKey = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            submit()
-        }
-    }
-
-    return (
-        <div className="flex h-full flex-col">
-            {/* Header */}
-            <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center gap-2 border-b px-4">
-                <Bot size={16} className="text-accent" />
-                <span className="text-text-primary text-xs font-bold">AI Interviewer</span>
-                <span className="bg-accent/10 border-accent/20 text-accent ml-auto rounded-full border px-2 py-0.5 text-[9px] font-black tracking-tighter uppercase">
-                    {currentPhase?.replace('_', ' ')}
-                </span>
-                {isAiTyping && (
-                    <span className="text-text-muted flex items-center gap-1 text-[11px]">
-                        <Loader2 size={11} className="animate-spin" /> typing…
-                    </span>
-                )}
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
-                {messages.length === 0 && (
-                    <div className="text-text-muted flex h-full flex-col items-center justify-center gap-2 text-center text-xs">
-                        <Bot size={32} className="text-accent/40" />
-                        <p>The AI interviewer will guide you through the session.</p>
-                        <p className="opacity-60">Ask questions or explain your approach!</p>
-                    </div>
-                )}
-
-                {messages.map((msg, idx) => {
-                    const isUser = msg.role === 'user'
-                    return (
-                        <div
-                            key={idx}
-                            className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-                        >
-                            <div
-                                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                                    isUser
-                                        ? 'bg-accent/20 text-accent'
-                                        : 'bg-purple-500/20 text-purple-400'
-                                }`}
-                            >
-                                {isUser ? <UserIcon size={14} /> : <Bot size={14} />}
-                            </div>
-                            <div
-                                className={`max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed ${
-                                    isUser
-                                        ? 'bg-accent/15 text-text-primary rounded-tr-none'
-                                        : msg.isError
-                                          ? 'rounded-tl-none border border-red-500/50 bg-red-500/10 text-red-400'
-                                          : 'bg-bg-muted text-text-secondary rounded-tl-none'
-                                }`}
-                            >
-                                {msg.content}
-                                {msg.isError && (
-                                    <div className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase opacity-70">
-                                        <AlertCircle size={10} />
-                                        System Error
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )
-                })}
-
-                {isAiTyping && (
-                    <div className="flex gap-2.5">
-                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
-                            <Bot size={14} />
-                        </div>
-                        <div className="bg-bg-muted flex items-center gap-1 rounded-2xl rounded-tl-none px-4 py-3">
-                            <span className="bg-text-muted h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:0ms]" />
-                            <span className="bg-text-muted h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:150ms]" />
-                            <span className="bg-text-muted h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:300ms]" />
-                        </div>
-                    </div>
-                )}
-
-                <div ref={bottomRef} />
-            </div>
-
-            {/* Input */}
-            <div className="border-border border-t p-3">
-                <div className="border-border bg-bg-muted flex items-end gap-2 rounded-xl border px-3 py-2">
-                    <textarea
-                        rows={1}
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        onKeyDown={handleKey}
-                        placeholder="Ask the AI or explain your approach…"
-                        className="text-text-primary placeholder:text-text-muted flex-1 resize-none bg-transparent text-[13px] outline-none"
-                        style={{ maxHeight: 100 }}
-                    />
-                    <button
-                        onClick={submit}
-                        disabled={!draft.trim() || isAiTyping}
-                        className="text-accent hover:bg-accent/10 flex-shrink-0 rounded-lg p-1.5 transition-colors disabled:opacity-40"
-                    >
-                        <Send size={16} />
-                    </button>
-                </div>
-                <p className="text-text-muted mt-1.5 text-center text-[10px]">
-                    Enter to send · Shift+Enter for newline
-                </p>
-            </div>
-        </div>
-    )
-}
+// ─── (Removed inline AiChatPanel — now imported from components/chat/AiChatPanel) ───
 
 // ─── Error Components ────────────────────────────────────────────────────────
 
@@ -306,7 +173,7 @@ function ErrorOverlay({ error, onRetry, onExit }) {
     if (!error) return null
 
     return (
-        <div className="bg-bg-page/95 animate-in fade-in absolute inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+        <div className="bg-bg-page/95 animate-in fade-in absolute inset-0 z-100 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-500">
                 <AlertTriangle size={36} />
             </div>
@@ -341,7 +208,121 @@ function ErrorOverlay({ error, onRetry, onExit }) {
     )
 }
 
-// ─── Timer ───────────────────────────────────────────────────────────────────
+// ─── Phase Change Notification ───────────────────────────────────────────────
+
+const PHASE_CONFIG = {
+    intro: {
+        title: 'Interview Started',
+        subtitle: 'Setting the stage for your session',
+        icon: <Bot size={24} />,
+        color: 'text-[#00b8a3]',
+        bg: 'bg-[#00b8a3]/10',
+    },
+    technical_questions: {
+        title: 'Technical Deep Dive',
+        subtitle: 'Explain your logic and approach',
+        icon: <MessageSquare size={24} />,
+        color: 'text-accent',
+        bg: 'bg-accent/10',
+    },
+    coding: {
+        title: 'Coding Phase',
+        subtitle: 'Implement your solution in the editor',
+        icon: <Code size={24} />,
+        color: 'text-[#ffc01e]',
+        bg: 'bg-[#ffc01e]/10',
+    },
+    evaluation: {
+        title: 'Performance Review',
+        subtitle: 'AI is analyzing your submission',
+        icon: <Target size={24} />,
+        color: 'text-purple-400',
+        bg: 'bg-purple-400/10',
+    },
+    completed: {
+        title: 'Interview Finalized',
+        subtitle: 'Generating your detailed scorecard',
+        icon: <Trophy size={24} />,
+        color: 'text-green-500',
+        bg: 'bg-green-500/10',
+    },
+}
+
+function PhaseChangeOverlay({ phase, onDismiss }) {
+    const config = PHASE_CONFIG[phase] || PHASE_CONFIG.intro
+
+    useEffect(() => {
+        const timer = setTimeout(onDismiss, 3500)
+        return () => clearTimeout(timer)
+    }, [onDismiss])
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-200 flex items-center justify-center p-6 backdrop-blur-xl"
+        >
+            <motion.div
+                initial={{ scale: 0.8, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: -20 }}
+                className="border-border bg-bg-page/40 flex max-w-md flex-col items-center rounded-[2.5rem] border p-12 text-center shadow-[0_0_50px_rgba(0,0,0,0.3)] backdrop-blur-2xl"
+            >
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className={`mb-6 flex h-20 w-20 items-center justify-center rounded-3xl ${config.bg} ${config.color} shadow-lg`}
+                >
+                    {config.icon}
+                </motion.div>
+
+                <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    <h2 className="text-accent mb-2 text-[10px] font-black tracking-[0.3em] uppercase">
+                        Mission Objective
+                    </h2>
+                    <h1 className="text-text-primary mb-3 text-4xl font-black tracking-tight italic">
+                        {config.title}
+                    </h1>
+                    <p className="text-text-secondary text-sm leading-relaxed font-medium opacity-80">
+                        {config.subtitle}
+                    </p>
+                </motion.div>
+
+                <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.5, duration: 2.8, ease: 'linear' }}
+                    className="bg-accent/30 mt-10 h-1 w-32 origin-center overflow-hidden rounded-full"
+                >
+                    <motion.div
+                        animate={{ x: ['-100%', '100%'] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                        className="bg-accent h-full w-full"
+                    />
+                </motion.div>
+            </motion.div>
+
+            {/* Sparkles decoration */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                className="pointer-events-none absolute inset-0 overflow-hidden"
+            >
+                <Sparkles size={80} className="text-accent absolute top-20 left-20 animate-pulse" />
+                <Sparkles
+                    size={40}
+                    className="text-accent absolute right-20 bottom-20 animate-pulse [animation-delay:1s]"
+                />
+            </motion.div>
+        </motion.div>
+    )
+}
 
 function InterviewTimer({ durationMins, startedAt, onTimeExpired }) {
     const totalSeconds = durationMins * 60
@@ -418,6 +399,7 @@ export default function InterviewShell({
     const [connectionStatus, setConnectionStatus] = useState('connected') // connected, disconnected, reconnecting, failed
     const [showExitConfirm, setShowExitConfirm] = useState(false)
     const [isTerminating, setIsTerminating] = useState(false)
+    const [activePhaseChange, setActivePhaseChange] = useState(null)
 
     // ── Layout: left-panel width ratio ───────────────────────────────────────
     const [leftPct, setLeftPct] = useState(30) // % for problem description
@@ -468,7 +450,17 @@ export default function InterviewShell({
                         return
                     }
 
-                    if (json.data.messages) setMessages(json.data.messages)
+                    if (json.data.messages) {
+                        setMessages(
+                            json.data.messages.map((m) => ({
+                                id: m.id,
+                                role: m.role,
+                                content: m.content,
+                                phase: m.phase,
+                                ts: m.ts,
+                            }))
+                        )
+                    }
                 } else {
                     throw new Error(json.error || 'Failed to restore session data')
                 }
@@ -508,6 +500,7 @@ export default function InterviewShell({
 
         socket.on('disconnect', (reason) => {
             console.warn('[Socket] Disconnected:', reason)
+            setIsAiTyping(false) // Force reset typing indicator if disconnected mid-stream
             if (reason === 'io server disconnect') {
                 // transport-level disconnect
                 setConnectionStatus('failed')
@@ -518,6 +511,7 @@ export default function InterviewShell({
 
         socket.on('connect_error', (err) => {
             console.error('[Socket] Connection Error:', err)
+            setIsAiTyping(false) // Force reset typing indicator
             setConnectionStatus('reconnecting')
         })
 
@@ -537,47 +531,135 @@ export default function InterviewShell({
 
         // ── Server-to-client events ──────────────────────────────────────────
 
-        // AI streaming
-        socket.on('interview:ai_stream_chunk', ({ chunk, done }) => {
-            if (!done) {
-                setIsAiTyping(true)
-                setMessages((prev) => {
-                    const last = prev[prev.length - 1]
-                    if (last && last.role === 'ai' && last.streaming) {
-                        return [...prev.slice(0, -1), { ...last, content: last.content + chunk }]
+        // AI streaming — hardened with messageId + sequence idempotency
+        const lastSequenceRef = { current: 0 }
+        const currentStreamingId = { current: null }
+
+        socket.on(
+            'interview:ai_stream_chunk',
+            ({ chunk, done, messageId, sequence, error: streamError }) => {
+                // Idempotency: skip if we've already processed this sequence for THIS message
+                if (
+                    sequence &&
+                    messageId === currentStreamingId.current &&
+                    sequence <= lastSequenceRef.current
+                )
+                    return
+
+                if (messageId) currentStreamingId.current = messageId
+                if (sequence) lastSequenceRef.current = sequence
+
+                if (!done) {
+                    setIsAiTyping(true)
+                    setMessages((prev) => {
+                        // 1. Try to find message by ID
+                        const existingIdx = messageId
+                            ? prev.findIndex((m) => m.id === messageId)
+                            : -1
+
+                        if (existingIdx !== -1) {
+                            const newMsg = {
+                                ...prev[existingIdx],
+                                content: prev[existingIdx].content + chunk,
+                                streaming: true,
+                            }
+                            const newArr = [...prev]
+                            newArr[existingIdx] = newMsg
+                            return newArr
+                        }
+
+                        // 2. Fallback: Update last AI message if it matches profile
+                        const last = prev[prev.length - 1]
+                        if (last && last.role === 'ai' && last.streaming) {
+                            return [
+                                ...prev.slice(0, -1),
+                                { ...last, id: messageId, content: last.content + chunk },
+                            ]
+                        }
+
+                        // 3. Last resort: Create new message
+                        const isErr = chunk?.includes('Sorry, I')
+                        return [
+                            ...prev,
+                            {
+                                id: messageId,
+                                role: 'ai',
+                                content: chunk,
+                                streaming: true,
+                                isError: isErr,
+                            },
+                        ]
+                    })
+                } else {
+                    setIsAiTyping(false)
+                    lastSequenceRef.current = 0
+                    currentStreamingId.current = null
+
+                    // Handle "done without content" edge case
+                    if (streamError) {
+                        setMessages((prev) => {
+                            const last = prev[prev.length - 1]
+                            if (last?.streaming) {
+                                const finalContent = last.content || streamError
+                                return [
+                                    ...prev.slice(0, -1),
+                                    {
+                                        ...last,
+                                        content: finalContent,
+                                        streaming: false,
+                                        isError: true,
+                                    },
+                                ]
+                            }
+                            return [...prev, { role: 'ai', content: streamError, isError: true }]
+                        })
+                        return
                     }
-                    const isErr = chunk.includes('Sorry, I')
-                    return [
-                        ...prev,
-                        { role: 'ai', content: chunk, streaming: true, isError: isErr },
-                    ]
-                })
-            } else {
-                setIsAiTyping(false)
-                setMessages((prev) => {
-                    const last = prev[prev.length - 1]
-                    if (last?.streaming)
-                        return [...prev.slice(0, -1), { ...last, streaming: false }]
-                    return prev
-                })
+
+                    setMessages((prev) => {
+                        const last = prev[prev.length - 1]
+                        if (last?.streaming) {
+                            // Edge case: empty content on done
+                            if (!last.content) {
+                                return [
+                                    ...prev.slice(0, -1),
+                                    {
+                                        ...last,
+                                        content: 'Something went wrong. Please retry.',
+                                        streaming: false,
+                                        isError: true,
+                                    },
+                                ]
+                            }
+                            return [...prev.slice(0, -1), { ...last, streaming: false }]
+                        }
+                        return prev
+                    })
+                }
             }
-        })
+        )
 
         // Run result
         socket.on('interview:phase_change', (newPhase) => {
             setCurrentPhase(newPhase)
+            setActivePhaseChange(newPhase) // Trigger the modern overlay
+
             if (newPhase === 'coding') {
-                toast.success('Ready to code! The editor is now active.')
-            } else if (newPhase === 'evaluation' || newPhase === 'completed') {
-                toast.success(`Interview moved to ${newPhase.replace('_', ' ')} phase`)
-                if (newPhase === 'completed') {
-                    setSessionStatus('completed')
-                    // Correct redirect path: /interview/[id]/result
-                    setTimeout(() => {
-                        window.location.href = `/interview/${sessionId}/result`
-                    }, 2000)
-                }
+                // Keep the toast as a fallback or secondary confirmation
+                toast.success('Ready to code! The editor is now active.', {
+                    description: 'Focus on implementing an optimal solution.',
+                })
+            } else if (newPhase === 'completed') {
+                setSessionStatus('terminating')
+                setActivePhaseChange('completed') // show the overlay
             }
+        })
+
+        // Terminal signal allows instant redirect without waiting for UI delays when session forcibly ends
+        socket.on('interview:session_terminal', () => {
+            console.log('[InterviewShell] Terminal signal received, redirecting instantly...')
+            setSessionStatus('completed')
+            window.location.href = `/interview/${sessionId}/result`
         })
 
         socket.on('interview:run_result', (result) => {
@@ -606,8 +688,15 @@ export default function InterviewShell({
             setMessages((prev) => [...prev, { role: 'ai', content: data.analysis }])
         })
 
+        // AFTER — triggers the redirect when scorecard arrives:
         socket.on('interview:scorecard', (data) => {
-            console.log('[InterviewShell] scorecard', data)
+            console.log('[InterviewShell] Scorecard received, redirecting to result page')
+            setSessionStatus('completed')
+            setIsTerminating(false)
+            // Small delay so the phase overlay ("Interview Finalized") is visible
+            setTimeout(() => {
+                window.location.href = `/interview/${sessionId}/result`
+            }, 1500)
         })
 
         // Timer ended by server
@@ -616,21 +705,80 @@ export default function InterviewShell({
             onEnd?.()
         })
 
+        // Reconnection rehydration
+        socket.on('reconnect', async () => {
+            console.log('[InterviewShell] Socket reconnected — rehydrating...')
+            setIsAiTyping(false) // Reset stuck typing state
+            try {
+                const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
+                const json = await res.json()
+                if (json.success && json.data?.messages) {
+                    setMessages(json.data.messages)
+                    if (json.data.currentPhase) setCurrentPhase(json.data.currentPhase)
+                    if (json.data.status) setSessionStatus(json.data.status)
+                }
+            } catch (err) {
+                console.warn('[InterviewShell] Reconnection rehydration failed:', err)
+            }
+        })
+
         return () => {
             socket.off('connect')
             socket.off('disconnect')
             socket.off('connect_error')
             socket.off('reconnect_attempt')
             socket.off('reconnect_failed')
+            socket.off('reconnect')
             socket.off('interview:ai_stream_chunk')
             socket.off('interview:run_result')
             socket.off('interview:submission_result')
             socket.off('interview:ai_analysis')
             socket.off('interview:scorecard')
             socket.off('interview:ended')
+            socket.off('interview:phase_change')
+            socket.off('interview:session_terminal')
             socket.disconnect()
         }
     }, [wsToken, sessionId, onEnd, isRehydrating])
+
+    // ── Hard timeout for stuck AI streaming ──────────────────────────────────
+    const MAX_STREAM_TIME = 45_000 // 45 seconds to allow for high-load cold-starts
+    useEffect(() => {
+        if (!isAiTyping) return
+        const timer = setTimeout(() => {
+            console.warn('[InterviewShell] AI stream timeout — forcing reset')
+            setIsAiTyping(false)
+            setMessages((prev) => {
+                const last = prev[prev.length - 1]
+                if (last?.streaming) {
+                    return [
+                        ...prev.slice(0, -1),
+                        {
+                            ...last,
+                            content: last.content || 'AI response timed out. Please try again.',
+                            streaming: false,
+                            isError: !last.content,
+                        },
+                    ]
+                }
+                return prev
+            })
+            toast.error('AI response timed out. Please try sending your message again.')
+        }, MAX_STREAM_TIME)
+        return () => clearTimeout(timer)
+    }, [isAiTyping])
+
+    // Hard timeout: if the scorecard socket event doesn't arrive within 90s
+    // of termination, force redirect anyway. The result page will poll for
+    // the result document and show a loading state until it exists.
+    useEffect(() => {
+        if (sessionStatus !== 'terminating') return
+        const timeout = setTimeout(() => {
+            console.warn('[InterviewShell] Scorecard socket event never arrived — forcing redirect')
+            window.location.href = `/interview/${sessionId}/result`
+        }, 90_000)
+        return () => clearTimeout(timeout)
+    }, [sessionStatus, sessionId])
 
     // ── Code change & Auto-snapshots ─────────────────────────────────────────
 
@@ -690,21 +838,30 @@ export default function InterviewShell({
     const handleTerminateSession = async () => {
         if (isTerminating) return
         setIsTerminating(true)
+        setShowExitConfirm(false)
         try {
             const res = await fetch(`/api/interview/sessions/${sessionId}/end`, {
                 method: 'POST',
             })
             const json = await res.json()
             if (json.success) {
-                toast.success('Session ending. Generating your scorecard...')
-                // The socket 'interview:ended' or 'interview:phase_change' will handle the redirect
+                toast.success('Scorecard generating. Please wait...')
+                setSessionStatus('terminating')
+                // ✅ Do NOT redirect here.
+                // The interview:scorecard socket event will fire when the worker
+                // finishes and will trigger the redirect (see Change A above).
+                // A 90s hard timeout below handles cases where the event never arrives.
             } else {
                 throw new Error(json.error || 'Failed to terminate session')
             }
         } catch (err) {
+            console.error('[InterviewShell] Failed to end session:', err)
+            if (err.message?.includes('no longer active')) {
+                window.location.href = `/interview/${sessionId}/result`
+                return
+            }
             toast.error(err.message)
             setIsTerminating(false)
-            setShowExitConfirm(false)
         }
     }
 
@@ -715,15 +872,31 @@ export default function InterviewShell({
                 toast.error('Cannot send message: Interview has ended')
                 return
             }
+            if (isAiTyping) {
+                toast.error('Please wait for the AI to finish responding.')
+                return
+            }
             if (connectionStatus !== 'connected') {
                 toast.error('Cannot send message while disconnected')
                 return
             }
-            setMessages((prev) => [...prev, { role: 'user', content, phase: currentPhase }])
+
+            const aiMessageId = crypto.randomUUID()
+
+            setMessages((prev) => [
+                ...prev,
+                { id: crypto.randomUUID(), role: 'user', content, phase: currentPhase },
+                { id: aiMessageId, role: 'ai', content: '', streaming: true },
+            ])
+
             setIsAiTyping(true)
-            socketRef.current?.emit('interview:chat_message', { content, phase: currentPhase })
+            socketRef.current?.emit('interview:chat_message', {
+                content,
+                phase: currentPhase,
+                messageId: aiMessageId, // Pass the ID we generated to the backend
+            })
         },
-        [connectionStatus, currentPhase, sessionStatus]
+        [connectionStatus, currentPhase, sessionStatus, isAiTyping]
     )
 
     // ── Panel resize ──────────────────────────────────────────────────────────
@@ -775,11 +948,20 @@ export default function InterviewShell({
                 onExit={() => (window.location.href = '/interview/history')}
             />
 
+            <AnimatePresence>
+                {activePhaseChange && (
+                    <PhaseChangeOverlay
+                        phase={activePhaseChange}
+                        onDismiss={() => setActivePhaseChange(null)}
+                    />
+                )}
+            </AnimatePresence>
+
             <ConnectionBanner status={connectionStatus} />
 
             {isRehydrating && (
                 <div
-                    className="bg-bg-page/90 animate-in fade-in absolute inset-0 z-[110] flex flex-col items-center justify-center backdrop-blur-md"
+                    className="bg-bg-page/90 animate-in fade-in absolute inset-0 z-110 flex flex-col items-center justify-center backdrop-blur-md"
                     // Higher z-index than ErrorOverlay to avoid overlap issues during init
                 >
                     <Loader2 size={40} className="text-accent mb-4 animate-spin" />
@@ -793,7 +975,7 @@ export default function InterviewShell({
             )}
 
             {connectionStatus === 'reconnecting' && (
-                <div className="bg-bg-page/80 animate-in fade-in absolute inset-0 z-[110] flex flex-col items-center justify-center backdrop-blur-sm">
+                <div className="bg-bg-page/80 animate-in fade-in absolute inset-0 z-110 flex flex-col items-center justify-center backdrop-blur-sm">
                     <RefreshCw size={40} className="mb-4 animate-spin text-yellow-500" />
                     <p className="text-text-primary animate-pulse text-base font-bold tracking-tight">
                         Connection lost. Resuming session...
@@ -805,7 +987,7 @@ export default function InterviewShell({
             )}
 
             {/* ═══ Top Navbar ════════════════════════════════════════════════ */}
-            <nav className="border-border bg-bg-subtle flex h-[48px] flex-shrink-0 items-center justify-between border-b px-4">
+            <nav className="border-border bg-bg-subtle flex h-[48px] shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}
                 <div className="flex items-center gap-3">
                     <AreanaLogo
@@ -853,11 +1035,11 @@ export default function InterviewShell({
 
             {/* ═══ Exit Confirmation Modal ═════════════════════════════════ */}
             {showExitConfirm && (
-                <div className="bg-bg-page/80 fixed inset-0 z-[150] flex items-center justify-center p-4 backdrop-blur-md">
+                <div className="bg-bg-page/80 fixed inset-0 z-150 flex items-center justify-center p-4 backdrop-blur-md">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="border-border bg-bg-subtle max-w-md rounded-[2rem] border p-8 shadow-2xl"
+                        className="border-border bg-bg-subtle max-w-md rounded-4xl border p-8 shadow-2xl"
                     >
                         <div className="bg-error/15 text-error mb-6 flex h-14 w-14 items-center justify-center rounded-2xl">
                             <AlertTriangle size={28} />
@@ -899,7 +1081,7 @@ export default function InterviewShell({
                     className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                     style={{ width: `${leftPct}%` }}
                 >
-                    <div className="border-border bg-bg-subtle flex h-[42px] flex-shrink-0 items-center gap-2 border-b px-4">
+                    <div className="border-border bg-bg-subtle flex h-[42px] shrink-0 items-center gap-2 border-b px-4">
                         <span className="text-text-primary text-xs font-bold">📄 Problem</span>
                     </div>
                     <ProblemPanel problem={problemState} />
@@ -961,6 +1143,10 @@ export default function InterviewShell({
                         onSend={handleSendMessage}
                         isAiTyping={isAiTyping}
                         currentPhase={currentPhase}
+                        socket={socketRef.current}
+                        setIsAiTyping={setIsAiTyping}
+                        sessionId={sessionId}
+                        wsToken={wsTokenState}
                     />
                 </div>
             </div>
