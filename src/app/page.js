@@ -8,6 +8,7 @@ import LeaderboardPreviewSection from '@/features/home/components/LeaderboardPre
 import TrustedBySection from '@/features/home/components/TrustedBySection'
 import SkillShiftSection from '@/features/home/components/SkillShiftSection'
 import FeaturesHeader from '@/features/home/components/FeaturesHeader'
+import { SmoothScroll } from '@/components/providers/SmoothScroll'
 
 import ErrorBoundary from '@/components/ui/error-boundary'
 
@@ -26,43 +27,45 @@ import ErrorBoundary from '@/components/ui/error-boundary'
  */
 export default function Home() {
     return (
-        <div className="text-text-primary bg-bg-page site-gradient flex min-h-screen flex-col font-sans">
-            <Navbar />
+        <SmoothScroll>
+            <div className="text-text-primary bg-bg-page site-gradient flex min-h-screen flex-col font-sans">
+                <Navbar />
 
-            <main className="flex-grow">
-                <ErrorBoundary>
-                    <Hero />
-                </ErrorBoundary>
+                <main className="flex-grow">
+                    <ErrorBoundary>
+                        <Hero />
+                    </ErrorBoundary>
 
-                <ErrorBoundary>
-                    <TrustedBySection />
-                </ErrorBoundary>
+                    <ErrorBoundary>
+                        <TrustedBySection />
+                    </ErrorBoundary>
 
-                <ErrorBoundary>
-                    <SkillShiftSection />
-                </ErrorBoundary>
+                    <ErrorBoundary>
+                        <SkillShiftSection />
+                    </ErrorBoundary>
 
-                <ErrorBoundary>
-                    <section className="bg-bg-page relative mx-auto max-w-7xl px-4 py-16 md:py-24">
-                        <FeaturesHeader />
-                        <FeaturesBentoGrid />
-                    </section>
-                </ErrorBoundary>
+                    <ErrorBoundary>
+                        <section className="bg-bg-page relative mx-auto max-w-7xl px-4 py-16 md:py-24">
+                            <FeaturesHeader />
+                            <FeaturesBentoGrid />
+                        </section>
+                    </ErrorBoundary>
 
-                <ErrorBoundary>
-                    <HowItWorksSection />
-                </ErrorBoundary>
+                    <ErrorBoundary>
+                        <HowItWorksSection />
+                    </ErrorBoundary>
 
-                <ErrorBoundary>
-                    <RecentProblemsSection />
-                </ErrorBoundary>
+                    <ErrorBoundary>
+                        <RecentProblemsSection />
+                    </ErrorBoundary>
 
-                <ErrorBoundary>
-                    <LeaderboardPreviewSection />
-                </ErrorBoundary>
-            </main>
+                    <ErrorBoundary>
+                        <LeaderboardPreviewSection />
+                    </ErrorBoundary>
+                </main>
 
-            <Footer />
-        </div>
+                <Footer />
+            </div>
+        </SmoothScroll>
     )
 }

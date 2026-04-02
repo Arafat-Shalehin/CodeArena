@@ -58,7 +58,7 @@ export default function AdminSidebar() {
     ]
 
     return (
-        <aside className="border-border sticky top-0 flex min-h-screen w-64 flex-col border-r bg-white">
+        <aside className="border-border bg-bg-page sticky top-0 flex min-h-screen w-64 flex-col border-r">
             {/* Brand Logo */}
             <div className="p-6">
                 <Link href="/admin/dashboard" className="flex items-center gap-2">
@@ -108,13 +108,13 @@ export default function AdminSidebar() {
             <div className="border-border bg-bg-page/50 space-y-2 border-t p-4">
                 <button
                     onClick={handleLogout} // আপডেট করা হ্যান্ডলার কল করুন
-                    className="group flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold text-red-500 transition-all duration-200 hover:bg-red-50"
+                    className="group text-error hover:bg-error-light flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold transition-all duration-200"
                 >
                     <LogOut size={20} className="transition-transform group-hover:translate-x-1" />
                     <span className="text-sm">Logout</span>
                 </button>
 
-                <div className="border-border flex items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm">
+                <div className="border-border bg-bg-subtle flex items-center gap-3 rounded-2xl border p-3 shadow-sm">
                     <div className="bg-accent/10 border-accent/20 text-accent flex h-9 w-9 items-center justify-center rounded-full border text-sm font-bold">
                         {user?.name?.charAt(0) || 'A'}
                     </div>
@@ -138,7 +138,7 @@ function SidebarLink({ item, active }) {
             href={item.href}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 font-bold transition-all duration-200 ${
                 active
-                    ? 'bg-accent shadow-accent/25 scale-[1.02] text-white shadow-md'
+                    ? 'bg-accent shadow-accent-glow scale-[1.02] text-white shadow-md'
                     : 'text-text-secondary hover:bg-bg-muted hover:text-text-primary'
             }`}
         >

@@ -66,19 +66,19 @@ export default function AdminDashboard() {
         )
 
     return (
-        <div className="animate-in fade-in space-y-8 p-4 duration-700 md:p-8">
+        <div className="animate-in fade-in space-y-8 p-6 duration-700 md:p-8">
             {/* Header */}
             <div className="flex items-end justify-between">
                 <div>
-                    <h1 className="text-text-primary text-4xl font-black tracking-tighter uppercase italic">
+                    <h1 className="text-text-primary text-3xl font-bold tracking-tight">
                         System Analytics
                     </h1>
-                    <p className="text-text-muted text-sm font-bold">
+                    <p className="text-text-muted text-sm font-medium">
                         Real-time performance & interview metrics
                     </p>
                 </div>
-                <Button className="bg-accent hover:bg-accent/90 rounded-xl px-6 font-black text-white italic">
-                    <Plus className="mr-2 h-5 w-5" /> NEW PROBLEM
+                <Button className="bg-accent hover:bg-accent/90 rounded-lg px-6 font-semibold text-white shadow-sm">
+                    <Plus className="mr-2 h-4 w-4" /> New Problem
                 </Button>
             </div>
 
@@ -148,10 +148,11 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
                 {/* Graph Area */}
-                <Card className="border-border bg-bg-subtle overflow-hidden rounded-[2rem] shadow-2xl lg:col-span-8">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-xl font-black uppercase italic">
-                            <TrendingUp className="text-accent" /> Submission Activity (7 Days)
+                <Card className="border-border bg-bg-subtle overflow-hidden rounded-xl shadow-sm lg:col-span-8">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                            <TrendingUp className="text-accent h-5 w-5" /> Submission Activity (7
+                            Days)
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="h-[350px] pr-6">
@@ -166,38 +167,47 @@ export default function AdminDashboard() {
                             >
                                 <defs>
                                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        <stop
+                                            offset="5%"
+                                            stopColor="var(--ca-accent)"
+                                            stopOpacity={0.1}
+                                        />
+                                        <stop
+                                            offset="95%"
+                                            stopColor="var(--ca-accent)"
+                                            stopOpacity={0}
+                                        />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid
                                     strokeDasharray="3 3"
                                     vertical={false}
-                                    stroke="#1e293b"
+                                    stroke="var(--ca-border)"
                                 />
                                 <XAxis
                                     dataKey="day"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#64748b', fontSize: 12 }}
+                                    tick={{ fill: 'var(--ca-text-muted)', fontSize: 12 }}
                                 />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#64748b', fontSize: 12 }}
+                                    tick={{ fill: 'var(--ca-text-muted)', fontSize: 12 }}
                                 />
                                 <Tooltip
                                     contentStyle={{
-                                        backgroundColor: '#0f172a',
-                                        borderRadius: '16px',
-                                        border: '1px solid #1e293b',
+                                        backgroundColor: 'var(--ca-bg-page)',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--ca-border)',
+                                        boxShadow: 'var(--shadow-md)',
                                     }}
                                 />
                                 <Area
                                     type="monotone"
                                     dataKey="value"
-                                    stroke="#3b82f6"
-                                    strokeWidth={4}
+                                    stroke="var(--ca-accent)"
+                                    strokeWidth={2}
                                     fill="url(#colorValue)"
                                 />
                             </AreaChart>
@@ -206,9 +216,9 @@ export default function AdminDashboard() {
                 </Card>
 
                 {/* Top Talent Area */}
-                <Card className="border-border bg-bg-subtle overflow-hidden rounded-[2rem] shadow-xl lg:col-span-4">
-                    <CardHeader className="bg-accent/5 border-border/50 border-b">
-                        <CardTitle className="text-accent text-xl font-black uppercase italic">
+                <Card className="border-border bg-bg-subtle overflow-hidden rounded-xl shadow-sm lg:col-span-4">
+                    <CardHeader className="bg-bg-muted/30 border-border border-b py-4">
+                        <CardTitle className="text-text-primary text-lg font-bold">
                             Top Talent
                         </CardTitle>
                     </CardHeader>
@@ -216,25 +226,26 @@ export default function AdminDashboard() {
                         {leaderboard.map((user, index) => (
                             <div
                                 key={index}
-                                className="bg-bg-page hover:border-accent/20 flex cursor-pointer items-center justify-between rounded-2xl border border-transparent p-3 transition-transform hover:scale-[1.02]"
+                                className="bg-bg-page hover:border-accent/30 border-border flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-all hover:shadow-sm"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-accent/10 text-accent flex h-10 w-10 items-center justify-center rounded-xl text-xs font-black">
+                                    <div className="bg-accent/10 text-accent flex h-9 w-9 items-center justify-center rounded-lg text-xs font-bold">
                                         #{index + 1}
                                     </div>
                                     <div>
-                                        <p className="text-text-primary mb-1 text-sm leading-none font-bold">
+                                        <p className="text-text-primary text-sm leading-none font-semibold">
                                             {user.name}
                                         </p>
-                                        <p className="text-text-muted text-[10px] font-black uppercase">
+                                        <p className="text-text-muted mt-1 text-[10px] font-medium tracking-wider uppercase">
                                             Score: {user.score}%
                                         </p>
                                     </div>
                                 </div>
-                                <div className="border-border size-8 overflow-hidden rounded-full border">
+                                <div className="border-border bg-bg-muted/20 size-8 overflow-hidden rounded-full border">
                                     <img
                                         src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name}`}
                                         alt={user.name}
+                                        className="h-full w-full object-cover"
                                     />
                                 </div>
                             </div>
@@ -248,22 +259,22 @@ export default function AdminDashboard() {
 
 function StatCard({ title, value, trend, isUp, icon: Icon }) {
     return (
-        <Card className="border-border bg-bg-subtle group hover:border-accent/50 rounded-[1.5rem] shadow-sm transition-all duration-300">
+        <Card className="border-border bg-bg-subtle group hover:border-accent/40 rounded-xl shadow-sm transition-all duration-300">
             <CardContent className="p-6">
                 <div className="mb-4 flex items-start justify-between">
-                    <div className="bg-accent/10 text-accent flex h-12 w-12 items-center justify-center rounded-2xl shadow-inner transition-transform group-hover:scale-110">
-                        <Icon size={24} />
+                    <div className="bg-accent/10 text-accent group-hover:bg-accent/20 flex h-11 w-11 items-center justify-center rounded-lg transition-colors">
+                        <Icon size={20} />
                     </div>
                     <div
-                        className={`flex items-center rounded-full px-2 py-0.5 text-[10px] font-black italic ${isUp ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}
+                        className={`flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${isUp ? 'bg-success-light text-success' : 'bg-error-light text-error'}`}
                     >
                         {isUp ? '▲' : '▼'} {Math.abs(trend || 0)}%
                     </div>
                 </div>
-                <p className="text-text-muted mb-1 text-[10px] font-black tracking-[0.2em] uppercase">
+                <p className="text-text-muted mb-1 text-[10px] font-semibold tracking-wider uppercase">
                     {title}
                 </p>
-                <h3 className="text-text-primary text-3xl leading-none font-black tracking-tighter italic">
+                <h3 className="text-text-primary text-2xl font-bold tracking-tight">
                     {value !== undefined
                         ? typeof value === 'number'
                             ? value.toLocaleString()
