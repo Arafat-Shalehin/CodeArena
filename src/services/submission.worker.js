@@ -26,6 +26,10 @@ export function initSubmissionWorker() {
         1,
         Number.parseInt(process.env.SUBMISSION_WORKER_CONCURRENCY || '4', 10) || 4
     )
+    const progressEventStride = Math.max(
+        1,
+        Number.parseInt(process.env.SUBMISSION_PROGRESS_EVENT_STRIDE || '4', 10) || 4
+    )
 
     const worker = new Worker(
         'submission-queue',
@@ -306,8 +310,13 @@ export function initSubmissionWorker() {
                             testCaseResults.push(caseResult)
 
                             // 📊 Real-time progress update via Redis pub/sub
-                            if (redisClient.isOpen) {
-                                const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
+                            const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
+                            const shouldEmitProgress =
+                                i === 0 ||
+                                !isPassedCase ||
+                                i + 1 === totalCount ||
+                                (i + 1) % progressEventStride === 0
+                            if (redisClient.isOpen && shouldEmitProgress) {
                                 const passStatus = isPassedCase ? 'AC' : 'WA'
                                 const progressPercent = Math.round(((i + 1) / totalCount) * 100)
 
@@ -448,8 +457,13 @@ export function initSubmissionWorker() {
                             testCaseResults.push(caseResult)
 
                             // 📊 Real-time progress update via Redis pub/sub
-                            if (redisClient.isOpen) {
-                                const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
+                            const isPassedCase = resultVerdict === VERDICTS.ACCEPTED
+                            const shouldEmitProgress =
+                                i === 0 ||
+                                !isPassedCase ||
+                                i + 1 === totalCount ||
+                                (i + 1) % progressEventStride === 0
+                            if (redisClient.isOpen && shouldEmitProgress) {
                                 const passStatus = isPassedCase ? 'AC' : 'WA'
                                 const progressPercent = Math.round(((i + 1) / totalCount) * 100)
 

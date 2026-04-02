@@ -42,9 +42,9 @@ export default function PersonalResultPage() {
             // Poll aggressively while results are not consistent, stop when they are
             refreshInterval: (latestData) => {
                 const d = latestData?.data
-                if (!d) return 2000 // Still loading or no data, keep polling
+                if (!d) return 5000 // Still loading or no data, keep polling
                 if (d.isResultConsistent) return 0 // Results finalized, stop polling
-                return 2000 // Pending submissions exist, poll every 2s
+                return 5000 // Pending submissions exist, poll every 5s
             },
         }
     )

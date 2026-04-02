@@ -13,7 +13,7 @@ export function useContestLeaderboard(contestId) {
         contestId ? `/api/contests/${contestId}/leaderboard/live` : null,
         fetcher,
         {
-            refreshInterval: 5000,
+            refreshInterval: 10000,
             revalidateOnFocus: true,
         }
     )
