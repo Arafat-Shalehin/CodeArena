@@ -52,7 +52,7 @@ export default function RecentProblemsSection() {
             </motion.div>
 
             {/* Problems Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                 {!isNearViewport || isLoading ? (
                     Array.from({ length: 6 }).map((_, i) => (
                         <div

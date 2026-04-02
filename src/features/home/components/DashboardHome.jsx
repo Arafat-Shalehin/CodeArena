@@ -10,6 +10,7 @@ import {
     TrendingUp,
     MessageCircle,
     UserPlus,
+    UserCheck,
     Calendar,
     Award,
     Edit2,
@@ -171,7 +172,7 @@ export default function DashboardHome({ user: initialUser }) {
                 )}
             >
                 {/* LEFT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:sticky lg:top-20 lg:col-span-3 lg:flex lg:h-fit">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pr-1 pb-8 lg:col-span-3 lg:flex">
                     {/* Quick Stats Card */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <p className="text-text-muted mb-4 text-xs font-bold tracking-wider uppercase">
@@ -267,6 +268,81 @@ export default function DashboardHome({ user: initialUser }) {
                             ))}
                         </div>
                     </div>
+
+                    {/* Suggested For You — moved from right sidebar */}
+                    <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
+                        <h4 className="text-text-primary mb-4 font-semibold">Suggested for you</h4>
+                        {loading ? (
+                            <div className="animate-pulse space-y-3">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="bg-bg-muted h-10 rounded"></div>
+                                ))}
+                            </div>
+                        ) : sidebarData.suggestedUsers?.length > 0 ? (
+                            <div className="flex flex-col gap-4">
+                                {sidebarData.suggestedUsers.map((sugg) => (
+                                    <div
+                                        key={sugg._id}
+                                        className="flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Link href={`/profile/${sugg._id}`}>
+                                                <Avatar className="h-8 w-8 transition-opacity hover:opacity-80">
+                                                    <AvatarImage
+                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${sugg.avatarSeed || sugg.name}`}
+                                                    />
+                                                    <AvatarFallback className="bg-bg-muted text-xs">
+                                                        {(sugg.name || 'U').substring(0, 1)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </Link>
+                                            <div>
+                                                <Link href={`/profile/${sugg._id}`}>
+                                                    <p className="text-text-primary line-clamp-1 text-xs font-bold hover:underline">
+                                                        {sugg.name}
+                                                    </p>
+                                                </Link>
+                                                <p className="text-text-muted line-clamp-1 text-[10px]">
+                                                    {sugg.country || 'Global'}{' '}
+                                                    {sugg.stats?.globalRank
+                                                        ? `• Rank #${sugg.stats.globalRank}`
+                                                        : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant={sugg.isFollowing ? 'ghost' : 'outline'}
+                                            size="sm"
+                                            onClick={() => handleFollow(sugg._id)}
+                                            disabled={followLoading[sugg._id] || sugg.isFollowing}
+                                            className={cn(
+                                                'ml-2 h-6 shrink-0 border-none px-3 text-[10px] font-bold transition-all',
+                                                sugg.isFollowing
+                                                    ? 'bg-success/10 text-success hover:bg-error/10 hover:text-error'
+                                                    : 'bg-accent/10 text-accent hover:bg-accent hover:text-white'
+                                            )}
+                                        >
+                                            {followLoading[sugg._id] ? (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : sugg.isFollowing ? (
+                                                <>
+                                                    <UserCheck className="mr-1 h-3 w-3" />
+                                                    Following
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <UserPlus className="mr-1 h-3 w-3" />
+                                                    Follow
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-text-muted text-xs">No suggestions right now.</p>
+                        )}
+                    </div>
                 </aside>
 
                 {/* MAIN FEED (6 cols on desktop) */}
@@ -321,7 +397,8 @@ export default function DashboardHome({ user: initialUser }) {
                         </div>
                     </div>
 
-                    <RecommendedProblems key="rec-problems" context="feed" />
+                    {/* RecommendedProblems hidden */}
+                    {/* <RecommendedProblems key="rec-problems" context="feed" /> */}
 
                     <DailyPicks />
 
@@ -365,7 +442,7 @@ export default function DashboardHome({ user: initialUser }) {
                 </section>
 
                 {/* RIGHT SIDEBAR (Hidden on mobile, 3 cols on desktop) */}
-                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:sticky lg:top-20 lg:col-span-3 lg:flex lg:h-fit">
+                <aside className="no-scrollbar hidden flex-col gap-6 pt-8 pb-8 pl-1 lg:col-span-3 lg:flex">
                     {/* Trending Problems */}
                     <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
                         <h4 className="text-text-primary mb-4 flex items-center gap-2 font-semibold">
@@ -404,81 +481,6 @@ export default function DashboardHome({ user: initialUser }) {
                             </div>
                         ) : (
                             <p className="text-text-muted text-xs">No trending problems.</p>
-                        )}
-                    </div>
-
-                    {/* Suggested For You */}
-                    <div className="bg-bg-subtle border-border rounded-lg border p-6 shadow-sm">
-                        <h4 className="text-text-primary mb-4 font-semibold">Suggested for you</h4>
-                        {loading ? (
-                            <div className="animate-pulse space-y-3">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="bg-bg-muted h-10 rounded"></div>
-                                ))}
-                            </div>
-                        ) : sidebarData.suggestedUsers?.length > 0 ? (
-                            <div className="flex flex-col gap-4">
-                                {sidebarData.suggestedUsers.map((sugg) => (
-                                    <div
-                                        key={sugg._id}
-                                        className="flex items-center justify-between"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Link href={`/profile/${sugg._id}`}>
-                                                <Avatar className="h-8 w-8 transition-opacity hover:opacity-80">
-                                                    <AvatarImage
-                                                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${sugg.avatarSeed || sugg.name}`}
-                                                    />
-                                                    <AvatarFallback className="bg-bg-muted text-xs">
-                                                        {(sugg.name || 'U').substring(0, 1)}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            </Link>
-                                            <div>
-                                                <Link href={`/profile/${sugg._id}`}>
-                                                    <p className="text-text-primary line-clamp-1 text-xs font-bold hover:underline">
-                                                        {sugg.name}
-                                                    </p>
-                                                </Link>
-                                                <p className="text-text-muted line-clamp-1 text-[10px]">
-                                                    {sugg.country || 'Global'}{' '}
-                                                    {sugg.stats?.globalRank
-                                                        ? `• Rank #${sugg.stats.globalRank}`
-                                                        : ''}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <Button
-                                            variant={sugg.isFollowing ? 'ghost' : 'outline'}
-                                            size="sm"
-                                            onClick={() => handleFollow(sugg._id)}
-                                            disabled={followLoading[sugg._id] || sugg.isFollowing}
-                                            className={cn(
-                                                'ml-2 h-6 shrink-0 border-none px-3 text-[10px] font-bold transition-all',
-                                                sugg.isFollowing
-                                                    ? 'text-success bg-success/10'
-                                                    : 'bg-accent-light text-accent-text hover:bg-accent hover:text-white'
-                                            )}
-                                        >
-                                            {followLoading[sugg._id] ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : sugg.isFollowing ? (
-                                                <>
-                                                    <Check className="mr-1 h-3 w-3" />
-                                                    Following
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <UserPlus className="mt-[-1px] mr-1 h-3 w-3" />
-                                                    Follow
-                                                </>
-                                            )}
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-text-muted text-xs">No suggestions right now.</p>
                         )}
                     </div>
 

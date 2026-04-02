@@ -49,8 +49,16 @@ export default function ProfilePage() {
     useEffect(() => {
         if (user?._id || user?.id) {
             fetchSubmissions(5, 0, true)
-            // Background sync to ensure stats/heatmap are up to date
-            syncUser?.()
+            // Trigger stats recalculation so activityCalendar is fresh
+            fetch('/api/user/sync', { method: 'POST' })
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.success && data.data) {
+                        // Merge updated stats (including activityCalendar) into user object
+                        syncUser?.()
+                    }
+                })
+                .catch(console.error)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?._id, user?.id])
@@ -137,9 +145,34 @@ export default function ProfilePage() {
                     <StatsGrid user={user} />
 
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-                        {/* Left Column (4/12) — Stats & Achievements */}
+                        {/* Left Column (4/12) — Stats, Submissions & Achievements */}
                         <div className="order-2 space-y-8 lg:order-1 lg:col-span-4">
                             <ProblemStats user={user} />
+
+                            {/* Recent Submissions */}
+                            <section className="bg-bg-subtle border-border overflow-hidden rounded-2xl border shadow-sm">
+                                <div className="border-border flex items-center justify-between border-b px-6 py-5">
+                                    <h3 className="text-text-primary text-lg font-bold">
+                                        Recent Submissions
+                                    </h3>
+                                    <button
+                                        onClick={handleViewAll}
+                                        className="text-accent text-xs font-bold hover:underline"
+                                    >
+                                        View All
+                                    </button>
+                                </div>
+                                <RecentSubmissions submissions={submissions} />
+                                {hasMoreSubmissions && (
+                                    <button
+                                        onClick={handleLoadMore}
+                                        disabled={isSubmissionsLoading}
+                                        className="bg-bg-muted/50 text-text-muted hover:bg-bg-muted border-border w-full border-t py-4 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-50"
+                                    >
+                                        {isSubmissionsLoading ? 'Loading...' : 'Load More'}
+                                    </button>
+                                )}
+                            </section>
 
                             {/* Languages Section */}
                             {sortedLanguages.length > 0 && (
@@ -277,31 +310,6 @@ export default function ProfilePage() {
 
                             <RecommendedProblems context="profile" />
                             <ContestPerformance performance={user.stats?.contestPerformance} />
-
-                            {/* Recent Submissions */}
-                            <section className="bg-bg-subtle border-border overflow-hidden rounded-2xl border shadow-sm">
-                                <div className="border-border flex items-center justify-between border-b px-6 py-5">
-                                    <h3 className="text-text-primary text-lg font-bold">
-                                        Recent Submissions
-                                    </h3>
-                                    <button
-                                        onClick={handleViewAll}
-                                        className="text-accent text-xs font-bold hover:underline"
-                                    >
-                                        View All
-                                    </button>
-                                </div>
-                                <RecentSubmissions submissions={submissions} />
-                                {hasMoreSubmissions && (
-                                    <button
-                                        onClick={handleLoadMore}
-                                        disabled={isSubmissionsLoading}
-                                        className="bg-bg-muted/50 text-text-muted hover:bg-bg-muted border-border w-full border-t py-4 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-50"
-                                    >
-                                        {isSubmissionsLoading ? 'Loading...' : 'Load More'}
-                                    </button>
-                                )}
-                            </section>
                         </div>
                     </div>
                 </div>

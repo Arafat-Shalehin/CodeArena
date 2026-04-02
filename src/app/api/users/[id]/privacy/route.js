@@ -5,9 +5,10 @@ import { User } from '@/models/User.models'
 
 export const GET = asyncHandler(async (req, { params }) => {
     await dbConnect()
+    const resolvedParams = await params
     const user = await protect(req)
 
-    const targetUser = await User.findById(params.id).select('privacySettings')
+    const targetUser = await User.findById(resolvedParams.id).select('privacySettings')
 
     if (!targetUser) {
         return Response.json({ success: false, message: 'User not found' }, { status: 404 })
@@ -18,34 +19,49 @@ export const GET = asyncHandler(async (req, { params }) => {
 
 export const PUT = asyncHandler(async (req, { params }) => {
     await dbConnect()
+    const resolvedParams = await params
     const user = await protect(req)
 
-    if (user.id !== params.id && user.role !== 'admin') {
+    const userId = user.id || user._id
+    if (userId.toString() !== resolvedParams.id && user.role !== 'admin') {
         return Response.json({ success: false, message: 'Not authorized' }, { status: 403 })
     }
 
     const body = await req.json()
-    const allowedFields = [
-        'profileVisibility',
-        'showStats',
-        'showSubmissions',
-        'showContestHistory',
-        'showFollowers',
-        'allowMessaging',
-        'indexProfile',
-    ]
-    const privacySettings = {}
 
-    for (const field of allowedFields) {
-        if (body[field] !== undefined) {
-            privacySettings[field] = body[field]
-        }
+    // Fetch current settings to merge
+    const currentUser = await User.findById(resolvedParams.id).select('privacySettings')
+    if (!currentUser) {
+        return Response.json({ success: false, message: 'User not found' }, { status: 404 })
+    }
+
+    const current = currentUser.privacySettings || {}
+
+    // Build merged settings
+    const merged = {
+        profileVisibility: ['public', 'followers', 'private'].includes(body.profileVisibility)
+            ? body.profileVisibility
+            : current.profileVisibility || 'public',
+        showStats:
+            typeof body.showStats === 'boolean' ? body.showStats : (current.showStats ?? true),
+        showSubmissions:
+            typeof body.showSubmissions === 'boolean'
+                ? body.showSubmissions
+                : (current.showSubmissions ?? true),
+        showContestHistory:
+            typeof body.showContestHistory === 'boolean'
+                ? body.showContestHistory
+                : (current.showContestHistory ?? true),
+        showFollowers:
+            typeof body.showFollowers === 'boolean'
+                ? body.showFollowers
+                : (current.showFollowers ?? true),
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-        params.id,
-        { $set: { privacySettings } },
-        { new: true }
+        resolvedParams.id,
+        { $set: { privacySettings: merged } },
+        { new: true, runValidators: true }
     ).select('privacySettings')
 
     return Response.json({ success: true, data: updatedUser.privacySettings })

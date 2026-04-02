@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Loader2, UserMinus, UserPlus, Trophy } from 'lucide-react'
+import { Loader2, UserMinus, UserPlus, UserCheck, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -175,18 +175,24 @@ export default function FollowersListModal({ type, userId, onClose }) {
                                             <button
                                                 onClick={(e) => handleFollowToggle(e, user)}
                                                 disabled={actionLoading[user._id]}
-                                                className={`h-8 rounded-lg px-3 text-[10px] font-bold transition-all disabled:opacity-50 ${
+                                                className={`group flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[10px] font-bold transition-all disabled:opacity-50 ${
                                                     isFollowing
-                                                        ? 'bg-bg-muted text-text-secondary hover:bg-red-500/10 hover:text-red-500'
+                                                        ? 'bg-bg-muted text-text-secondary hover:bg-error/10 hover:text-error'
                                                         : 'bg-accent/10 text-accent hover:bg-accent hover:text-white'
                                                 }`}
                                             >
                                                 {actionLoading[user._id] ? (
                                                     <Loader2 className="h-3 w-3 animate-spin" />
                                                 ) : isFollowing ? (
-                                                    'Unfollow'
+                                                    <>
+                                                        <UserCheck className="h-3 w-3" />
+                                                        Following
+                                                    </>
                                                 ) : (
-                                                    'Follow'
+                                                    <>
+                                                        <UserPlus className="h-3 w-3" />
+                                                        Follow
+                                                    </>
                                                 )}
                                             </button>
                                         </li>

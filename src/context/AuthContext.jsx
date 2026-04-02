@@ -160,7 +160,15 @@ export function AuthProvider({ children }) {
                     ...dbUser,
                     id: userId,
                     _id: userId,
+                    // Merge local preferences but let DB fields take precedence for profile fields
                     ...localPreferences,
+                    // Always prefer DB socials, bio, location, website, avatarSeed, privacySettings over stale local values
+                    socials: dbUser.socials || localPreferences.socials,
+                    bio: dbUser.bio ?? localPreferences.bio,
+                    location: dbUser.location ?? localPreferences.location,
+                    website: dbUser.website ?? localPreferences.website,
+                    avatarSeed: dbUser.avatarSeed ?? localPreferences.avatarSeed,
+                    privacySettings: dbUser.privacySettings || localPreferences.privacySettings,
                 }))
                 return dbUser
             }

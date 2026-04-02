@@ -50,7 +50,7 @@ export default function FeaturesHeader() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="bg-bg-subtle/50 border-border relative flex h-[200px] flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-md lg:col-span-4"
+                className="bg-bg-subtle/50 border-border relative hidden h-[200px] flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-md lg:col-span-4 lg:flex"
             >
                 <div className="border-border/40 mb-3 flex items-center justify-between border-b pb-3">
                     <span className="text-text-muted flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] uppercase">

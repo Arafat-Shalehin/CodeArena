@@ -234,7 +234,7 @@ export default function AdminDashboard() {
                                 <div className="border-border size-8 overflow-hidden rounded-full border">
                                     <img
                                         src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.avatarSeed || user.name}`}
-                                        alt="avatar"
+                                        alt={user.name}
                                     />
                                 </div>
                             </div>

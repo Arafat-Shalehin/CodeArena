@@ -59,7 +59,7 @@ export default function HowItWorksSection() {
                 </motion.div>
 
                 {/* Steps Grid */}
-                <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+                <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
                     {stepsData.map((step, idx) => (
                         <StepCard
                             key={idx}
@@ -134,7 +134,7 @@ function StepCard({ step, index, progress, reducedMotion, isLast }) {
                             color: textColorActive,
                             opacity: opacityActive,
                         }}
-                        className="group-hover:shadow-accent-glow relative z-10 flex size-14 items-center justify-center rounded-2xl font-mono text-xl font-bold shadow-sm transition-shadow duration-500"
+                        className="group-hover:shadow-accent-glow relative z-10 flex size-12 items-center justify-center rounded-2xl font-mono text-lg font-bold shadow-sm transition-shadow duration-500 sm:size-14 sm:text-xl"
                     >
                         {step.step < 10 ? `0${step.step}` : step.step}
                     </motion.div>
@@ -148,7 +148,7 @@ function StepCard({ step, index, progress, reducedMotion, isLast }) {
                                 [0, 1]
                             ),
                         }}
-                        className="bg-accent text-text-inverse shadow-accent/20 ring-bg-page absolute -top-4 -right-4 flex size-10 items-center justify-center rounded-xl shadow-lg ring-4 lg:-top-5 lg:-right-5 lg:size-11"
+                        className="bg-accent text-text-inverse shadow-accent/20 ring-bg-page absolute -top-4 -right-4 flex size-8 items-center justify-center rounded-xl shadow-lg ring-4 sm:size-10 lg:-top-5 lg:-right-5 lg:size-11"
                     >
                         <div
                             className="transition-transform duration-300 group-hover:scale-110"
@@ -161,10 +161,10 @@ function StepCard({ step, index, progress, reducedMotion, isLast }) {
 
                 {/* Text Content */}
                 <div className="relative z-10 text-center lg:text-left">
-                    <h3 className="text-text-primary mb-3 text-xl font-bold tracking-tight">
+                    <h3 className="text-text-primary mb-2 text-base font-bold tracking-tight sm:mb-3 sm:text-xl">
                         {step.title}
                     </h3>
-                    <p className="text-text-secondary text-sm leading-relaxed font-medium">
+                    <p className="text-text-secondary text-xs leading-relaxed font-medium sm:text-sm">
                         {step.desc}
                     </p>
                 </div>

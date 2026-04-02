@@ -6,8 +6,9 @@ import { User } from '@/models/User.models'
 export const GET = asyncHandler(async (req, { params }) => {
     await dbConnect()
     const user = await protect(req)
+    const resolvedParams = await params
 
-    const targetUser = await User.findById(params.id).select('subscription')
+    const targetUser = await User.findById(resolvedParams.id).select('subscription')
 
     if (!targetUser) {
         return Response.json({ success: false, message: 'User not found' }, { status: 404 })
@@ -26,14 +27,15 @@ export const GET = asyncHandler(async (req, { params }) => {
 export const DELETE = asyncHandler(async (req, { params }) => {
     await dbConnect()
     const user = await protect(req)
+    const resolvedParams = await params
 
-    if (user.id !== params.id && user.role !== 'admin') {
+    const userId = user.id || user._id
+    if (userId.toString() !== resolvedParams.id && user.role !== 'admin') {
         return Response.json({ success: false, message: 'Not authorized' }, { status: 403 })
     }
 
-    // Mark subscription to cancel at period end
     const updatedUser = await User.findByIdAndUpdate(
-        params.id,
+        resolvedParams.id,
         {
             $set: {
                 'subscription.cancelAtPeriodEnd': true,

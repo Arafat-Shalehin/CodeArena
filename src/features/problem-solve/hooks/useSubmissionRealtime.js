@@ -237,7 +237,11 @@ export function useSubmissionRealtime({
                 if (onProblemSolved && problemId) {
                     onProblemSolved(problemId)
                 }
-                syncUser()
+                // Recalculate stats (including activityCalendar) then refresh user
+                fetch('/api/user/sync', { method: 'POST' })
+                    .then((res) => res.json())
+                    .then(() => syncUser())
+                    .catch(console.error)
             } else if (data.status === 'error' || verdict === 'ERROR') {
                 toast.error(data.error || 'Evaluation Error')
             } else {

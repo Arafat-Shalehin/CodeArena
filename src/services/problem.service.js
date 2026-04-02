@@ -449,20 +449,43 @@ export async function deleteProblem(id) {
  * Fetch problems grouped by their tags for the explore or admin page.
  * Added to resolve build error.
  */
-export async function getProblemsGroupedByTag() {
+export async function getProblemsGroupedByTag({ minCount = 1, sampleSize = 3 } = {}) {
     try {
         const results = await Problem.aggregate([
             { $unwind: '$tags' },
             {
                 $group: {
                     _id: '$tags',
+                    count: { $sum: 1 },
+                    easy: {
+                        $sum: { $cond: [{ $eq: ['$difficulty', 'easy'] }, 1, 0] },
+                    },
+                    medium: {
+                        $sum: { $cond: [{ $eq: ['$difficulty', 'medium'] }, 1, 0] },
+                    },
+                    hard: {
+                        $sum: { $cond: [{ $eq: ['$difficulty', 'hard'] }, 1, 0] },
+                    },
                     problems: {
                         $push: { _id: '$_id', title: '$title', difficulty: '$difficulty' },
                     },
-                    count: { $sum: 1 },
                 },
             },
+            { $match: { count: { $gte: minCount } } },
             { $sort: { count: -1 } },
+            {
+                $project: {
+                    tag: '$_id',
+                    count: 1,
+                    difficulties: {
+                        easy: '$easy',
+                        medium: '$medium',
+                        hard: '$hard',
+                    },
+                    problems: { $slice: ['$problems', sampleSize] },
+                    _id: 0,
+                },
+            },
         ])
         return results
     } catch (error) {

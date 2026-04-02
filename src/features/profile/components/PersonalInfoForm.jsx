@@ -80,7 +80,7 @@ const InlineEditField = ({
                         >
                             <option value="">Global (No Country)</option>
                             {options.map((opt) => (
-                                <option key={opt.code} value={opt.name}>
+                                <option key={opt.code} value={opt.code}>
                                     {opt.name}
                                 </option>
                             ))}
