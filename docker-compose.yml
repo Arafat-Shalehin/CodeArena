@@ -75,6 +75,10 @@ services:
             - '3001:3000'
         networks:
             - codearena-network
+        deploy:
+            resources:
+                limits:
+                    memory: 2G
 
     # Docker API Proxy (Security Hardened)
     # This service allows the 'app' to talk to Docker safely
@@ -91,8 +95,8 @@ services:
             - IMAGES=1
             - POST=1
             - EXEC=1
-            # DELETE and BUILD are disabled for extra security
-            - DELETE=0
+            # DELETE must be enabled so cleanupContainer and janitor can remove executor containers
+            - DELETE=1
             - BUILD=0
         networks:
             - codearena-network
