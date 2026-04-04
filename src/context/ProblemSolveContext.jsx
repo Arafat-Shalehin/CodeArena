@@ -755,6 +755,7 @@ function ProblemSolveProviderInner({
             socket: realtime.socket,
             latestSubmissionEvent: realtime.latestSubmissionEvent,
             submissionResult: realtime.submissionResult,
+            setSubmissionResult: realtime.setSubmissionResult,
             viewSubmissionDetails,
 
             // From Cache context

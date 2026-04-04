@@ -1,6 +1,4 @@
 import Docker from 'dockerode'
-import { Readable, PassThrough } from 'stream'
-import path from 'path'
 import { getLanguageConfig } from './languages.js'
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
 import { executeCodeWithJudge0 } from '../judge0-executor.js'
