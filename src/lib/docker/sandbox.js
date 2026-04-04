@@ -30,7 +30,7 @@ export const SANDBOX_CONFIG = {
         cpus: '0.5',
         memory: '256m',
         memorySwap: '256m',
-        pidsLimit: 32,
+        pidsLimit: 50,
     },
 
     // Security options
@@ -132,6 +132,9 @@ export const validateCodeSecurity = (code) => {
 
 export const getDockerRunConfig = (language) => {
     const config = {
+        Labels: {
+            'codearena.role': 'executor',
+        },
         HostConfig: {
             Memory: parseInt(SANDBOX_CONFIG.resources.memory) * 1024 * 1024,
             MemorySwap: parseInt(SANDBOX_CONFIG.resources.memorySwap) * 1024 * 1024,
