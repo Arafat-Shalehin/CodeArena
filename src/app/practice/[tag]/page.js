@@ -172,8 +172,27 @@ export default function PracticeTagPage({ params }) {
 
                 {/* Problem List */}
                 {loading ? (
-                    <div className="flex min-h-[40vh] items-center justify-center">
-                        <Loader2 className="text-accent h-8 w-8 animate-spin" />
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({ length: 9 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="bg-bg-subtle border-border animate-pulse rounded-xl border p-5"
+                            >
+                                <div className="mb-3 flex items-start justify-between">
+                                    <div className="bg-bg-muted h-5 w-3/4 rounded"></div>
+                                    <div className="bg-bg-muted h-4 w-12 rounded-full"></div>
+                                </div>
+                                <div className="bg-bg-muted/60 mb-4 h-3 w-full rounded"></div>
+                                <div className="mb-4 flex flex-wrap gap-2">
+                                    <div className="bg-bg-muted h-4 w-14 rounded-full"></div>
+                                    <div className="bg-bg-muted h-4 w-14 rounded-full"></div>
+                                </div>
+                                <div className="border-border/50 flex items-center justify-between border-t pt-3">
+                                    <div className="bg-bg-muted h-3 w-16 rounded"></div>
+                                    <div className="bg-bg-muted h-6 w-16 rounded"></div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : error ? (
                     <div className="bg-bg-subtle border-border rounded-lg border p-12 text-center">

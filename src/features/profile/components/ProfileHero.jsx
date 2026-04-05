@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // Shared Components
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -37,7 +37,7 @@ import FollowersListModal from './FollowersListModal'
  * @returns {JSX.Element} The rendered profile hero section.
  */
 export default function ProfileHero({ user: userProp }) {
-    const { user: authUser } = useAuth()
+    const { user: authUser, updateProfile } = useAuth()
 
     const displayUser = userProp || authUser
     const name = displayUser?.name || displayUser?.email?.split('@')[0] || 'Unknown User'
@@ -65,9 +65,6 @@ export default function ProfileHero({ user: userProp }) {
 
     const [isFollowLoading, setIsFollowLoading] = useState(false)
 
-    // Manage local follow state for optimistic UI updates
-    const initialFollowersCount = displayUser?.followers?.length || 0
-    const initialFollowingCount = displayUser?.following?.length || 0
     const currentUserId = authUser?._id || authUser?.id
 
     const checkIsFollowing = (user) => {
@@ -75,17 +72,33 @@ export default function ProfileHero({ user: userProp }) {
         return user.followers.some((fId) => fId.toString() === currentUserId.toString())
     }
 
-    const [followersCount, setFollowersCount] = useState(initialFollowersCount)
-    const [followingCount, setFollowingCount] = useState(initialFollowingCount)
+    const [followersCount, setFollowersCount] = useState(displayUser?.followers?.length || 0)
+    const [followingCount, setFollowingCount] = useState(displayUser?.following?.length || 0)
     const [isFollowing, setIsFollowing] = useState(checkIsFollowing(displayUser))
     const [friendsModalType, setFriendsModalType] = useState(null) // 'followers' | 'following' | null
 
-    // Sync state if displayUser changes from network fetch
+    // Track which user's profile we're viewing so we only reset counts when
+    // the profile actually changes, NOT on every authUser re-render (e.g. stats update).
+    const lastDisplayUserIdRef = useRef(null)
+
     useEffect(() => {
-        setFollowersCount(displayUser?.followers?.length || 0)
-        setFollowingCount(displayUser?.following?.length || 0)
-        setIsFollowing(checkIsFollowing(displayUser))
-    }, [displayUser, currentUserId])
+        const displayUserId = displayUser?._id?.toString() || displayUser?.id?.toString()
+        if (!displayUserId) return
+
+        // Only reset counts when we switch to a different user's profile
+        if (lastDisplayUserIdRef.current !== displayUserId) {
+            lastDisplayUserIdRef.current = displayUserId
+            setFollowersCount(displayUser?.followers?.length || 0)
+            setFollowingCount(displayUser?.following?.length || 0)
+            setIsFollowing(checkIsFollowing(displayUser))
+        }
+    }, [
+        displayUser?._id,
+        displayUser?.id,
+        displayUser?.followers?.length,
+        displayUser?.following?.length,
+        currentUserId,
+    ])
 
     const handleFollowToggle = async () => {
         if (!authUser) {
@@ -109,12 +122,29 @@ export default function ProfileHero({ user: userProp }) {
             const data = await res.json()
 
             if (res.ok && data.success) {
-                // Read truth from server to ensure sync
+                const nowFollowing = data.data.following
+
+                // Confirm the target profile's follower count from server
                 if (data.data?.followersCount !== undefined) {
                     setFollowersCount(data.data.followersCount)
                 }
-                setIsFollowing(data.data.following)
-                toast.success(data.data.following ? `Following ${name}` : `Unfollowed ${name}`)
+                setIsFollowing(nowFollowing)
+                toast.success(nowFollowing ? `Following ${name}` : `Unfollowed ${name}`)
+
+                // Keep the current user's `following` array in AuthContext in sync so
+                // that subsequent authUser re-renders don't reset the count back to
+                // the stale DB value.
+                if (authUser?.following !== undefined) {
+                    const targetId = displayUser._id.toString()
+                    const currentFollowing = Array.isArray(authUser.following)
+                        ? authUser.following.map((f) => f.toString())
+                        : []
+                    const updatedFollowing = nowFollowing
+                        ? [...new Set([...currentFollowing, targetId])]
+                        : currentFollowing.filter((id) => id !== targetId)
+
+                    updateProfile?.({ following: updatedFollowing })
+                }
             } else {
                 throw new Error(data.message || 'Failed to toggle follow.')
             }

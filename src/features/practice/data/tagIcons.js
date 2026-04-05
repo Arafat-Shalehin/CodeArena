@@ -1,0 +1,62 @@
+import {
+    Search,
+    Puzzle,
+    BarChart3,
+    Type,
+    Hash,
+    Calculator,
+    ArrowDownUp,
+    Target,
+    TreePine,
+    Network,
+    Radio,
+    MousePointer2,
+    Link2,
+    Library,
+    Zap,
+    Repeat,
+    Gamepad2,
+    Maximize,
+    Undo2,
+    Grid3X3,
+    Swords,
+    Plus,
+    Inbox,
+    Mountain,
+    Globe,
+} from 'lucide-react'
+
+const TAG_ICONS = {
+    'dynamic programming': Puzzle,
+    array: BarChart3,
+    string: Type,
+    'hash table': Hash,
+    math: Calculator,
+    sorting: ArrowDownUp,
+    greedy: Target,
+    'binary search': Target,
+    tree: TreePine,
+    graph: Network,
+    'depth-first search': Search,
+    'breadth-first search': Radio,
+    'two pointers': MousePointer2,
+    'linked list': Link2,
+    stack: Library,
+    'bit manipulation': Zap,
+    recursion: Repeat,
+    simulation: Gamepad2,
+    'sliding window': Maximize,
+    backtracking: Undo2,
+    matrix: Grid3X3,
+    'divide and conquer': Swords,
+    'prefix sum': Plus,
+    queue: Inbox,
+    heap: Mountain,
+    trie: Globe,
+}
+
+export function getTagIcon(tag) {
+    const key = String(tag || '').toLowerCase()
+    const Icon = TAG_ICONS[key] || Hash
+    return Icon
+}

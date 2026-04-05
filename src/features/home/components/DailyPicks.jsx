@@ -1,30 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Zap, ArrowRight, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useDailyPicks } from '@/hooks/useDailyPicks'
 
 export default function DailyPicks() {
-    const [picks, setPicks] = useState(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const fetchPicks = async () => {
-            try {
-                const res = await fetch('/api/feed/picks')
-                const json = await res.json()
-                if (json.success) {
-                    setPicks(json.data.picks)
-                }
-            } catch (error) {
-                console.error('Failed to fetch daily picks:', error)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchPicks()
-    }, [])
+    const { dailyPicks: picks, isLoading: loading } = useDailyPicks()
 
     const getDifficultyClass = (diff) => {
         const d = diff?.toLowerCase()

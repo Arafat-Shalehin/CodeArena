@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -10,25 +9,9 @@ import { cn } from '@/lib/utils'
  * @description A modern, toggle-style theme switcher with smooth transitions.
  */
 export function ThemeToggle({ className }) {
-    const { theme, setTheme, resolvedTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
+    const { setTheme, resolvedTheme } = useTheme()
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    if (!mounted) {
-        return (
-            <div
-                suppressHydrationWarning
-                className={cn(
-                    'h-8 w-16 animate-pulse rounded-full border border-zinc-800 bg-zinc-800/20',
-                    className
-                )}
-            />
-        )
-    }
-
+    // Use resolvedTheme which is available immediately during SSR
     const isDark = resolvedTheme === 'dark'
 
     const toggleTheme = () => {
