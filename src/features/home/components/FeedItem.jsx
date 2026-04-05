@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { MessageCircle, Sparkles, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns'
 import confetti from 'canvas-confetti'
 import { SiJavascript, SiPython, SiCplusplus } from 'react-icons/si'
 import { FaJava } from 'react-icons/fa'
+import React from 'react'
 
 const LANGUAGE_MAP = {
     javascript: { name: 'JavaScript', color: 'text-yellow-400', icon: SiJavascript },
@@ -61,7 +62,7 @@ const getDynamicStory = (item) => {
     return pool[seed % pool.length]
 }
 
-export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
+function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
     const [congratulated, setCongratulated] = useState(item.hasLiked || false)
     const [likeCount, setLikeCount] = useState(item.likes || 0)
     const [isLoading, setIsLoading] = useState(false)
@@ -74,14 +75,18 @@ export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
 
     const isPost = item.type === 'post'
     const langKey = item.language?.toLowerCase() || 'javascript'
-    const language = LANGUAGE_MAP[langKey] || LANGUAGE_MAP.javascript
-    const story = !isPost ? getDynamicStory(item) : null
+    const language = useMemo(() => LANGUAGE_MAP[langKey] || LANGUAGE_MAP.javascript, [langKey])
+    const story = useMemo(() => (!isPost ? getDynamicStory(item) : null), [isPost, item])
 
     const diff = !isPost ? item.problem?.difficulty || 'easy' : null
     const diffClass = !isPost ? getDifficultyClass(diff) : ''
-    const formattedTime = formatDistanceToNow(new Date(item.createdAt || Date.now()), {
-        addSuffix: true,
-    })
+    const formattedTime = useMemo(
+        () =>
+            formatDistanceToNow(new Date(item.createdAt || Date.now()), {
+                addSuffix: true,
+            }),
+        [item.createdAt]
+    )
 
     const handleCongratulate = useCallback(
         async (e) => {
@@ -126,7 +131,12 @@ export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
 
                 // Sync with server data (in case optimistic was wrong)
                 setLikeCount(data.likes)
-                setCongratulated(data.action === 'liked' || data.action === 'congratulated')
+                const nowCongratulated = data.action === 'liked' || data.action === 'congratulated'
+                setCongratulated(nowCongratulated)
+                onStatsChange?.(item.id || item._id, {
+                    likes: data.likes,
+                    hasLiked: nowCongratulated,
+                })
             } catch (error) {
                 console.error('Error congratulating:', error)
                 // Revert optimistic update
@@ -136,7 +146,7 @@ export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
                 setIsLoading(false)
             }
         },
-        [congratulated, isLoading, item.id, item._id, isPost]
+        [congratulated, isLoading, item.id, item._id, isPost, onStatsChange]
     )
 
     const handleOpenDetail = useCallback(
@@ -272,3 +282,5 @@ export default function FeedItem({ item, getDifficultyClass, onOpenDetail }) {
         </div>
     )
 }
+
+export default React.memo(FeedItem)

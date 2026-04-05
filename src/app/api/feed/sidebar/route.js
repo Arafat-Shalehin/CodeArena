@@ -13,9 +13,21 @@ export async function GET(req) {
     try {
         await dbConnect()
 
-        // Try to get cached sidebar data (use generic cache for all users)
-        const cacheKey = 'sidebar:generic'
-        if (redisClient.isOpen) {
+        // 1. Authenticate user to filter out themselves and followed users from suggestions.
+        let user = null
+        try {
+            user = await protect(req)
+        } catch (authError) {
+            if (authError?.status !== 401) {
+                throw authError
+            }
+        }
+
+        // 2. Build user-specific cache key
+        const cacheKey = user?._id ? `sidebar:user:${user._id}` : 'sidebar:anonymous'
+
+        // Try to get cached sidebar data
+        if (redisClient.isOpen && user?._id) {
             try {
                 const cached = await redisClient.get(cacheKey)
                 if (cached) {
@@ -27,17 +39,6 @@ export async function GET(req) {
                 }
             } catch (cacheErr) {
                 console.warn('[SidebarAPI] Cache get error:', cacheErr.message)
-            }
-        }
-
-        // 1. Authenticate user to filter out themselves and followed users from suggestions.
-        // If token is missing/invalid, continue as anonymous instead of failing the entire sidebar API.
-        let user = null
-        try {
-            user = await protect(req)
-        } catch (authError) {
-            if (authError?.status !== 401) {
-                throw authError
             }
         }
 
@@ -59,12 +60,46 @@ export async function GET(req) {
             .lean()
 
         // 3. Fetch Suggested Users
-        // Users the current user does NOT follow, excluding themselves.
-        const excludeFilter = user ? { _id: { $nin: [...followingIds, user._id] } } : {}
+        // Algorithm: Like Instagram "People You May Know"
+        // - Exclude self and followed users
+        // - Score based on: globalRank (better rank = higher score), more problems solved
+        // - Filter out inactive users (must have solved at least 1 problem)
+        // - Exclude users with no score
+        const suggestedUsersExclude = user
+            ? { _id: { $nin: [...followingIds, user._id] }, 'stats.score': { $gt: 0 } }
+            : { 'stats.score': { $gt: 0 } }
+
         const suggestedUsers = await User.aggregate([
-            { $match: excludeFilter },
-            { $sample: { size: 3 } }, // Randomly sample active users
-            { $project: { name: 1, avatarSeed: 1, bio: 1, 'stats.globalRank': 1, country: 1 } },
+            { $match: suggestedUsersExclude },
+            {
+                $addFields: {
+                    suggestionScore: {
+                        $add: [
+                            { $multiply: [{ $ifNull: ['$stats.score', 0] }, 0.3] },
+                            { $multiply: [{ $ifNull: ['$stats.accepted', 0] }, 0.3] },
+                            {
+                                $cond: [
+                                    { $eq: ['$stats.globalRank', 1] },
+                                    100,
+                                    { $cond: [{ $lt: ['$stats.globalRank', 100] }, 50, 10] },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            },
+            { $sort: { suggestionScore: -1 } },
+            { $limit: 5 },
+            {
+                $project: {
+                    name: 1,
+                    avatarSeed: 1,
+                    bio: 1,
+                    'stats.globalRank': 1,
+                    'stats.accepted': 1,
+                    country: 1,
+                },
+            },
         ])
 
         // 4. Fetch Upcoming Contests - add index on status + startTime
@@ -74,8 +109,9 @@ export async function GET(req) {
             .select('title startTime maxParticipants')
             .lean()
 
-        // 5. Fetch Top Contributors - using index on stats.score
-        const topContributors = await User.find()
+        // 5. Fetch Top Contributors - excluding current user
+        const topContributorsQuery = user ? { _id: { $ne: user._id } } : {}
+        const topContributors = await User.find(topContributorsQuery)
             .sort({ 'stats.score': -1 })
             .limit(3)
             .select('name avatarSeed stats.score')
@@ -88,8 +124,8 @@ export async function GET(req) {
             topContributors,
         }
 
-        // Cache the result for 5 minutes
-        if (redisClient.isOpen) {
+        // Cache user-specific data for 5 minutes (skip for anonymous)
+        if (redisClient.isOpen && user?._id) {
             try {
                 await redisClient.setEx(cacheKey, SIDEBAR_CACHE_TTL, JSON.stringify(sidebarData))
             } catch (cacheErr) {

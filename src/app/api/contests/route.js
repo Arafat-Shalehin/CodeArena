@@ -20,8 +20,5 @@ export const POST = asyncHandler(async (req, context) => {
 
     await authorize(['admin'])(req)
 
-    // Only admin can create contests
-    await authorize(['admin'])(req, context)
-
     return create(req, context)
 })
