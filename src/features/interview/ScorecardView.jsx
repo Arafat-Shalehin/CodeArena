@@ -12,10 +12,11 @@ import {
     MessageSquare,
     Trophy,
     Lightbulb,
-    Target,
     Code2,
     Sparkles,
+    Target,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
@@ -371,14 +372,14 @@ export default function ScorecardView({ sessionId }) {
                             <div className="bg-accent/10 rounded-2xl p-3 shadow-inner">
                                 <Sparkles className="text-accent h-7 w-7" />
                             </div>
-                            <h3 className="text-text-primary text-2xl font-[900] tracking-tight">
+                            <h3 className="text-text-primary text-2xl font-black tracking-tight">
                                 AI Review Summary
                             </h3>
                         </div>
-                        <div className="custom-scrollbar flex-grow overflow-y-auto pr-4">
-                            <p className="text-text-secondary text-base leading-[1.7] font-medium opacity-90 md:text-lg">
-                                {result.aiSummary}
-                            </p>
+                        <div className="custom-scrollbar grow overflow-y-auto pr-4">
+                            <div className="text-text-secondary prose prose-invert max-w-none text-base leading-[1.7] font-medium opacity-90 md:text-lg">
+                                <ReactMarkdown>{result.aiSummary}</ReactMarkdown>
+                            </div>
                         </div>
                     </motion.section>
 
@@ -391,24 +392,28 @@ export default function ScorecardView({ sessionId }) {
                             label: 'Communication',
                             val: result.communicationScore,
                             color: 'text-blue-500',
+                            bg: 'bg-blue-500',
                             icon: MessageSquare,
                         },
                         {
                             label: 'Coding Performance',
                             val: result.codeQualityScore,
                             color: 'text-emerald-500',
+                            bg: 'bg-emerald-500',
                             icon: Code2,
                         },
                         {
                             label: 'Problem Solving',
                             val: result.problemSolvingScore,
                             color: 'text-accent',
+                            bg: 'bg-accent',
                             icon: Target,
                         },
                         {
                             label: 'Technical Accuracy',
                             val: result.approachScore,
                             color: 'text-purple-500',
+                            bg: 'bg-purple-500',
                             icon: Trophy,
                         },
                     ].map((item, i) => {
@@ -458,7 +463,7 @@ export default function ScorecardView({ sessionId }) {
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${item.val || 0}%` }}
                                                 transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
-                                                className={`h-full ${item.color.replace('text-', 'bg-')}`}
+                                                className={`h-full ${item.bg}`}
                                             />
                                         </div>
                                     </div>
@@ -483,7 +488,7 @@ export default function ScorecardView({ sessionId }) {
                             <div className="relative z-10 space-y-8">
                                 <div className="flex items-center gap-3">
                                     <Trophy className="h-6 w-6 text-emerald-500" />
-                                    <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                    <h3 className="text-text-primary text-xl font-black tracking-tight">
                                         Key Strengths
                                     </h3>
                                 </div>
@@ -495,7 +500,7 @@ export default function ScorecardView({ sessionId }) {
                                                 initial={{ opacity: 0, x: -10 }}
                                                 whileInView={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: i * 0.1 }}
-                                                className="flex items-start gap-4 rounded-[1.5rem] border border-emerald-500/10 bg-emerald-500/5 p-5 transition-all hover:bg-emerald-500/10"
+                                                className="flex items-start gap-4 rounded-3xl border border-emerald-500/10 bg-emerald-500/5 p-5 transition-all hover:bg-emerald-500/10"
                                             >
                                                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-500">
                                                     {i + 1}
@@ -506,7 +511,7 @@ export default function ScorecardView({ sessionId }) {
                                             </motion.div>
                                         ))
                                     ) : (
-                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2rem] border border-dashed py-10 text-center">
+                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-4xl border border-dashed py-10 text-center">
                                             <p className="text-text-muted text-sm font-medium">
                                                 No specific strengths identified.
                                             </p>
@@ -527,7 +532,7 @@ export default function ScorecardView({ sessionId }) {
                             <div className="relative z-10 space-y-8">
                                 <div className="flex items-center gap-3">
                                     <AlertCircle className="text-error h-6 w-6" />
-                                    <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                    <h3 className="text-text-primary text-xl font-black tracking-tight">
                                         Critical Weaknesses
                                     </h3>
                                 </div>
@@ -540,7 +545,7 @@ export default function ScorecardView({ sessionId }) {
                                                 initial={{ opacity: 0, x: -10 }}
                                                 whileInView={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: i * 0.1 }}
-                                                className="bg-error/5 border-error/10 hover:bg-error/10 flex items-start gap-4 rounded-[1.5rem] border p-5 transition-all"
+                                                className="bg-error/5 border-error/10 hover:bg-error/10 flex items-start gap-4 rounded-3xl border p-5 transition-all"
                                             >
                                                 <span className="bg-error/20 text-error flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black">
                                                     {i + 1}
@@ -551,7 +556,7 @@ export default function ScorecardView({ sessionId }) {
                                             </motion.div>
                                         ))
                                     ) : (
-                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-[2rem] border border-dashed py-10 text-center">
+                                        <div className="bg-bg-subtle/50 border-border flex flex-col items-center justify-center rounded-4xl border border-dashed py-10 text-center">
                                             <p className="text-text-muted text-sm font-medium">
                                                 No specific weaknesses identified.
                                             </p>
@@ -573,7 +578,7 @@ export default function ScorecardView({ sessionId }) {
                         <div className="relative z-10 flex h-full flex-col space-y-8">
                             <div className="flex items-center gap-3">
                                 <Lightbulb className="h-6 w-6 text-yellow-500" />
-                                <h3 className="text-text-primary text-xl font-[900] tracking-tight">
+                                <h3 className="text-text-primary text-xl font-black tracking-tight">
                                     Expert Recommendations
                                 </h3>
                             </div>
@@ -585,7 +590,7 @@ export default function ScorecardView({ sessionId }) {
                                         initial={{ opacity: 0, y: 10 }}
                                         whileInView={{ opacity: 1, y: 0 }}
                                         transition={{ delay: i * 0.1 }}
-                                        className="matte-surface group flex flex-col gap-4 rounded-[2rem] border-yellow-500/10 p-8 shadow-inner transition-all hover:border-yellow-500/30"
+                                        className="matte-surface group flex flex-col gap-4 rounded-4xl border-yellow-500/10 p-8 shadow-inner transition-all hover:border-yellow-500/30"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-yellow-500/20 text-xs font-black text-yellow-500">

@@ -233,7 +233,10 @@ export function registerInterviewNamespace(io) {
                 await dbConnect()
                 const { content, phase, messageId } = payload
 
-                const currentSession = await InterviewSession.findById(sessionId)
+                // Fetch the latest session phase to ensure the message is labeled correctly
+                const currentSession = await InterviewSession.findById(sessionId).select(
+                    'currentPhase isProcessing'
+                )
                 if (currentSession?.isProcessing) {
                     return socket.emit('error', 'Wait for AI response')
                 }
@@ -258,7 +261,7 @@ export function registerInterviewNamespace(io) {
                 await InterviewMessage.create({
                     sessionId,
                     role: 'user',
-                    phase: phase || 'coding',
+                    phase: currentSession?.currentPhase || 'intro',
                     content,
                     ts: new Date(),
                 })

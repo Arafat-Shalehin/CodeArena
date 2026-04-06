@@ -11,6 +11,8 @@ import { redisClient } from '@/lib/redis'
 import { getInterviewAIQueue } from '@/lib/queue'
 import { releaseProcessingLock } from '@/services/interviewSession.service'
 
+export const dynamic = 'force-dynamic'
+
 export const GET = asyncHandler(async (req, { params }) => {
     await dbConnect()
 

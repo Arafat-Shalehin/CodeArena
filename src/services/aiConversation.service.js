@@ -282,6 +282,7 @@ export function buildScorecardPrompt({
     history = [],
     submissions = [],
     evaluationMetadata = null,
+    participationData = null,
 }) {
     const transcript = history.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
 
@@ -314,10 +315,13 @@ EVALUATION RUBRIC:
 
 CRITICAL RULES (ZERO TOLERANCE):
 - Be EXTREMELY STRICT and objective. 90+ is elite; 70+ is solid; <60 is failing.
-- ZERO PARTICIPATION: If there is no code in <user_code> or if the code is identical to boilerplate, Coding/Problem Solving MUST be 0.
-- TECHNICAL ACCURACY: Compare their solution against the GROUND TRUTH provided. If they miss core concepts, penalize Technical Accuracy.
-- AI SUMMARY: Provide a 2-3 paragraph professional technical analysis. REFERENCE specific lines of code or specific conceptual gaps.
-- NO FILLER: Do not include conversational pleasantries ("I hope this helps", "Great job"). Be a cold, objective evaluator.
+- PARTICIPATION CONSTRAINTS: The <participation_data> block below contains MACHINE-COMPUTED facts.
+  You MUST honour them WITHOUT EXCEPTION:
+  - If <code_submitted> is false → codingPerformanceScore MUST be 0.
+  - If <code_is_boilerplate> is true → codingPerformanceScore MUST be 0.
+  - If <qa_messages_count> is 0 → communicationScore and technicalAccuracyScore MUST be 0.
+- AI SUMMARY: Provide a 2-3 paragraph professional technical analysis. REFERENCE specific answers or specific code.
+- NO FILLER: Do not include conversational pleasantries. Be a cold, objective evaluator.
 
 OUTPUT FORMAT (MANDATORY RAW JSON):
 {
@@ -333,11 +337,25 @@ OUTPUT FORMAT (MANDATORY RAW JSON):
 }
 `.trim()
 
+    // Inject participation_data block if provided
+    let participationBlock = ''
+    if (participationData) {
+        participationBlock = `
+<participation_data>
+  <qa_messages_count>${participationData.qaMessagesCount}</qa_messages_count>
+  <code_submitted>${participationData.codeSubmitted}</code_submitted>
+  <code_is_boilerplate>${participationData.codeIsBoilerplate}</code_is_boilerplate>
+  <submissions_count>${participationData.submissionsCount}</submissions_count>
+</participation_data>`.trim()
+    }
+
     const userContent = `
 PROBLEM: ${problemTitle}
 DESCRIPTION: ${problemDescription}
 
 ${evaluationContext}
+
+${participationBlock}
 
 TRANSCRIPT:
 ${transcript}

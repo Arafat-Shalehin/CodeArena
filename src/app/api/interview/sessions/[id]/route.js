@@ -3,6 +3,8 @@ import { protect } from '@/middlewares/auth.middleware'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import dbConnect from '@/lib/mongodb'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req, { params }) {
     await dbConnect()
 
