@@ -72,6 +72,18 @@ export async function updateActivity(sessionId) {
 const VALID_PHASES = ['intro', 'qa', 'coding', 'evaluation', 'completed']
 
 /**
+ * Deterministic state machine — defines the ONLY legal forward transitions.
+ * Any other transition is silently blocked to prevent state corruption.
+ */
+const VALID_TRANSITIONS = {
+    intro: ['qa'],
+    qa: ['coding'],
+    coding: ['evaluation', 'completed'],
+    evaluation: ['completed'],
+    completed: [],
+}
+
+/**
  * Creates a new interview session.
  * Enforces rate limiting (5 per hour) and maximum 1 active session.
  */
@@ -284,15 +296,40 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
     }
 
     // Normal phase transition (intro -> qa -> coding etc)
+    // Enforce state machine: only allow legal transitions
+    const currentSession = await InterviewSession.findById(sessionId).select('currentPhase status')
+    if (!currentSession) throw new Error('Session not found')
+
+    const allowedNext = VALID_TRANSITIONS[currentSession.currentPhase] || []
+    if (!allowedNext.includes(newPhase)) {
+        console.warn(
+            `[transitionPhase] BLOCKED transition from ${currentSession.currentPhase} to ${newPhase} for session ${sessionId}. Allowed: ${allowedNext.join(', ')}`
+        )
+        return currentSession // Return current state; do not throw
+    }
+
     const session = await InterviewSession.findOneAndUpdate(
-        { _id: sessionId, status: 'active' },
+        { _id: sessionId, status: 'active', currentPhase: currentSession.currentPhase },
         { $set: { currentPhase: newPhase } },
         { new: true }
     )
 
     if (!session) {
-        throw new Error('Active session not found or already finished')
+        // Another worker may have already transitioned — not an error
+        console.warn(
+            `[transitionPhase] Concurrent update on session ${sessionId}, phase may already be ${newPhase}`
+        )
+        return currentSession
     }
+
+    console.log(
+        JSON.stringify({
+            event: 'PHASE_TRANSITION_SUCCESS',
+            sessionId,
+            from: currentSession.currentPhase,
+            to: newPhase,
+        })
+    )
 
     await updateInterviewState(sessionId, { currentPhase: newPhase })
     return session
@@ -303,22 +340,30 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
  * This also attempts to purge any pending AI processing jobs to save LLM tokens.
  */
 export async function terminateSession(sessionId) {
-    try {
-        const queue = getInterviewAIQueue()
-        // BullMQ: Find jobs for this sessionId and remove them from 'active' and 'waiting'
-        const jobs = await queue.getJobs(['active', 'waiting', 'delayed'])
-        for (const job of jobs) {
-            if (job.data?.sessionId?.toString() === sessionId.toString()) {
-                console.log(`[terminateSession] Cancelling job ${job.id} for session ${sessionId}`)
-                await job.remove()
+    // Run cleanup asynchronously so it doesn't block the API response
+    const cleanupJobs = async () => {
+        try {
+            const queue = getInterviewAIQueue()
+            // BullMQ: Find jobs for this sessionId and remove them from 'active' and 'waiting'
+            const jobs = await queue.getJobs(['active', 'waiting', 'delayed'])
+            for (const job of jobs) {
+                if (job.data?.sessionId?.toString() === sessionId.toString()) {
+                    console.log(
+                        `[terminateSession] Cancelling job ${job.id} for session ${sessionId}`
+                    )
+                    await job.remove()
+                }
             }
+        } catch (err) {
+            console.warn(
+                `[terminateSession] Failed to clean up BullMQ jobs for ${sessionId}:`,
+                err.message
+            )
         }
-    } catch (err) {
-        console.warn(
-            `[terminateSession] Failed to clean up BullMQ jobs for ${sessionId}:`,
-            err.message
-        )
     }
+
+    // Fire and forget
+    cleanupJobs().catch(console.error)
 
     return await transitionPhase(sessionId, 'completed', { status: 'terminated' })
 }

@@ -218,7 +218,7 @@ const PHASE_CONFIG = {
         color: 'text-[#00b8a3]',
         bg: 'bg-[#00b8a3]/10',
     },
-    technical_questions: {
+    qa: {
         title: 'Technical Deep Dive',
         subtitle: 'Explain your logic and approach',
         icon: <MessageSquare size={24} />,
@@ -441,7 +441,13 @@ export default function InterviewShell({
                     setWsTokenState(token)
                     setDurationState(json.data.durationMins || 60)
                     setStartedAtState(json.data.startedAt)
-                    setCurrentPhase(json.data.currentPhase || 'intro')
+                    const newPhase = json.data.currentPhase || 'intro'
+                    setCurrentPhase((prev) => {
+                        if (prev !== newPhase && newPhase !== 'intro') {
+                            setActivePhaseChange(newPhase)
+                        }
+                        return newPhase
+                    })
                     setSessionStatus(json.data.status || 'active')
 
                     if (json.data.status && json.data.status !== 'active') {
@@ -641,8 +647,12 @@ export default function InterviewShell({
 
         // Run result
         socket.on('interview:phase_change', (newPhase) => {
-            setCurrentPhase(newPhase)
-            setActivePhaseChange(newPhase) // Trigger the modern overlay
+            setCurrentPhase((prev) => {
+                if (prev !== newPhase) {
+                    setActivePhaseChange(newPhase)
+                }
+                return newPhase
+            })
 
             if (newPhase === 'coding') {
                 // Keep the toast as a fallback or secondary confirmation
@@ -675,10 +685,10 @@ export default function InterviewShell({
         // Submission result
         socket.on('interview:submission_result', (result) => {
             setIsSubmitting(false)
-            if (!result.success || result.verdict !== 'SUCCESS') {
-                toast.error(`Submission Refused: ${result.verdict}`)
+            if (!result.success || result.verdict === 'SYSTEM_ERROR') {
+                toast.error(`Submission System Error: ${result.error || 'Failed to execute code'}`)
             } else {
-                toast.success('Solution accepted!')
+                toast.success('Submission Received! Alex is evaluating your solution...')
             }
             console.log('[InterviewShell] submission_result', result)
         })
@@ -817,14 +827,28 @@ export default function InterviewShell({
     // ── Run ──────────────────────────────────────────────────────────────────
     const handleRun = useCallback(() => {
         if (sessionStatus !== 'active') return
+        if (currentPhase !== 'coding') {
+            toast.error('Code execution is only available during the Coding phase.')
+            return
+        }
         setIsRunning(true)
         socketRef.current?.emit('interview:run', { code, language, problemId: problemState?._id })
         emitSnapshot('run')
-    }, [code, language, problemState?._id, emitSnapshot, sessionStatus])
+    }, [code, language, problemState?._id, emitSnapshot, sessionStatus, currentPhase])
 
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = useCallback(() => {
         if (sessionStatus !== 'active') return
+        if (currentPhase !== 'coding') {
+            toast.error('Submissions are only allowed during the Coding phase.')
+            return
+        }
+
+        if (!code || code.trim().length < 5) {
+            toast.error('Code is too short to be submitted. Please write a valid solution.')
+            return
+        }
+
         setIsSubmitting(true)
         socketRef.current?.emit('interview:submit', {
             code,
@@ -832,7 +856,7 @@ export default function InterviewShell({
             problemId: problemState?._id,
         })
         emitSnapshot('submit')
-    }, [code, language, problemState?._id, emitSnapshot, sessionStatus])
+    }, [code, language, problemState?._id, emitSnapshot, sessionStatus, currentPhase])
 
     // ── End Session ───────────────────────────────────────────────────────────
     const handleTerminateSession = async () => {
@@ -845,12 +869,11 @@ export default function InterviewShell({
             })
             const json = await res.json()
             if (json.success) {
-                toast.success('Scorecard generating. Please wait...')
+                toast.success('Interview ended. Generating scorecard...')
                 setSessionStatus('terminating')
-                // ✅ Do NOT redirect here.
-                // The interview:scorecard socket event will fire when the worker
-                // finishes and will trigger the redirect (see Change A above).
-                // A 90s hard timeout below handles cases where the event never arrives.
+                // ✅ Instantly redirect to the result page. The result page will cleanly
+                // poll and show an "Evaluating..." status until the BullMQ worker finishes.
+                window.location.href = `/interview/${sessionId}/result`
             } else {
                 throw new Error(json.error || 'Failed to terminate session')
             }
