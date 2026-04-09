@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { protect } from '@/middlewares/auth.middleware'
 import { InterviewResult } from '@/models/InterviewResult.model'
 import dbConnect from '@/lib/mongodb'
+export const dynamic = 'force-dynamic'
 
 export async function GET(req, { params }) {
     await dbConnect()

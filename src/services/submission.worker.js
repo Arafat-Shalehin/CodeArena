@@ -537,6 +537,34 @@ export function initSubmissionWorker() {
                                 }
                             }
                         }
+                    } else if (
+                        testCaseResults.length === 0 &&
+                        Array.isArray(results) &&
+                        results.length > 0
+                    ) {
+                        // Handle the case where executeMultipleInputs failed early (e.g. security block or docker creation array)
+                        // In this scenario, it returns the error array without invoking the onProgress callback.
+                        console.log(
+                            `[WORKER] Warning: executeMultipleInputs exited early without evaluating test cases.`
+                        )
+                        const firstResult = results[0]
+                        finalVerdict = firstResult.verdict || VERDICTS.SYSTEM_ERROR
+                        firstError = firstResult.error || 'Execution initialization failed'
+                        failedCaseNumber = 1
+
+                        // Populate test case results to accurately reflect the failure in the UI
+                        for (let i = 0; i < totalCount; i++) {
+                            const res = results[i] || firstResult
+                            testCaseResults.push({
+                                caseNumber: i + 1,
+                                testCaseId: testCases[i]?._id,
+                                verdict: res.verdict || finalVerdict,
+                                time: 0,
+                                memory: 0,
+                                error: res.error || firstError,
+                                isSample: testCases[i]?.isSample || false,
+                            })
+                        }
                     }
                 }
 

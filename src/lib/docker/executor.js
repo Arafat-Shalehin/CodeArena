@@ -1,6 +1,5 @@
 import Docker from 'dockerode'
-import { Readable, PassThrough } from 'stream'
-import path from 'path'
+import { PassThrough } from 'stream'
 import { getLanguageConfig } from './languages.js'
 import { getDockerRunConfig, validateCodeSecurity, SANDBOX_CONFIG } from './sandbox.js'
 import { executeCodeWithJudge0 } from '../judge0-executor.js'
@@ -27,14 +26,11 @@ if (dockerTarget) {
     }
 }
 
-// 🛡️ CRITICAL FIX FOR WINDOWS: 
-// The dockerode library/dependencies sometimes auto-validate process.env.DOCKER_HOST 
-// even if options are passed. If it's a Windows pipe, it might throw "should be tcp://...".
-// We temporarily hide it during initialization.
+// Always strictly hide DOCKER_HOST from dockerode during initialization 
+// so it is forced to use our explicitly configured dockerOptions instead of blindly
+// falling back to http://localhost:2375.
 const originalDockerHost = process.env.DOCKER_HOST
-if (originalDockerHost && !originalDockerHost.startsWith('tcp') && !originalDockerHost.startsWith('http')) {
-    delete process.env.DOCKER_HOST
-}
+delete process.env.DOCKER_HOST
 
 let docker = null
 let dockerInitError = null
@@ -66,6 +62,13 @@ function getErrorMessage(errorOrMessage) {
 }
 
 function isDockerSocketUnreachable(errorOrMessage) {
+    if (errorOrMessage && typeof errorOrMessage === 'object' && errorOrMessage.code) {
+        const code = errorOrMessage.code.toLowerCase()
+        if (code.includes('econnrefused') || code.includes('enoent') || code.includes('eacces')) {
+            return true
+        }
+    }
+
     const message = getErrorMessage(errorOrMessage).toLowerCase()
     if (!message) return false
 
@@ -548,7 +551,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
         }
 
         console.error(`[EXECUTOR] ❌ Docker image not found: ${langConfig.image}`)
-        console.error(`[EXECUTOR] Error: ${imgError.message}`)
+        console.error(`[EXECUTOR] Error:`, imgError)
 
         // List available images for debugging
         try {
@@ -567,7 +570,7 @@ async function createContainer(langConfig, code, files, input, timeLimit, memory
                 console.error('[EXECUTOR] No executor images found. Build them with: docker/scripts/build-images.sh')
             }
         } catch (listError) {
-            console.error('[EXECUTOR] Could not list Docker images:', listError.message)
+            console.error('[EXECUTOR] Could not list Docker images:', listError)
         }
 
         throw new Error(`Docker image ${langConfig.image} not found. Build it using: docker/scripts/build-images.sh`)
@@ -770,18 +773,34 @@ async function runContainer(container, timeLimit, skipCompile = false) {
         // Use container's modem to demultiplex the stream (separates stdout from stderr and removes headers)
         container.modem.demuxStream(execStream, stdoutStream, stderrStream)
 
-        // Use array for output collection (avoid O(n²) string concatenation)
+        // ── Output collection with 10 MB kill switch ──────────────────────
         const outputChunks = []
+        let outputByteCount = 0
+        let outputKilled = false
+        const MAX_OUTPUT_BYTES = 10 * 1024 * 1024 // 10 MB hard ceiling
+
         const streamPromise = new Promise((resolve, reject) => {
+            const killIfOverLimit = () => {
+                if (outputKilled) return
+                outputKilled = true
+                console.warn(
+                    '[EXECUTOR] ⚠️ Output exceeded 10 MB kill switch — destroying streams'
+                )
+                stdoutStream.destroy()
+                stderrStream.destroy()
+                execStream.destroy()
+                container.stop({ t: 0 }).catch(() => {})
+                resolve() // Unblock the race so we can return a verdict
+            }
+
             stdoutStream.on('data', (chunk) => {
+                outputByteCount += chunk.length
+                if (outputByteCount > MAX_OUTPUT_BYTES) return killIfOverLimit()
                 outputChunks.push(chunk.toString('utf8'))
-                // Early check for output limit
-                const totalLength = outputChunks.reduce((sum, c) => sum + c.length, 0)
-                if (totalLength > (SANDBOX_CONFIG.execution.maxOutputSize * 1.1)) {
-                    // We let it finish or head will truncate it inside container
-                }
             })
             stderrStream.on('data', (chunk) => {
+                outputByteCount += chunk.length
+                if (outputByteCount > MAX_OUTPUT_BYTES) return killIfOverLimit()
                 outputChunks.push(chunk.toString('utf8'))
             })
 
@@ -801,6 +820,17 @@ async function runContainer(container, timeLimit, skipCompile = false) {
         })
 
         await Promise.race([streamPromise, timeoutPromise])
+
+        // If the kill switch fired, return immediately with a clear verdict
+        if (outputKilled) {
+            return {
+                success: false,
+                verdict: 'OUTPUT_LIMIT_EXCEEDED',
+                error: 'Output exceeded 10 MB safety limit — execution terminated',
+                executionTime: Date.now() - startTime,
+            }
+        }
+
         console.log('[EXECUTOR] Stream completed, getting exit code...')
 
         const executionTime = Date.now() - startTime
@@ -1125,4 +1155,60 @@ export async function getExecutorImages() {
         console.error('Error listing images:', error)
         return []
     }
+}
+
+// ─── Zombie Container Janitor ──────────────────────────────────────────────
+// Prunes orphaned executor containers that outlive their expected lifespan.
+// Protects against containers left behind when codearena-app crashes/restarts.
+const JANITOR_INTERVAL_MS = 5 * 60 * 1000 // Run every 5 minutes
+const JANITOR_MAX_AGE_S = 5 * 60 // Kill containers older than 5 minutes
+
+async function pruneOrphanedExecutors() {
+    if (!docker) return
+
+    try {
+        const containers = await docker.listContainers({
+            all: true,
+            filters: { label: ['codearena.role=executor'] },
+        })
+
+        const nowSeconds = Math.floor(Date.now() / 1000)
+        let pruned = 0
+
+        for (const info of containers) {
+            const ageSeconds = nowSeconds - info.Created
+            if (ageSeconds > JANITOR_MAX_AGE_S) {
+                try {
+                    const c = docker.getContainer(info.Id)
+                    await c.remove({ force: true })
+                    pruned++
+                    console.log(
+                        `[JANITOR] 🧹 Pruned orphan executor ${info.Id.substring(0, 12)} (age: ${ageSeconds}s)`
+                    )
+                } catch (err) {
+                    // Container may have already been removed between list and remove
+                    if (!err.message?.includes('No such container')) {
+                        console.warn(
+                            `[JANITOR] Could not prune ${info.Id.substring(0, 12)}: ${err.message}`
+                        )
+                    }
+                }
+            }
+        }
+
+        if (pruned > 0) {
+            console.log(`[JANITOR] Cleaned up ${pruned} orphaned executor container(s)`)
+        }
+    } catch (err) {
+        if (isDockerSocketUnreachable(err)) return
+        console.warn('[JANITOR] Orphan cleanup error:', err.message)
+    }
+}
+
+// Start the janitor only when Docker is available
+if (docker) {
+    setInterval(pruneOrphanedExecutors, JANITOR_INTERVAL_MS)
+    // Run once shortly after startup to clear leftovers from previous crashes
+    setTimeout(pruneOrphanedExecutors, 10_000)
+    console.log('[JANITOR] 🧹 Zombie container janitor armed (interval: 5 min, max-age: 5 min)')
 }

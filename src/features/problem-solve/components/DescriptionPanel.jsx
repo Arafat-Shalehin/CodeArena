@@ -153,7 +153,7 @@ function ProblemDescription({ problem }) {
 // ─── Main DescriptionPanel ──────────────────────────────────────────────────
 
 export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMaximized }) {
-    const { leftTab, setLeftTab, submissionResult, mode } = useProblemSolve()
+    const { leftTab, setLeftTab, submissionResult, setSubmissionResult, mode } = useProblemSolve()
 
     if (!problem) return null
 
@@ -207,6 +207,8 @@ export default function DescriptionPanel({ problem, onMaximize, onCollapse, isMa
                             <div
                                 onClick={(e) => {
                                     e.stopPropagation()
+                                    // Remove the submission result tab completely by clearing its state
+                                    setSubmissionResult(null)
                                     setLeftTab('description')
                                 }}
                                 className="bg-bg-page/50 hover:bg-bg-muted text-text-muted hover:text-text-primary ml-2 flex h-4 w-4 items-center justify-center rounded-full transition-colors"

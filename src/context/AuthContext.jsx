@@ -21,9 +21,11 @@ const STORAGE_KEY = 'codearena_auth_user_preferences'
 function sanitizeLocalPreferences(prefs) {
     if (!prefs || typeof prefs !== 'object') return {}
     const clean = { ...prefs }
-    // Never allow locally cached dynamic stats to overwrite DB truth.
+    // Never allow locally cached dynamic/relational data to overwrite DB truth.
     delete clean.stats
     delete clean.performanceStats
+    delete clean.following
+    delete clean.followers
     return clean
 }
 
@@ -146,7 +148,7 @@ export function AuthProvider({ children }) {
 
     const syncUser = useCallback(async () => {
         try {
-            setIsLoading(true)
+            // We skip setIsLoading(true) here to prevent full-page loader hijacking during background syncs
             const firebaseUser = auth.currentUser
             if (!firebaseUser) return null
 
@@ -184,8 +186,6 @@ export function AuthProvider({ children }) {
             }
         } catch (error) {
             console.error('Failed to sync user:', error)
-        } finally {
-            setIsLoading(false)
         }
     }, [localPreferences])
 

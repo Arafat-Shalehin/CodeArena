@@ -4,24 +4,28 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from 'next-themes'
 import {
-    Loader2,
+    Settings as SettingsIcon,
     User,
     Lock,
-    Settings as SettingsIcon,
-    Save,
     Camera,
     Github,
     Linkedin,
     Globe,
+    Save,
+    Loader2,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function AdminSettingsPage() {
     const { user, isLoading, syncUser } = useAuth()
-    const { theme, setTheme } = useTheme()
+    const { theme } = useTheme()
     const [isSaving, setIsSaving] = useState(false)
+    const [activeTab, setActiveTab] = useState('profile')
 
-    // ফর্ম স্টেট
     const [formData, setFormData] = useState({
         name: '',
         bio: '',
@@ -30,7 +34,6 @@ export default function AdminSettingsPage() {
         website: '',
     })
 
-    // ইউজার ডাটা লোড হলে স্টেট আপডেট
     useEffect(() => {
         if (user) {
             setFormData({
@@ -46,28 +49,40 @@ export default function AdminSettingsPage() {
     const handleSave = async (e) => {
         e.preventDefault()
 
-        // কনফার্মেশন এলার্ট
         const result = await Swal.fire({
             title: 'Are you sure?',
             text: 'Do you want to save these changes?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#3b82f6', // accent color
-            cancelButtonColor: '#ef4444',
+            confirmButtonColor: 'var(--ca-accent)',
+            cancelButtonColor: 'var(--ca-border)',
             confirmButtonText: 'Yes, update it!',
-            background: theme === 'dark' ? '#1e293b' : '#fff',
-            color: theme === 'dark' ? '#fff' : '#000',
+            background: 'var(--ca-bg-page)',
+            color: 'var(--ca-text-primary)',
         })
 
         if (result.isConfirmed) {
             setIsSaving(true)
             try {
-                // এখানে আপনার API কল হবে
-                // const res = await axios.patch('/api/user/update', formData)
+                const userId = user?.id || user?._id
+                const res = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: formData.name,
+                        bio: formData.bio,
+                        socials: {
+                            github: formData.github,
+                            linkedin: formData.linkedin,
+                            website: formData.website,
+                        },
+                    }),
+                })
+                const data = await res.json()
+                if (!data.success) throw new Error(data.message || 'Update failed')
 
-                await new Promise((resolve) => setTimeout(resolve, 1000)) // সিমুলেশন
-
-                await syncUser?.() // প্রোফাইল ডাটা রিফ্রেশ
+                await syncUser?.()
 
                 Swal.fire({
                     title: 'Updated!',
@@ -75,8 +90,8 @@ export default function AdminSettingsPage() {
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false,
-                    background: theme === 'dark' ? '#1e293b' : '#fff',
-                    color: theme === 'dark' ? '#fff' : '#000',
+                    background: 'var(--ca-bg-page)',
+                    color: 'var(--ca-text-primary)',
                 })
             } catch (error) {
                 Swal.fire('Error!', 'Failed to update profile.', 'error')
@@ -88,165 +103,224 @@ export default function AdminSettingsPage() {
 
     if (isLoading || !user) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <Loader2 className="text-accent h-10 w-10 animate-spin" />
+            <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+                <div className="bg-accent/10 flex h-20 w-20 items-center justify-center rounded-2xl">
+                    <Loader2 className="text-accent h-10 w-10 animate-spin" />
+                </div>
+                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-60">
+                    Syncing Terminal...
+                </p>
             </div>
         )
     }
 
     return (
-        <div className="animate-in fade-in mx-auto max-w-5xl space-y-8 p-4 duration-500 md:p-8">
-            {/* Page Header */}
-            <header className="flex items-center gap-4">
-                <div className="bg-accent/10 text-accent flex h-12 w-12 items-center justify-center rounded-2xl">
-                    <SettingsIcon size={24} />
-                </div>
-                <div>
-                    <h1 className="text-text-primary text-2xl leading-none font-black uppercase italic">
-                        Account Settings
-                    </h1>
-                    <p className="text-text-muted mt-1 text-sm">
-                        Manage your public profile and preferences
-                    </p>
-                </div>
+        <div className="space-y-10">
+            {/* Header */}
+            <header className="flex flex-col gap-1 px-4 md:px-0">
+                <h1 className="text-text-primary text-3xl leading-none font-black tracking-tight uppercase italic">
+                    Security <span className="text-accent">& Settings</span>
+                </h1>
+                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                    Administrative Core Configuration
+                </p>
             </header>
 
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-                {/* Sidebar Navigation */}
-                <div className="space-y-2 lg:col-span-4">
-                    <button className="bg-accent shadow-accent/20 flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold text-white shadow-lg">
-                        <User size={18} /> Public Profile
-                    </button>
+            <div className="grid grid-cols-1 gap-8 px-4 md:grid-cols-12 md:px-0">
+                {/* Left: Navigation */}
+                <div className="space-y-4 md:col-span-4">
                     <button
-                        onClick={() =>
-                            Swal.fire(
-                                'Coming Soon',
-                                'Password change feature is under development',
-                                'info'
-                            )
-                        }
-                        className="text-text-secondary hover:bg-bg-subtle flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold transition-all"
+                        onClick={() => setActiveTab('profile')}
+                        className={`group relative flex w-full items-center gap-3 rounded-xl px-5 py-4 text-[10px] font-black tracking-[0.2em] uppercase transition-all duration-300 ${
+                            activeTab === 'profile'
+                                ? 'bg-accent shadow-accent/20 translate-x-2 text-white shadow-lg'
+                                : 'text-text-muted hover:bg-bg-subtle/50 hover:text-text-primary border-border/50 border'
+                        }`}
                     >
-                        <Lock size={18} /> Security
+                        <User
+                            size={16}
+                            className={activeTab === 'profile' ? 'animate-pulse' : 'opacity-40'}
+                        />
+                        Identity Profile
+                        {activeTab === 'profile' && (
+                            <div className="absolute top-1/2 -left-1 h-6 w-1 -translate-y-1/2 rounded-full bg-white/40" />
+                        )}
                     </button>
+
+                    <button
+                        onClick={() => setActiveTab('security')}
+                        className={`group relative flex w-full items-center gap-3 rounded-xl px-5 py-4 text-[10px] font-black tracking-[0.2em] uppercase transition-all duration-300 ${
+                            activeTab === 'security'
+                                ? 'bg-accent shadow-accent/20 translate-x-2 text-white shadow-lg'
+                                : 'text-text-muted hover:bg-bg-subtle/50 hover:text-text-primary border-border/50 border'
+                        }`}
+                    >
+                        <Lock
+                            size={16}
+                            className={activeTab === 'security' ? 'animate-pulse' : 'opacity-40'}
+                        />
+                        Vault Security
+                        {activeTab === 'security' && (
+                            <div className="absolute top-1/2 -left-1 h-6 w-1 -translate-y-1/2 rounded-full bg-white/40" />
+                        )}
+                    </button>
+
+                    <div className="matte-surface border-border bg-bg-subtle/20 mt-8 rounded-2xl border p-5 opacity-60">
+                        <div className="flex items-center justify-between">
+                            <span className="text-text-muted text-[9px] font-black tracking-widest uppercase">
+                                Terminal Mode
+                            </span>
+                            <span className="text-accent text-[9px] font-black tracking-widest uppercase italic">
+                                {theme?.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Settings Form */}
-                <div className="lg:col-span-8">
-                    <form
-                        onSubmit={handleSave}
-                        className="bg-bg-subtle border-border space-y-6 rounded-2xl border p-6 shadow-sm md:p-8"
-                    >
-                        {/* Avatar Section */}
-                        <div className="border-border flex flex-col items-center gap-6 border-b pb-6 sm:flex-row">
-                            <div className="group relative cursor-pointer">
-                                <div className="bg-accent/10 border-accent text-accent flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 text-3xl font-bold">
-                                    {user?.name?.charAt(0)}
-                                </div>
-                                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                                    <Camera size={20} />
-                                </div>
-                            </div>
-                            <div className="text-center sm:text-left">
-                                <h3 className="text-text-primary font-bold">Profile Photo</h3>
-                                <p className="text-text-muted mb-4 text-xs font-bold tracking-widest uppercase">
-                                    Recommended: Square JPG or PNG
-                                </p>
-                                <button
-                                    type="button"
-                                    className="bg-bg-page hover:border-accent border-border rounded-lg border px-4 py-2 text-xs font-bold transition-all"
-                                >
-                                    Change Avatar
-                                </button>
-                            </div>
-                        </div>
+                {/* Right: Forms */}
+                <div className="md:col-span-8">
+                    <form onSubmit={handleSave} className="space-y-8">
+                        <Card className="matte-surface border-border bg-bg-subtle/40 hover:border-accent/20 overflow-hidden rounded-3xl border shadow-2xl transition-all">
+                            <CardContent className="space-y-10 p-8 md:p-10">
+                                {activeTab === 'profile' ? (
+                                    <>
+                                        <div className="border-border/50 flex flex-col items-center gap-8 border-b pb-10 sm:flex-row">
+                                            <div className="group relative">
+                                                <div className="from-accent to-accent/20 relative h-24 w-24 rounded-2xl bg-gradient-to-tr p-1">
+                                                    <div className="bg-bg-page border-bg-page text-accent flex h-full w-full items-center justify-center overflow-hidden rounded-xl border-2 text-3xl font-black italic shadow-inner">
+                                                        {user?.name?.charAt(0) || 'A'}
+                                                    </div>
+                                                </div>
+                                                <div className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-2xl bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:opacity-100">
+                                                    <Camera size={20} className="animate-bounce" />
+                                                </div>
+                                            </div>
+                                            <div className="text-center sm:text-left">
+                                                <h3 className="text-text-primary text-sm font-black tracking-tight uppercase italic">
+                                                    Identity Avatar
+                                                </h3>
+                                                <p className="text-text-muted mt-1 text-[9px] font-black tracking-widest uppercase opacity-60">
+                                                    Your administrative presence
+                                                </p>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="border-border hover:bg-accent/10 hover:text-accent mt-4 h-8 rounded-lg px-5 text-[9px] font-black tracking-widest uppercase transition-all"
+                                                >
+                                                    UPLOAD NEW
+                                                </Button>
+                                            </div>
+                                        </div>
 
-                        {/* Basic Info */}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-text-muted mb-2 block text-[10px] font-black tracking-[0.2em] uppercase">
-                                    Display Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, name: e.target.value })
-                                    }
-                                    className="bg-bg-page border-border focus:ring-accent/20 w-full rounded-xl border px-4 py-3 transition-all outline-none focus:ring-2"
-                                    placeholder="Enter your name"
-                                />
-                            </div>
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-text-muted ml-1 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                    Administrative Entity Name
+                                                </label>
+                                                <Input
+                                                    value={formData.name}
+                                                    onChange={(e) =>
+                                                        setFormData({
+                                                            ...formData,
+                                                            name: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="e.g. Administrator"
+                                                    className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 font-bold transition-all"
+                                                />
+                                            </div>
 
-                            <div>
-                                <label className="text-text-muted mb-2 block text-[10px] font-black tracking-[0.2em] uppercase">
-                                    Bio
-                                </label>
-                                <textarea
-                                    rows="3"
-                                    value={formData.bio}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, bio: e.target.value })
-                                    }
-                                    className="bg-bg-page border-border focus:ring-accent/20 w-full resize-none rounded-xl border px-4 py-3 transition-all outline-none focus:ring-2"
-                                    placeholder="Tell us about yourself..."
-                                />
-                            </div>
-                        </div>
+                                            <div className="space-y-2">
+                                                <label className="text-text-muted ml-1 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                    Core Objective & Biography
+                                                </label>
+                                                <Textarea
+                                                    value={formData.bio}
+                                                    onChange={(e) =>
+                                                        setFormData({
+                                                            ...formData,
+                                                            bio: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="Detail your administrative focus..."
+                                                    className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent min-h-[120px] rounded-xl p-4 font-bold transition-all"
+                                                />
+                                            </div>
 
-                        {/* Social Links */}
-                        <div className="border-border space-y-4 border-t pt-4">
-                            <h4 className="text-text-primary text-xs font-black tracking-widest uppercase">
-                                Social Profiles
-                            </h4>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="relative">
-                                    <Github
-                                        className="text-text-muted absolute top-3.5 left-4"
-                                        size={18}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="GitHub Username"
-                                        value={formData.github}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, github: e.target.value })
-                                        }
-                                        className="bg-bg-page border-border focus:border-accent w-full rounded-xl border py-3 pr-4 pl-12 text-sm outline-none"
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <Linkedin
-                                        className="text-text-muted absolute top-3.5 left-4"
-                                        size={18}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="LinkedIn Username"
-                                        value={formData.linkedin}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, linkedin: e.target.value })
-                                        }
-                                        className="bg-bg-page border-border focus:border-accent w-full rounded-xl border py-3 pr-4 pl-12 text-sm outline-none"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                                            <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2">
+                                                <div className="space-y-2">
+                                                    <label className="text-text-muted ml-1 flex items-center gap-2 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                        <Github size={12} /> GitHub Profile
+                                                    </label>
+                                                    <Input
+                                                        value={formData.github}
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                github: e.target.value,
+                                                            })
+                                                        }
+                                                        placeholder="username"
+                                                        className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 font-bold transition-all"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-text-muted ml-1 flex items-center gap-2 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                        <Linkedin size={12} /> LinkedIn Profile
+                                                    </label>
+                                                    <Input
+                                                        value={formData.linkedin}
+                                                        onChange={(e) =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                linkedin: e.target.value,
+                                                            })
+                                                        }
+                                                        placeholder="username"
+                                                        className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 font-bold transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex min-h-[300px] flex-col items-center justify-center space-y-4 text-center">
+                                        <div className="bg-accent/10 border-accent/20 flex size-16 items-center justify-center rounded-3xl border">
+                                            <Lock size={32} className="text-accent opacity-60" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-text-primary text-base font-black tracking-tight uppercase italic">
+                                                Security Protocol Locked
+                                            </h3>
+                                            <p className="text-text-muted mx-auto max-w-xs text-[10px] font-black tracking-widest uppercase opacity-60">
+                                                Advanced security configuration is currently handled
+                                                via the main terminal vault.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            className="border-border hover:bg-accent/10 hover:text-accent mt-4 h-10 rounded-xl px-8 text-[10px] font-black tracking-widest uppercase"
+                                        >
+                                            REQUEST ACCESS
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
 
-                        {/* Save Button */}
-                        <div className="pt-4">
-                            <button
-                                type="submit"
+                        <div className="flex justify-end pt-4">
+                            <Button
                                 disabled={isSaving}
-                                className="bg-accent hover:bg-accent/90 shadow-accent/20 flex w-full items-center justify-center gap-2 rounded-xl py-4 font-black text-white shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                                type="submit"
+                                className="bg-accent hover:bg-accent/90 focus:ring-accent/40 w-full rounded-2xl py-7 text-xs font-black tracking-[0.2em] text-white uppercase italic shadow-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 sm:w-auto sm:px-16"
                             >
                                 {isSaving ? (
-                                    <Loader2 className="animate-spin" size={20} />
+                                    <Loader2 className="mr-3 size-5 animate-spin" />
                                 ) : (
-                                    <Save size={20} />
+                                    <Save size={18} className="mr-3" />
                                 )}
-                                SAVE UPDATES
-                            </button>
+                                {isSaving ? 'ENCRYPTING...' : 'COMMIT CHANGES'}
+                            </Button>
                         </div>
                     </form>
                 </div>

@@ -82,7 +82,7 @@ export default React.memo(function Hero() {
     const { isAuthenticated, isLoading } = useAuth()
 
     return (
-        <section className="hero-gradient relative overflow-hidden pt-18 pb-0 transition-[transform,opacity] duration-700">
+        <section className="hero-gradient relative overflow-hidden pt-12 pb-0 transition-[transform,opacity] duration-700">
             {/* Interactive Tiles Background */}
             <div className="absolute inset-0 z-0">
                 <Tiles
@@ -104,7 +104,7 @@ export default React.memo(function Hero() {
             {/* Falling Light Data Animation */}
             {decorativeStreakCount > 0 && <FallingLight count={decorativeStreakCount} />}
 
-            <div className="relative z-10 mx-auto -mt-20 flex max-w-7xl flex-col items-center px-4 lg:-mt-24">
+            <div className="relative z-10 mx-auto -mt-16 flex max-w-7xl flex-col items-center px-4 lg:-mt-20">
                 {/* Top Section: Content — loads first */}
                 <motion.div
                     initial={shouldReduceMotion ? 'visible' : 'hidden'}
@@ -122,8 +122,8 @@ export default React.memo(function Hero() {
                     className="mb-2 text-center"
                 >
                     {/* Headline */}
-                    <div className="mt-17 mb-1 overflow-visible">
-                        <h1 className="text-text-primary font-display pt-6 pb-2 text-6xl leading-[1.05] font-black tracking-[-0.04em] [text-wrap:balance] sm:text-7xl lg:text-[7.5rem]">
+                    <div className="mt-10 mb-2 overflow-visible">
+                        <h1 className="text-text-primary font-display pt-4 pb-2 text-6xl leading-[1.05] font-black tracking-[-0.04em] [text-wrap:balance] sm:text-7xl lg:text-[7.5rem]">
                             <motion.span
                                 variants={{
                                     hidden: { y: 60, opacity: 0 },
@@ -155,7 +155,7 @@ export default React.memo(function Hero() {
                     </div>
 
                     {/* Subheadline */}
-                    <div className="mx-auto mb-1 max-w-3xl text-center">
+                    <div className="mx-auto mb-2 max-w-3xl text-center">
                         <motion.p
                             variants={{
                                 hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
@@ -188,10 +188,10 @@ export default React.memo(function Hero() {
                                 transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
                             },
                         }}
-                        className="flex flex-col items-center justify-center gap-8 pt-6"
+                        className="flex flex-col items-center justify-center gap-4 pt-2"
                     >
                         {/* Action Buttons */}
-                        <div className="flex w-full flex-col items-center justify-center gap-6 sm:w-auto sm:flex-row sm:gap-4 md:mt-4">
+                        <div className="flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row sm:gap-4">
                             <Link
                                 href={isAuthenticated ? '/feed' : '/problems'}
                                 className="w-full sm:w-auto"
@@ -244,7 +244,7 @@ export default React.memo(function Hero() {
                                 transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
                             },
                         }}
-                        className="text-text-muted pointer-events-auto mt-4 mb-8 flex flex-col items-center gap-4 transition-all duration-300 sm:mb-[5px]"
+                        className="text-text-muted pointer-events-auto mt-4 mb-4 flex flex-col items-center gap-2 transition-all duration-300 sm:mb-4"
                     >
                         <p className="text-xs font-bold tracking-widest [text-wrap:balance] uppercase opacity-70">
                             Supported Execution Environments

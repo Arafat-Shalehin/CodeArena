@@ -16,10 +16,11 @@ export default function TestcaseManager() {
     const addTestcase = () => {
         if (!currentInput.trim() || !currentOutput.trim()) {
             return Swal.fire({
-                title: 'Missing Fields',
-                text: 'Both Input and Expected Output are required.',
+                title: 'MISSING DATA',
+                text: 'Both Input and Expected Output are required for validation.',
                 icon: 'warning',
-                confirmButtonColor: '#00bc7d',
+                background: 'var(--ca-bg-page)',
+                color: 'var(--ca-text-primary)',
             })
         }
 
@@ -37,9 +38,11 @@ export default function TestcaseManager() {
             toast: true,
             position: 'top-end',
             icon: 'success',
-            title: 'Testcase added',
+            title: 'TESTCASE REGISTERED',
             showConfirmButton: false,
             timer: 1500,
+            background: 'var(--ca-bg-page)',
+            color: 'var(--ca-text-primary)',
         })
     }
 
@@ -48,96 +51,115 @@ export default function TestcaseManager() {
     }
 
     return (
-        // mx-auto এবং max-w-2xl দিয়ে মাঝখানে আনা হয়েছে
-        <div className="mx-auto max-w-2xl space-y-6 p-4">
-            <div className="flex items-center gap-2 border-b border-slate-300 pb-3">
-                <Database className="h-5 w-5 text-slate-600" />
-                <h1 className="text-xl font-bold text-slate-800">Manage Testcases</h1>
-            </div>
+        <div className="mx-auto max-w-4xl space-y-10 py-6">
+            <header className="flex flex-col gap-1">
+                <h1 className="text-text-primary text-3xl font-black tracking-tight uppercase italic">
+                    Manage <span className="text-accent">Testcases</span>
+                </h1>
+                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                    Operational validation data for problem engine
+                </p>
+            </header>
 
-            {/* ইনপুট সেকশন - বর্ডার গ্রে করা হয়েছে */}
-            <div className="grid gap-4 rounded-lg border border-slate-300 bg-white p-6 shadow-sm">
-                <div className="space-y-2">
-                    <Label className="font-semibold text-slate-700">Input Data</Label>
-                    <Textarea
-                        placeholder="Enter input here..."
-                        value={currentInput}
-                        onChange={(e) => setCurrentInput(e.target.value)}
-                        className="min-h-[120px] border-slate-300 font-mono text-sm focus:border-emerald-500"
-                    />
-                </div>
+            {/* Input Section */}
+            <div className="matte-surface border-border bg-bg-subtle/40 grid gap-8 rounded-3xl border p-10 shadow-2xl">
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                            Input Sequence
+                        </Label>
+                        <Textarea
+                            placeholder="e.g. [1, 2, 3, 4, 5]"
+                            value={currentInput}
+                            onChange={(e) => setCurrentInput(e.target.value)}
+                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 min-h-[140px] rounded-2xl p-4 font-mono text-sm font-bold shadow-none"
+                        />
+                    </div>
 
-                <div className="space-y-2">
-                    <Label className="font-semibold text-slate-700">Expected Output</Label>
-                    <Textarea
-                        placeholder="Enter expected output..."
-                        value={currentOutput}
-                        onChange={(e) => setCurrentOutput(e.target.value)}
-                        className="min-h-[100px] border-slate-300 font-mono text-sm focus:border-emerald-500"
-                    />
+                    <div className="space-y-2">
+                        <Label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                            Expected Response
+                        </Label>
+                        <Textarea
+                            placeholder="e.g. 15"
+                            value={currentOutput}
+                            onChange={(e) => setCurrentOutput(e.target.value)}
+                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 min-h-[140px] rounded-2xl p-4 font-mono text-sm font-bold shadow-none"
+                        />
+                    </div>
                 </div>
 
                 <Button
                     onClick={addTestcase}
-                    className="h-11 w-full gap-2 bg-[#00bc7d] font-semibold text-white hover:bg-[#00a870]"
+                    className="bg-accent hover:bg-accent/90 shadow-accent/20 h-14 w-full rounded-2xl text-[13px] font-black tracking-widest text-white uppercase shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-95"
                 >
-                    <Plus className="h-5 w-5" /> Add Testcase to List
+                    <Plus className="mr-3 h-5 w-5" /> APPEND TESTCASE TO SET
                 </Button>
             </div>
 
-            {/* টেস্টকেস লিস্ট - বর্ডার গ্রে করা হয়েছে */}
-            <div className="space-y-4">
-                <h2 className="flex items-center gap-2 text-sm font-bold tracking-widest text-slate-500 uppercase">
-                    Testcase List{' '}
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">
-                        {testcases.length}
+            {/* Testcase List */}
+            <div className="space-y-6">
+                <div className="flex items-center justify-between px-2">
+                    <h2 className="text-text-primary flex items-center gap-3 text-sm font-black tracking-widest uppercase italic">
+                        <Database className="text-accent h-4 w-4" />
+                        Operational Dataset
+                    </h2>
+                    <span className="bg-bg-subtle border-border text-text-muted rounded-full border px-3 py-1 text-[10px] font-black tracking-widest uppercase">
+                        {testcases.length} ENTRIES
                     </span>
-                </h2>
+                </div>
 
                 {testcases.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 py-12 text-slate-400">
-                        <AlertCircle className="mb-2 h-10 w-10 opacity-30" />
-                        <p className="font-medium">No testcases added yet.</p>
+                    <div className="border-border bg-bg-subtle/20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed py-20 text-center opacity-40">
+                        <AlertCircle className="text-text-muted mb-4 h-12 w-12" />
+                        <p className="text-[10px] font-black tracking-[0.2em] uppercase">
+                            Dataset currently empty
+                        </p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-6">
                         {testcases.map((tc, index) => (
-                            <Card
+                            <div
                                 key={tc.id}
-                                className="overflow-hidden border-slate-300 shadow-sm"
+                                className="matte-surface border-border bg-bg-subtle/30 group overflow-hidden rounded-3xl border shadow-lg transition-all duration-300 hover:shadow-xl"
                             >
-                                <CardContent className="p-0">
-                                    <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
-                                        <span className="text-xs font-bold text-slate-600 uppercase">
-                                            Testcase #{index + 1}
+                                <div className="border-border bg-bg-muted/10 flex items-center justify-between border-b px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-accent h-2 w-2 animate-pulse rounded-full" />
+                                        <span className="text-text-primary text-[10px] font-black tracking-widest uppercase">
+                                            Testcase Node #{index + 1}
                                         </span>
-                                        <button
-                                            onClick={() => removeTestcase(tc.id)}
-                                            className="p-1 text-slate-400 transition-colors hover:text-rose-600"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
                                     </div>
-                                    <div className="grid grid-cols-2 divide-x divide-slate-300 bg-white">
-                                        <div className="p-4">
-                                            <p className="mb-2 text-[10px] font-bold text-slate-400 uppercase">
-                                                Input
-                                            </p>
-                                            <pre className="overflow-x-auto rounded border border-slate-200 bg-slate-50 p-2 font-mono text-xs">
+                                    <button
+                                        onClick={() => removeTestcase(tc.id)}
+                                        className="text-text-muted transition-all hover:scale-110 hover:text-rose-500"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2">
+                                    <div className="border-border border-b p-6 md:border-r md:border-b-0">
+                                        <p className="text-text-muted mb-3 text-[9px] font-black tracking-widest uppercase opacity-60">
+                                            Input Data
+                                        </p>
+                                        <div className="bg-bg-page/50 border-border/50 rounded-xl border p-4">
+                                            <pre className="custom-scrollbar overflow-x-auto font-mono text-xs leading-relaxed font-bold">
                                                 {tc.input}
                                             </pre>
                                         </div>
-                                        <div className="p-4">
-                                            <p className="mb-2 text-[10px] font-bold text-slate-400 uppercase">
-                                                Expected Output
-                                            </p>
-                                            <pre className="overflow-x-auto rounded border border-slate-400 bg-slate-50 p-2 font-mono text-xs">
+                                    </div>
+                                    <div className="p-6">
+                                        <p className="text-text-muted mb-3 text-[9px] font-black tracking-widest uppercase opacity-60">
+                                            Expected Output
+                                        </p>
+                                        <div className="bg-bg-page/50 border-border/50 rounded-xl border p-4">
+                                            <pre className="custom-scrollbar overflow-x-auto font-mono text-xs leading-relaxed font-bold">
                                                 {tc.output}
                                             </pre>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 )}

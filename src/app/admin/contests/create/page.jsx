@@ -12,16 +12,16 @@ export default function CreateContestPage() {
     const router = useRouter()
     const [availableProblems, setAvailableProblems] = useState([])
     const [isLoadingProblems, setIsLoadingProblems] = useState(true)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const [formData, setFormData] = useState({
         title: '',
         description: '',
         startTime: '',
         endTime: '',
-        problemIds: [], // এখন এটি একটি Array হিসেবে কাজ করবে
+        problemIds: [],
     })
 
-    // ১. ডাইনামিকভাবে প্রবলেম লিস্ট ফেচ করা
     useEffect(() => {
         const fetchProblems = async () => {
             try {
@@ -39,7 +39,6 @@ export default function CreateContestPage() {
         fetchProblems()
     }, [])
 
-    // ২. চেকবক্স হ্যান্ডলার (ডাইনামিক সিলেকশন)
     const handleProblemSelect = (problemId) => {
         setFormData((prev) => {
             const isSelected = prev.problemIds.includes(problemId)
@@ -53,15 +52,25 @@ export default function CreateContestPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-
         if (formData.problemIds.length === 0) {
-            return Swal.fire(
-                'Wait!',
-                'Please select at least one problem for the contest.',
-                'warning'
-            )
+            return Swal.fire({
+                title: 'SELECTION REQUIRED',
+                text: 'Please select at least one problem for the contest.',
+                icon: 'warning',
+                background: 'var(--ca-bg-page)',
+                color: 'var(--ca-text-primary)',
+            })
         }
-
+        if (new Date(formData.endTime) <= new Date(formData.startTime)) {
+            return Swal.fire({
+                title: 'TIMELINE ERROR',
+                text: 'End time must be after start time.',
+                icon: 'warning',
+                background: 'var(--ca-bg-page)',
+                color: 'var(--ca-text-primary)',
+            })
+        }
+        setIsSubmitting(true)
         try {
             const res = await fetch('/api/contests', {
                 method: 'POST',
@@ -73,39 +82,60 @@ export default function CreateContestPage() {
 
             if (data.success) {
                 Swal.fire({
-                    title: 'Success!',
-                    text: 'Contest created successfully!',
+                    title: 'MISSION SUCCESS',
+                    text: 'Contest has been successfully deployed.',
                     icon: 'success',
-                    confirmButtonColor: '#10b981',
+                    background: 'var(--ca-bg-page)',
+                    color: 'var(--ca-text-primary)',
+                    confirmButtonColor: 'var(--ca-accent)',
                 }).then(() => {
                     router.push('/admin/contests')
                 })
             } else {
-                Swal.fire('Error', data.message || 'Failed to create contest', 'error')
+                Swal.fire({
+                    title: 'DEPLOYMENT FAILED',
+                    text: data.message || 'Error occurred during creation',
+                    icon: 'error',
+                    background: 'var(--ca-bg-page)',
+                    color: 'var(--ca-text-primary)',
+                })
             }
         } catch (error) {
-            Swal.fire('Error', 'Something went wrong on the server', 'error')
+            Swal.fire({
+                title: 'SERVER ERROR',
+                text: 'Terminal connection lost.',
+                icon: 'error',
+                background: 'var(--ca-bg-page)',
+                color: 'var(--ca-text-primary)',
+            })
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
     return (
-        <div className="mx-auto max-w-3xl p-10">
-            <h1 className="text-text-primary mb-6 flex items-center gap-2 text-2xl font-black tracking-tighter uppercase">
-                <Plus className="text-accent size-7" /> Create New Contest
-            </h1>
+        <div className="mx-auto max-w-4xl space-y-10 py-6">
+            <header className="flex flex-col gap-1">
+                <h1 className="text-text-primary text-3xl font-black tracking-tight uppercase italic">
+                    Deploy <span className="text-accent">New Contest</span>
+                </h1>
+                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                    Host a competitive sprint event
+                </p>
+            </header>
 
             <form
                 onSubmit={handleSubmit}
-                className="border-border space-y-6 rounded-3xl border bg-white p-8 shadow-sm"
+                className="matte-surface border-border bg-bg-subtle/40 space-y-8 rounded-3xl border p-10 shadow-2xl"
             >
                 {/* Title */}
-                <div className="space-y-1">
-                    <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
-                        Contest Title
+                <div className="space-y-2">
+                    <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                        Operational Sprint Title
                     </label>
                     <Input
-                        placeholder="e.g. Weekly Coding Challenge #1"
-                        className="h-12 rounded-xl font-bold"
+                        placeholder="e.g. ALPHA SPRINT #4"
+                        className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl text-lg font-black italic shadow-none"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         required
@@ -113,27 +143,27 @@ export default function CreateContestPage() {
                 </div>
 
                 {/* Description */}
-                <div className="space-y-1">
-                    <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
-                        Description
+                <div className="space-y-2">
+                    <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                        Strategic Briefing
                     </label>
                     <Textarea
-                        placeholder="Describe the contest rules and details..."
-                        className="h-32 rounded-xl py-3 font-bold"
+                        placeholder="Define rules, goals, and prize pool..."
+                        className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-32 rounded-2xl py-4 font-bold shadow-none"
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
                 </div>
 
                 {/* Date and Time */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
-                            Start Time
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                    <div className="space-y-2">
+                        <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                            Activation Timestamp
                         </label>
                         <Input
                             type="datetime-local"
-                            className="h-12 rounded-xl font-bold"
+                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl font-black uppercase shadow-none"
                             value={formData.startTime}
                             onChange={(e) =>
                                 setFormData({ ...formData, startTime: e.target.value })
@@ -141,13 +171,13 @@ export default function CreateContestPage() {
                             required
                         />
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-text-muted ml-1 text-[10px] font-black uppercase">
-                            End Time
+                    <div className="space-y-2">
+                        <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                            Termination Timestamp
                         </label>
                         <Input
                             type="datetime-local"
-                            className="h-12 rounded-xl font-bold"
+                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl font-black uppercase shadow-none"
                             value={formData.endTime}
                             onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                             required
@@ -155,65 +185,93 @@ export default function CreateContestPage() {
                     </div>
                 </div>
 
-                {/* Dynamic Problem Selection Area */}
-                <div className="space-y-2">
-                    <label className="text-text-muted ml-1 flex justify-between text-[10px] font-black uppercase">
-                        Select Problems
-                        <span className="text-accent">{formData.problemIds.length} Selected</span>
+                {/* Problem Selection Area */}
+                <div className="space-y-3">
+                    <label className="text-text-muted ml-1 flex justify-between text-[10px] font-black tracking-widest uppercase opacity-70">
+                        Operational Problem Set
+                        <span className="text-accent font-black tracking-normal">
+                            [{formData.problemIds.length} SELECTED]
+                        </span>
                     </label>
 
-                    <div className="border-border bg-bg-page/30 custom-scrollbar max-h-60 space-y-2 overflow-y-auto rounded-2xl border p-4">
+                    <div className="border-border bg-bg-page/20 custom-scrollbar max-h-80 space-y-2 overflow-y-auto rounded-3xl border p-5">
                         {isLoadingProblems ? (
-                            <div className="text-text-muted flex flex-col items-center py-6">
-                                <Loader2 className="mb-2 animate-spin" />
-                                <span className="text-xs font-bold uppercase italic">
-                                    Loading Problems...
-                                </span>
+                            <div className="text-text-muted flex flex-col items-center py-12">
+                                <Loader2 className="text-accent mb-3 h-10 w-10 animate-spin" />
+                                <p className="text-[10px] font-black tracking-widest uppercase opacity-60">
+                                    Scanning Problem Database...
+                                </p>
                             </div>
                         ) : availableProblems.length > 0 ? (
-                            availableProblems.map((problem) => (
-                                <div
-                                    key={problem._id}
-                                    onClick={() => handleProblemSelect(problem._id)}
-                                    className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-3 transition-all ${
-                                        formData.problemIds.includes(problem._id)
-                                            ? 'border-accent bg-accent/5'
-                                            : 'border-transparent bg-white hover:border-gray-200'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className={`flex size-5 items-center justify-center rounded-md border transition-colors ${
-                                                formData.problemIds.includes(problem._id)
-                                                    ? 'bg-accent border-accent'
-                                                    : 'border-gray-300 bg-white'
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                {availableProblems.map((problem) => (
+                                    <div
+                                        key={problem._id}
+                                        onClick={() => handleProblemSelect(problem._id)}
+                                        className={`matte-surface flex cursor-pointer items-center justify-between rounded-2xl border-2 p-4 transition-all duration-300 hover:scale-[1.02] ${
+                                            formData.problemIds.includes(problem._id)
+                                                ? 'border-accent bg-accent/10 shadow-accent/10 shadow-lg'
+                                                : 'border-border/50 bg-bg-page/40 opacity-70 hover:opacity-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div
+                                                className={`flex size-6 items-center justify-center rounded-lg border-2 transition-all ${
+                                                    formData.problemIds.includes(problem._id)
+                                                        ? 'bg-accent border-accent scale-110 text-white'
+                                                        : 'border-border bg-bg-page/50'
+                                                }`}
+                                            >
+                                                {formData.problemIds.includes(problem._id) && (
+                                                    <CheckCircle2 className="size-4" />
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[13px] font-bold tracking-tight">
+                                                    {problem.title}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span
+                                            className={`rounded-md px-2 py-1 text-[9px] font-black tracking-tighter uppercase ${
+                                                problem.difficulty === 'hard'
+                                                    ? 'bg-rose-500/20 text-rose-500'
+                                                    : problem.difficulty === 'medium'
+                                                      ? 'bg-amber-500/20 text-amber-500'
+                                                      : 'bg-emerald-500/20 text-emerald-500'
                                             }`}
                                         >
-                                            {formData.problemIds.includes(problem._id) && (
-                                                <CheckCircle2 className="size-4 text-white" />
-                                            )}
-                                        </div>
-                                        <span className="text-sm font-bold">{problem.title}</span>
+                                            {problem.difficulty || 'Easy'}
+                                        </span>
                                     </div>
-                                    <span className="text-text-muted rounded-md bg-gray-100 px-2 py-1 text-[10px] font-black tracking-tighter uppercase">
-                                        {problem.difficulty || 'Easy'}
-                                    </span>
-                                </div>
-                            ))
+                                ))}
+                            </div>
                         ) : (
-                            <p className="text-text-muted py-6 text-center text-xs font-bold italic">
-                                No problems found in database.
-                            </p>
+                            <div className="text-text-muted py-12 text-center">
+                                <p className="text-[10px] font-black tracking-widest uppercase italic opacity-40">
+                                    Null Set: No Problems Available
+                                </p>
+                            </div>
                         )}
                     </div>
                 </div>
 
-                <Button
-                    type="submit"
-                    className="bg-accent hover:bg-accent/90 h-14 w-full rounded-2xl font-black tracking-widest text-white uppercase shadow-lg transition-all active:scale-[0.98]"
-                >
-                    <Save className="mr-2 size-5" /> Save Contest
-                </Button>
+                {/* Final Action */}
+                <div className="pt-4">
+                    <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="bg-accent hover:bg-accent/90 shadow-accent/20 h-16 w-full rounded-2xl text-[14px] font-black tracking-[0.2em] text-white uppercase shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+                    >
+                        {isSubmitting ? (
+                            <Loader2 className="h-7 w-7 animate-spin" />
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <Save className="h-6 w-6" /> COMMENCE CONTEST DEPLOYMENT
+                            </div>
+                        )}
+                    </Button>
+                </div>
             </form>
         </div>
     )

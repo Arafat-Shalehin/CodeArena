@@ -216,7 +216,35 @@ export function initInterviewAIWorker() {
                         return { success: true, type: 'scorecard', participation: 'none' }
                     }
 
-                    // Build prompt with evaluation metadata
+                    // ─── Participation Data ────────────────────────────────────────────
+                    // Compute HARD OVERRIDES before and after calling the AI.
+                    // These programmatic constraints cannot be overridden by the AI's output.
+                    const qaUserMessages = userMessages.filter((m) => m.phase === 'qa')
+                    const hasRealCode =
+                        meaningfulSnapshots.length > 0 &&
+                        meaningfulSnapshots.some(
+                            (s) =>
+                                s.code &&
+                                s.code.trim().length > 50 &&
+                                s.code !== problem.defaultCode?.python &&
+                                s.code !== problem.defaultCode?.javascript
+                        )
+                    const hasSubmission = snapshots.some((s) => s.snapshotType === 'submit')
+                    const hasQaParticipation = qaUserMessages.length > 0
+
+                    console.log(
+                        JSON.stringify({
+                            event: 'SCORECARD_PARTICIPATION_CHECK',
+                            sessionId,
+                            qaUserMessages: qaUserMessages.length,
+                            hasRealCode,
+                            hasSubmission,
+                            hasQaParticipation,
+                            meaningfulSnapshots: meaningfulSnapshots.length,
+                        })
+                    )
+
+                    // Build scorecard prompt with participation data injected
                     const { systemPrompt, messages } = buildScorecardPrompt({
                         problemTitle: problem.title,
                         problemDescription: problem.description,
@@ -231,6 +259,13 @@ export function initInterviewAIWorker() {
                             expectedConcepts: problem.expectedConcepts,
                             evaluationCriteria: problem.evaluationCriteria,
                         },
+                        participationData: {
+                            qaMessagesCount: qaUserMessages.length,
+                            codeSubmitted: hasSubmission,
+                            codeIsBoilerplate: !hasRealCode,
+                            submissionsCount: snapshots.filter((s) => s.snapshotType === 'submit')
+                                .length,
+                        },
                     })
 
                     // Get AI response (non-streaming)
@@ -243,9 +278,51 @@ export function initInterviewAIWorker() {
                     // Robust JSON extraction
                     console.log('[InterviewAI Worker] Raw AI Response length:', fullResponse.length)
                     const scorecardData = extractJSON(fullResponse)
+
+                    // ─── Programmatic Score Overrides ─────────────────────────────────
+                    // Apply hard overrides REGARDLESS of what the AI returned.
+                    // These are the source of truth — the AI cannot override them.
+                    if (!hasQaParticipation) {
+                        scorecardData.communicationScore = 0
+                        scorecardData.technicalAccuracyScore = 0
+                    }
+                    if (!hasRealCode) {
+                        scorecardData.codingPerformanceScore = 0
+                        scorecardData.problemSolvingScore = 0
+                        // Map to schema field names
+                        scorecardData.codeQualityScore = 0
+                        scorecardData.approachScore = 0
+                    }
+
+                    // Recompute overall as weighted average of component scores
+                    const comm = scorecardData.communicationScore || 0
+                    const coding =
+                        scorecardData.codeQualityScore || scorecardData.codingPerformanceScore || 0
+                    const solving = scorecardData.problemSolvingScore || 0
+                    const accuracy =
+                        scorecardData.approachScore || scorecardData.technicalAccuracyScore || 0
+
+                    scorecardData.codeQualityScore = coding
+                    scorecardData.approachScore = accuracy
+                    scorecardData.problemSolvingScore = solving
+                    scorecardData.communicationScore = comm
+
+                    scorecardData.overallScore = Math.round(
+                        (comm + coding + solving + accuracy) / 4
+                    )
+
                     console.log(
-                        '[InterviewAI Worker] Parsed scorecard successfully. Overall Score:',
-                        scorecardData.overallScore
+                        JSON.stringify({
+                            event: 'SCORECARD_OVERRIDES_APPLIED',
+                            sessionId,
+                            hasQaParticipation,
+                            hasRealCode,
+                            communicationScore: comm,
+                            codingScore: coding,
+                            solvingScore: solving,
+                            accuracyScore: accuracy,
+                            overallScore: scorecardData.overallScore,
+                        })
                     )
 
                     const currentSession = await InterviewSession.findById(sessionId)
@@ -258,19 +335,26 @@ export function initInterviewAIWorker() {
                             communicationScore: scorecardData.communicationScore || 0,
                             codeQualityScore: scorecardData.codeQualityScore || 0,
                             problemSolvingScore: scorecardData.problemSolvingScore || 0,
-                            approachScore: scorecardData.approachScore || 0,
+                            approachScore: scorecardData.approachScore || 0, // This stores 'Technical Accuracy'
                             overallScore: scorecardData.overallScore || 0,
                             aiSummary: scorecardData.aiSummary || '',
                             strengths: scorecardData.strengths || [],
                             weaknesses: scorecardData.weaknesses || [],
                             recommendations: scorecardData.recommendations || [],
                             createdAt: new Date(),
-                            error: false, // Ensure error flag is false on success
+                            error: false,
                         },
                         { upsert: true, new: true }
                     )
                     console.log(
-                        `[InterviewAI Worker] Saved result document: ${result._id} for session ${sessionId}`
+                        `[InterviewAI Worker] Saved result document: ${result._id} for session ${sessionId} with scores:`,
+                        {
+                            comm: result.communicationScore,
+                            code: result.codeQualityScore,
+                            solving: result.problemSolvingScore,
+                            approach: result.approachScore,
+                            overall: result.overallScore,
+                        }
                     )
 
                     // Force session status to finalise so the UI doesn't hang in "Pending"
@@ -357,36 +441,94 @@ export function initInterviewAIWorker() {
                 console.error('[InterviewAI Worker] Session not found:', sessionId)
                 return { success: false, error: 'Session not found' }
             }
-            const currentPhase = session.currentPhase
+            let currentPhase = session.currentPhase
             const problem = session.problemIds?.[0]
 
-            // Inject evaluation metadata for QA phase
-            const evaluationMetadata =
-                currentPhase === 'qa' || currentPhase === 'intro'
-                    ? {
-                          correctAnswer: problem?.correctAnswer,
-                          expectedConcepts: problem?.expectedConcepts,
-                          evaluationCriteria: problem?.evaluationCriteria,
-                      }
-                    : null
+            // ── Phase transition: intro → qa (must happen BEFORE buildPrompt) ──
+            if (job.name === 'process-chat' && currentPhase === 'intro') {
+                console.log(
+                    JSON.stringify({
+                        event: 'PHASE_TRANSITION_TRIGGER',
+                        sessionId,
+                        from: 'intro',
+                        to: 'qa',
+                        reason: 'First user message in intro phase',
+                    })
+                )
+                const { transitionPhase } = await import('@/services/interviewSession.service')
+                await transitionPhase(sessionId, 'qa')
+                console.log(
+                    `[InterviewAI Worker] Successfully transitioned session ${sessionId} to 'qa' phase`
+                )
+                currentPhase = 'qa'
+
+                const pub = await getPublisher()
+                await pub.publish(interviewAIChannel(sessionId), JSON.stringify({ phase: 'qa' }))
+            }
+
+            // ── Phase transition: coding → evaluation (must happen BEFORE buildPrompt) ──
+            // This ensures the evaluation phase system prompt is used for submission analysis,
+            // and the frontend receives the phase overlay before Alex starts typing.
+            if (job.name === 'process-submission-analysis' && currentPhase === 'coding') {
+                console.log(
+                    JSON.stringify({
+                        event: 'PHASE_TRANSITION_TRIGGER',
+                        sessionId,
+                        from: 'coding',
+                        to: 'evaluation',
+                        reason: 'Code submitted — entering evaluation phase',
+                    })
+                )
+                const { transitionPhase } = await import('@/services/interviewSession.service')
+                await transitionPhase(sessionId, 'evaluation')
+                console.log(
+                    `[InterviewAI Worker] Successfully transitioned session ${sessionId} to 'evaluation' phase`
+                )
+                currentPhase = 'evaluation'
+
+                const pub = await getPublisher()
+                await pub.publish(
+                    interviewAIChannel(sessionId),
+                    JSON.stringify({ phase: 'evaluation' })
+                )
+            }
+
+            // Inject evaluation metadata: available for intro + qa + evaluation phases
+            const evaluationMetadata = ['qa', 'intro', 'evaluation'].includes(currentPhase)
+                ? {
+                      correctAnswer: problem?.correctAnswer,
+                      expectedConcepts: problem?.expectedConcepts,
+                      evaluationCriteria: problem?.evaluationCriteria,
+                  }
+                : null
 
             const lastSnapshot = await InterviewSnapshot.findOne({ sessionId })
                 .sort({ ts: -1 })
                 .lean()
 
-            // Build prompt
+            // Build prompt. For submission-analysis jobs, use the submission code/language
+            // from the job data rather than falling back to last snapshot.
+            const effectiveCode = code || lastSnapshot?.code || ''
+            const effectiveLang = lang || lastSnapshot?.language || 'python'
+
+            // For process-chat: exclude the just-saved user message from history passed to
+            // buildPrompt (it becomes the 'userMessage' argument instead, avoiding duplication).
+            const historyForPrompt = job.name === 'process-chat' ? history.slice(0, -1) : history
+
             const { systemPrompt, messages } = buildPrompt({
-                problemDescription: problem.description,
-                currentCode: code || lastSnapshot?.code || '',
-                language: lang || lastSnapshot?.language || 'python',
+                problemTitle: problem?.title || '',
+                problemDescription: problem?.description || '',
+                currentCode: effectiveCode,
+                language: effectiveLang,
                 phase: currentPhase,
                 submissionVerdict: submissionVerdict || null,
-                userMessage: content || '',
-                history: job.name === 'process-chat' ? history.slice(0, -1) : history, // exclude the just-saved user turn if it was a chat job
+                userMessage: job.name === 'process-chat' ? content || '' : '',
+                history: historyForPrompt,
                 evaluationMetadata,
             })
 
             // 3. Stream AI response and publish each chunk to Redis
+            //    Both 'process-chat' and 'process-submission-analysis' stream to the client.
             const pub = await getPublisher()
             const channel = interviewAIChannel(sessionId)
             let fullResponse = ''
@@ -395,29 +537,15 @@ export function initInterviewAIWorker() {
             let pendingChunk = ''
 
             try {
-                if (job.name === 'process-chat') {
-                    console.log(
-                        JSON.stringify({
-                            event: 'AI_STREAM_START',
-                            jobId: job.id,
-                            sessionId,
-                            messageId,
-                            timestamp: new Date().toISOString(),
-                        })
-                    )
-                }
-
                 const aiStream = generateInterviewChatResponse({ systemPrompt, messages })
 
-                // If it's a submission analysis, we might want to stream it or just send it at once.
+                // Chunk loop streams for both process-chat and process-submission-analysis.
                 try {
                     let chunkCount = 0
                     for await (const chunk of aiStream) {
                         fullResponse += chunk
                         chunkCount++
-                        if (job.name === 'process-chat') {
-                            pendingChunk += chunk
-                        }
+                        pendingChunk += chunk
 
                         // Liveness Guard: Check if session is still active periodically
                         if (chunkCount % INTERVIEW_STREAM_LIVENESS_CHECK_EVERY === 0) {
@@ -436,58 +564,12 @@ export function initInterviewAIWorker() {
                             }
                         }
 
-                        if (job.name === 'process-chat') {
-                            sequence++
-                            const shouldPublishChunk =
-                                sequence % INTERVIEW_STREAM_PUBLISH_EVERY === 0 ||
-                                pendingChunk.length >= 300
-                            const shouldPersistState =
-                                sequence % INTERVIEW_STREAM_STATE_WRITE_EVERY === 0
+                        sequence++
+                        const shouldPublishChunk =
+                            sequence % INTERVIEW_STREAM_PUBLISH_EVERY === 0 ||
+                            pendingChunk.length >= 300
 
-                            if (shouldPublishChunk && pendingChunk) {
-                                await pub.publish(
-                                    channel,
-                                    JSON.stringify({
-                                        chunk: pendingChunk,
-                                        done: false,
-                                        messageId,
-                                        sequence,
-                                    })
-                                )
-                                pendingChunk = ''
-                            }
-
-                            // Persist partial stream snapshot less frequently to reduce Redis commands
-                            if (shouldPersistState) {
-                                const streamKey = `interview:stream:${sessionId}`
-                                await pub.hSet(streamKey, {
-                                    messageId,
-                                    content: fullResponse,
-                                    sequence,
-                                    lastUpdated: Date.now(),
-                                })
-                                await pub.expire(streamKey, 60)
-                            }
-
-                            // Limit log noise: only log if you want every chunk or maybe every 10th chunk
-                            // Let's log every chunk as requested
-                            console.log(
-                                JSON.stringify({
-                                    event: 'AI_STREAM_CHUNK',
-                                    jobId: job.id,
-                                    sessionId,
-                                    messageId,
-                                    sequence,
-                                    timestamp: new Date().toISOString(),
-                                })
-                            )
-                        }
-                    }
-                } finally {
-                    // 4. Finalise
-                    if (job.name === 'process-chat') {
-                        if (pendingChunk) {
-                            sequence++
+                        if (shouldPublishChunk && pendingChunk) {
                             await pub.publish(
                                 channel,
                                 JSON.stringify({
@@ -500,49 +582,79 @@ export function initInterviewAIWorker() {
                             pendingChunk = ''
                         }
 
+                        // Persist partial stream snapshot less frequently
+                        if (sequence % INTERVIEW_STREAM_STATE_WRITE_EVERY === 0) {
+                            const streamKey = `interview:stream:${sessionId}`
+                            await pub.hSet(streamKey, {
+                                messageId,
+                                content: fullResponse,
+                                sequence,
+                                lastUpdated: Date.now(),
+                            })
+                            await pub.expire(streamKey, 60)
+                        }
+                    }
+                } finally {
+                    // Flush remaining pending chunk
+                    if (pendingChunk) {
                         sequence++
                         await pub.publish(
                             channel,
                             JSON.stringify({
-                                chunk: '',
-                                done: true,
+                                chunk: pendingChunk,
+                                done: false,
                                 messageId,
                                 sequence,
                             })
                         )
-
-                        // Clear the partial stream cache
-                        await pub.del(`interview:stream:${sessionId}`)
-
-                        console.log(
-                            JSON.stringify({
-                                event: 'AI_STREAM_END',
-                                jobId: job.id,
-                                sessionId,
-                                messageId,
-                                timestamp: new Date().toISOString(),
-                            })
-                        )
-                    } else {
-                        // Emission for submission analysis
-                        await pub.publish(channel, JSON.stringify({ analysis: fullResponse }))
+                        pendingChunk = ''
                     }
+
+                    // Send the final "done" signal to the client
+                    sequence++
+                    await pub.publish(
+                        channel,
+                        JSON.stringify({
+                            chunk: '',
+                            done: true,
+                            messageId,
+                            sequence,
+                        })
+                    )
+
+                    // Clear the partial stream cache
+                    await pub.del(`interview:stream:${sessionId}`)
+
+                    console.log(
+                        JSON.stringify({
+                            event: 'AI_STREAM_END',
+                            jobId: job.id,
+                            jobName: job.name,
+                            sessionId,
+                            messageId,
+                            timestamp: new Date().toISOString(),
+                        })
+                    )
                 }
 
-                // [PART 3] Check for Wrap-up signal
+                // ── POST-STREAM: Wrap-up signal (evaluation → completed) ────────────
+                // The evaluation phase AI response must end with <WRAP_UP /> to signal
+                // the interview is complete and a scorecard should be generated.
                 if (fullResponse.includes('<WRAP_UP />')) {
-                    const { transitionPhase } = await import('./interviewSession.service')
+                    const { transitionPhase } = await import('@/services/interviewSession.service')
                     await transitionPhase(sessionId, 'completed')
-                    // Signal the frontend room that the session is terminal
+                    console.log(
+                        `[InterviewAI Worker] Successfully transitioned session ${sessionId} to 'completed' phase via <WRAP_UP />`
+                    )
                     await pub.publish(
                         channel,
                         JSON.stringify({ terminal: true, status: 'completed' })
                     )
                 }
 
-                // 5. Persist the full response to DB
+                // ── POST-STREAM: Persist AI message ────────────────────────────────
                 await InterviewMessage.create({
-                    id: messageId, // Standardized ID field
+                    id: messageId,
                     sessionId,
                     role: 'ai',
                     phase: currentPhase,
@@ -550,44 +662,47 @@ export function initInterviewAIWorker() {
                     ts: new Date(),
                 })
 
-                // 6. Update session phase if it was a submission
-                if (job.name === 'process-submission-analysis') {
-                    // Advance to evaluation (feedback) phase using centralized service
-                    const { transitionPhase } = await import('./interviewSession.service')
-                    await transitionPhase(sessionId, 'evaluation')
+                // ── POST-STREAM: QA → Coding transition ────────────────────────────
+                // Use an authoritative DB count instead of filtering the in-memory
+                // history array (which may have stale phase labels from before the
+                // intro→qa transition that happened earlier in this same job).
+                if (job.name === 'process-chat' && currentPhase === 'qa') {
+                    const qaUserCount = await InterviewMessage.countDocuments({
+                        sessionId,
+                        role: 'user',
+                        phase: 'qa',
+                    })
 
-                    // b. Emit phase change to client
-                    await pub.publish(
-                        interviewAIChannel(sessionId),
-                        JSON.stringify({ phase: 'evaluation' })
+                    console.log(
+                        JSON.stringify({
+                            event: 'PHASE_CHECK_QA',
+                            sessionId,
+                            qaUserCount,
+                            threshold: 2,
+                        })
                     )
-                }
 
-                // 7. Handle Interactive Phase Transitions (Intro -> QA -> Coding)
-                if (job.name === 'process-chat') {
-                    const userMessages = history.filter((m) => m.role === 'user')
-
-                    if (session.currentPhase === 'intro') {
-                        // Move to QA after the first user greeting
-                        const { transitionPhase } = await import('./interviewSession.service')
-                        await transitionPhase(sessionId, 'qa')
+                    if (qaUserCount >= 2) {
+                        console.log(
+                            JSON.stringify({
+                                event: 'PHASE_TRANSITION_TRIGGER',
+                                sessionId,
+                                from: 'qa',
+                                to: 'coding',
+                                reason: `QA user count ${qaUserCount} reached threshold of 2`,
+                            })
+                        )
+                        const { transitionPhase } =
+                            await import('@/services/interviewSession.service')
+                        await transitionPhase(sessionId, 'coding')
+                        console.log(
+                            `[InterviewAI Worker] Successfully transitioned session ${sessionId} to 'coding' phase (QA count reached)`
+                        )
 
                         await pub.publish(
                             interviewAIChannel(sessionId),
-                            JSON.stringify({ phase: 'qa' })
+                            JSON.stringify({ phase: 'coding' })
                         )
-                    } else if (session.currentPhase === 'qa') {
-                        const qaCount = userMessages.filter((m) => m.phase === 'qa').length
-                        if (qaCount >= 2) {
-                            // Move to coding after 2 QA turns
-                            const { transitionPhase } = await import('./interviewSession.service')
-                            await transitionPhase(sessionId, 'coding')
-
-                            await pub.publish(
-                                interviewAIChannel(sessionId),
-                                JSON.stringify({ phase: 'coding' })
-                            )
-                        }
                     }
                 }
 
@@ -604,22 +719,21 @@ export function initInterviewAIWorker() {
 
                 return { success: true, length: fullResponse.length }
             } catch (err) {
-                if (job.name === 'process-chat') {
-                    console.log(
-                        JSON.stringify({
-                            event: 'AI_STREAM_ERROR',
-                            jobId: job.id,
-                            sessionId,
-                            messageId,
-                            error: err.message,
-                            timestamp: new Date().toISOString(),
-                        })
-                    )
-                }
+                console.log(
+                    JSON.stringify({
+                        event: 'AI_STREAM_ERROR',
+                        jobId: job.id,
+                        jobName: job.name,
+                        sessionId,
+                        messageId,
+                        error: err.message,
+                        timestamp: new Date().toISOString(),
+                    })
+                )
                 throw err
             } finally {
-                // Release processing lock if this was a chat job to guarantee cleanup
-                if (job.name === 'process-chat') {
+                // Release processing lock for any AI chat job (not scorecard)
+                if (job.name === 'process-chat' || job.name === 'process-submission-analysis') {
                     await releaseProcessingLock(sessionId).catch((err) =>
                         console.error(
                             '[InterviewAI Worker] Failed to release lock on completion/finally:',

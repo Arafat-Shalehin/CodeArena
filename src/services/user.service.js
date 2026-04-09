@@ -319,13 +319,17 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
         throw err
     }
 
-    // Double-check both users exist
-    const [currentUser, targetUser] = await Promise.all([
-        User.findById(currentUserId),
-        User.findById(targetUserId),
-    ])
+    // Optimistic toggle - assume both users exist and just do the update
+    // If user doesn't exist, MongoDB will return null and we'll handle error
+    const currentUser = await User.findById(currentUserId).select('following')
+    const targetUser = await User.findById(targetUserId).select('followers')
 
-    if (!currentUser || !targetUser) {
+    if (!currentUser) {
+        const err = new Error('Current user not found.')
+        err.status = 404
+        throw err
+    }
+    if (!targetUser) {
         const err = new Error('User not found.')
         err.status = 404
         throw err
@@ -347,10 +351,18 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
                 { new: true }
             ),
         ])
+
+        // Invalidate cache for both users
+        if (redisClient.isOpen) {
+            await redisClient.del(`user:${currentUserId}:profile`).catch(console.error)
+            await redisClient.del(`user:${targetUserId}:profile`).catch(console.error)
+            await redisClient.del(`sidebar:user:${currentUserId}`).catch(console.error)
+        }
+
         return {
             following: false,
             followersCount: updatedTargetUser.followers.length,
-            followingCount: updatedTargetUser.following.length, // Returns target user's stats
+            followingCount: updatedTargetUser.following.length,
         }
     } else {
         // Follow
@@ -376,6 +388,13 @@ export async function toggleFollowUser(currentUserId, targetUserId) {
             message: `${currentUser.name} started following you! 👤`,
             link: `/profile/${currentUserId}`,
         })
+
+        // Invalidate cache for both users
+        if (redisClient.isOpen) {
+            await redisClient.del(`user:${currentUserId}:profile`).catch(console.error)
+            await redisClient.del(`user:${targetUserId}:profile`).catch(console.error)
+            await redisClient.del(`sidebar:user:${currentUserId}`).catch(console.error)
+        }
 
         return {
             following: true,

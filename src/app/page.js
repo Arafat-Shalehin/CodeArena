@@ -2,15 +2,39 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import Hero from '@/features/home/components/Hero'
 import FeaturesBentoGrid from '@/features/home/components/FeaturesBentoGrid'
-import HowItWorksSection from '@/features/home/components/HowItWorksSection'
-import RecentProblemsSection from '@/features/home/components/RecentProblemsSection'
-import LeaderboardPreviewSection from '@/features/home/components/LeaderboardPreviewSection'
-import TrustedBySection from '@/features/home/components/TrustedBySection'
-import SkillShiftSection from '@/features/home/components/SkillShiftSection'
 import FeaturesHeader from '@/features/home/components/FeaturesHeader'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
-
+import dynamic from 'next/dynamic'
 import ErrorBoundary from '@/components/ui/error-boundary'
+
+// Lazy-load sections below the fold for better initial paint performance
+const HowItWorksSection = dynamic(() => import('@/features/home/components/HowItWorksSection'), {
+    loading: () => <SectionSkeleton />,
+})
+const RecentProblemsSection = dynamic(
+    () => import('@/features/home/components/RecentProblemsSection'),
+    { loading: () => <SectionSkeleton /> }
+)
+const LeaderboardPreviewSection = dynamic(
+    () => import('@/features/home/components/LeaderboardPreviewSection'),
+    { loading: () => <SectionSkeleton /> }
+)
+const TrustedBySection = dynamic(() => import('@/features/home/components/TrustedBySection'), {
+    loading: () => <SectionSkeleton />,
+})
+const SkillShiftSection = dynamic(() => import('@/features/home/components/SkillShiftSection'), {
+    loading: () => <SectionSkeleton />,
+})
+
+// Simple skeleton loader for lazy-loaded sections
+function SectionSkeleton() {
+    return (
+        <div className="bg-bg-subtle/40 mx-auto max-w-7xl animate-pulse px-4 py-16 md:py-24">
+            <div className="bg-bg-subtle mx-auto h-8 w-48 rounded-lg" />
+            <div className="bg-bg-subtle/60 mt-8 h-64 w-full rounded-xl" />
+        </div>
+    )
+}
 
 /**
  * Home Page
