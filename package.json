@@ -8,7 +8,6 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
-        "prepare": "husky install",
         "docker:build": "bash docker/scripts/build-images.sh"
     },
     "dependencies": {

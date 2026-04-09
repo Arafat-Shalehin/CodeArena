@@ -1,18 +1,30 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { io } from 'socket.io-client'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 
-export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
+export function useVoiceInput({ sessionId, interviewSocket }) {
     const [isListening, setIsListening] = useState(false)
     const [transcript, setTranscript] = useState('')
     const [transcriptStatus, setTranscriptStatus] = useState('idle') // idle, listening, uncertain, error
     const [error, setError] = useState(null)
 
     const mediaRecorderRef = useRef(null)
-    const voiceSocketRef = useRef(null)
     const recognitionRef = useRef(null)
     const useBrowserSttRef = useRef(false)
     const lastFinalTranscriptRef = useRef({ text: '', ts: 0 })
     const isListeningRef = useRef(false)
+
+    // Use secure socket for voice communication
+    const { socket: voiceSocket, isConnected: voiceConnected } = useSecureSocket('/voice', {
+        scope: 'voice',
+        sessionId,
+        autoReconnect: true,
+    })
+
+    // Keep a ref for easy access in callbacks
+    const voiceSocketRef = useRef(voiceSocket)
+    useEffect(() => {
+        voiceSocketRef.current = voiceSocket
+    }, [voiceSocket])
 
     useEffect(() => {
         isListeningRef.current = isListening
@@ -172,34 +184,24 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
         return () => stopRecording()
     }, [stopRecording])
 
-    // 2. Stable Socket Lifecycle
+    // 2. Set up voice socket event listeners
     useEffect(() => {
-        if (!wsToken || !sessionId) return
+        if (!voiceSocket || !voiceConnected) return
 
-        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'
-        const socket = io(`${socketUrl}/voice`, {
-            auth: { token: wsToken },
-            query: { sessionId }, // Pass sessionId for early validation
-            reconnection: true,
-            reconnectionDelayMax: 5000,
-        })
-
-        voiceSocketRef.current = socket
-
-        socket.on('connect', () => {
+        voiceSocket.on('connect', () => {
             console.log('[Voice] Socket connected')
             useBrowserSttRef.current = false
             setError(null)
         })
 
-        socket.on('disconnect', (reason) => {
+        voiceSocket.on('disconnect', (reason) => {
             console.warn('[Voice] Socket disconnected:', reason)
             if (reason !== 'io client disconnect' && !useBrowserSttRef.current) {
                 setError('Voice connection lost. Reconnecting...')
             }
         })
 
-        socket.on('voice:transcript_confirmed', (data) => {
+        voiceSocket.on('voice:transcript_confirmed', (data) => {
             if (!data.transcript || !data.transcript.trim()) return
             const normalized = data.transcript.trim()
             const now = Date.now()
@@ -212,11 +214,11 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
             setTranscriptStatus('idle')
         })
 
-        socket.on('voice:transcript_interim', (data) => {
+        voiceSocket.on('voice:transcript_interim', (data) => {
             console.log('[useVoiceInput] Received interim transcript:', data.transcript)
         })
 
-        socket.on('voice:error', (err) => {
+        voiceSocket.on('voice:error', (err) => {
             const hasPayload =
                 !!err &&
                 (typeof err !== 'object' || err.message || err.code || Object.keys(err).length > 0)
@@ -229,9 +231,8 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
             if (err?.code === 'UNAUTHORIZED' || err?.code === 'STT_ENGINE_ERROR') {
                 useBrowserSttRef.current = true
                 setError(null)
-                socket.io.opts.reconnection = false
-                if (socket.connected) {
-                    socket.disconnect()
+                if (voiceSocket.connected) {
+                    voiceSocket.disconnect()
                 }
                 if (isListeningRef.current) {
                     stopRecording()
@@ -247,10 +248,13 @@ export function useVoiceInput({ wsToken, sessionId, interviewSocket }) {
         })
 
         return () => {
-            console.log('[Voice] Component unmounting, disconnecting socket...')
-            socket.disconnect()
+            voiceSocket.off('connect')
+            voiceSocket.off('disconnect')
+            voiceSocket.off('voice:transcript_confirmed')
+            voiceSocket.off('voice:transcript_interim')
+            voiceSocket.off('voice:error')
         }
-    }, [sessionId, startBrowserRecognition, stopRecording, wsToken])
+    }, [voiceSocket, voiceConnected])
 
     // 3. Stream Reconnection Logic
     useEffect(() => {

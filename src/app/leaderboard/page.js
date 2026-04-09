@@ -16,8 +16,9 @@ import { Pagination } from '@/shared/components/ui/Pagination'
 // UI Components
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Auth
+// Auth and Socket
 import { useAuth } from '@/context/AuthContext'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 
 /**
  * Leaderboard Page
@@ -41,6 +42,9 @@ export default function LeaderboardPage() {
     const [timeframe, setTimeframe] = useState('all_time')
     const { user } = useAuth()
 
+    // Use secure socket for leaderboard updates
+    const { socket, isConnected } = useSecureSocket('/', { scope: 'leaderboard' })
+
     const ITEMS_PER_PAGE = 100
 
     // Real API State
@@ -48,7 +52,6 @@ export default function LeaderboardPage() {
     const [pagination, setPagination] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [socket, setSocket] = useState(null)
 
     /**
      * Fetch real leaderboard data from the API
@@ -96,15 +99,6 @@ export default function LeaderboardPage() {
                     }))
                     setUsers(transformed)
                     setPagination(json.pagination)
-
-                    // Dynamically connect to the Socket.IO server provided by the API
-                    if (json.livePort && !socket) {
-                        const socketUrl = `${window.location.protocol}//${window.location.hostname}:${json.livePort}`
-                        const { io } = await import('socket.io-client')
-                        const newSocket = io(socketUrl)
-                        setSocket(newSocket)
-                        console.log(`[Socket.IO] Connecting to ${socketUrl}`)
-                    }
                 } else {
                     throw new Error(json.error || 'Failed to fetch rankings')
                 }
@@ -116,12 +110,15 @@ export default function LeaderboardPage() {
                 setIsLoading(false)
             }
         },
-        [socket]
+        [user]
     )
 
     // Listen for socket updates
     useEffect(() => {
-        if (!socket) return
+        if (!socket || !isConnected) return
+
+        // Join leaderboard room
+        socket.emit('join_room', 'leaderboard')
 
         const handleUpdate = (update) => {
             console.log('[Socket.IO] Rank update received:', update)
@@ -133,7 +130,7 @@ export default function LeaderboardPage() {
         return () => {
             socket.off('rank_update', handleUpdate)
         }
-    }, [socket, currentPage, debouncedSearch, league, timeframe, fetchLeaderboard])
+    }, [socket, isConnected, currentPage, debouncedSearch, league, timeframe, fetchLeaderboard])
 
     // Debounce search input
     useEffect(() => {
@@ -177,7 +174,7 @@ export default function LeaderboardPage() {
         <div className="bg-bg-page site-gradient text-text-primary flex min-h-screen flex-col">
             <Navbar />
 
-            <main className="mx-auto w-full max-w-7xl flex-grow space-y-12 px-4 py-12">
+            <main className="mx-auto w-full max-w-7xl grow space-y-12 px-4 py-12">
                 <LeaderboardHeader />
                 <PlatformStats />
 

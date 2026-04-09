@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { io } from 'socket.io-client'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 import { toast } from 'sonner'
 
 function getStageBadge(stage, currentCase, totalCount) {
@@ -47,39 +47,36 @@ export function useSubmissionRealtime({
     onProblemSolved,
 }) {
     const userId = user?._id || user?.id || null
+    const { socket, isConnected } = useSecureSocket('/', { scope: 'submission' })
 
+    // Join rooms and set up socket when connection is established
     useEffect(() => {
-        if (!problemId) return
+        if (!isConnected || !socket || !problemId) return
 
-        console.log(
-            '[Socket] Creating socket connection to http://' + window.location.hostname + ':3002'
-        )
-        const newSocket = io(`http://${window.location.hostname}:3002`)
+        console.log('[Socket] Connected to realtime server')
+        console.log('[Socket] Socket ID:', socket.id)
 
-        newSocket.on('connect', () => {
-            console.log('[Socket] ✓ Connected to realtime server on port 3002')
-            console.log('[Socket] Socket ID:', newSocket.id)
-            console.log('[Socket] Socket connected property:', newSocket.connected)
+        if (userId) {
+            socket.emit('join_room', userId)
+        }
 
-            if (userId) {
-                newSocket.emit('join_room', userId)
-            }
+        socket.emit('join_room', `problem:${problemId}`)
 
-            newSocket.emit('join_room', `problem:${problemId}`)
+        // If there's an active submission, rejoin it after reconnection
+        if (activeSubmissionRoomRef.current) {
+            console.log(
+                '[Socket] Rejoining active submission room:',
+                activeSubmissionRoomRef.current
+            )
+            socket.emit('join_room', activeSubmissionRoomRef.current)
+        }
 
-            // If there's an active submission, rejoin it after reconnection
-            if (activeSubmissionRoomRef.current) {
-                console.log(
-                    '[Socket] Rejoining active submission room:',
-                    activeSubmissionRoomRef.current
-                )
-                newSocket.emit('join_room', activeSubmissionRoomRef.current)
-            }
-        })
+        setSocket(socket)
+    }, [isConnected, socket, userId, problemId, activeSubmissionRoomRef, setSocket])
 
-        newSocket.on('disconnect', (reason) => {
-            console.log('[Socket] Disconnected from realtime server:', reason)
-        })
+    // Define event handlers
+    useEffect(() => {
+        if (!isConnected || !socket) return
 
         const isCurrentSubmissionEvent = (submissionId, eventProblemId) => {
             // First priority: match exact submission if actively waiting for one
@@ -271,7 +268,7 @@ export function useSubmissionRealtime({
             }
         }
 
-        newSocket.on('submission_status', (data) => {
+        socket.on('submission_status', (data) => {
             console.log('[Socket] Submission status received:', {
                 submissionId: data.submissionId,
                 stage: data.stage,
@@ -301,7 +298,7 @@ export function useSubmissionRealtime({
             })
         })
 
-        newSocket.on('judging_started', (data) => {
+        socket.on('judging_started', (data) => {
             console.log('[Socket] Judging started:', data)
 
             if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
@@ -317,7 +314,7 @@ export function useSubmissionRealtime({
             })
         })
 
-        newSocket.on('test_case_result', (data) => {
+        socket.on('test_case_result', (data) => {
             console.log('[Socket] Test case result:', data)
 
             if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
@@ -348,7 +345,7 @@ export function useSubmissionRealtime({
         })
 
         // Backward-compatibility events while clients migrate
-        newSocket.on('test_case_completed', (data) => {
+        socket.on('test_case_completed', (data) => {
             console.log('[Socket] Test case completed:', data)
 
             if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
@@ -365,7 +362,7 @@ export function useSubmissionRealtime({
             })
         })
 
-        newSocket.on('test_case_failed', (data) => {
+        socket.on('test_case_failed', (data) => {
             console.log('[Socket] Test case failed (fail-fast):', data)
 
             if (!isCurrentSubmissionEvent(data.submissionId, data.problemId)) {
@@ -387,7 +384,7 @@ export function useSubmissionRealtime({
             }
         })
 
-        newSocket.on('final_verdict', (data) => {
+        socket.on('final_verdict', (data) => {
             console.log('[Socket] Final verdict received:', data)
             console.log('[Socket] Current active room:', activeSubmissionRoomRef.current)
             console.log('[Socket] Event submission ID:', data.submissionId)
@@ -401,17 +398,17 @@ export function useSubmissionRealtime({
             finalizeSubmission(data, 'final_verdict')
         })
 
-        newSocket.on('submission_room_close', (data) => {
+        socket.on('submission_room_close', (data) => {
             if (!data?.submissionId) return
 
             const roomId = `submission_${data.submissionId}`
             if (activeSubmissionRoomRef.current === roomId) {
-                newSocket.emit('leave_room', roomId)
+                socket.emit('leave_room', roomId)
                 activeSubmissionRoomRef.current = null
             }
         })
 
-        newSocket.on('execution_completed', (data) => {
+        socket.on('execution_completed', (data) => {
             console.log('[Socket] Execution completed:', data)
 
             if (data.submissionId) {
@@ -432,7 +429,7 @@ export function useSubmissionRealtime({
             setIsSubmitting(false)
         })
 
-        newSocket.on('submission_update', (data) => {
+        socket.on('submission_update', (data) => {
             console.log('[Socket] Submission update:', data)
             setLatestSubmissionEvent(data)
 
@@ -490,33 +487,44 @@ export function useSubmissionRealtime({
             }
         })
 
-        newSocket.on('reaction_update', (data) => {
+        socket.on('reaction_update', (data) => {
             if (data.problemId === problemId) {
                 // Reaction system component can listen directly
             }
         })
 
-        newSocket.on('connect_error', (error) => {
+        socket.on('connect_error', (error) => {
             console.error('[Socket] Connection error:', error)
         })
 
-        newSocket.on('error', (error) => {
+        socket.on('error', (error) => {
             console.error('[Socket] Socket error:', error)
         })
 
-        newSocket.on('connect_timeout', () => {
+        socket.on('connect_timeout', () => {
             console.error('[Socket] Connection timeout')
         })
 
-        setSocket(newSocket)
+        // Clean up listeners on unmount
         return () => {
-            setSocket(null)
-            newSocket.disconnect()
+            socket.off('submission_status')
+            socket.off('submission_room_close')
+            socket.off('judging_started')
+            socket.off('test_case_result')
+            socket.off('test_case_completed')
+            socket.off('test_case_failed')
+            socket.off('final_verdict')
+            socket.off('execution_completed')
+            socket.off('submission_update')
+            socket.off('reaction_update')
+            socket.off('connect_error')
+            socket.off('error')
+            socket.off('connect_timeout')
         }
     }, [
-        userId,
+        isConnected,
+        socket,
         problemId,
-        setSocket,
         setLatestSubmissionEvent,
         setSubmissionResult,
         setIsSubmitting,
@@ -528,5 +536,6 @@ export function useSubmissionRealtime({
         activeSubmissionRoomRef,
         finalVerdictHandledRef,
         lastFinalSubmissionIdRef,
+        onProblemSolved,
     ])
 }

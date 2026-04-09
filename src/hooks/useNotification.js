@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { io } from 'socket.io-client'
 import { useAuth } from '@/context/AuthContext'
+import { useSecureSocket } from './useSecureSocket'
 import { toast } from 'sonner'
 
 export function useNotification() {
     const { user } = useAuth()
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
-    const [socket, setSocket] = useState(null)
+    const { socket, isConnected } = useSecureSocket('/', { scope: 'notification' })
 
     const fetchNotifications = useCallback(async () => {
         if (!user?._id) return
@@ -29,19 +29,16 @@ export function useNotification() {
         if (!user?._id) return
 
         fetchNotifications()
+    }, [user?._id, fetchNotifications])
 
-        // Initialize Socket.IO connection
-        // Assuming the socket server runs on port 3002 as per socket-server.js
-        const socketInstance = io(':3002', {
-            transports: ['websocket'],
-        })
+    useEffect(() => {
+        if (!isConnected || !socket || !user?._id) return
 
-        socketInstance.on('connect', () => {
-            console.log('[Socket] Connected to notification server')
-            socketInstance.emit('join_room', user._id)
-        })
+        console.log('[Socket] Connected to notification server')
+        // Join the user's notification room
+        socket.emit('join_room', user._id)
 
-        socketInstance.on('notification_received', (notification) => {
+        socket.on('notification_received', (notification) => {
             setNotifications((prev) => [notification, ...prev])
             setUnreadCount((prev) => prev + 1)
 
@@ -64,12 +61,10 @@ export function useNotification() {
             })
         })
 
-        setSocket(socketInstance)
-
         return () => {
-            if (socketInstance) socketInstance.disconnect()
+            socket.off('notification_received')
         }
-    }, [user?._id, fetchNotifications])
+    }, [isConnected, socket, user?._id])
 
     const markAllAsRead = async () => {
         try {

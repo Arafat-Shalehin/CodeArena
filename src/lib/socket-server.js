@@ -90,6 +90,12 @@ export async function initSocketServer() {
                 console.log(`[Socket.IO] Client connected: ${socket.id}`)
                 console.log(`[Socket.IO] Total connected clients:`, serverIo.engine.clientsCount)
 
+                // Auto-join authenticated user to their personal room
+                if (socket.userId) {
+                    socket.join(`user:${socket.userId}`)
+                    console.log(`[Socket.IO] User ${socket.userId} auto-joined personal room`)
+                }
+
                 socket.on('join_room', (roomId) => {
                     if (roomId) {
                         socket.join(roomId)
