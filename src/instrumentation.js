@@ -1,5 +1,6 @@
 // Store workers globally to prevent garbage collection
 import { isWorkerProcess, getProcessType } from '@/lib/process-type'
+import { registerWorker, setupShutdownHandlers } from '@/lib/worker-manager'
 
 let globalWorkers = {
     submission: null,
@@ -43,12 +44,15 @@ export async function register() {
                 console.log('[INSTRUMENTATION] Starting Interview Workers...')
                 if (globalWorkers.interviewAI) await globalWorkers.interviewAI.close()
                 globalWorkers.interviewAI = initInterviewAIWorker()
+                registerWorker('interviewAI', globalWorkers.interviewAI)
 
                 if (globalWorkers.interviewExecution) await globalWorkers.interviewExecution.close()
                 globalWorkers.interviewExecution = initInterviewExecutionWorker()
+                registerWorker('interviewExecution', globalWorkers.interviewExecution)
 
                 if (globalWorkers.interviewSummarize) await globalWorkers.interviewSummarize.close()
                 globalWorkers.interviewSummarize = initInterviewSummarizeWorker()
+                registerWorker('interviewSummarize', globalWorkers.interviewSummarize)
 
                 // Only start massive system workers if specifically requested via PROCESS_TYPE=WORKER
                 if (isWorkerProcess()) {
@@ -62,21 +66,28 @@ export async function register() {
 
                     if (globalWorkers.submission) await globalWorkers.submission.close()
                     globalWorkers.submission = initSubmissionWorker()
+                    registerWorker('submission', globalWorkers.submission)
 
                     if (globalWorkers.stats) await globalWorkers.stats.close()
                     globalWorkers.stats = initStatsWorker()
+                    registerWorker('stats', globalWorkers.stats)
 
                     if (globalWorkers.ai) await globalWorkers.ai.close()
                     globalWorkers.ai = initAIWorker()
+                    registerWorker('ai', globalWorkers.ai)
 
                     if (globalWorkers.plagiarism) await globalWorkers.plagiarism.close()
                     globalWorkers.plagiarism = initPlagiarismWorker()
+                    registerWorker('plagiarism', globalWorkers.plagiarism)
                 }
 
                 globalThis._workersInitialized = true
                 console.log(
                     '>>> CodeArena Interview Workers Initialized (AI, Execution, Summarize)'
                 )
+
+                // Setup graceful shutdown handlers for all registered workers
+                setupShutdownHandlers()
             } catch (err) {
                 console.error('[CRITICAL] Failed to initialize Workers:', err.message)
                 console.error('[CRITICAL] Error stack:', err.stack)
