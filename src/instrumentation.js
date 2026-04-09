@@ -2,6 +2,9 @@
 import { isWorkerProcess, getProcessType } from '@/lib/process-type'
 import { registerWorker, setupShutdownHandlers } from '@/lib/worker-manager'
 
+// Initialize global error handlers (must be early to catch all errors)
+import '@/lib/global-error-handler'
+
 let globalWorkers = {
     submission: null,
     stats: null,
