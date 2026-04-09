@@ -3,6 +3,7 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { redisClient } from '@/lib/redis'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
+import { createAuthMiddleware, createRateLimitMiddleware, handleAuthError } from '@/lib/socket-auth'
 
 let io
 let initPromise = null
@@ -24,11 +25,38 @@ export async function initSocketServer() {
     initPromise = (async () => {
         try {
             const port = 3002
+
+            // Parse allowed origins from environment (comma-separated)
+            const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+                .split(',')
+                .map((origin) => origin.trim())
+
+            console.log('[Socket.IO] Allowed origins:', allowedOrigins)
+
             const serverIo = new Server(port, {
                 cors: {
-                    origin: '*',
+                    origin: (origin, callback) => {
+                        // Allow no origin (ws:// connections)
+                        if (!origin) return callback(null, true)
+
+                        if (allowedOrigins.includes(origin)) {
+                            callback(null, true)
+                        } else {
+                            console.warn(`[Socket.IO] CORS rejected origin: ${origin}`)
+                            callback(new Error('CORS policy violation'))
+                        }
+                    },
                     methods: ['GET', 'POST'],
+                    credentials: true,
+                    maxAge: 3600,
                 },
+                // Security: disable force new connections
+                forceNew: false,
+                // Disable polling if not needed (websocket only is faster)
+                transports: ['websocket', 'polling'],
+                // Set appropriate timeouts
+                pingInterval: 25000,
+                pingTimeout: 5000,
             })
 
             // Setup Redis Adapter for multi-node scaling
@@ -39,6 +67,19 @@ export async function initSocketServer() {
 
             global._io = serverIo
             console.log(`[Socket.IO] Real-time server started on port ${port}`)
+
+            // 🔐 SECURITY: Apply global authentication middleware
+            serverIo.use(createAuthMiddleware())
+
+            // 🔐 SECURITY: Apply rate limiting middleware
+            serverIo.use(createRateLimitMiddleware(redisClient, 60000, 10))
+
+            // 🔐 SECURITY: Handle authentication errors
+            serverIo.on('connect_error', (error) => {
+                if (error.message.startsWith('AUTH_')) {
+                    console.warn(`[Socket.IO] Authentication error: ${error.message}`)
+                }
+            })
 
             // Register Namespaces
             const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
