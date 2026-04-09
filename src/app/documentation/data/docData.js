@@ -448,7 +448,6 @@ export const PAGE_ROUTES = [
     ['/profile/settings', 'JWT', 'Account settings (avatar, username, etc.)'],
     ['/userdashboard', 'JWT', 'Personal dashboard: recent submissions, stats, activity'],
     ['/practice', 'None', 'Placeholder — "Coming Soon"'],
-    ['/test-docker', 'None (dev)', 'Debug interface to test Docker execution pipeline'],
 ]
 
 export const DOCKER_SERVICES = [

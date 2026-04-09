@@ -5,6 +5,31 @@ const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || '',
 })
 
+function extractRetryAfterSeconds(message = '') {
+    const minutes = message.match(/try again in\s+(\d+)m/i)
+    const seconds = message.match(/try again in\s+(?:\d+m)?([\d.]+)s/i)
+
+    const m = minutes ? Number(minutes[1]) : 0
+    const s = seconds ? Number(seconds[1]) : 0
+    const total = m * 60 + s
+
+    return Number.isFinite(total) && total > 0 ? total : undefined
+}
+
+function normalizeGroqError(error) {
+    const rawMessage = error?.error?.message || error?.message || 'Groq API request failed'
+    const status = Number(error?.status || error?.response?.status || 0) || 500
+    const code = error?.error?.code || (status === 429 ? 'rate_limit_exceeded' : 'groq_api_error')
+    const retryAfterSeconds = extractRetryAfterSeconds(rawMessage)
+
+    return {
+        status,
+        code,
+        message: rawMessage,
+        retryAfterSeconds,
+    }
+}
+
 /**
  * Analyzes executed code using Groq (Llama-3) and returns rich, structured feedback.
  * Used exclusively by the AI Feedback feature (ai.worker.js → post-submission pipeline).
@@ -12,16 +37,23 @@ const groq = new Groq({
  * NOTE: Interview AI is handled separately in `src/lib/ai/interviewGroqClient.js`
  *       to keep the two features fully decoupled.
  */
-export async function analyzeSubmissionCode({
-    code,
-    language,
-    problemTitle = 'Code Challenge',
-    verdict,
-    executionTime = 0,
-    memoryUsed = 0,
-}) {
+export async function analyzeSubmissionCode(
+    { code, language, problemTitle = 'Code Challenge', verdict, executionTime = 0, memoryUsed = 0 },
+    options = {}
+) {
+    const { throwOnError = false } = options
+
     if (!process.env.GROQ_API_KEY) {
-        console.warn('GROQ_API_KEY is not set. Skipping AI analysis.')
+        const message = 'GROQ_API_KEY is not set. Skipping AI analysis.'
+        console.warn(message)
+
+        if (throwOnError) {
+            const err = new Error(message)
+            err.status = 503
+            err.code = 'groq_api_key_missing'
+            throw err
+        }
+
         return null
     }
 
@@ -103,10 +135,28 @@ Rules:
             return parsedFeedback
         } catch (jsonError) {
             console.error('Failed to parse Groq response as JSON:', responseText)
+
+            if (throwOnError) {
+                const err = new Error('Invalid JSON returned by Groq API')
+                err.status = 502
+                err.code = 'groq_invalid_json'
+                throw err
+            }
+
             return null
         }
     } catch (error) {
-        console.error('Error calling Groq API:', error.message || error)
+        const normalizedError = normalizeGroqError(error)
+        console.error('Error calling Groq API:', normalizedError.message)
+
+        if (throwOnError) {
+            const err = new Error(normalizedError.message)
+            err.status = normalizedError.status
+            err.code = normalizedError.code
+            err.retryAfterSeconds = normalizedError.retryAfterSeconds
+            throw err
+        }
+
         return null
     }
 }

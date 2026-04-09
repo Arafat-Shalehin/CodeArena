@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
-import ProblemListSidebar from '@/app/test-docker/ProblemListSidebar'
+import ProblemListSidebar from '@/features/problem-solve/components/ProblemListSidebar'
 import { ProblemSolveProvider, useProblemSolve } from '@/context/ProblemSolveContext'
 import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'
@@ -47,6 +47,44 @@ const CodeEditorPanel = dynamic(() => import('./CodeEditorPanel'), {
 })
 import ExecutionConsole from './ExecutionConsole'
 import WorkspaceLoader from './WorkspaceLoader'
+
+const PROBLEM_LIST_PAGE_SIZE = 20
+
+async function fetchAllProblems(signal) {
+    const firstRes = await fetch(`/api/problems?page=1&limit=${PROBLEM_LIST_PAGE_SIZE}`, {
+        signal,
+    })
+    const firstData = await firstRes.json()
+
+    if (!firstData.success) {
+        throw new Error(firstData.error || 'Failed to load problem list')
+    }
+
+    const firstPageProblems = Array.isArray(firstData.data) ? firstData.data : []
+    const totalPages = Math.max(Number(firstData?.pagination?.pages || 1), 1)
+
+    if (totalPages === 1) {
+        return firstPageProblems
+    }
+
+    const remainingPagePromises = Array.from({ length: totalPages - 1 }, (_, index) => {
+        const page = index + 2
+        return fetch(`/api/problems?page=${page}&limit=${PROBLEM_LIST_PAGE_SIZE}`, {
+            signal,
+        }).then((response) => response.json())
+    })
+
+    const remainingPages = await Promise.all(remainingPagePromises)
+    const failedPage = remainingPages.find((pageData) => !pageData?.success)
+    if (failedPage) {
+        throw new Error(failedPage.error || 'Failed to load complete problem list')
+    }
+    const remainingProblems = remainingPages.flatMap((pageData) =>
+        Array.isArray(pageData?.data) ? pageData.data : []
+    )
+
+    return [...firstPageProblems, ...remainingProblems]
+}
 
 // ─── Inner Layout (has access to ProblemSolveContext) ────────────────────────
 
@@ -501,23 +539,17 @@ export default function ProblemSolverLayout({ problemId, contestId, initialProbl
                         if (isMounted) setError(problemData.error || 'Failed to load problem')
                     }
                 }
-
-                // Load problem list only if not cached
+                // Hydrate quickly from cache (if available), then refresh with full paginated list.
                 const state = useProblemSolveStore.getState()
-                if (!state.cachedProblems || state.cachedProblems.length === 0) {
-                    console.log('[ProblemSolver] Fetching problem list')
-                    const listRes = await fetch('/api/problems', { signal: controller.signal })
-                    const listData = await listRes.json()
-
-                    if (listData.success) {
-                        const problemsList = listData.data || []
-                        if (isMounted) setProblems(problemsList)
-                        useProblemSolveStore.getState().setCachedProblems(problemsList)
-                    }
-                } else {
+                if (state.cachedProblems?.length > 0) {
                     console.log('[ProblemSolver] Using cached problem list')
                     if (isMounted) setProblems(state.cachedProblems)
                 }
+
+                console.log('[ProblemSolver] Refreshing full problem list')
+                const problemsList = await fetchAllProblems(controller.signal)
+                if (isMounted) setProblems(problemsList)
+                useProblemSolveStore.getState().setCachedProblems(problemsList)
 
                 if (isMounted) setIsLoading(false)
             } catch (err) {

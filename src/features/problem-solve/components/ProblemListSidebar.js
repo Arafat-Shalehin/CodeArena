@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Search, ArrowUpDown, Filter, Shuffle, CheckCircle2, ChevronRight } from 'lucide-react'
+import { X, Search, ArrowUpDown, Filter, CheckCircle2, ChevronRight } from 'lucide-react'
 
 const DIFFICULTY_LABELS = {
     easy: { text: 'Easy', color: 'text-success' },
@@ -23,7 +23,6 @@ export default function ProblemListSidebar({
     selectedProblemId,
     onSelectProblem,
     solvedIds = [],
-    onShuffle,
 }) {
     const [searchQuery, setSearchQuery] = useState('')
     const [sortAsc, setSortAsc] = useState(true)
@@ -68,9 +67,11 @@ export default function ProblemListSidebar({
     // Filter & sort
     const filteredProblems = problems
         .filter((p) => {
-            if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                return false
-            if (filterDifficulty && p.difficulty !== filterDifficulty) return false
+            const title = (p?.title || '').toLowerCase()
+            const difficulty = (p?.difficulty || '').toLowerCase()
+
+            if (searchQuery && !title.includes(searchQuery.toLowerCase())) return false
+            if (filterDifficulty && difficulty !== filterDifficulty) return false
             return true
         })
         .sort((a, b) => {
@@ -102,7 +103,7 @@ export default function ProblemListSidebar({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-0 z-[60] bg-black/60"
+                        className="fixed inset-0 z-60 bg-black/60"
                     />
 
                     {/* Sidebar */}
@@ -112,11 +113,11 @@ export default function ProblemListSidebar({
                         animate={{ x: 0 }}
                         exit={{ x: '-100%' }}
                         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        className="bg-bg-subtle border-border fixed top-0 left-0 z-[70] flex h-full w-[380px] flex-col border-r shadow-2xl"
+                        className="bg-bg-subtle border-border fixed top-0 left-0 z-70 flex h-full w-95 flex-col border-r shadow-2xl"
                         style={{ fontFamily: 'var(--font-sans)' }}
                     >
-                        {/* ─── Header ─── */}
-                        <div className="border-border flex flex-shrink-0 flex-col border-b">
+                        {/* Header */}
+                        <div className="border-border flex shrink-0 flex-col border-b">
                             {/* Title bar */}
                             <div className="flex items-center justify-between px-5 py-4">
                                 <div className="flex items-center gap-2">
@@ -228,7 +229,7 @@ export default function ProblemListSidebar({
                             </div>
                         </div>
 
-                        {/* ─── Problem List ─── */}
+                        {/* Problem List */}
                         <div className="flex-1 overflow-y-auto">
                             {filteredProblems.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-gray-600">
@@ -239,19 +240,19 @@ export default function ProblemListSidebar({
                                 filteredProblems.map((problem, index) => {
                                     const isSolved = solvedIds.includes(problem._id)
                                     const isActive = selectedProblemId === problem._id
+                                    const normalizedDifficulty = (
+                                        problem?.difficulty || ''
+                                    ).toLowerCase()
                                     const diff =
-                                        DIFFICULTY_LABELS[problem.difficulty] ||
+                                        DIFFICULTY_LABELS[normalizedDifficulty] ||
                                         DIFFICULTY_LABELS.medium
-                                    // Find original index for numbering
-                                    const originalIndex = problems.findIndex(
-                                        (p) => p._id === problem._id
-                                    )
+                                    const serial = index + 1
 
                                     return (
                                         <div
                                             key={problem._id}
                                             onClick={() => {
-                                                onSelectProblem(problem, originalIndex)
+                                                onSelectProblem(problem)
                                                 onClose()
                                             }}
                                             className={`group flex cursor-pointer items-center gap-3 border-l-2 px-5 py-3 transition-colors ${
@@ -261,7 +262,7 @@ export default function ProblemListSidebar({
                                             } ${index % 2 === 0 ? '' : 'bg-bg-subtle/50'}`}
                                         >
                                             {/* Solved checkmark */}
-                                            <div className="w-5 flex-shrink-0">
+                                            <div className="w-5 shrink-0">
                                                 {isSolved && (
                                                     <CheckCircle2
                                                         size={16}
@@ -275,13 +276,13 @@ export default function ProblemListSidebar({
                                                 <span
                                                     className={`text-sm font-medium ${isActive ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}
                                                 >
-                                                    {originalIndex + 1}. {problem.title}
+                                                    {serial}. {problem.title}
                                                 </span>
                                             </div>
 
                                             {/* Difficulty */}
                                             <span
-                                                className={`flex-shrink-0 text-xs font-semibold ${diff.color}`}
+                                                className={`shrink-0 text-xs font-semibold ${diff.color}`}
                                             >
                                                 {diff.text}
                                             </span>

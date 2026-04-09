@@ -480,7 +480,6 @@ export default function DocumentationPage() {
 │   │   │   ├── leaderboard/    # /leaderboard
 │   │   │   ├── profile/        # /profile, /profile/[id]
 │   │   │   ├── practice/       # /practice (placeholder)
-│   │   │   └── test-docker/    # /test-docker (dev tool)
 │   │   └── api/                # REST API routes
 │   │       ├── auth/           # Auth endpoints
 │   │       ├── problems/       # Problem CRUD + submit
