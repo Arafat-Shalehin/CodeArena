@@ -541,6 +541,9 @@ function ProblemSolveProviderInner({
                 toast.info('AI features are disabled during contests')
                 return
             }
+            if (execution.isAiLoading) {
+                return
+            }
             // Get the code to analyze (prefer submitted code, fallback to last analyzed)
             const codeToAnalyze =
                 execution.lastSubmittedCode || execution.lastAnalyzedCode || codeEditor.code
@@ -599,8 +602,12 @@ function ProblemSolveProviderInner({
                         execution.setConsoleTab('ai')
                     }
                 } else {
+                    const retrySuffix =
+                        data.retryAfterSeconds && Number.isFinite(Number(data.retryAfterSeconds))
+                            ? ` Try again in ${Math.max(1, Number(data.retryAfterSeconds))}s.`
+                            : ''
                     execution.setTestResultData({
-                        aiFeedback: { error: data.error || 'AI analysis failed' },
+                        aiFeedback: { error: (data.error || 'AI analysis failed') + retrySuffix },
                     })
                 }
             } catch (err) {
@@ -618,6 +625,7 @@ function ProblemSolveProviderInner({
             execution.lastSubmittedLanguage,
             execution.lastAnalyzedCode,
             execution.lastAnalyzedVerdict,
+            execution.isAiLoading,
             execution.testResultData?.aiFeedback,
             execution.testResult?.verdict,
             execution.testResult?.time,

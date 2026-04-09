@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation'
 import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
-import ProblemListSidebar from '@/app/test-docker/ProblemListSidebar'
+import ProblemListSidebar from '@/features/problem-solve/components/ProblemListSidebar'
 import { ProblemSolveProvider, useProblemSolve } from '@/context/ProblemSolveContext'
 import { useAuth } from '@/context/AuthContext'
 import { useProblemSolveStore } from '@/store/problemSolveStore'

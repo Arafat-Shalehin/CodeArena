@@ -28,19 +28,22 @@ export async function POST(request) {
             )
         }
 
-        const feedback = await analyzeSubmissionCode({
-            code,
-            language,
-            problemTitle: problemTitle || 'Code Challenge',
-            verdict: verdict || 'UNKNOWN',
-            executionTime,
-            memoryUsed,
-        })
+        const feedback = await analyzeSubmissionCode(
+            {
+                code,
+                language,
+                problemTitle: problemTitle || 'Code Challenge',
+                verdict: verdict || 'UNKNOWN',
+                executionTime,
+                memoryUsed,
+            },
+            { throwOnError: true }
+        )
 
         if (!feedback) {
             return NextResponse.json(
-                { success: false, error: 'AI analysis failed. Check GROQ_API_KEY.' },
-                { status: 500 }
+                { success: false, error: 'AI analysis failed.' },
+                { status: 502 }
             )
         }
 
@@ -50,9 +53,18 @@ export async function POST(request) {
         })
     } catch (error) {
         console.error('AI analyze error:', error)
-        return NextResponse.json(
-            { success: false, error: error.message || 'AI analysis failed' },
-            { status: 500 }
-        )
+
+        const status = Number(error?.status || 0) || 500
+        const payload = {
+            success: false,
+            error: error.message || 'AI analysis failed',
+            code: error?.code,
+        }
+
+        if (status === 429 && Number.isFinite(Number(error?.retryAfterSeconds))) {
+            payload.retryAfterSeconds = Math.max(1, Math.ceil(Number(error.retryAfterSeconds)))
+        }
+
+        return NextResponse.json(payload, { status })
     }
 }

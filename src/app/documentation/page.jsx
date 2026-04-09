@@ -908,7 +908,6 @@ export default function DocumentationPage() {
 │   │   │   ├── leaderboard/    # /leaderboard
 │   │   │   ├── profile/        # /profile, /profile/[id]
 │   │   │   ├── practice/       # /practice (placeholder)
-│   │   │   └── test-docker/    # /test-docker (dev tool)
 │   │   └── api/                # REST API routes
 │   │       ├── auth/           # Auth endpoints
 │   │       ├── problems/       # Problem CRUD + submit
@@ -1805,11 +1804,6 @@ export default function DocumentationPage() {
                                             'Personal dashboard: recent submissions, stats, activity',
                                         ],
                                         ['/practice', 'None', 'Placeholder — "Coming Soon"'],
-                                        [
-                                            '/test-docker',
-                                            'None (dev)',
-                                            'Debug interface to test Docker execution pipeline',
-                                        ],
                                     ].map(([r, a, d], i) => (
                                         <TableRow key={i}>
                                             <TableCell className="py-3">
