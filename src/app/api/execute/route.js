@@ -2,16 +2,29 @@
  * Direct Code Execution Endpoint
  * Executes code WITHOUT creating a submission record
  * Used by "Run Code" feature to test code without saving history
+ * Rate limit: 3 submissions per 10 seconds per user
  */
 
 import dbConnect from '@/lib/mongodb'
 import { protect } from '@/middlewares/auth.middleware'
 import { Problem } from '@/models/Problem.models'
 import { executeCode } from '@/lib/docker/executor'
+import { submissionRateLimitMiddleware } from '@/middlewares/rateLimiter.middleware'
 
 export async function POST(req) {
     try {
         console.log('[EXECUTE API] POST /api/execute called')
+
+        // Connect to database
+        await dbConnect()
+
+        // Get auth user FIRST (before rate limiting to check authorization)
+        const user = await protect(req)
+        console.log('[EXECUTE API] User:', user._id)
+
+        // Apply rate limiting (prevent spam submissions)
+        const rateLimitResponse = await submissionRateLimitMiddleware(req, user._id.toString())
+        if (rateLimitResponse) return rateLimitResponse
 
         // Parse JSON body
         const body = await req.json()
@@ -34,13 +47,6 @@ export async function POST(req) {
                 { status: 400, headers: { 'Content-Type': 'application/json' } }
             )
         }
-
-        // Connect to database
-        await dbConnect()
-
-        // Get auth user
-        const user = await protect(req)
-        console.log('[EXECUTE API] User:', user._id)
 
         // Fetch problem to get limits
         const problem = await Problem.findById(problemId)

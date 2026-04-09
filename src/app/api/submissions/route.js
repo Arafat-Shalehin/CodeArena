@@ -4,6 +4,7 @@ import { submitCode, fetchSubmissions } from '@/controllers/submission.controlle
 import { asyncHandler } from '@/lib/asyncHandler'
 import { protect } from '@/middlewares/auth.middleware'
 import { initSocketServer } from '@/lib/socket-server'
+import { submissionRateLimitMiddleware } from '@/middlewares/rateLimiter.middleware'
 
 if (process.env.NODE_ENV !== 'production') {
     initSocketServer().catch(console.error)
@@ -51,6 +52,10 @@ export const POST = asyncHandler(async (req) => {
     await dbConnect()
 
     const user = await protect(req)
+
+    // Apply rate limiting (prevent spam submissions)
+    const rateLimitResponse = await submissionRateLimitMiddleware(req, user._id.toString())
+    if (rateLimitResponse) return rateLimitResponse
 
     return submitCode(req, user)
 })
