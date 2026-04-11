@@ -52,6 +52,12 @@ export async function authRateLimitMiddleware(req) {
  * @throws {Error} - When rate limit exceeded
  */
 export async function submissionRateLimitMiddleware(req, userId) {
+    // Dev UX: keep local iteration fast unless explicitly re-enabled.
+    const shouldBypassInDev =
+        process.env.NODE_ENV !== 'production' &&
+        process.env.SUBMISSION_RATE_LIMIT_DEV_BYPASS !== 'false'
+    if (shouldBypassInDev) return null
+
     if (!userId) {
         throw new Error('User ID required for submission rate limiting')
     }

@@ -1,25 +1,26 @@
 /**
  * Central Worker Manager
  *
- * Tracks all active workers and provides graceful shutdown
- * Prevents memory leaks from orphaned workers
- *
- * Usage:
- *   import { registerWorker, getWorkers, gracefulShutdown } from '@/lib/worker-manager'
- *
- *   const worker = new Worker(...)
- *   registerWorker('submission', worker)
+ * Tracks all active workers and provides graceful shutdown.
+ * Prevents memory leaks from orphaned workers.
  */
 
 const workers = new Map()
 let isShuttingDown = false
 let shutdownTimeout = null
 
+function getNodeProcess() {
+    const proc = globalThis?.['process']
+    if (!proc || !proc.versions || !proc.versions.node) {
+        return null
+    }
+    return proc
+}
+
 /**
- * Register a worker in the central registry
- * @param {string} name - Unique worker name (e.g., 'submission', 'stats')
- * @param {Worker} worker - BullMQ Worker instance
- * @returns {void}
+ * Register a worker in the central registry.
+ * @param {string} name
+ * @param {any} worker
  */
 export function registerWorker(name, worker) {
     if (!name || !worker) {
@@ -35,13 +36,12 @@ export function registerWorker(name, worker) {
     }
 
     workers.set(name, worker)
-    console.log(`[WorkerManager] ✅ Registered worker '${name}' (total: ${workers.size})`)
+    console.log(`[WorkerManager] Registered worker '${name}' (total: ${workers.size})`)
 }
 
 /**
- * Unregister a worker (e.g., after shutdown)
- * @param {string} name - Worker name
- * @returns {void}
+ * Unregister a worker.
+ * @param {string} name
  */
 export function unregisterWorker(name) {
     if (workers.has(name)) {
@@ -51,24 +51,21 @@ export function unregisterWorker(name) {
 }
 
 /**
- * Get all registered workers
- * @returns {Map<string, Worker>}
+ * @returns {Map<string, any>}
  */
 export function getWorkers() {
     return new Map(workers)
 }
 
 /**
- * Get a specific worker by name
- * @param {string} name - Worker name
- * @returns {Worker|null}
+ * @param {string} name
+ * @returns {any|null}
  */
 export function getWorker(name) {
     return workers.get(name) || null
 }
 
 /**
- * Check if any workers are registered
  * @returns {boolean}
  */
 export function hasActiveWorkers() {
@@ -76,7 +73,6 @@ export function hasActiveWorkers() {
 }
 
 /**
- * Get list of registered worker names
  * @returns {string[]}
  */
 export function getWorkerNames() {
@@ -84,9 +80,8 @@ export function getWorkerNames() {
 }
 
 /**
- * Graceful shutdown of all workers
- * @param {number} timeoutMs - Max time to wait for workers to close (default: 30s)
- * @returns {Promise<void>}
+ * Graceful shutdown of all workers.
+ * @param {number} timeoutMs
  */
 export async function gracefulShutdown(timeoutMs = 30000) {
     if (isShuttingDown) {
@@ -95,13 +90,15 @@ export async function gracefulShutdown(timeoutMs = 30000) {
     }
 
     isShuttingDown = true
-    console.log(`\n[WorkerManager] 🛑 Initiating graceful shutdown (${timeoutMs}ms timeout)...`)
+    console.log(`\n[WorkerManager] Initiating graceful shutdown (${timeoutMs}ms timeout)...`)
 
-    // Set hard timeout to force exit if graceful shutdown hangs
-    shutdownTimeout = setTimeout(() => {
-        console.error('[WorkerManager] ⚠️  Shutdown timeout exceeded. Forcing exit.')
-        process.exit(1)
-    }, timeoutMs)
+    const proc = getNodeProcess()
+    if (proc && typeof proc.exit === 'function') {
+        shutdownTimeout = setTimeout(() => {
+            console.error('[WorkerManager] Shutdown timeout exceeded. Forcing exit.')
+            proc.exit(1)
+        }, timeoutMs)
+    }
 
     const workerEntries = Array.from(workers.entries())
     console.log(`[WorkerManager] Closing ${workerEntries.length} worker(s)...`)
@@ -111,45 +108,53 @@ export async function gracefulShutdown(timeoutMs = 30000) {
             console.log(`[WorkerManager] Closing '${name}' worker...`)
             await worker.close()
             workers.delete(name)
-            console.log(`[WorkerManager] ✅ Closed '${name}' worker`)
+            console.log(`[WorkerManager] Closed '${name}' worker`)
         } catch (error) {
             console.error(
-                `[WorkerManager] ❌ Error closing '${name}' worker:`,
+                `[WorkerManager] Error closing '${name}' worker:`,
                 error?.message || error
             )
         }
     })
 
-    // Wait for all workers to close (with Promise.allSettled to prevent early exit on error)
     const results = await Promise.allSettled(closurePromises)
     const failed = results.filter((r) => r.status === 'rejected').length
 
     if (failed > 0) {
-        console.warn(`[WorkerManager] ⚠️  ${failed} worker(s) failed to close cleanly`)
+        console.warn(`[WorkerManager] ${failed} worker(s) failed to close cleanly`)
     }
 
-    // Clear timeout since shutdown completed
     if (shutdownTimeout) {
         clearTimeout(shutdownTimeout)
         shutdownTimeout = null
     }
 
-    console.log('[WorkerManager] ✅ All workers closed. Safe to exit.')
+    console.log('[WorkerManager] All workers closed. Safe to exit.')
 }
 
 /**
- * Setup process signal handlers for graceful shutdown
- * Should be called once during app initialization
- * @returns {void}
+ * Setup signal handlers for graceful shutdown.
  */
 export function setupShutdownHandlers() {
+    const proc = getNodeProcess()
+
+    if (!proc) {
+        console.log('[WorkerManager] Skipping signal handlers (not Node.js environment)')
+        return
+    }
+
     const signals = ['SIGINT', 'SIGTERM', 'SIGHUP']
 
     signals.forEach((signal) => {
-        process.on(signal, async () => {
+        const onSignal = proc.on
+        if (typeof onSignal !== 'function') return
+
+        onSignal.call(proc, signal, async () => {
             console.log(`\n[WorkerManager] Received ${signal} signal`)
             await gracefulShutdown()
-            process.exit(0)
+            if (typeof proc.exit === 'function') {
+                proc.exit(0)
+            }
         })
     })
 
@@ -157,9 +162,8 @@ export function setupShutdownHandlers() {
 }
 
 /**
- * Force close a worker (use only as fallback)
- * @param {string} name - Worker name
- * @returns {Promise<void>}
+ * Force close a worker.
+ * @param {string} name
  */
 export async function forceCloseWorker(name) {
     const worker = workers.get(name)
@@ -172,16 +176,15 @@ export async function forceCloseWorker(name) {
         console.log(`[WorkerManager] Force closing '${name}' worker...`)
         await worker.close()
         workers.delete(name)
-        console.log(`[WorkerManager] ✅ Force closed '${name}' worker`)
+        console.log(`[WorkerManager] Force closed '${name}' worker`)
     } catch (error) {
         console.error(`[WorkerManager] Error force closing '${name}':`, error?.message)
-        workers.delete(name) // Remove anyway
+        workers.delete(name)
     }
 }
 
 /**
- * Get worker statistics
- * @returns {Object}
+ * @returns {{totalWorkers:number, activeWorkers:string[], isShuttingDown:boolean}}
  */
 export function getWorkerStats() {
     return {

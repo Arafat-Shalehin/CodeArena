@@ -12,10 +12,12 @@ const redisUrl = process.env.REDIS_URL || ''
 const redisConfig = redisUrl
     ? { url: redisUrl }
     : {
-          host:
-              process.env.REDIS_HOST ||
-              (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
-          port: parseInt(process.env.REDIS_PORT || '6379'),
+          socket: {
+              host:
+                  process.env.REDIS_HOST ||
+                  (process.env.NODE_ENV === 'development' ? 'localhost' : 'redis'),
+              port: parseInt(process.env.REDIS_PORT || '6379'),
+          },
           ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
       }
 

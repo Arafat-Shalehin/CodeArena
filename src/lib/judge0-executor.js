@@ -9,12 +9,22 @@
 const JUDGE0_API_URL = process.env.JUDGE0_API_URL || 'https://ce.judge0.com'
 const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY || ''
 const JUDGE0_AUTH_HEADER = process.env.JUDGE0_AUTH_HEADER || 'X-Auth-Token'
+const JUDGE0_PUBLIC_FALLBACK_URL = process.env.JUDGE0_PUBLIC_FALLBACK_URL || 'https://ce.judge0.com'
 
 function isRapidApiUrl(url) {
     try {
         return new URL(url).hostname.includes('rapidapi.com')
     } catch {
         return false
+    }
+}
+
+function getRapidApiHost() {
+    if (process.env.JUDGE0_RAPIDAPI_HOST) return process.env.JUDGE0_RAPIDAPI_HOST
+    try {
+        return new URL(JUDGE0_API_URL).hostname
+    } catch {
+        return 'judge0-ce.p.rapidapi.com'
     }
 }
 
@@ -31,12 +41,34 @@ function buildJudge0Headers({ includeContentType = false } = {}) {
 
     if (isRapidApiUrl(JUDGE0_API_URL)) {
         headers['X-RapidAPI-Key'] = JUDGE0_API_KEY
-        headers['X-RapidAPI-Host'] = process.env.JUDGE0_RAPIDAPI_HOST || 'judge0-ce.p.rapidapi.com'
+        headers['X-RapidAPI-Host'] = getRapidApiHost()
         return headers
     }
 
     headers[JUDGE0_AUTH_HEADER] = JUDGE0_API_KEY
     return headers
+}
+
+function buildHeadersForUrl(url, { includeContentType = false } = {}) {
+    if (url === JUDGE0_API_URL) {
+        return buildJudge0Headers({ includeContentType })
+    }
+
+    const headers = {}
+    if (includeContentType) headers['Content-Type'] = 'application/json'
+    return headers
+}
+
+function shouldFallbackFromRapidApi(status, errorText) {
+    const msg = (errorText || '').toLowerCase()
+    return (
+        status === 401 ||
+        status === 402 ||
+        status === 403 ||
+        msg.includes('not subscribed') ||
+        msg.includes('forbidden') ||
+        msg.includes('invalid api key')
+    )
 }
 
 // Language ID mappings for Judge0
@@ -109,24 +141,59 @@ export async function executeCodeWithJudge0({
 
         // Convert timeLimit from ms to seconds (Judge0 expects seconds)
         const cpuTimeLimit = Math.max(1, Math.ceil((Number(timeLimit) || 1000) / 1000))
+        // Judge0 expects memory_limit in KB (not MB).
         const normalizedMemoryLimitKb = Math.max(16 * 1024, Number(memoryLimit) || 256 * 1024)
-        const memoryLimitMb = Math.max(16, Math.floor(normalizedMemoryLimitKb / 1024))
 
-        // Create submission
-        const createResponse = await fetch(`${JUDGE0_API_URL}/submissions`, {
-            method: 'POST',
-            headers: buildJudge0Headers({ includeContentType: true }),
-            body: JSON.stringify({
-                language_id: languageId,
-                source_code: code,
-                stdin: input,
-                cpu_time_limit: cpuTimeLimit,
-                memory_limit: memoryLimitMb, // Judge0 expects MB
-            }),
-        })
+        let activeBaseUrl = JUDGE0_API_URL
+        let createResponse = await fetch(
+            `${activeBaseUrl}/submissions?base64_encoded=false&wait=false`,
+            {
+                method: 'POST',
+                headers: buildHeadersForUrl(activeBaseUrl, { includeContentType: true }),
+                body: JSON.stringify({
+                    language_id: languageId,
+                    source_code: code,
+                    stdin: input,
+                    cpu_time_limit: cpuTimeLimit,
+                    memory_limit: normalizedMemoryLimitKb,
+                }),
+            }
+        )
 
         if (!createResponse.ok) {
-            throw new Error(`Failed to create submission: ${createResponse.statusText}`)
+            const errorText = await createResponse.text().catch(() => '')
+
+            if (
+                isRapidApiUrl(activeBaseUrl) &&
+                JUDGE0_PUBLIC_FALLBACK_URL &&
+                shouldFallbackFromRapidApi(createResponse.status, errorText)
+            ) {
+                console.warn(
+                    `[Judge0] RapidAPI access failed (${createResponse.status}). Retrying with public Judge0 endpoint.`
+                )
+                activeBaseUrl = JUDGE0_PUBLIC_FALLBACK_URL
+                createResponse = await fetch(
+                    `${activeBaseUrl}/submissions?base64_encoded=false&wait=false`,
+                    {
+                        method: 'POST',
+                        headers: buildHeadersForUrl(activeBaseUrl, { includeContentType: true }),
+                        body: JSON.stringify({
+                            language_id: languageId,
+                            source_code: code,
+                            stdin: input,
+                            cpu_time_limit: cpuTimeLimit,
+                            memory_limit: normalizedMemoryLimitKb,
+                        }),
+                    }
+                )
+            }
+
+            if (!createResponse.ok) {
+                const retryErrorText = await createResponse.text().catch(() => '')
+                throw new Error(
+                    `Failed to create submission (${createResponse.status} ${createResponse.statusText})${retryErrorText ? `: ${retryErrorText}` : errorText ? `: ${errorText}` : ''}`
+                )
+            }
         }
 
         const { token } = await createResponse.json()
@@ -138,10 +205,13 @@ export async function executeCodeWithJudge0({
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             await new Promise((resolve) => setTimeout(resolve, pollInterval))
 
-            const statusResponse = await fetch(`${JUDGE0_API_URL}/submissions/${token}`, {
-                method: 'GET',
-                headers: buildJudge0Headers(),
-            })
+            const statusResponse = await fetch(
+                `${activeBaseUrl}/submissions/${token}?base64_encoded=false`,
+                {
+                    method: 'GET',
+                    headers: buildHeadersForUrl(activeBaseUrl),
+                }
+            )
 
             if (!statusResponse.ok) {
                 continue
