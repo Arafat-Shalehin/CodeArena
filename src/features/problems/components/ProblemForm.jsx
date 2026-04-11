@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import Swal from 'sweetalert2'
-import { useRouter } from 'next/navigation'
 import { Save, Code2, RefreshCcw, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,7 +35,6 @@ const defaultValues = {
 
 export default function ProblemForm({ mode = 'create', defaultData, onSubmit: onSuccess }) {
     const isEdit = mode === 'edit'
-    const router = useRouter()
 
     const {
         register,
@@ -87,7 +85,7 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
 
             if (result.success) {
                 await Swal.fire({
-                    title: isEdit ? 'COMMIT SUCCESS' : 'CHALLENGE ACTIVATED',
+                    title: isEdit ? 'Update Successful' : 'Problem Created',
                     text: isEdit
                         ? 'The problem database has been updated.'
                         : 'Your new challenge is now live in the system.',
@@ -99,7 +97,7 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
                 onSuccess?.()
             } else {
                 Swal.fire({
-                    title: 'SYSTEM ERROR',
+                    title: 'System Error',
                     text: result.error || result.message || 'Operation failed',
                     icon: 'error',
                     background: 'var(--ca-bg-page)',
@@ -108,7 +106,7 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
             }
         } catch (error) {
             Swal.fire({
-                title: 'FATAL ERROR',
+                title: 'Request Failed',
                 text: 'Connection to problem service was interrupted.',
                 icon: 'error',
                 background: 'var(--ca-bg-page)',
@@ -129,16 +127,16 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
                         )}
                     </div>
                     <div>
-                        <CardTitle className="text-text-primary text-2xl font-black tracking-tighter uppercase italic">
+                        <CardTitle className="text-text-primary text-2xl font-semibold tracking-tight">
                             {isEdit ? 'Refactor' : 'Create'}{' '}
                             <span className="text-accent">
                                 {isEdit ? 'Challenge' : 'New Problem'}
                             </span>
                         </CardTitle>
-                        <CardDescription className="text-text-muted mt-1 text-[10px] font-black tracking-widest uppercase opacity-60">
+                        <CardDescription className="text-text-muted mt-1 text-xs font-medium tracking-wide opacity-70">
                             {isEdit
-                                ? `MODIFYING SYSTEM RECORD: ${defaultData?._id?.toUpperCase()}`
-                                : 'INITIATING NEW PROBLEM ENTRY IN DATABASE'}
+                                ? `Editing record: ${defaultData?._id?.toUpperCase()}`
+                                : 'Create and publish a new coding problem.'}
                         </CardDescription>
                     </div>
                 </div>
@@ -149,18 +147,18 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
                     <div className="space-y-2">
                         <Label
                             htmlFor="title"
-                            className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70"
+                            className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75"
                         >
-                            System Problem Title
+                            Problem Title
                         </Label>
                         <Input
                             id="title"
                             {...register('title')}
                             placeholder="e.g. Longest Substring Logic"
-                            className={`bg-bg-page/50 border-border focus-within:border-accent/40 focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-bold shadow-none transition-all ${errors.title ? 'border-rose-500/50 focus-visible:ring-rose-500/20' : ''}`}
+                            className={`bg-bg-page/50 border-border focus-within:border-accent/40 focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-medium shadow-none transition-all ${errors.title ? 'border-rose-500/50 focus-visible:ring-rose-500/20' : ''}`}
                         />
                         {errors.title && (
-                            <p className="ml-1 flex items-center gap-1.5 text-[10px] font-bold tracking-tight text-rose-500 uppercase">
+                            <p className="ml-1 flex items-center gap-1.5 text-xs font-medium tracking-tight text-rose-500">
                                 <AlertCircle className="h-3 w-3" /> {errors.title.message}
                             </p>
                         )}
@@ -169,18 +167,18 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
                     <div className="space-y-2">
                         <Label
                             htmlFor="description"
-                            className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70"
+                            className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75"
                         >
-                            Operational Description (Markdown Ready)
+                            Description (Markdown)
                         </Label>
                         <Textarea
                             id="description"
                             {...register('description')}
                             placeholder="Detail the challenge requirements, constraints, and operational flow..."
-                            className={`bg-bg-page/50 border-border focus-within:border-accent/40 focus-visible:ring-accent/20 min-h-[180px] rounded-xl py-4 text-sm font-bold shadow-none transition-all ${errors.description ? 'border-rose-500/50' : ''}`}
+                            className={`bg-bg-page/50 border-border focus-within:border-accent/40 focus-visible:ring-accent/20 min-h-45 rounded-xl py-4 text-sm font-medium shadow-none transition-all ${errors.description ? 'border-rose-500/50' : ''}`}
                         />
                         {errors.description && (
-                            <p className="ml-1 text-[10px] font-bold tracking-tight text-rose-500 uppercase">
+                            <p className="ml-1 text-xs font-medium tracking-tight text-rose-500">
                                 {errors.description.message}
                             </p>
                         )}
@@ -188,50 +186,41 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
 
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                                Complexity Level
+                            <Label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                                Difficulty
                             </Label>
                             <Select
                                 value={difficultyValue}
                                 onValueChange={(val) => setValue('difficulty', val)}
                             >
-                                <SelectTrigger className="bg-bg-page/50 border-border focus:ring-accent/20 h-12 rounded-xl text-xs font-black uppercase italic shadow-none">
-                                    <SelectValue placeholder="Analyze Level" />
+                                <SelectTrigger className="bg-bg-page/50 border-border focus:ring-accent/20 h-12 rounded-xl text-sm font-medium shadow-none">
+                                    <SelectValue placeholder="Select difficulty" />
                                 </SelectTrigger>
                                 <SelectContent className="matte-surface border-border bg-bg-page rounded-xl shadow-2xl">
-                                    <SelectItem
-                                        value="easy"
-                                        className="text-[10px] font-black tracking-widest uppercase"
-                                    >
-                                        Beginner Level
+                                    <SelectItem value="easy" className="text-sm font-medium">
+                                        Beginner
                                     </SelectItem>
-                                    <SelectItem
-                                        value="medium"
-                                        className="text-[10px] font-black tracking-widest uppercase"
-                                    >
-                                        Intermediate Level
+                                    <SelectItem value="medium" className="text-sm font-medium">
+                                        Intermediate
                                     </SelectItem>
-                                    <SelectItem
-                                        value="hard"
-                                        className="text-[10px] font-black tracking-widest uppercase"
-                                    >
-                                        Expert Level
+                                    <SelectItem value="hard" className="text-sm font-medium">
+                                        Expert
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                                System Tags (Comma Separated)
+                            <Label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                                Tags (Comma Separated)
                             </Label>
                             <Input
                                 {...register('tags')}
                                 placeholder="dp, binary-tree, arrays"
-                                className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-bold shadow-none"
+                                className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-medium shadow-none"
                             />
                             {errors.tags && (
-                                <p className="ml-1 text-[10px] font-bold tracking-tight text-rose-500 uppercase">
+                                <p className="ml-1 text-xs font-medium tracking-tight text-rose-500">
                                     {errors.tags.message}
                                 </p>
                             )}
@@ -240,33 +229,33 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
 
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                                Runtime Limit (Seconds)
+                            <Label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                                Time Limit (Seconds)
                             </Label>
                             <Input
                                 type="number"
                                 step="0.1"
                                 {...register('timeLimit')}
-                                className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-black shadow-none"
+                                className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-medium shadow-none"
                             />
                             {errors.timeLimit && (
-                                <p className="ml-1 text-[10px] font-bold tracking-tight text-rose-500 uppercase">
+                                <p className="ml-1 text-xs font-medium tracking-tight text-rose-500">
                                     {errors.timeLimit.message}
                                 </p>
                             )}
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                                Memory Barrier (MB)
+                            <Label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                                Memory Limit (MB)
                             </Label>
                             <Input
                                 type="number"
                                 {...register('memoryLimit')}
-                                className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-black shadow-none"
+                                className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-12 rounded-xl text-sm font-medium shadow-none"
                             />
                             {errors.memoryLimit && (
-                                <p className="ml-1 text-[10px] font-bold tracking-tight text-rose-500 uppercase">
+                                <p className="ml-1 text-xs font-medium tracking-tight text-rose-500">
                                     {errors.memoryLimit.message}
                                 </p>
                             )}
@@ -277,14 +266,14 @@ export default function ProblemForm({ mode = 'create', defaultData, onSubmit: on
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-accent hover:bg-accent/90 shadow-accent/20 h-14 w-full rounded-2xl text-[13px] font-black tracking-widest text-white uppercase shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+                            className="bg-accent hover:bg-accent/90 shadow-accent/20 h-14 w-full rounded-2xl text-sm font-semibold text-white shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-95 disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="h-6 w-6 animate-spin" />
                             ) : (
                                 <div className="flex items-center gap-3">
                                     <Save className="h-5 w-5" />{' '}
-                                    {isEdit ? 'UPDATE SYSTEM ENTITY' : 'INITIALIZE CHALLENGE'}
+                                    {isEdit ? 'Update Problem' : 'Create Problem'}
                                 </div>
                             )}
                         </Button>

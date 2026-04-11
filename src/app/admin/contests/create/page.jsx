@@ -54,7 +54,7 @@ export default function CreateContestPage() {
         e.preventDefault()
         if (formData.problemIds.length === 0) {
             return Swal.fire({
-                title: 'SELECTION REQUIRED',
+                title: 'Selection Required',
                 text: 'Please select at least one problem for the contest.',
                 icon: 'warning',
                 background: 'var(--ca-bg-page)',
@@ -63,7 +63,7 @@ export default function CreateContestPage() {
         }
         if (new Date(formData.endTime) <= new Date(formData.startTime)) {
             return Swal.fire({
-                title: 'TIMELINE ERROR',
+                title: 'Timeline Error',
                 text: 'End time must be after start time.',
                 icon: 'warning',
                 background: 'var(--ca-bg-page)',
@@ -82,7 +82,7 @@ export default function CreateContestPage() {
 
             if (data.success) {
                 Swal.fire({
-                    title: 'MISSION SUCCESS',
+                    title: 'Contest Created',
                     text: 'Contest has been successfully deployed.',
                     icon: 'success',
                     background: 'var(--ca-bg-page)',
@@ -93,7 +93,7 @@ export default function CreateContestPage() {
                 })
             } else {
                 Swal.fire({
-                    title: 'DEPLOYMENT FAILED',
+                    title: 'Creation Failed',
                     text: data.message || 'Error occurred during creation',
                     icon: 'error',
                     background: 'var(--ca-bg-page)',
@@ -102,7 +102,7 @@ export default function CreateContestPage() {
             }
         } catch (error) {
             Swal.fire({
-                title: 'SERVER ERROR',
+                title: 'Server Error',
                 text: 'Terminal connection lost.',
                 icon: 'error',
                 background: 'var(--ca-bg-page)',
@@ -116,10 +116,10 @@ export default function CreateContestPage() {
     return (
         <div className="mx-auto max-w-4xl space-y-10 py-6">
             <header className="flex flex-col gap-1">
-                <h1 className="text-text-primary text-3xl font-black tracking-tight uppercase italic">
+                <h1 className="text-text-primary text-3xl font-semibold tracking-tight">
                     Deploy <span className="text-accent">New Contest</span>
                 </h1>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                <p className="text-text-muted text-sm font-medium opacity-75">
                     Host a competitive sprint event
                 </p>
             </header>
@@ -130,12 +130,12 @@ export default function CreateContestPage() {
             >
                 {/* Title */}
                 <div className="space-y-2">
-                    <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                        Operational Sprint Title
+                    <label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                        Contest Title
                     </label>
                     <Input
                         placeholder="e.g. ALPHA SPRINT #4"
-                        className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl text-lg font-black italic shadow-none"
+                        className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl text-base font-medium shadow-none"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         required
@@ -144,12 +144,12 @@ export default function CreateContestPage() {
 
                 {/* Description */}
                 <div className="space-y-2">
-                    <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                        Strategic Briefing
+                    <label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                        Contest Description
                     </label>
                     <Textarea
                         placeholder="Define rules, goals, and prize pool..."
-                        className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-32 rounded-2xl py-4 font-bold shadow-none"
+                        className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-32 rounded-2xl py-4 text-sm font-medium shadow-none"
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
@@ -158,12 +158,12 @@ export default function CreateContestPage() {
                 {/* Date and Time */}
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                     <div className="space-y-2">
-                        <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                            Activation Timestamp
+                        <label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                            Start Time
                         </label>
                         <Input
                             type="datetime-local"
-                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl font-black uppercase shadow-none"
+                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl text-sm font-medium shadow-none"
                             value={formData.startTime}
                             onChange={(e) =>
                                 setFormData({ ...formData, startTime: e.target.value })
@@ -172,12 +172,12 @@ export default function CreateContestPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-text-muted ml-1 text-[10px] font-black tracking-widest uppercase opacity-70">
-                            Termination Timestamp
+                        <label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
+                            End Time
                         </label>
                         <Input
                             type="datetime-local"
-                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl font-black uppercase shadow-none"
+                            className="bg-bg-page/50 border-border focus-visible:ring-accent/20 h-14 rounded-2xl text-sm font-medium shadow-none"
                             value={formData.endTime}
                             onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                             required
@@ -187,10 +187,10 @@ export default function CreateContestPage() {
 
                 {/* Problem Selection Area */}
                 <div className="space-y-3">
-                    <label className="text-text-muted ml-1 flex justify-between text-[10px] font-black tracking-widest uppercase opacity-70">
-                        Operational Problem Set
-                        <span className="text-accent font-black tracking-normal">
-                            [{formData.problemIds.length} SELECTED]
+                    <label className="text-text-muted ml-1 flex justify-between text-xs font-semibold tracking-wide uppercase opacity-75">
+                        Problem Set
+                        <span className="text-accent font-semibold tracking-normal">
+                            {formData.problemIds.length} selected
                         </span>
                     </label>
 
@@ -198,8 +198,8 @@ export default function CreateContestPage() {
                         {isLoadingProblems ? (
                             <div className="text-text-muted flex flex-col items-center py-12">
                                 <Loader2 className="text-accent mb-3 h-10 w-10 animate-spin" />
-                                <p className="text-[10px] font-black tracking-widest uppercase opacity-60">
-                                    Scanning Problem Database...
+                                <p className="text-xs font-medium tracking-wide opacity-70">
+                                    Scanning problem database...
                                 </p>
                             </div>
                         ) : availableProblems.length > 0 ? (
@@ -227,13 +227,13 @@ export default function CreateContestPage() {
                                                 )}
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[13px] font-bold tracking-tight">
+                                                <span className="text-sm font-semibold tracking-tight">
                                                     {problem.title}
                                                 </span>
                                             </div>
                                         </div>
                                         <span
-                                            className={`rounded-md px-2 py-1 text-[9px] font-black tracking-tighter uppercase ${
+                                            className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${
                                                 problem.difficulty === 'hard'
                                                     ? 'bg-rose-500/20 text-rose-500'
                                                     : problem.difficulty === 'medium'
@@ -248,8 +248,8 @@ export default function CreateContestPage() {
                             </div>
                         ) : (
                             <div className="text-text-muted py-12 text-center">
-                                <p className="text-[10px] font-black tracking-widest uppercase italic opacity-40">
-                                    Null Set: No Problems Available
+                                <p className="text-xs font-medium tracking-wide opacity-55">
+                                    No problems available.
                                 </p>
                             </div>
                         )}
@@ -261,13 +261,13 @@ export default function CreateContestPage() {
                     <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="bg-accent hover:bg-accent/90 shadow-accent/20 h-16 w-full rounded-2xl text-[14px] font-black tracking-[0.2em] text-white uppercase shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+                        className="bg-accent hover:bg-accent/90 shadow-accent/20 h-16 w-full rounded-2xl text-sm font-semibold text-white shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-95 disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <Loader2 className="h-7 w-7 animate-spin" />
                         ) : (
                             <div className="flex items-center gap-4">
-                                <Save className="h-6 w-6" /> COMMENCE CONTEST DEPLOYMENT
+                                <Save className="h-6 w-6" /> Create Contest
                             </div>
                         )}
                     </Button>

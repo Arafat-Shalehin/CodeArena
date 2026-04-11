@@ -541,9 +541,9 @@ export default function ProblemSolverLayout({ problemId, contestId, initialProbl
     const [problem, setProblem] = useState(startingProblem)
     const [problems, setProblems] = useState(initialProblems)
 
-    // We only need to load if we don't have problem list (initialProblem covers the problem data)
-    const needsProblemList = initialProblems.length === 0
-    const [isLoading, setIsLoading] = useState(!startingProblem || needsProblemList)
+    // Show full-screen loader only when problem data is missing.
+    // Problem list can be refreshed in background without blocking the workspace.
+    const [isLoading, setIsLoading] = useState(!startingProblem)
     const [error, setError] = useState(null)
 
     useEffect(() => {
@@ -553,7 +553,7 @@ export default function ProblemSolverLayout({ problemId, contestId, initialProbl
 
         const loadData = async () => {
             try {
-                if (isMounted && (!problem || needsProblemList)) {
+                if (isMounted && !problem) {
                     setIsLoading(true)
                 }
 

@@ -430,6 +430,19 @@ export function useSubmissionRealtime({
         })
 
         socket.on('submission_update', (data) => {
+            const lifecycleUpdateTypes = new Set([
+                'submission_queued',
+                'submission_running',
+                'submission_evaluated',
+                'submit_result',
+                'run_result',
+                'submission_error',
+            ])
+
+            if (!lifecycleUpdateTypes.has(data.type)) {
+                return
+            }
+
             console.log('[Socket] Submission update:', data)
             setLatestSubmissionEvent(data)
 

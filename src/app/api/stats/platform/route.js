@@ -4,8 +4,12 @@ import { User } from '@/models/User.models'
 import { Contest } from '@/models/Contest.models'
 import { StatsHistory } from '@/models/StatsHistory.models'
 import { NextResponse } from 'next/server'
+import { redisClient } from '@/lib/redis'
 
 export const dynamic = 'force-dynamic'
+
+const PLATFORM_STATS_CACHE_KEY = 'stats:platform:v1'
+const PLATFORM_STATS_CACHE_TTL_SECONDS = 30
 
 /**
  * GET /api/stats/platform
@@ -13,45 +17,45 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET() {
     try {
+        if (redisClient.isOpen) {
+            try {
+                const cached = await redisClient.get(PLATFORM_STATS_CACHE_KEY)
+                if (cached) {
+                    return NextResponse.json({ success: true, data: JSON.parse(cached) })
+                }
+            } catch (err) {
+                console.error('[PlatformStatsAPI] Redis read error:', err?.message || err)
+            }
+        }
+
         await dbConnect()
 
         // 1. Current Stats
         // Total Participants (Users with at least one submission)
-        const totalParticipants = await User.countDocuments({
-            'stats.totalSubmissions': { $gt: 0 },
-        })
-
-        // Submissions Today (Last 24 hours)
         const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        const submissionsToday = await Submission.countDocuments({
-            createdAt: { $gte: last24h },
-        })
 
-        // Active Contests
-        const activeContests = await Contest.countDocuments({
-            status: 'active',
-            isDeleted: false,
-        })
-
-        // Avg. Solve Rate
-        const aggregateStats = await User.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    totalAccepted: { $sum: '$stats.accepted' },
-                    totalSubmissions: { $sum: '$stats.totalSubmissions' },
-                },
-            },
-        ])
+        const [totalParticipants, submissionsToday, activeContests, aggregateStats, history] =
+            await Promise.all([
+                User.countDocuments({ 'stats.totalSubmissions': { $gt: 0 } }),
+                Submission.countDocuments({ createdAt: { $gte: last24h } }),
+                Contest.countDocuments({ status: 'active', isDeleted: false }),
+                User.aggregate([
+                    {
+                        $group: {
+                            _id: null,
+                            totalAccepted: { $sum: '$stats.accepted' },
+                            totalSubmissions: { $sum: '$stats.totalSubmissions' },
+                        },
+                    },
+                ]),
+                StatsHistory.find().sort({ date: -1 }).limit(7).lean(),
+            ])
 
         const { totalAccepted = 0, totalSubmissions = 0 } = aggregateStats[0] || {}
         const currentSolveRate =
             totalSubmissions > 0
                 ? parseFloat(((totalAccepted / totalSubmissions) * 100).toFixed(1))
                 : 0
-
-        // 2. Fetch History (Last 7 days)
-        const history = await StatsHistory.find().sort({ date: -1 }).limit(7).lean()
 
         // Reverse to get chronological order for sparklines
         const chronologicalHistory = [...history].reverse()
@@ -87,34 +91,43 @@ export async function GET() {
         // Keep only last 7 points for visual consistency
         const finalHistory = (arr) => arr.slice(-7)
 
+        const payload = {
+            totalParticipants,
+            submissionsToday,
+            activeContests,
+            avgSolveRate: `${currentSolveRate}%`,
+
+            // History for Sparklines
+            participantsHistory: finalHistory(participantsHistory),
+            submissionsHistory: finalHistory(submissionsHistory),
+            solveRateHistory: finalHistory(solveRateHistory),
+            contestsHistory: finalHistory(contestsHistory),
+
+            // Trends vs Last Snapshot
+            participantsTrend: calculateTrend(totalParticipants, lastSnapshot.totalParticipants),
+            submissionsTrend: calculateTrend(submissionsToday, lastSnapshot.submissionsCount),
+            solveRateTrend: calculateTrend(currentSolveRate, lastSnapshot.solveRate),
+            contestsTrend: calculateTrend(activeContests, lastSnapshot.activeContests),
+
+            participantsTrendUp: totalParticipants >= (lastSnapshot.totalParticipants || 0),
+            submissionsTrendUp: submissionsToday >= (lastSnapshot.submissionsCount || 0),
+            solveRateTrendUp: currentSolveRate >= (lastSnapshot.solveRate || 0),
+            contestsTrendUp: activeContests >= (lastSnapshot.activeContests || 0),
+        }
+
+        if (redisClient.isOpen) {
+            redisClient
+                .set(PLATFORM_STATS_CACHE_KEY, JSON.stringify(payload), {
+                    EX: PLATFORM_STATS_CACHE_TTL_SECONDS,
+                })
+                .catch((err) => {
+                    console.error('[PlatformStatsAPI] Redis write error:', err?.message || err)
+                })
+        }
+
         return NextResponse.json({
             success: true,
-            data: {
-                totalParticipants,
-                submissionsToday,
-                activeContests,
-                avgSolveRate: `${currentSolveRate}%`,
-
-                // History for Sparklines
-                participantsHistory: finalHistory(participantsHistory),
-                submissionsHistory: finalHistory(submissionsHistory),
-                solveRateHistory: finalHistory(solveRateHistory),
-                contestsHistory: finalHistory(contestsHistory),
-
-                // Trends vs Last Snapshot
-                participantsTrend: calculateTrend(
-                    totalParticipants,
-                    lastSnapshot.totalParticipants
-                ),
-                submissionsTrend: calculateTrend(submissionsToday, lastSnapshot.submissionsCount),
-                solveRateTrend: calculateTrend(currentSolveRate, lastSnapshot.solveRate),
-                contestsTrend: calculateTrend(activeContests, lastSnapshot.activeContests),
-
-                participantsTrendUp: totalParticipants >= (lastSnapshot.totalParticipants || 0),
-                submissionsTrendUp: submissionsToday >= (lastSnapshot.submissionsCount || 0),
-                solveRateTrendUp: currentSolveRate >= (lastSnapshot.solveRate || 0),
-                contestsTrendUp: activeContests >= (lastSnapshot.activeContests || 0),
-            },
+            data: payload,
         })
     } catch (error) {
         console.error('[PlatformStatsAPI] Error:', error)

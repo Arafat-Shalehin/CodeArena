@@ -70,7 +70,7 @@ export default function AdminProfilePage() {
                 <div className="bg-accent/10 flex h-20 w-20 items-center justify-center rounded-2xl">
                     <Loader2 className="text-accent h-10 w-10 animate-spin" />
                 </div>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-60">
+                <p className="text-text-muted text-xs font-medium tracking-wide opacity-70">
                     Loading Admin Profile...
                 </p>
             </div>
@@ -81,10 +81,10 @@ export default function AdminProfilePage() {
         <div className="space-y-10">
             {/* Header */}
             <header className="flex flex-col gap-1">
-                <h1 className="text-text-primary text-3xl font-black tracking-tight uppercase italic">
+                <h1 className="text-text-primary text-3xl font-semibold tracking-tight">
                     My <span className="text-accent">Profile</span>
                 </h1>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                <p className="text-text-muted text-sm font-medium opacity-75">
                     Administrative Terminal & Personal Progress
                 </p>
             </header>
@@ -109,11 +109,11 @@ export default function AdminProfilePage() {
                         {/* Heatmap Card */}
                         <div className="matte-surface border-border bg-bg-subtle/40 overflow-hidden rounded-3xl border p-8 shadow-xl">
                             <div className="mb-6 flex items-center justify-between">
-                                <h3 className="text-text-primary flex items-center gap-2 text-sm font-black tracking-tight uppercase italic">
+                                <h3 className="text-text-primary flex items-center gap-2 text-sm font-semibold tracking-tight">
                                     <div className="bg-accent h-2 w-2 animate-pulse rounded-full" />
                                     Submission Activity
                                 </h3>
-                                <div className="text-text-muted text-[10px] font-bold uppercase opacity-50">
+                                <div className="text-text-muted text-xs font-medium opacity-60">
                                     Last 365 Days
                                 </div>
                             </div>
@@ -150,7 +150,7 @@ export default function AdminProfilePage() {
                                 />
                                 <ReactTooltip
                                     id="activity-tooltip"
-                                    className="matte-surface !bg-bg-page !text-text-primary !border-border !rounded-xl !border !px-3 !py-2 !opacity-100 shadow-2xl"
+                                    className="matte-surface bg-bg-page! text-text-primary! border-border! rounded-xl! border! px-3! py-2! opacity-100! shadow-2xl"
                                 />
                             </div>
                         </div>

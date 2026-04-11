@@ -17,6 +17,7 @@ export default function AdminLayout({ children }) {
     const [isCollapsed, setIsCollapsed] = useState(false)
     const { user, isLoading } = useAuth()
     const router = useRouter()
+    const displayName = user?.username || user?.name || 'Administrator'
 
     useEffect(() => {
         if (!isLoading && (!user || user.role !== 'admin')) {
@@ -77,10 +78,10 @@ export default function AdminLayout({ children }) {
                                 <Image src="/logo.svg" alt="Logo" width={32} height={32} />
                             </div>
                             <div className="hidden flex-col sm:flex">
-                                <span className="text-accent text-sm leading-none font-black uppercase italic">
+                                <span className="text-accent text-sm leading-none font-semibold tracking-tight">
                                     Admin Center
                                 </span>
-                                <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+                                <span className="text-text-muted text-xs font-medium tracking-wide">
                                     CodeArena v2.0
                                 </span>
                             </div>
@@ -97,12 +98,12 @@ export default function AdminLayout({ children }) {
 
                         <div className="border-border flex items-center gap-3 border-l pl-3">
                             <div className="hidden text-right lg:block">
-                                <p className="text-text-primary text-xs font-black uppercase italic">
-                                    {user?.name || 'Administrator'}
+                                <p className="text-text-primary text-sm font-semibold tracking-tight">
+                                    {displayName}
                                 </p>
                                 <Badge
                                     variant="outline"
-                                    className="border-accent/30 text-accent bg-accent/5 pointer-events-none text-[9px] uppercase italic"
+                                    className="border-accent/30 text-accent bg-accent/5 pointer-events-none text-[10px] font-medium"
                                 >
                                     Root Access
                                 </Badge>
@@ -111,8 +112,8 @@ export default function AdminLayout({ children }) {
                                 <AvatarImage
                                     src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user?.avatarSeed || 'admin'}`}
                                 />
-                                <AvatarFallback className="bg-accent/10 text-accent font-black">
-                                    AD
+                                <AvatarFallback className="bg-accent/10 text-accent font-semibold">
+                                    {displayName?.slice(0, 2)?.toUpperCase() || 'AD'}
                                 </AvatarFallback>
                             </Avatar>
                         </div>
@@ -122,7 +123,7 @@ export default function AdminLayout({ children }) {
                 {/* Page Content */}
                 <main className="matte-surface relative min-h-screen w-full flex-1 overflow-hidden p-4 md:p-8">
                     {/* Background Pattern */}
-                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-10" />
+                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-size-[40px_40px] opacity-10" />
 
                     <div className="mx-auto max-w-7xl">{children}</div>
                 </main>

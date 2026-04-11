@@ -14,19 +14,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import {
     Trophy,
     Plus,
     Search,
     Trash2,
     Eye,
-    Edit2,
     Edit,
     Save,
-    AlertCircle,
-    Loader2,
-    Activity,
-    Calendar,
+    X,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
@@ -149,7 +146,7 @@ export default function AdminContestsPage() {
         return (
             <div className="space-y-6 pt-10">
                 <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-[500px] w-full rounded-2xl" />
+                <Skeleton className="h-125 w-full rounded-2xl" />
             </div>
         )
 
@@ -158,20 +155,20 @@ export default function AdminContestsPage() {
             {/* Header */}
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
                 <div>
-                    <h1 className="text-text-primary flex items-center gap-3 text-3xl font-black tracking-tight uppercase italic">
+                    <h1 className="text-text-primary flex items-center gap-3 text-3xl font-semibold tracking-tight">
                         <Trophy className="text-accent size-8" /> Competition{' '}
                         <span className="text-accent">Center</span>
                     </h1>
-                    <p className="text-text-muted mt-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                    <p className="text-text-muted mt-1 text-sm font-medium opacity-75">
                         Host and moderate competitive programming sprints
                     </p>
                 </div>
                 <Button
                     onClick={() => router.push('/admin/contests/create')}
-                    className="bg-accent hover:bg-accent/90 group h-11 rounded-xl px-8 font-black text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+                    className="bg-accent hover:bg-accent/90 group h-11 rounded-xl px-8 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105 active:scale-95"
                 >
                     <Plus className="mr-2 h-5 w-5 transition-transform group-hover:rotate-90" />
-                    CREATE EVENT
+                    Create Event
                 </Button>
             </div>
 
@@ -181,7 +178,7 @@ export default function AdminContestsPage() {
                     <Search className="text-text-muted size-4" />
                     <Input
                         placeholder="Search by title..."
-                        className="border-none bg-transparent text-sm font-bold shadow-none focus-visible:ring-0"
+                        className="border-none bg-transparent text-sm font-medium shadow-none focus-visible:ring-0"
                         value={searchQuery}
                         onChange={(e) => {
                             setSearchQuery(e.target.value)
@@ -189,7 +186,7 @@ export default function AdminContestsPage() {
                         }}
                     />
                 </div>
-                <div className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                <div className="text-text-muted text-xs font-medium tracking-wide uppercase opacity-75">
                     Showing <span className="text-text-primary">{filtered.length}</span> active
                     events
                 </div>
@@ -204,22 +201,22 @@ export default function AdminContestsPage() {
                                 className="text-text-muted hover:text-accent h-12 cursor-pointer px-6 transition-colors"
                                 onClick={() => handleSort('title')}
                             >
-                                <div className="flex items-center gap-2 text-[10px] font-black tracking-widest uppercase">
+                                <div className="flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
                                     Event Name <ArrowUpDown size={10} className="opacity-50" />
                                 </div>
                             </TableHead>
-                            <TableHead className="text-text-muted h-12 px-6 text-[10px] font-black tracking-widest uppercase">
+                            <TableHead className="text-text-muted h-12 px-6 text-xs font-semibold tracking-wide uppercase">
                                 Live Status
                             </TableHead>
                             <TableHead
                                 className="text-text-muted hover:text-accent h-12 cursor-pointer px-6 transition-colors"
                                 onClick={() => handleSort('startTime')}
                             >
-                                <div className="flex items-center gap-2 text-[10px] font-black tracking-widest uppercase">
+                                <div className="flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
                                     Start Date <ArrowUpDown size={10} className="opacity-50" />
                                 </div>
                             </TableHead>
-                            <TableHead className="text-text-muted h-12 px-6 text-right text-[10px] font-black tracking-widest uppercase">
+                            <TableHead className="text-text-muted h-12 px-6 text-right text-xs font-semibold tracking-wide uppercase">
                                 Actions
                             </TableHead>
                         </TableRow>
@@ -231,16 +228,16 @@ export default function AdminContestsPage() {
                                 return (
                                     <TableRow
                                         key={contest._id}
-                                        className="border-border hover:bg-accent/[0.02] group transition-colors"
+                                        className="border-border hover:bg-accent/2 group transition-colors"
                                     >
                                         <TableCell className="px-6 py-3">
-                                            <p className="text-text-primary group-hover:text-accent text-sm leading-tight font-black uppercase italic transition-colors">
+                                            <p className="text-text-primary group-hover:text-accent text-sm leading-tight font-semibold transition-colors">
                                                 {contest.title}
                                             </p>
                                         </TableCell>
                                         <TableCell className="px-6 py-3">
                                             <Badge
-                                                className={`rounded-lg px-2.5 py-0.5 text-[9px] font-black tracking-tighter uppercase ${
+                                                className={`rounded-lg px-2.5 py-0.5 text-[10px] font-semibold uppercase ${
                                                     isEnded
                                                         ? 'bg-bg-muted text-text-muted border-border'
                                                         : 'bg-success/10 text-success border-success/20'
@@ -250,7 +247,7 @@ export default function AdminContestsPage() {
                                                 {isEnded ? 'ARCHIVED' : 'ACTIVE'}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-text-muted px-6 py-3 text-[11px] font-bold">
+                                        <TableCell className="text-text-muted px-6 py-3 text-sm font-medium">
                                             {new Date(contest.startTime).toLocaleDateString(
                                                 undefined,
                                                 {
@@ -301,7 +298,7 @@ export default function AdminContestsPage() {
                             <TableRow>
                                 <TableCell
                                     colSpan={4}
-                                    className="text-text-muted h-32 text-center text-xs font-bold tracking-widest uppercase"
+                                    className="text-text-muted h-32 text-center text-sm font-medium"
                                 >
                                     No contests scheduled yet.
                                 </TableCell>
@@ -312,7 +309,7 @@ export default function AdminContestsPage() {
 
                 {/* Pagination */}
                 <div className="bg-bg-muted/10 border-border flex items-center justify-between border-t p-4 px-6 md:p-6">
-                    <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                    <p className="text-text-muted text-xs font-medium tracking-wide opacity-75">
                         Page {currentPage} <span className="mx-1 opacity-40">/</span>{' '}
                         {totalPages || 1}
                     </p>
@@ -322,7 +319,7 @@ export default function AdminContestsPage() {
                             onClick={() => setCurrentPage((p) => p - 1)}
                             variant="outline"
                             size="sm"
-                            className="border-border hover:bg-accent rounded-xl px-4 py-0 text-[10px] font-black uppercase transition-all duration-300 hover:text-white active:scale-95 disabled:opacity-50"
+                            className="border-border hover:bg-accent rounded-xl px-4 py-0 text-xs font-medium transition-all duration-300 hover:text-white active:scale-95 disabled:opacity-50"
                         >
                             <ChevronLeft size={14} className="mr-1" /> Prev
                         </Button>
@@ -331,7 +328,7 @@ export default function AdminContestsPage() {
                             onClick={() => setCurrentPage((p) => p + 1)}
                             variant="outline"
                             size="sm"
-                            className="border-border hover:bg-accent rounded-xl px-4 py-0 text-[10px] font-black uppercase transition-all duration-300 hover:text-white active:scale-95 disabled:opacity-50"
+                            className="border-border hover:bg-accent rounded-xl px-4 py-0 text-xs font-medium transition-all duration-300 hover:text-white active:scale-95 disabled:opacity-50"
                         >
                             Next <ChevronRight size={14} className="ml-1" />
                         </Button>
@@ -344,7 +341,7 @@ export default function AdminContestsPage() {
                 <div className="bg-bg-page/60 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="matte-surface border-border bg-bg-page w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl">
                         <div className="border-border bg-bg-muted/30 flex items-center justify-between border-b p-6">
-                            <h2 className="text-text-primary flex items-center gap-2 text-lg font-black uppercase italic">
+                            <h2 className="text-text-primary flex items-center gap-2 text-lg font-semibold">
                                 <Trophy className="text-accent h-5 w-5" /> Event{' '}
                                 <span className="text-accent">Summary</span>
                             </h2>
@@ -359,19 +356,19 @@ export default function AdminContestsPage() {
                         <div className="space-y-6 p-8">
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                    <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                         Title
                                     </label>
-                                    <p className="bg-bg-muted/50 border-border rounded-xl border p-3.5 text-sm font-black tracking-tight uppercase italic">
+                                    <p className="bg-bg-muted/50 border-border rounded-xl border p-3.5 text-sm font-semibold">
                                         {selectedContest.title}
                                     </p>
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                    <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                         About Event
                                     </label>
-                                    <div className="bg-bg-muted/50 border-border min-h-[100px] rounded-xl border p-4 text-sm leading-relaxed font-bold">
+                                    <div className="bg-bg-muted/50 border-border min-h-25 rounded-xl border p-4 text-sm leading-relaxed font-medium">
                                         {selectedContest.description ||
                                             'No detailed description available for this event.'}
                                     </div>
@@ -379,18 +376,18 @@ export default function AdminContestsPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                        <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                             Start Time
                                         </label>
-                                        <p className="bg-bg-muted/50 border-border rounded-xl border p-3.5 text-xs font-black italic">
+                                        <p className="bg-bg-muted/50 border-border rounded-xl border p-3.5 text-sm font-medium">
                                             {new Date(selectedContest.startTime).toLocaleString()}
                                         </p>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                        <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                             End Time
                                         </label>
-                                        <p className="bg-bg-muted/50 border-border rounded-xl border p-3.5 text-xs font-black italic">
+                                        <p className="bg-bg-muted/50 border-border rounded-xl border p-3.5 text-sm font-medium">
                                             {new Date(selectedContest.endTime).toLocaleString()}
                                         </p>
                                     </div>
@@ -399,9 +396,9 @@ export default function AdminContestsPage() {
 
                             <Button
                                 onClick={() => setIsViewModalOpen(false)}
-                                className="bg-accent/10 text-accent hover:bg-accent border-accent/20 h-11 w-full rounded-xl border font-black uppercase italic transition-all hover:text-white active:scale-95"
+                                className="bg-accent/10 text-accent hover:bg-accent border-accent/20 h-11 w-full rounded-xl border text-sm font-semibold transition-all hover:text-white active:scale-95"
                             >
-                                CLOSE EVENT PREVIEW
+                                Close Event Preview
                             </Button>
                         </div>
                     </div>
@@ -414,7 +411,7 @@ export default function AdminContestsPage() {
                     <div className="matte-surface border-border bg-bg-page w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl">
                         <form onSubmit={handleUpdate}>
                             <div className="border-border bg-bg-muted/30 flex items-center justify-between border-b p-6">
-                                <h2 className="text-text-primary text-lg font-black uppercase italic">
+                                <h2 className="text-text-primary text-lg font-semibold">
                                     Modify <span className="text-accent">Contest</span>
                                 </h2>
                                 <button
@@ -427,7 +424,7 @@ export default function AdminContestsPage() {
                             </div>
                             <div className="space-y-4 p-8">
                                 <div className="space-y-1.5">
-                                    <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                    <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                         Event Title
                                     </label>
                                     <Input
@@ -438,12 +435,12 @@ export default function AdminContestsPage() {
                                                 title: e.target.value,
                                             })
                                         }
-                                        className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent h-11 rounded-xl px-4 text-sm font-bold shadow-none focus-visible:ring-1"
+                                        className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent h-11 rounded-xl px-4 text-sm font-medium shadow-none focus-visible:ring-1"
                                         required
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                    <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                         Description
                                     </label>
                                     <Textarea
@@ -454,12 +451,12 @@ export default function AdminContestsPage() {
                                                 description: e.target.value,
                                             })
                                         }
-                                        className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent min-h-[120px] rounded-xl p-4 text-sm font-bold shadow-none focus-visible:ring-1"
+                                        className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent min-h-30 rounded-xl p-4 text-sm font-medium shadow-none focus-visible:ring-1"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                        <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                             Start Date
                                         </label>
                                         <Input
@@ -471,11 +468,11 @@ export default function AdminContestsPage() {
                                                     startTime: e.target.value,
                                                 })
                                             }
-                                            className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent h-11 rounded-xl text-xs font-bold shadow-none focus-visible:ring-1"
+                                            className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent h-11 rounded-xl text-sm font-medium shadow-none focus-visible:ring-1"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-text-muted ml-0.5 text-[10px] font-black tracking-widest uppercase opacity-60">
+                                        <label className="text-text-muted ml-0.5 text-xs font-medium tracking-wide uppercase opacity-70">
                                             End Date
                                         </label>
                                         <Input
@@ -487,15 +484,15 @@ export default function AdminContestsPage() {
                                                     endTime: e.target.value,
                                                 })
                                             }
-                                            className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent h-11 rounded-xl text-xs font-bold shadow-none focus-visible:ring-1"
+                                            className="matte-surface border-border bg-bg-muted/20 focus-visible:ring-accent h-11 rounded-xl text-sm font-medium shadow-none focus-visible:ring-1"
                                         />
                                     </div>
                                 </div>
                                 <Button
                                     type="submit"
-                                    className="bg-accent hover:bg-accent/90 mt-4 h-11 w-full rounded-xl font-black text-white uppercase italic shadow-lg transition-all active:scale-95"
+                                    className="bg-accent hover:bg-accent/90 mt-4 h-11 w-full rounded-xl text-sm font-semibold text-white shadow-lg transition-all active:scale-95"
                                 >
-                                    <Save className="mr-2 h-4 w-4" /> COMMIT CHANGES
+                                    <Save className="mr-2 h-4 w-4" /> Commit Changes
                                 </Button>
                             </div>
                         </form>

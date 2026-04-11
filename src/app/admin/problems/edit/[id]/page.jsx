@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { ChevronLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Swal from 'sweetalert2'
@@ -41,7 +40,7 @@ export default function EditProblemPage() {
                 <div className="bg-accent/10 flex h-20 w-20 items-center justify-center rounded-2xl">
                     <Loader2 className="text-accent h-10 w-10 animate-spin" />
                 </div>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-60">
+                <p className="text-text-muted text-xs font-medium tracking-wide opacity-70">
                     Retrieving problem configuration...
                 </p>
             </div>
@@ -53,7 +52,7 @@ export default function EditProblemPage() {
             <div className="mb-6">
                 <Link
                     href="/admin/problems"
-                    className="text-text-muted hover:text-accent flex items-center text-xs font-bold tracking-widest uppercase opacity-70 transition-colors hover:opacity-100"
+                    className="text-text-muted hover:text-accent flex items-center text-sm font-medium opacity-75 transition-colors hover:opacity-100"
                 >
                     <ChevronLeft className="mr-1 h-4 w-4" /> Back to Problems
                 </Link>

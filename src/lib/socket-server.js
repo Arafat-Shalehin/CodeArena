@@ -160,6 +160,14 @@ export async function initSocketServer() {
                 await redisSubClient.subscribe('submission_updates', (message) => {
                     try {
                         const data = JSON.parse(message)
+                        const genericSubmissionUpdateTypes = new Set([
+                            'submission_queued',
+                            'submission_running',
+                            'submission_evaluated',
+                            'submit_result',
+                            'run_result',
+                            'submission_error',
+                        ])
                         socketDebugLog(`[Socket.IO] Received message from Redis:`, {
                             type: data.type,
                             submissionId: data.submissionId,
@@ -237,11 +245,14 @@ export async function initSocketServer() {
                                 serverIo.to(userId).emit('leaderboard_update', data)
                             }
 
-                            // Also emit the generic submission_update for other listeners
-                            socketDebugLog(
-                                `[Socket.IO] Emitting submission_update to user ${userId}`
-                            )
-                            serverIo.to(userId).emit('submission_update', data)
+                            // Emit generic updates only for coarse lifecycle events to avoid
+                            // flooding clients during high-frequency test-case broadcasts.
+                            if (genericSubmissionUpdateTypes.has(data.type)) {
+                                socketDebugLog(
+                                    `[Socket.IO] Emitting submission_update to user ${userId}`
+                                )
+                                serverIo.to(userId).emit('submission_update', data)
+                            }
                         }
                     } catch (e) {
                         console.error('[Socket.IO] Failed to parse Redis message', e)

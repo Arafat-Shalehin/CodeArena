@@ -75,10 +75,10 @@ export default function ProblemCard({
             >
                 <Card className="matte-surface bg-bg-subtle/50 border-border hover:border-accent/50 relative h-full cursor-pointer overflow-hidden rounded-2xl p-0 shadow-sm transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-md">
                     {/* Background Detail: Grid Pattern */}
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-[size:24px_24px] opacity-10" />
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-size-[24px_24px] opacity-10" />
 
                     {/* Hover Spotlight */}
-                    <div className="from-accent/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                    <div className="from-accent/5 pointer-events-none absolute inset-0 bg-linear-to-br to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                     <CardContent className="relative z-10 flex h-full flex-col p-6">
                         <div className="mb-4 flex items-start justify-between">

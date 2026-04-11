@@ -92,7 +92,7 @@ export default function Navbar() {
                                         </Link>
 
                                         {link.subLinks && (
-                                            <div className="bg-bg-page border-border absolute top-full left-0 z-50 mt-1 min-w-[160px] translate-y-2 scale-95 overflow-hidden rounded-xl border p-1 opacity-0 shadow-2xl transition-all group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
+                                            <div className="bg-bg-page border-border absolute top-full left-0 z-50 mt-1 min-w-40 translate-y-2 scale-95 overflow-hidden rounded-xl border p-1 opacity-0 shadow-2xl transition-all group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
                                                 {link.subLinks.map((sub) => (
                                                     <Link
                                                         key={sub.name}

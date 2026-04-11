@@ -263,6 +263,7 @@ userSchema.methods.comparePassword = async function (password) {
 // Database indexes for common query patterns (email and name are auto-indexed via unique: true)
 userSchema.index({ 'stats.score': -1 }) // For leaderboard sorting
 userSchema.index({ 'stats.accepted': -1 }) // For problems solved ranking
+userSchema.index({ 'stats.totalSubmissions': 1 }) // For platform participant stats
 userSchema.index({ following: 1 }) // For feed queries (users you follow)
 userSchema.index({ followers: 1 }) // For follower queries
 userSchema.index({ createdAt: -1 }) // For newest users
