@@ -6,7 +6,7 @@ import { Activity, Server, Boxes, Clock3, Loader2, RefreshCw } from 'lucide-reac
 function HealthBadge({ ok, label }) {
     return (
         <span
-            className={`rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider uppercase ${
+            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase ${
                 ok
                     ? 'bg-success/15 text-success border-success/30 border'
                     : 'bg-error/15 text-error border-error/30 border'
@@ -21,14 +21,14 @@ function StatCard({ title, value, subtitle, icon: Icon }) {
     return (
         <div className="matte-surface border-border bg-bg-subtle/40 rounded-2xl border p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase">
+                <p className="text-text-muted text-xs font-semibold tracking-wide uppercase">
                     {title}
                 </p>
                 <Icon className="text-accent h-4 w-4 opacity-70" />
             </div>
-            <p className="text-text-primary text-2xl font-black tracking-tight">{value}</p>
+            <p className="text-text-primary text-2xl font-semibold tracking-tight">{value}</p>
             {subtitle ? (
-                <p className="text-text-muted mt-1 text-[10px] font-bold tracking-wide uppercase opacity-70">
+                <p className="text-text-muted mt-1 text-xs font-medium tracking-wide opacity-75">
                     {subtitle}
                 </p>
             ) : null}
@@ -74,7 +74,7 @@ export default function AdminOpsPage() {
                 <div className="bg-accent/10 flex h-20 w-20 items-center justify-center rounded-2xl">
                     <Loader2 className="text-accent h-10 w-10 animate-spin" />
                 </div>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-60">
+                <p className="text-text-muted text-xs font-medium tracking-wide opacity-70">
                     Collecting ops telemetry...
                 </p>
             </div>
@@ -85,16 +85,16 @@ export default function AdminOpsPage() {
         <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-text-primary text-3xl font-black tracking-tight uppercase italic">
+                    <h1 className="text-text-primary text-3xl font-semibold tracking-tight">
                         Ops <span className="text-accent">Panel</span>
                     </h1>
-                    <p className="text-text-muted mt-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                    <p className="text-text-muted mt-1 text-sm font-medium opacity-75">
                         Queue, latency and infra health snapshot
                     </p>
                 </div>
                 <button
                     onClick={fetchOps}
-                    className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black tracking-widest text-white uppercase"
+                    className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
                 >
                     <RefreshCw size={14} /> Refresh
                 </button>
@@ -151,7 +151,7 @@ export default function AdminOpsPage() {
                         ok={Boolean(data?.infra?.dockerAvailable)}
                         label={data?.infra?.dockerAvailable ? 'Docker Ready' : 'Docker Fallback'}
                     />
-                    <span className="text-text-muted ml-auto text-[10px] font-bold tracking-widest uppercase">
+                    <span className="text-text-muted ml-auto text-xs font-medium tracking-wide">
                         Updated{' '}
                         {data?.generatedAt ? new Date(data.generatedAt).toLocaleTimeString() : '--'}
                     </span>
@@ -159,18 +159,18 @@ export default function AdminOpsPage() {
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div className="border-border rounded-xl border p-3">
-                        <p className="text-text-muted mb-1 text-[10px] font-black tracking-widest uppercase">
+                        <p className="text-text-muted mb-1 text-xs font-semibold tracking-wide uppercase">
                             Worker Concurrency
                         </p>
-                        <p className="text-text-primary text-xl font-black">
+                        <p className="text-text-primary text-xl font-semibold">
                             {data?.infra?.workerConcurrency ?? 0}
                         </p>
                     </div>
                     <div className="border-border rounded-xl border p-3">
-                        <p className="text-text-muted mb-1 text-[10px] font-black tracking-widest uppercase">
+                        <p className="text-text-muted mb-1 text-xs font-semibold tracking-wide uppercase">
                             Progress Event Stride
                         </p>
-                        <p className="text-text-primary text-xl font-black">
+                        <p className="text-text-primary text-xl font-semibold">
                             {data?.infra?.progressStride ?? 0}
                         </p>
                     </div>
@@ -185,14 +185,14 @@ export default function AdminOpsPage() {
 
             <div className="matte-surface border-border bg-bg-subtle/40 overflow-hidden rounded-2xl border shadow-sm">
                 <div className="border-border flex items-center justify-between border-b px-5 py-4">
-                    <h2 className="text-text-primary text-xs font-black tracking-widest uppercase">
+                    <h2 className="text-text-primary text-xs font-semibold tracking-wide uppercase">
                         Queue Health
                     </h2>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="text-text-muted border-border border-b text-[10px] font-black tracking-widest uppercase">
+                            <tr className="text-text-muted border-border border-b text-xs font-semibold tracking-wide uppercase">
                                 <th className="px-5 py-3">Queue</th>
                                 <th className="px-5 py-3">Waiting</th>
                                 <th className="px-5 py-3">Active</th>

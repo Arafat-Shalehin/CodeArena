@@ -107,7 +107,7 @@ export default function AdminSettingsPage() {
                 <div className="bg-accent/10 flex h-20 w-20 items-center justify-center rounded-2xl">
                     <Loader2 className="text-accent h-10 w-10 animate-spin" />
                 </div>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-60">
+                <p className="text-text-muted text-xs font-medium tracking-wide opacity-70">
                     Syncing Terminal...
                 </p>
             </div>
@@ -118,10 +118,10 @@ export default function AdminSettingsPage() {
         <div className="space-y-10">
             {/* Header */}
             <header className="flex flex-col gap-1 px-4 md:px-0">
-                <h1 className="text-text-primary text-3xl leading-none font-black tracking-tight uppercase italic">
+                <h1 className="text-text-primary text-3xl leading-none font-semibold tracking-tight">
                     Security <span className="text-accent">& Settings</span>
                 </h1>
-                <p className="text-text-muted text-[10px] font-black tracking-widest uppercase opacity-70">
+                <p className="text-text-muted text-sm font-medium opacity-75">
                     Administrative Core Configuration
                 </p>
             </header>
@@ -131,7 +131,7 @@ export default function AdminSettingsPage() {
                 <div className="space-y-4 md:col-span-4">
                     <button
                         onClick={() => setActiveTab('profile')}
-                        className={`group relative flex w-full items-center gap-3 rounded-xl px-5 py-4 text-[10px] font-black tracking-[0.2em] uppercase transition-all duration-300 ${
+                        className={`group relative flex w-full items-center gap-3 rounded-xl px-5 py-4 text-xs font-semibold tracking-wide uppercase transition-all duration-300 ${
                             activeTab === 'profile'
                                 ? 'bg-accent shadow-accent/20 translate-x-2 text-white shadow-lg'
                                 : 'text-text-muted hover:bg-bg-subtle/50 hover:text-text-primary border-border/50 border'
@@ -149,7 +149,7 @@ export default function AdminSettingsPage() {
 
                     <button
                         onClick={() => setActiveTab('security')}
-                        className={`group relative flex w-full items-center gap-3 rounded-xl px-5 py-4 text-[10px] font-black tracking-[0.2em] uppercase transition-all duration-300 ${
+                        className={`group relative flex w-full items-center gap-3 rounded-xl px-5 py-4 text-xs font-semibold tracking-wide uppercase transition-all duration-300 ${
                             activeTab === 'security'
                                 ? 'bg-accent shadow-accent/20 translate-x-2 text-white shadow-lg'
                                 : 'text-text-muted hover:bg-bg-subtle/50 hover:text-text-primary border-border/50 border'
@@ -167,10 +167,10 @@ export default function AdminSettingsPage() {
 
                     <div className="matte-surface border-border bg-bg-subtle/20 mt-8 rounded-2xl border p-5 opacity-60">
                         <div className="flex items-center justify-between">
-                            <span className="text-text-muted text-[9px] font-black tracking-widest uppercase">
+                            <span className="text-text-muted text-[10px] font-semibold tracking-wide uppercase">
                                 Terminal Mode
                             </span>
-                            <span className="text-accent text-[9px] font-black tracking-widest uppercase italic">
+                            <span className="text-accent text-[10px] font-semibold tracking-wide uppercase">
                                 {theme?.toUpperCase()}
                             </span>
                         </div>
@@ -186,7 +186,7 @@ export default function AdminSettingsPage() {
                                     <>
                                         <div className="border-border/50 flex flex-col items-center gap-8 border-b pb-10 sm:flex-row">
                                             <div className="group relative">
-                                                <div className="from-accent to-accent/20 relative h-24 w-24 rounded-2xl bg-gradient-to-tr p-1">
+                                                <div className="from-accent to-accent/20 relative h-24 w-24 rounded-2xl bg-linear-to-tr p-1">
                                                     <div className="bg-bg-page border-bg-page text-accent flex h-full w-full items-center justify-center overflow-hidden rounded-xl border-2 text-3xl font-black italic shadow-inner">
                                                         {user?.name?.charAt(0) || 'A'}
                                                     </div>
@@ -196,25 +196,25 @@ export default function AdminSettingsPage() {
                                                 </div>
                                             </div>
                                             <div className="text-center sm:text-left">
-                                                <h3 className="text-text-primary text-sm font-black tracking-tight uppercase italic">
+                                                <h3 className="text-text-primary text-sm font-semibold tracking-tight">
                                                     Identity Avatar
                                                 </h3>
-                                                <p className="text-text-muted mt-1 text-[9px] font-black tracking-widest uppercase opacity-60">
+                                                <p className="text-text-muted mt-1 text-xs font-medium opacity-70">
                                                     Your administrative presence
                                                 </p>
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    className="border-border hover:bg-accent/10 hover:text-accent mt-4 h-8 rounded-lg px-5 text-[9px] font-black tracking-widest uppercase transition-all"
+                                                    className="border-border hover:bg-accent/10 hover:text-accent mt-4 h-8 rounded-lg px-5 text-xs font-medium transition-all"
                                                 >
-                                                    UPLOAD NEW
+                                                    Upload New
                                                 </Button>
                                             </div>
                                         </div>
 
                                         <div className="space-y-6">
                                             <div className="space-y-2">
-                                                <label className="text-text-muted ml-1 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                <label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
                                                     Administrative Entity Name
                                                 </label>
                                                 <Input
@@ -226,12 +226,12 @@ export default function AdminSettingsPage() {
                                                         })
                                                     }
                                                     placeholder="e.g. Administrator"
-                                                    className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 font-bold transition-all"
+                                                    className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 text-sm font-medium transition-all"
                                                 />
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-text-muted ml-1 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                <label className="text-text-muted ml-1 text-xs font-semibold tracking-wide uppercase opacity-75">
                                                     Core Objective & Biography
                                                 </label>
                                                 <Textarea
@@ -243,13 +243,13 @@ export default function AdminSettingsPage() {
                                                         })
                                                     }
                                                     placeholder="Detail your administrative focus..."
-                                                    className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent min-h-[120px] rounded-xl p-4 font-bold transition-all"
+                                                    className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent min-h-30 rounded-xl p-4 text-sm font-medium transition-all"
                                                 />
                                             </div>
 
                                             <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2">
                                                 <div className="space-y-2">
-                                                    <label className="text-text-muted ml-1 flex items-center gap-2 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                    <label className="text-text-muted ml-1 flex items-center gap-2 text-xs font-semibold tracking-wide uppercase opacity-75">
                                                         <Github size={12} /> GitHub Profile
                                                     </label>
                                                     <Input
@@ -261,11 +261,11 @@ export default function AdminSettingsPage() {
                                                             })
                                                         }
                                                         placeholder="username"
-                                                        className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 font-bold transition-all"
+                                                        className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 text-sm font-medium transition-all"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label className="text-text-muted ml-1 flex items-center gap-2 text-[9px] font-black tracking-widest uppercase opacity-70">
+                                                    <label className="text-text-muted ml-1 flex items-center gap-2 text-xs font-semibold tracking-wide uppercase opacity-75">
                                                         <Linkedin size={12} /> LinkedIn Profile
                                                     </label>
                                                     <Input
@@ -277,31 +277,31 @@ export default function AdminSettingsPage() {
                                                             })
                                                         }
                                                         placeholder="username"
-                                                        className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 font-bold transition-all"
+                                                        className="matte-surface border-border/50 bg-bg-muted/20 focus-visible:ring-accent h-12 rounded-xl px-4 text-sm font-medium transition-all"
                                                     />
                                                 </div>
                                             </div>
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="flex min-h-[300px] flex-col items-center justify-center space-y-4 text-center">
+                                    <div className="flex min-h-75 flex-col items-center justify-center space-y-4 text-center">
                                         <div className="bg-accent/10 border-accent/20 flex size-16 items-center justify-center rounded-3xl border">
                                             <Lock size={32} className="text-accent opacity-60" />
                                         </div>
                                         <div>
-                                            <h3 className="text-text-primary text-base font-black tracking-tight uppercase italic">
+                                            <h3 className="text-text-primary text-base font-semibold tracking-tight">
                                                 Security Protocol Locked
                                             </h3>
-                                            <p className="text-text-muted mx-auto max-w-xs text-[10px] font-black tracking-widest uppercase opacity-60">
+                                            <p className="text-text-muted mx-auto max-w-xs text-xs font-medium opacity-70">
                                                 Advanced security configuration is currently handled
                                                 via the main terminal vault.
                                             </p>
                                         </div>
                                         <Button
                                             variant="outline"
-                                            className="border-border hover:bg-accent/10 hover:text-accent mt-4 h-10 rounded-xl px-8 text-[10px] font-black tracking-widest uppercase"
+                                            className="border-border hover:bg-accent/10 hover:text-accent mt-4 h-10 rounded-xl px-8 text-sm font-medium"
                                         >
-                                            REQUEST ACCESS
+                                            Request Access
                                         </Button>
                                     </div>
                                 )}
@@ -312,14 +312,14 @@ export default function AdminSettingsPage() {
                             <Button
                                 disabled={isSaving}
                                 type="submit"
-                                className="bg-accent hover:bg-accent/90 focus:ring-accent/40 w-full rounded-2xl py-7 text-xs font-black tracking-[0.2em] text-white uppercase italic shadow-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 sm:w-auto sm:px-16"
+                                className="bg-accent hover:bg-accent/90 focus:ring-accent/40 w-full rounded-2xl py-7 text-sm font-semibold text-white shadow-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 sm:w-auto sm:px-16"
                             >
                                 {isSaving ? (
                                     <Loader2 className="mr-3 size-5 animate-spin" />
                                 ) : (
                                     <Save size={18} className="mr-3" />
                                 )}
-                                {isSaving ? 'ENCRYPTING...' : 'COMMIT CHANGES'}
+                                {isSaving ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>
                     </form>
