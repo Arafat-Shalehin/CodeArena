@@ -9,8 +9,6 @@ export function initAIWorker() {
         async (job) => {
             const {
                 submissionId,
-                userId,
-                problemId,
                 code,
                 language,
                 problemTitle,
@@ -36,15 +34,6 @@ export function initAIWorker() {
                 if (aiFeedback) {
                     await Submission.findByIdAndUpdate(submissionId, { aiFeedback })
                     console.log(`[AI WORKER] AI feedback saved for ${submissionId}`)
-
-                    const { sendNotification } = await import('@/services/notification.service')
-                    await sendNotification({
-                        recipientId: userId,
-                        type: 'ai_insight',
-                        message: `AI Insights are ready for your solution to "${problemTitle}"`,
-                        link: `/problems/${problemId}?tab=results&submission=${submissionId}`,
-                        metadata: { submissionId, problemId },
-                    })
                 }
 
                 return { success: true }

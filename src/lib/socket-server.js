@@ -3,9 +3,30 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { redisClient } from '@/lib/redis'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
+import { createAuthMiddleware, createRateLimitMiddleware } from '@/lib/socket-auth'
 
 let io
 let initPromise = null
+const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true'
+const SOCKET_DEBUG_SAMPLE_RATE = Number.parseFloat(process.env.SOCKET_DEBUG_SAMPLE_RATE || '0')
+
+function shouldLogSocketDebug() {
+    if (SOCKET_DEBUG) return true
+    if (
+        Number.isNaN(SOCKET_DEBUG_SAMPLE_RATE) ||
+        SOCKET_DEBUG_SAMPLE_RATE <= 0 ||
+        SOCKET_DEBUG_SAMPLE_RATE > 1
+    ) {
+        return false
+    }
+    return Math.random() < SOCKET_DEBUG_SAMPLE_RATE
+}
+
+function socketDebugLog(...args) {
+    if (shouldLogSocketDebug()) {
+        console.log(...args)
+    }
+}
 
 export async function initSocketServer() {
     // If already initialized, return cached instance
@@ -24,11 +45,38 @@ export async function initSocketServer() {
     initPromise = (async () => {
         try {
             const port = 3002
+
+            // Parse allowed origins from environment (comma-separated)
+            const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+                .split(',')
+                .map((origin) => origin.trim())
+
+            console.log('[Socket.IO] Allowed origins:', allowedOrigins)
+
             const serverIo = new Server(port, {
                 cors: {
-                    origin: '*',
+                    origin: (origin, callback) => {
+                        // Allow no origin (ws:// connections)
+                        if (!origin) return callback(null, true)
+
+                        if (allowedOrigins.includes(origin)) {
+                            callback(null, true)
+                        } else {
+                            console.warn(`[Socket.IO] CORS rejected origin: ${origin}`)
+                            callback(new Error('CORS policy violation'))
+                        }
+                    },
                     methods: ['GET', 'POST'],
+                    credentials: true,
+                    maxAge: 3600,
                 },
+                // Security: disable force new connections
+                forceNew: false,
+                // Disable polling if not needed (websocket only is faster)
+                transports: ['websocket', 'polling'],
+                // Set appropriate timeouts
+                pingInterval: 25000,
+                pingTimeout: 5000,
             })
 
             // Setup Redis Adapter for multi-node scaling
@@ -40,20 +88,39 @@ export async function initSocketServer() {
             global._io = serverIo
             console.log(`[Socket.IO] Real-time server started on port ${port}`)
 
+            // 🔐 SECURITY: Apply global authentication middleware
+            serverIo.use(createAuthMiddleware())
+
+            // 🔐 SECURITY: Apply rate limiting middleware
+            serverIo.use(createRateLimitMiddleware(redisClient, 60000, 10))
+
+            // 🔐 SECURITY: Handle authentication errors
+            serverIo.on('connect_error', (error) => {
+                if (error.message.startsWith('AUTH_')) {
+                    console.warn(`[Socket.IO] Authentication error: ${error.message}`)
+                }
+            })
+
             // Register Namespaces
             const { registerInterviewNamespace } = await import('@/socket/namespaces/interview')
             registerInterviewNamespace(serverIo)
 
             // Handle client connections
             serverIo.on('connection', (socket) => {
-                console.log(`[Socket.IO] Client connected: ${socket.id}`)
-                console.log(`[Socket.IO] Total connected clients:`, serverIo.engine.clientsCount)
+                socketDebugLog(`[Socket.IO] Client connected: ${socket.id}`)
+                socketDebugLog(`[Socket.IO] Total connected clients:`, serverIo.engine.clientsCount)
+
+                // Auto-join authenticated user to their personal room
+                if (socket.userId) {
+                    socket.join(`user:${socket.userId}`)
+                    socketDebugLog(`[Socket.IO] User ${socket.userId} auto-joined personal room`)
+                }
 
                 socket.on('join_room', (roomId) => {
                     if (roomId) {
                         socket.join(roomId)
                         const roomClients = serverIo.sockets.adapter.rooms.get(roomId)
-                        console.log(`[Socket.IO] Client ${socket.id} joined room: ${roomId}`, {
+                        socketDebugLog(`[Socket.IO] Client ${socket.id} joined room: ${roomId}`, {
                             clientsInRoom: roomClients ? roomClients.size : 0,
                             allRoomsForClient: Array.from(socket.rooms),
                         })
@@ -66,15 +133,15 @@ export async function initSocketServer() {
                     if (roomId) {
                         socket.leave(roomId)
                         const roomClients = serverIo.sockets.adapter.rooms.get(roomId)
-                        console.log(`[Socket.IO] Client ${socket.id} left room: ${roomId}`, {
+                        socketDebugLog(`[Socket.IO] Client ${socket.id} left room: ${roomId}`, {
                             clientsInRoom: roomClients ? roomClients.size : 0,
                         })
                     }
                 })
 
                 socket.on('disconnect', (reason) => {
-                    console.log(`[Socket.IO] Client ${socket.id} disconnected: ${reason}`)
-                    console.log(
+                    socketDebugLog(`[Socket.IO] Client ${socket.id} disconnected: ${reason}`)
+                    socketDebugLog(
                         `[Socket.IO] Total connected clients after disconnect:`,
                         serverIo.engine.clientsCount
                     )
@@ -93,7 +160,7 @@ export async function initSocketServer() {
                 await redisSubClient.subscribe('submission_updates', (message) => {
                     try {
                         const data = JSON.parse(message)
-                        console.log(`[Socket.IO] Received message from Redis:`, {
+                        socketDebugLog(`[Socket.IO] Received message from Redis:`, {
                             type: data.type,
                             submissionId: data.submissionId,
                             userId: data.userId,
@@ -117,7 +184,7 @@ export async function initSocketServer() {
                                 ])
 
                                 if (roomRoutedEvents.has(data.type)) {
-                                    console.log(
+                                    socketDebugLog(
                                         `[Socket.IO] Broadcasting ${data.type} to room ${submissionRoom}`,
                                         {
                                             verdict: data.verdict ?? 'PENDING',
@@ -129,7 +196,7 @@ export async function initSocketServer() {
                                     const clientsInRoom =
                                         serverIo.sockets.adapter.rooms.get(submissionRoom)
                                     const clientCount = clientsInRoom ? clientsInRoom.size : 0
-                                    console.log(
+                                    socketDebugLog(
                                         `[Socket.IO] Room ${submissionRoom} has ${clientCount} connected clients`
                                     )
 
@@ -157,21 +224,23 @@ export async function initSocketServer() {
 
                             // Route contest-specific events with their proper event names
                             if (data.type === 'contest:result_finalized') {
-                                console.log(
+                                socketDebugLog(
                                     `[Socket.IO] Emitting contest:result_finalized to user ${userId}`
                                 )
                                 serverIo.to(userId).emit('contest:result_finalized', data)
                             }
 
                             if (data.type === 'leaderboard_update' && data.contestId) {
-                                console.log(
+                                socketDebugLog(
                                     `[Socket.IO] Emitting leaderboard_update to user ${userId}`
                                 )
                                 serverIo.to(userId).emit('leaderboard_update', data)
                             }
 
                             // Also emit the generic submission_update for other listeners
-                            console.log(`[Socket.IO] Emitting submission_update to user ${userId}`)
+                            socketDebugLog(
+                                `[Socket.IO] Emitting submission_update to user ${userId}`
+                            )
                             serverIo.to(userId).emit('submission_update', data)
                         }
                     } catch (e) {
@@ -212,7 +281,7 @@ export async function initSocketServer() {
                         const data = JSON.parse(message)
                         if (data.contestId) {
                             const contestRoom = `contest_${data.contestId}`
-                            console.log(
+                            socketDebugLog(
                                 `[Socket.IO] Broadcasting ${data.type} to room ${contestRoom}`
                             )
                             serverIo.to(contestRoom).emit('contest:updated', data)

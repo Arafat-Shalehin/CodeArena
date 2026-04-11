@@ -1205,8 +1205,9 @@ async function pruneOrphanedExecutors() {
     }
 }
 
-// Start the janitor only when Docker is available
-if (docker) {
+// Start the janitor only once per process when Docker is available.
+if (docker && !globalThis.__executorJanitorArmed) {
+    globalThis.__executorJanitorArmed = true
     setInterval(pruneOrphanedExecutors, JANITOR_INTERVAL_MS)
     // Run once shortly after startup to clear leftovers from previous crashes
     setTimeout(pruneOrphanedExecutors, 10_000)

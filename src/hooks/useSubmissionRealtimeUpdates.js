@@ -1,5 +1,5 @@
-import { useEffect, useCallback } from 'react'
-import { io } from 'socket.io-client'
+import { useEffect } from 'react'
+import { useSecureSocket } from './useSecureSocket'
 
 /**
  * Hook to listen for real-time submission updates via Socket.IO
@@ -13,51 +13,34 @@ export function useSubmissionRealtimeUpdates(
     onTestCaseCompleted,
     onExecutionCompleted
 ) {
-    const socket = useCallback(() => {
-        // Connect to Socket.IO server
-        return io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002', {
-            reconnection: true,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            reconnectionAttempts: 5,
-        })
-    }, [])
+    const { socket, isConnected } = useSecureSocket('/', { scope: 'submission' })
 
     useEffect(() => {
-        if (!submissionId) return
+        if (!submissionId || !isConnected || !socket) return
 
-        const socketInstance = socket()
-
-        socketInstance.on('connect', () => {
-            console.log('[Socket] Connected, joining submission room:', submissionId)
-            // Join the submission-specific room for this user
-            socketInstance.emit('join_room', `submission_${submissionId}`)
-        })
+        console.log('[Socket] Connected, joining submission room:', submissionId)
+        // Join the submission-specific room for this user
+        socket.emit('join_room', `submission_${submissionId}`)
 
         // Listen for test case completion
-        socketInstance.on('test_case_completed', (data) => {
+        socket.on('test_case_completed', (data) => {
             console.log('[Socket] Test case completed:', data)
             onTestCaseCompleted?.(data)
         })
 
         // Listen for execution completion (for 'run' type)
-        socketInstance.on('execution_completed', (data) => {
+        socket.on('execution_completed', (data) => {
             console.log('[Socket] Execution completed:', data)
             onExecutionCompleted?.(data)
         })
 
-        socketInstance.on('error', (error) => {
+        socket.on('error', (error) => {
             console.error('[Socket] Error:', error)
         })
 
-        socketInstance.on('disconnect', () => {
-            console.log('[Socket] Disconnected')
-        })
+        // Socket auto-reconnection and cleanup is handled by useSecureSocket hook
+        // No need to manually disconnect here
+    }, [submissionId, isConnected, socket, onTestCaseCompleted, onExecutionCompleted])
 
-        return () => {
-            socketInstance.disconnect()
-        }
-    }, [submissionId, onTestCaseCompleted, onExecutionCompleted, socket])
-
-    return { socket }
+    return { socket, isConnected }
 }

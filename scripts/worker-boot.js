@@ -1,4 +1,5 @@
 import nextEnv from '@next/env'
+import { registerWorker, gracefulShutdown, setupShutdownHandlers } from '@/lib/worker-manager.js'
 
 const { loadEnvConfig } = nextEnv
 loadEnvConfig(process.cwd())
@@ -151,7 +152,11 @@ async function startWorkers() {
             console.log(`[WorkerBoot] Skipping ${name} worker (not enabled)`)
             return null
         }
-        return initFn()
+        const worker = initFn()
+        if (worker) {
+            registerWorker(name, worker)
+        }
+        return worker
     }
 
     const workers = {
@@ -169,20 +174,6 @@ async function startWorkers() {
     let redisLimitGuardTriggered = false
     const autoStopOnRedisLimit = (process.env.AUTO_STOP_ON_REDIS_LIMIT || 'true') === 'true'
 
-    const closeAllWorkers = async () => {
-        await Promise.all(
-            Object.entries(workers).map(async ([name, worker]) => {
-                if (!worker) return
-                try {
-                    await worker.close()
-                    console.log(`[WorkerBoot] Closed ${name} worker`)
-                } catch (error) {
-                    console.error(`[WorkerBoot] Failed to close ${name} worker:`, error.message)
-                }
-            })
-        )
-    }
-
     const onWorkerError = async (name, error) => {
         console.error(`[WorkerBoot] ${name} worker error:`, error?.message || error)
 
@@ -194,7 +185,7 @@ async function startWorkers() {
         console.error(
             '[WorkerBoot] Upstash Redis request limit reached. Stopping all workers to keep container healthy.'
         )
-        await closeAllWorkers()
+        await gracefulShutdown()
     }
 
     Object.entries(workers).forEach(([name, worker]) => {
@@ -204,16 +195,8 @@ async function startWorkers() {
         })
     })
 
-    const shutdown = async (signal) => {
-        console.log(`[WorkerBoot] Received ${signal}. Shutting down workers...`)
-
-        await closeAllWorkers()
-
-        process.exit(0)
-    }
-
-    process.on('SIGINT', () => shutdown('SIGINT'))
-    process.on('SIGTERM', () => shutdown('SIGTERM'))
+    // Install graceful shutdown handlers
+    setupShutdownHandlers()
 }
 
 startWorkers().catch((error) => {

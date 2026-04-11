@@ -16,6 +16,23 @@ import { sendPushToUser } from '@/lib/web-push'
  */
 export async function sendNotification(data) {
     try {
+        const dedupeKey = data?.metadata?.dedupeKey
+
+        if (dedupeKey && redisClient.isOpen) {
+            try {
+                const redisDedupeKey = `notification:dedupe:${data.recipientId}:${dedupeKey}`
+                const lock = await redisClient.set(redisDedupeKey, '1', { NX: true, EX: 300 })
+                if (!lock) {
+                    console.log(
+                        `[NotificationService] Skipping duplicate notification for recipient=${data.recipientId}, dedupeKey=${dedupeKey}`
+                    )
+                    return null
+                }
+            } catch (err) {
+                console.error('[NotificationService] Dedupe check failed:', err)
+            }
+        }
+
         // 1. Save to Database
         const notification = await Notification.create({
             recipientId: data.recipientId,
@@ -105,9 +122,11 @@ export async function getUserNotifications(userId, limit = 20) {
     }
 
     const notifications = await Notification.find({ recipientId: userId })
+        .select('recipientId senderId type message link metadata isRead createdAt updatedAt')
         .sort({ createdAt: -1 })
         .limit(limit)
-        .populate('senderId', 'name avatarSeed')
+        .populate({ path: 'senderId', select: 'name avatarSeed', options: { lean: true } })
+        .lean()
 
     try {
         if (redisClient.isOpen) {
