@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 import StatusIcon from './StatusIcon'
 import { Pagination } from '@/shared/components/ui/Pagination'
 import { difficultyConfig, normalizeDifficulty } from '../data/problems.data'
@@ -205,12 +206,12 @@ export default function ProblemsTable({
 
                                         {/* Title + inline tags (small screens) */}
                                         <td className="px-6 py-4">
-                                            <a
+                                            <Link
                                                 href={`/problems/${p._id}`}
                                                 className="text-text-primary group-hover:text-accent text-sm font-medium transition-colors"
                                             >
                                                 {p.title}
-                                            </a>
+                                            </Link>
                                             {/* Show tags inline on small screens where tag column is hidden */}
                                             {p.tags && p.tags.length > 0 && (
                                                 <div className="mt-1.5 flex flex-wrap gap-1.5 lg:hidden">
