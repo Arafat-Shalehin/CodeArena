@@ -11,6 +11,7 @@ import {
     Trophy,
     Code2,
     Users,
+    Activity,
     LogOut,
     ChevronLeft,
     ChevronRight,
@@ -50,6 +51,11 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed, onMobileItem
             title: 'Users List',
             href: '/admin/users',
             icon: <Users size={20} />,
+        },
+        {
+            title: 'Ops Panel',
+            href: '/admin/ops',
+            icon: <Activity size={20} />,
         },
     ]
 

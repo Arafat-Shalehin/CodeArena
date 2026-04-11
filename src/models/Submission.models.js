@@ -116,6 +116,7 @@ const submissionSchema = new mongoose.Schema(
 
 submissionSchema.index({ userId: 1, problemId: 1 })
 submissionSchema.index({ contestId: 1 })
+submissionSchema.index({ createdAt: -1 })
 
 const existingSubmissionModel = mongoose.models.Submission
 

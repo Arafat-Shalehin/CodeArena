@@ -39,6 +39,7 @@ const contestSchema = new mongoose.Schema(
 
 contestSchema.index({ status: 1, startTime: -1 })
 contestSchema.index({ startTime: 1, endTime: 1 })
+contestSchema.index({ status: 1, isDeleted: 1 })
 
 // Virtual field to auto-derive status based on current time
 contestSchema.virtual('derivedStatus').get(function () {
