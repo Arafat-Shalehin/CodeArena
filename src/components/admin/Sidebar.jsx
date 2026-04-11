@@ -77,7 +77,7 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed, onMobileItem
             className={`matte-surface border-border bg-bg-page/90 relative flex h-full flex-col border-r backdrop-blur-xl transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}
         >
             {/* Subtle Grid Pattern Overlay */}
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-[size:24px_24px] opacity-[0.03]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-size-[24px_24px] opacity-[0.03]" />
 
             {/* Collapse Toggle Button (Desktop Only) */}
             <button
@@ -95,7 +95,7 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed, onMobileItem
                     href="/admin/dashboard"
                     className={`flex items-center gap-2 ${isCollapsed ? 'justify-center' : ''}`}
                 >
-                    <div className="bg-accent shadow-accent/20 flex min-h-[36px] min-w-[36px] items-center justify-center rounded-xl shadow-lg transition-transform duration-300 hover:rotate-6">
+                    <div className="bg-accent shadow-accent/20 flex min-h-9 min-w-9 items-center justify-center rounded-xl shadow-lg transition-transform duration-300 hover:rotate-6">
                         <Code2 className="text-white" size={22} />
                     </div>
                     {!isCollapsed && (

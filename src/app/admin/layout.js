@@ -122,7 +122,7 @@ export default function AdminLayout({ children }) {
                 {/* Page Content */}
                 <main className="matte-surface relative min-h-screen w-full flex-1 overflow-hidden p-4 md:p-8">
                     {/* Background Pattern */}
-                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-10" />
+                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-size-[40px_40px] opacity-10" />
 
                     <div className="mx-auto max-w-7xl">{children}</div>
                 </main>

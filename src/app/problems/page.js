@@ -180,7 +180,7 @@ export default function ProblemsPage() {
         <div className="bg-bg-page site-gradient text-text-primary flex min-h-screen flex-col font-sans">
             <Navbar />
 
-            <main className="max-w-container mx-auto w-full flex-grow px-4 py-8 md:px-6">
+            <main className="max-w-container mx-auto w-full grow px-4 py-8 md:px-6">
                 <div className="flex flex-col gap-8 lg:flex-row">
                     <ProblemsSidebar
                         sidebarOpen={sidebarOpen}

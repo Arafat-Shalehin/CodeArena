@@ -4,11 +4,8 @@ import { useState, useEffect } from 'react'
 import {
     Users,
     Trophy,
-    FileText,
-    AlertTriangle,
     Plus,
     Loader2,
-    TrendingUp,
     Activity,
     Target,
     Brain,
@@ -67,18 +64,18 @@ export default function AdminDashboard() {
         )
 
     return (
-        <div className="space-y-8 p-4 md:p-0">
+        <div className="space-y-6 p-4 md:p-0">
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
-                    <h1 className="text-text-primary text-3xl font-black tracking-tight uppercase italic">
+                    <h1 className="text-text-primary text-3xl font-extrabold tracking-tight">
                         System <span className="text-accent">Analytics</span>
                     </h1>
-                    <p className="text-text-muted mt-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                    <p className="text-text-muted mt-1 text-sm font-medium opacity-80">
                         Real-time performance & interview metrics
                     </p>
                 </div>
-                <Button className="bg-accent hover:bg-accent/90 group rounded-xl px-6 font-bold text-white shadow-lg transition-all hover:scale-105 active:scale-95">
+                <Button className="bg-accent hover:bg-accent/90 group rounded-lg px-5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95">
                     <Plus className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
                     New Problem
                 </Button>
@@ -154,14 +151,14 @@ export default function AdminDashboard() {
 
             {/* Row 3: Charts & Leaderboard */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <Card className="matte-surface border-border bg-bg-subtle/40 hover:border-accent/30 col-span-1 min-h-[400px] overflow-hidden rounded-2xl border shadow-sm transition-all lg:col-span-2">
+                <Card className="matte-surface border-border bg-bg-subtle/40 hover:border-accent/30 col-span-1 min-h-100 overflow-hidden rounded-2xl border shadow-sm transition-all lg:col-span-2">
                     <CardHeader className="border-border border-b px-6 py-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <CardTitle className="text-text-primary text-xs font-black tracking-widest uppercase">
-                                    Platform <span className="text-accent italic">Velocity</span>
+                                    Platform <span className="text-accent">Velocity</span>
                                 </CardTitle>
-                                <p className="text-text-muted mt-0.5 text-[9px] font-bold uppercase opacity-60">
+                                <p className="text-text-muted mt-0.5 text-[10px] font-medium opacity-70">
                                     Weekly Submission Distribution
                                 </p>
                             </div>
@@ -169,7 +166,7 @@ export default function AdminDashboard() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-6">
-                        <div className="h-[320px] w-full">
+                        <div className="h-80 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={platformData?.dailyStats || []}>
                                     <defs>
@@ -242,9 +239,9 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <CardTitle className="text-text-primary text-xs font-black tracking-widest uppercase">
-                                    Top <span className="text-accent italic">Elite</span>
+                                    Top <span className="text-accent">Elite</span>
                                 </CardTitle>
-                                <p className="text-text-muted mt-0.5 text-[9px] font-bold uppercase opacity-60">
+                                <p className="text-text-muted mt-0.5 text-[10px] font-medium opacity-70">
                                     Top Ranking Performers
                                 </p>
                             </div>
@@ -256,24 +253,24 @@ export default function AdminDashboard() {
                             leaderboard.map((user, idx) => (
                                 <div
                                     key={idx}
-                                    className="group relative flex items-center justify-between border-b border-white/5 bg-transparent p-4 transition-all hover:bg-white/[0.02]"
+                                    className="group relative flex items-center justify-between border-b border-white/5 bg-transparent p-4 transition-all hover:bg-white/2"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="bg-bg-muted flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-black italic shadow-inner">
+                                        <div className="bg-bg-muted flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-semibold shadow-inner">
                                             #{idx + 1}
                                         </div>
                                         <div>
-                                            <p className="text-text-primary text-xs font-black tracking-tight uppercase">
+                                            <p className="text-text-primary text-sm font-semibold tracking-tight">
                                                 {user.name}
                                             </p>
                                             <div className="flex items-center gap-2">
                                                 <Badge
                                                     variant="secondary"
-                                                    className="bg-accent/5 text-accent h-4 rounded-full px-2 text-[8px] font-black uppercase opacity-80"
+                                                    className="bg-accent/5 text-accent h-4 rounded-full px-2 text-[9px] font-semibold opacity-80"
                                                 >
                                                     {user.rank || 'ELITE'}
                                                 </Badge>
-                                                <p className="text-text-muted text-[8px] font-black uppercase opacity-60">
+                                                <p className="text-text-muted text-[10px] font-medium opacity-70">
                                                     SCORE: {user.score}%
                                                 </p>
                                             </div>
@@ -303,32 +300,32 @@ export default function AdminDashboard() {
 
 function StatCard({ title, value, trend, isUp, icon: Icon, variant = 'default' }) {
     return (
-        <Card className="matte-surface border-border bg-bg-subtle/50 group hover:border-accent/40 relative overflow-hidden rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+        <Card className="matte-surface border-border bg-bg-subtle/50 group hover:border-accent/35 relative overflow-hidden rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
             {/* Subtle Grid Pattern */}
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-[size:16px_16px] opacity-10" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(var(--ca-border-rgb),0.1)_1px,transparent_1px)] bg-size-[16px_16px] opacity-10" />
 
             {/* Accent Glow */}
             <div
-                className={`pointer-events-none absolute -top-8 -right-8 size-24 blur-[40px] transition-opacity duration-500 group-hover:opacity-100 ${variant === 'accent' ? 'bg-accent/20 opacity-40' : 'bg-accent/10 opacity-0'}`}
+                className={`pointer-events-none absolute -top-8 -right-8 size-24 blur-2xl transition-opacity duration-500 group-hover:opacity-100 ${variant === 'accent' ? 'bg-accent/20 opacity-40' : 'bg-accent/10 opacity-0'}`}
             />
 
             <CardContent className="relative z-10 p-6">
                 <div className="mb-4 flex items-start justify-between">
                     <div
-                        className={`${variant === 'accent' ? 'bg-accent shadow-accent/20 text-white shadow-lg' : 'bg-accent/10 text-accent group-hover:bg-accent group-hover:text-white'} flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6`}
+                        className={`${variant === 'accent' ? 'bg-accent shadow-accent/20 text-white shadow-lg' : 'bg-accent/10 text-accent group-hover:bg-accent group-hover:text-white'} flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105`}
                     >
-                        <Icon size={22} strokeWidth={2.5} />
+                        <Icon size={20} strokeWidth={2.3} />
                     </div>
                     <div
-                        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black tracking-tighter italic ${isUp ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}
+                        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isUp ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}
                     >
                         {isUp ? '▲' : '▼'} {Math.abs(trend || 0)}%
                     </div>
                 </div>
-                <p className="text-text-muted mb-1 text-[10px] font-black tracking-widest uppercase opacity-70">
+                <p className="text-text-muted mb-1 text-[11px] font-semibold tracking-wide opacity-75">
                     {title}
                 </p>
-                <h3 className="text-text-primary text-2xl font-black tracking-tight italic">
+                <h3 className="text-text-primary text-2xl font-bold tracking-tight">
                     {value !== undefined
                         ? typeof value === 'number'
                             ? value.toLocaleString()
