@@ -27,6 +27,9 @@ export function useSecureSocket(namespace = '', options = {}) {
     const socketRef = useRef(null)
     const tokenRef = useRef(null)
     const refreshTimerRef = useRef(null)
+    const tokenRequestRef = useRef(null)
+    const connectingRef = useRef(false)
+    const connectRef = useRef(null)
 
     const {
         onConnect,
@@ -41,8 +44,12 @@ export function useSecureSocket(namespace = '', options = {}) {
      * Fetch WebSocket token from backend
      */
     const fetchWsToken = useCallback(async () => {
+        if (tokenRequestRef.current) {
+            return tokenRequestRef.current
+        }
+
         try {
-            const response = await fetch('/api/auth/ws-token', {
+            tokenRequestRef.current = fetch('/api/auth/ws-token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -50,6 +57,8 @@ export function useSecureSocket(namespace = '', options = {}) {
                 body: JSON.stringify({ sessionId, scope }),
                 credentials: 'include',
             })
+
+            const response = await tokenRequestRef.current
 
             if (!response.ok) {
                 throw new Error(`Token fetch failed: ${response.status}`)
@@ -67,6 +76,8 @@ export function useSecureSocket(namespace = '', options = {}) {
             setError(err.message)
             onError?.(err)
             throw err
+        } finally {
+            tokenRequestRef.current = null
         }
     }, [sessionId, scope, onError])
 
@@ -79,12 +90,19 @@ export function useSecureSocket(namespace = '', options = {}) {
             return
         }
 
+        if (connectingRef.current) {
+            console.log('[useSecureSocket] Connection already in progress')
+            return
+        }
+
         if (socketRef.current?.connected) {
             console.log('[useSecureSocket] Already connected')
             return
         }
 
         try {
+            connectingRef.current = true
+
             // Get fresh token before connecting
             const { wsToken, socketUrl } = await fetchWsToken()
 
@@ -148,8 +166,14 @@ export function useSecureSocket(namespace = '', options = {}) {
         } catch (err) {
             console.error('[useSecureSocket] Connection failed:', err.message)
             setError(err.message)
+        } finally {
+            connectingRef.current = false
         }
     }, [user, namespace, fetchWsToken, onConnect, onDisconnect, onError, autoReconnect])
+
+    useEffect(() => {
+        connectRef.current = connect
+    }, [connect])
 
     /**
      * Refresh token before expiry
@@ -193,17 +217,26 @@ export function useSecureSocket(namespace = '', options = {}) {
         }
 
         // Connect when user is available
-        connect()
+        connectRef.current?.()
 
         return () => {
             // Cleanup timeout
             if (refreshTimerRef.current) {
                 clearTimeout(refreshTimerRef.current)
             }
+
+            // Ensure socket is closed on unmount/re-mount to avoid duplicate connections in dev.
+            socketRef.current?.removeAllListeners()
+            socketRef.current?.disconnect()
+            socketRef.current = null
+            setSocket(null)
+            setIsConnected(false)
+            connectingRef.current = false
         }
-    }, [user, connect])
+    }, [user])
 
     const disconnect = useCallback(() => {
+        socketRef.current?.removeAllListeners()
         socketRef.current?.disconnect()
         socketRef.current = null
         setSocket(null)

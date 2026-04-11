@@ -3,10 +3,30 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { redisClient } from '@/lib/redis'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
-import { createAuthMiddleware, createRateLimitMiddleware, handleAuthError } from '@/lib/socket-auth'
+import { createAuthMiddleware, createRateLimitMiddleware } from '@/lib/socket-auth'
 
 let io
 let initPromise = null
+const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true'
+const SOCKET_DEBUG_SAMPLE_RATE = Number.parseFloat(process.env.SOCKET_DEBUG_SAMPLE_RATE || '0')
+
+function shouldLogSocketDebug() {
+    if (SOCKET_DEBUG) return true
+    if (
+        Number.isNaN(SOCKET_DEBUG_SAMPLE_RATE) ||
+        SOCKET_DEBUG_SAMPLE_RATE <= 0 ||
+        SOCKET_DEBUG_SAMPLE_RATE > 1
+    ) {
+        return false
+    }
+    return Math.random() < SOCKET_DEBUG_SAMPLE_RATE
+}
+
+function socketDebugLog(...args) {
+    if (shouldLogSocketDebug()) {
+        console.log(...args)
+    }
+}
 
 export async function initSocketServer() {
     // If already initialized, return cached instance
@@ -87,20 +107,20 @@ export async function initSocketServer() {
 
             // Handle client connections
             serverIo.on('connection', (socket) => {
-                console.log(`[Socket.IO] Client connected: ${socket.id}`)
-                console.log(`[Socket.IO] Total connected clients:`, serverIo.engine.clientsCount)
+                socketDebugLog(`[Socket.IO] Client connected: ${socket.id}`)
+                socketDebugLog(`[Socket.IO] Total connected clients:`, serverIo.engine.clientsCount)
 
                 // Auto-join authenticated user to their personal room
                 if (socket.userId) {
                     socket.join(`user:${socket.userId}`)
-                    console.log(`[Socket.IO] User ${socket.userId} auto-joined personal room`)
+                    socketDebugLog(`[Socket.IO] User ${socket.userId} auto-joined personal room`)
                 }
 
                 socket.on('join_room', (roomId) => {
                     if (roomId) {
                         socket.join(roomId)
                         const roomClients = serverIo.sockets.adapter.rooms.get(roomId)
-                        console.log(`[Socket.IO] Client ${socket.id} joined room: ${roomId}`, {
+                        socketDebugLog(`[Socket.IO] Client ${socket.id} joined room: ${roomId}`, {
                             clientsInRoom: roomClients ? roomClients.size : 0,
                             allRoomsForClient: Array.from(socket.rooms),
                         })
@@ -113,15 +133,15 @@ export async function initSocketServer() {
                     if (roomId) {
                         socket.leave(roomId)
                         const roomClients = serverIo.sockets.adapter.rooms.get(roomId)
-                        console.log(`[Socket.IO] Client ${socket.id} left room: ${roomId}`, {
+                        socketDebugLog(`[Socket.IO] Client ${socket.id} left room: ${roomId}`, {
                             clientsInRoom: roomClients ? roomClients.size : 0,
                         })
                     }
                 })
 
                 socket.on('disconnect', (reason) => {
-                    console.log(`[Socket.IO] Client ${socket.id} disconnected: ${reason}`)
-                    console.log(
+                    socketDebugLog(`[Socket.IO] Client ${socket.id} disconnected: ${reason}`)
+                    socketDebugLog(
                         `[Socket.IO] Total connected clients after disconnect:`,
                         serverIo.engine.clientsCount
                     )
@@ -140,7 +160,7 @@ export async function initSocketServer() {
                 await redisSubClient.subscribe('submission_updates', (message) => {
                     try {
                         const data = JSON.parse(message)
-                        console.log(`[Socket.IO] Received message from Redis:`, {
+                        socketDebugLog(`[Socket.IO] Received message from Redis:`, {
                             type: data.type,
                             submissionId: data.submissionId,
                             userId: data.userId,
@@ -164,7 +184,7 @@ export async function initSocketServer() {
                                 ])
 
                                 if (roomRoutedEvents.has(data.type)) {
-                                    console.log(
+                                    socketDebugLog(
                                         `[Socket.IO] Broadcasting ${data.type} to room ${submissionRoom}`,
                                         {
                                             verdict: data.verdict ?? 'PENDING',
@@ -176,7 +196,7 @@ export async function initSocketServer() {
                                     const clientsInRoom =
                                         serverIo.sockets.adapter.rooms.get(submissionRoom)
                                     const clientCount = clientsInRoom ? clientsInRoom.size : 0
-                                    console.log(
+                                    socketDebugLog(
                                         `[Socket.IO] Room ${submissionRoom} has ${clientCount} connected clients`
                                     )
 
@@ -204,21 +224,23 @@ export async function initSocketServer() {
 
                             // Route contest-specific events with their proper event names
                             if (data.type === 'contest:result_finalized') {
-                                console.log(
+                                socketDebugLog(
                                     `[Socket.IO] Emitting contest:result_finalized to user ${userId}`
                                 )
                                 serverIo.to(userId).emit('contest:result_finalized', data)
                             }
 
                             if (data.type === 'leaderboard_update' && data.contestId) {
-                                console.log(
+                                socketDebugLog(
                                     `[Socket.IO] Emitting leaderboard_update to user ${userId}`
                                 )
                                 serverIo.to(userId).emit('leaderboard_update', data)
                             }
 
                             // Also emit the generic submission_update for other listeners
-                            console.log(`[Socket.IO] Emitting submission_update to user ${userId}`)
+                            socketDebugLog(
+                                `[Socket.IO] Emitting submission_update to user ${userId}`
+                            )
                             serverIo.to(userId).emit('submission_update', data)
                         }
                     } catch (e) {
@@ -259,7 +281,7 @@ export async function initSocketServer() {
                         const data = JSON.parse(message)
                         if (data.contestId) {
                             const contestRoom = `contest_${data.contestId}`
-                            console.log(
+                            socketDebugLog(
                                 `[Socket.IO] Broadcasting ${data.type} to room ${contestRoom}`
                             )
                             serverIo.to(contestRoom).emit('contest:updated', data)

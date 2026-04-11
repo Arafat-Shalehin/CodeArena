@@ -3,6 +3,27 @@ import { TestCase } from '@/models/TestCase.models'
 import mongoose from 'mongoose'
 import { redisClient } from '@/lib/redis'
 
+const PROBLEM_LIST_VERSION_KEY = 'problem:list:v'
+
+async function getProblemListCacheVersion() {
+    if (!redisClient.isOpen) return '1'
+    try {
+        return (await redisClient.get(PROBLEM_LIST_VERSION_KEY)) || '1'
+    } catch (err) {
+        console.error('Redis read error in getProblemListCacheVersion:', err)
+        return '1'
+    }
+}
+
+async function invalidateProblemListCache() {
+    if (!redisClient.isOpen) return
+    try {
+        await redisClient.incr(PROBLEM_LIST_VERSION_KEY)
+    } catch (err) {
+        console.error('Redis invalidation error in invalidateProblemListCache:', err)
+    }
+}
+
 /**
  * Fetch paginated list of problems with optional filtering.
  *
@@ -20,7 +41,8 @@ export async function getAllProblems(query) {
     const skip = (page - 1) * limit
 
     // Simple cache key based on query parameters
-    const cacheKey = `problem:list:p:${page}:l:${limit}:d:${query.difficulty || 'all'}:s:${query.search || 'none'}:t:${query.tag || 'all'}:st:${query.status || 'all'}:u:${query.userId || 'none'}:sort:${query.sortBy || 'recent'}`
+    const listVersion = await getProblemListCacheVersion()
+    const cacheKey = `problem:list:v:${listVersion}:p:${page}:l:${limit}:d:${query.difficulty || 'all'}:s:${query.search || 'none'}:t:${query.tag || 'all'}:st:${query.status || 'all'}:u:${query.userId || 'none'}:sort:${query.sortBy || 'recent'}`
 
     const isCurated = query.sortBy?.toLowerCase() === 'curated'
 
@@ -315,14 +337,7 @@ export async function createProblem(data) {
         await session.commitTransaction()
 
         // Invalidate caches
-        if (redisClient.isOpen) {
-            try {
-                const listKeys = await redisClient.keys(`problem:list:*`)
-                if (listKeys.length > 0) await redisClient.del(listKeys)
-            } catch (err) {
-                console.error('Redis invalidation error in createProblem:', err)
-            }
-        }
+        await invalidateProblemListCache()
 
         return problem[0]
     } catch (error) {
@@ -384,13 +399,12 @@ export async function updateProblem(id, data) {
         await session.commitTransaction()
 
         // Invalidate caches
+        await invalidateProblemListCache()
         if (redisClient.isOpen) {
             try {
-                const listKeys = await redisClient.keys(`problem:list:*`)
-                if (listKeys.length > 0) await redisClient.del(listKeys)
                 await redisClient.del(`problem:${id}:detail`)
             } catch (err) {
-                console.error('Redis invalidation error in updateProblem:', err)
+                console.error('Redis invalidation error in updateProblem detail cache:', err)
             }
         }
 
@@ -427,13 +441,12 @@ export async function deleteProblem(id) {
         await session.commitTransaction()
 
         // Invalidate caches
+        await invalidateProblemListCache()
         if (redisClient.isOpen) {
             try {
-                const listKeys = await redisClient.keys(`problem:list:*`)
-                if (listKeys.length > 0) await redisClient.del(listKeys)
                 await redisClient.del(`problem:${id}:detail`)
             } catch (err) {
-                console.error('Redis invalidation error in deleteProblem:', err)
+                console.error('Redis invalidation error in deleteProblem detail cache:', err)
             }
         }
 

@@ -838,6 +838,7 @@ export function initSubmissionWorker() {
                                 submissionId,
                                 problemId: submission.problemId,
                                 verdict: finalVerdict,
+                                dedupeKey: `judging:${submission.userId}:${submission.problemId}:${finalVerdict}`,
                             },
                         })
                     })().catch((err) => {

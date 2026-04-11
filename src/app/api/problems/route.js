@@ -9,12 +9,17 @@ export const dynamic = 'force-dynamic'
 export const GET = asyncHandler(async (req) => {
     await dbConnect()
 
-    // Optional protection: if status filter is used, we need the user
-    try {
-        const user = await protect(req)
-        if (user) req.user = user
-    } catch (e) {
-        // Ignore if not logged in (status filter won't work but other filters will)
+    const { searchParams } = new URL(req.url)
+    const hasStatusFilter = Boolean(searchParams.get('status'))
+
+    // Only resolve auth when status filtering is requested.
+    if (hasStatusFilter) {
+        try {
+            const user = await protect(req)
+            if (user) req.user = user
+        } catch (e) {
+            // Ignore if not logged in (status filter won't work but other filters will)
+        }
     }
 
     return fetchProblems(req)

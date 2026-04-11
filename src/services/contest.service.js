@@ -3,6 +3,27 @@ import { ContestParticipant } from '@/models/ContestParticipant.models'
 import { logger } from '@/lib/logger'
 import { redisClient } from '@/lib/redis'
 
+const CONTEST_LIST_VERSION_KEY = 'contest:list:v'
+
+async function getContestListCacheVersion() {
+    if (!redisClient.isOpen) return '1'
+    try {
+        return (await redisClient.get(CONTEST_LIST_VERSION_KEY)) || '1'
+    } catch (err) {
+        console.error('Redis read error in getContestListCacheVersion:', err)
+        return '1'
+    }
+}
+
+async function invalidateContestListCache() {
+    if (!redisClient.isOpen) return
+    try {
+        await redisClient.incr(CONTEST_LIST_VERSION_KEY)
+    } catch (err) {
+        console.error('Redis invalidation error in invalidateContestListCache:', err)
+    }
+}
+
 /**
  * Helper to validate contest dates
  */
@@ -42,10 +63,7 @@ export async function createContest(data) {
         status,
     })
 
-    if (redisClient.isOpen) {
-        const listKeys = await redisClient.keys('contest:list:*')
-        if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
-    }
+    await invalidateContestListCache()
 
     return contest
 }
@@ -58,7 +76,8 @@ export async function getAllContests(query) {
     const limit = parseInt(query.limit) || 10
     const skip = (page - 1) * limit
 
-    const cacheKey = `contest:list:p:${page}:l:${limit}:s:${query.status || 'all'}`
+    const listVersion = await getContestListCacheVersion()
+    const cacheKey = `contest:list:v:${listVersion}:p:${page}:l:${limit}:s:${query.status || 'all'}`
 
     try {
         if (redisClient.isOpen) {
@@ -180,9 +199,8 @@ export async function updateContest(id, data) {
         updatedFields: Object.keys(data),
     })
 
+    await invalidateContestListCache()
     if (redisClient.isOpen) {
-        const listKeys = await redisClient.keys('contest:list:*')
-        if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
         await redisClient.del(`contest:${id}:detail`).catch(() => {})
 
         // Publish update event for real-time synchronization
@@ -217,9 +235,8 @@ export async function deleteContest(id) {
         title: contest.title,
     })
 
+    await invalidateContestListCache()
     if (redisClient.isOpen) {
-        const listKeys = await redisClient.keys('contest:list:*')
-        if (listKeys.length > 0) await redisClient.del(listKeys).catch(() => {})
         await redisClient.del(`contest:${id}:detail`).catch(() => {})
 
         // Publish update event so clients can redirect or update

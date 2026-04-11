@@ -49,6 +49,38 @@ import ExecutionConsole from './ExecutionConsole'
 import WorkspaceLoader from './WorkspaceLoader'
 
 const PROBLEM_LIST_PAGE_SIZE = 20
+const PROBLEM_LIST_CACHE_KEY = 'codearena:solver:problem-list:v1'
+const PROBLEM_LIST_CACHE_TTL_MS = 5 * 60 * 1000
+
+function readProblemListFromSessionCache() {
+    if (typeof window === 'undefined') return null
+    try {
+        const raw = sessionStorage.getItem(PROBLEM_LIST_CACHE_KEY)
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed?.problems) || typeof parsed?.timestamp !== 'number') {
+            return null
+        }
+        return parsed
+    } catch {
+        return null
+    }
+}
+
+function writeProblemListToSessionCache(problems) {
+    if (typeof window === 'undefined') return
+    try {
+        sessionStorage.setItem(
+            PROBLEM_LIST_CACHE_KEY,
+            JSON.stringify({
+                timestamp: Date.now(),
+                problems,
+            })
+        )
+    } catch {
+        // Ignore storage write failures in private/incognito modes.
+    }
+}
 
 async function fetchAllProblems(signal) {
     const firstRes = await fetch(`/api/problems?page=1&limit=${PROBLEM_LIST_PAGE_SIZE}`, {
@@ -498,12 +530,19 @@ export default function ProblemSolverLayout({ problemId, contestId, initialProbl
     // Server Component provides `initialProblem` which is the freshest data. Otherwise use cache.
     const startingProblem = initialProblem || (shouldShowCached ? zustandStore.cachedProblem : null)
 
+    const sessionCache = readProblemListFromSessionCache()
+    const initialProblems =
+        zustandStore.cachedProblems?.length > 0
+            ? zustandStore.cachedProblems
+            : Array.isArray(sessionCache?.problems)
+              ? sessionCache.problems
+              : []
+
     const [problem, setProblem] = useState(startingProblem)
-    const [problems, setProblems] = useState(zustandStore.cachedProblems || [])
+    const [problems, setProblems] = useState(initialProblems)
 
     // We only need to load if we don't have problem list (initialProblem covers the problem data)
-    const needsProblemList =
-        !zustandStore.cachedProblems || zustandStore.cachedProblems.length === 0
+    const needsProblemList = initialProblems.length === 0
     const [isLoading, setIsLoading] = useState(!startingProblem || needsProblemList)
     const [error, setError] = useState(null)
 
@@ -539,17 +578,37 @@ export default function ProblemSolverLayout({ problemId, contestId, initialProbl
                         if (isMounted) setError(problemData.error || 'Failed to load problem')
                     }
                 }
-                // Hydrate quickly from cache (if available), then refresh with full paginated list.
+                // Hydrate quickly from in-memory or session cache.
                 const state = useProblemSolveStore.getState()
-                if (state.cachedProblems?.length > 0) {
+                const cachedProblems =
+                    state.cachedProblems?.length > 0
+                        ? state.cachedProblems
+                        : Array.isArray(sessionCache?.problems)
+                          ? sessionCache.problems
+                          : null
+
+                if (cachedProblems?.length > 0) {
                     console.log('[ProblemSolver] Using cached problem list')
-                    if (isMounted) setProblems(state.cachedProblems)
+                    if (isMounted) setProblems(cachedProblems)
+                    if (state.cachedProblems?.length === 0) {
+                        useProblemSolveStore.getState().setCachedProblems(cachedProblems)
+                    }
                 }
 
-                console.log('[ProblemSolver] Refreshing full problem list')
-                const problemsList = await fetchAllProblems(controller.signal)
-                if (isMounted) setProblems(problemsList)
-                useProblemSolveStore.getState().setCachedProblems(problemsList)
+                const isSessionCacheFresh =
+                    typeof sessionCache?.timestamp === 'number' &&
+                    Date.now() - sessionCache.timestamp < PROBLEM_LIST_CACHE_TTL_MS
+                const shouldRefreshFullProblemList = !cachedProblems || !isSessionCacheFresh
+
+                if (shouldRefreshFullProblemList) {
+                    console.log('[ProblemSolver] Refreshing full problem list')
+                    const problemsList = await fetchAllProblems(controller.signal)
+                    if (isMounted) setProblems(problemsList)
+                    useProblemSolveStore.getState().setCachedProblems(problemsList)
+                    writeProblemListToSessionCache(problemsList)
+                } else {
+                    console.log('[ProblemSolver] Session cache fresh, skipping full list refresh')
+                }
 
                 if (isMounted) setIsLoading(false)
             } catch (err) {

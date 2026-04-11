@@ -20,6 +20,7 @@ export async function createSubmission(data) {
         type = 'submit',
         customInput,
         cachedResult,
+        skipRateLimit = false,
     } = data
 
     console.log('[SERVICE] createSubmission called:', {
@@ -59,7 +60,7 @@ export async function createSubmission(data) {
         console.log('[SERVICE] Problem validated:', problemId)
 
         // 3️⃣ Rate limit (Redis-based throttle: 3 sec cooldown)
-        if (type === 'submit' && redisClient.isOpen) {
+        if (type === 'submit' && !skipRateLimit && redisClient.isOpen) {
             const rateLimitKey = `ratelimit:submit:${userId}`
             const isThrottled = await redisClient.get(rateLimitKey)
 
@@ -69,7 +70,7 @@ export async function createSubmission(data) {
 
             // Set throttle for 3 seconds
             await redisClient.set(rateLimitKey, '1', { EX: 3 })
-        } else if (type === 'submit') {
+        } else if (type === 'submit' && !skipRateLimit) {
             // Fallback to basic DB check if Redis is down
             const lastSubmission = await Submission.findOne({ userId, type: 'submit' }).sort({
                 createdAt: -1,

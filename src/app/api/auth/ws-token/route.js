@@ -38,11 +38,15 @@ export const POST = asyncHandler(async (req) => {
 
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || `http://localhost:3002`
 
-    await logger.auth.info('WebSocket token generated', {
-        userId: user.id || user._id,
-        scope,
-        sessionId: sessionId || null,
-    })
+    void logger.auth
+        .info('WebSocket token generated', {
+            userId: user.id || user._id,
+            scope,
+            sessionId: sessionId || null,
+        })
+        .catch((error) => {
+            console.warn('[ws-token] Failed to persist auth log:', error?.message || error)
+        })
 
     return NextResponse.json({
         success: true,

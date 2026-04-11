@@ -49,6 +49,7 @@ export async function submitCode(req, user) {
             type,
             customInput,
             cachedResult,
+            skipRateLimit: true,
         })
 
         console.log('[API] Submission created successfully:', submission._id)

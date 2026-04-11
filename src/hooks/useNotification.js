@@ -5,6 +5,39 @@ import { useAuth } from '@/context/AuthContext'
 import { useSecureSocket } from './useSecureSocket'
 import { toast } from 'sonner'
 
+const RECENT_NOTIFICATION_FETCH_TTL_MS = 5000
+const notificationInflightByUser = new Map()
+const notificationRecentDataByUser = new Map()
+
+async function fetchNotificationsForUser(userId) {
+    const cached = notificationRecentDataByUser.get(userId)
+    if (cached && Date.now() - cached.timestamp < RECENT_NOTIFICATION_FETCH_TTL_MS) {
+        return cached.data
+    }
+
+    if (notificationInflightByUser.has(userId)) {
+        return notificationInflightByUser.get(userId)
+    }
+
+    const request = fetch('/api/notifications')
+        .then(async (res) => {
+            if (!res.ok) throw new Error(`Failed to fetch notifications: ${res.status}`)
+            const data = await res.json()
+            const list = data.success && Array.isArray(data.data) ? data.data : []
+            notificationRecentDataByUser.set(userId, {
+                timestamp: Date.now(),
+                data: list,
+            })
+            return list
+        })
+        .finally(() => {
+            notificationInflightByUser.delete(userId)
+        })
+
+    notificationInflightByUser.set(userId, request)
+    return request
+}
+
 export function useNotification() {
     const { user } = useAuth()
     const [notifications, setNotifications] = useState([])
@@ -14,12 +47,9 @@ export function useNotification() {
     const fetchNotifications = useCallback(async () => {
         if (!user?._id) return
         try {
-            const res = await fetch('/api/notifications')
-            const data = await res.json()
-            if (data.success) {
-                setNotifications(data.data)
-                setUnreadCount(data.data.filter((n) => !n.isRead).length)
-            }
+            const list = await fetchNotificationsForUser(String(user._id))
+            setNotifications(list)
+            setUnreadCount(list.filter((n) => !n.isRead).length)
         } catch (error) {
             console.error('Error fetching notifications:', error)
         }
@@ -39,8 +69,13 @@ export function useNotification() {
         socket.emit('join_room', user._id)
 
         socket.on('notification_received', (notification) => {
-            setNotifications((prev) => [notification, ...prev])
-            setUnreadCount((prev) => prev + 1)
+            setNotifications((prev) => {
+                if (prev.some((item) => item._id === notification._id)) {
+                    return prev
+                }
+                setUnreadCount((count) => count + 1)
+                return [notification, ...prev]
+            })
 
             // Play a subtle notification sound (Professional simple UI bubble pop)
             const audio = new Audio(
