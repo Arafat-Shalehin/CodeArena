@@ -150,13 +150,14 @@ export function useSecureSocket(namespace = '', options = {}) {
             })
 
             newSocket.on('connect_error', (error) => {
-                console.error('[useSecureSocket] Connection error:', error.message)
+                // Use warn instead of error to prevent Next.js dev overlay popup for expected Vercel socket limitations
+                console.warn('[useSecureSocket] Connection error:', error.message)
                 setError(error.message)
                 onError?.(error)
             })
 
             newSocket.on('error', (error) => {
-                console.error('[useSecureSocket] Socket error:', error)
+                console.warn('[useSecureSocket] Socket error:', error)
                 setError(error)
                 onError?.(new Error(error))
             })
@@ -164,7 +165,7 @@ export function useSecureSocket(namespace = '', options = {}) {
             socketRef.current = newSocket
             setSocket(newSocket)
         } catch (err) {
-            console.error('[useSecureSocket] Connection failed:', err.message)
+            console.warn('[useSecureSocket] Connection failed:', err.message)
             setError(err.message)
         } finally {
             connectingRef.current = false
