@@ -789,7 +789,7 @@ async function runContainer(container, timeLimit, skipCompile = false) {
                 stdoutStream.destroy()
                 stderrStream.destroy()
                 execStream.destroy()
-                container.stop({ t: 0 }).catch(() => {})
+                container.stop({ t: 0 }).catch(() => { })
                 resolve() // Unblock the race so we can return a verdict
             }
 
@@ -1205,8 +1205,21 @@ async function pruneOrphanedExecutors() {
     }
 }
 
+function shouldArmJanitor() {
+    const isBuildPhase =
+        process.env.NEXT_PHASE === 'phase-production-build' ||
+        process.env.SKIP_WORKER_INIT === 'true'
+
+    return (
+        Boolean(docker) &&
+        !globalThis.__executorJanitorArmed &&
+        !isBuildPhase &&
+        process.env.SKIP_DOCKER_JANITOR !== 'true'
+    )
+}
+
 // Start the janitor only once per process when Docker is available.
-if (docker && !globalThis.__executorJanitorArmed) {
+if (shouldArmJanitor()) {
     globalThis.__executorJanitorArmed = true
     setInterval(pruneOrphanedExecutors, JANITOR_INTERVAL_MS)
     // Run once shortly after startup to clear leftovers from previous crashes

@@ -22,6 +22,14 @@ function getEnv(name, fallback = '') {
     return proc?.env?.[name] ?? fallback
 }
 
+function isBuildPhase() {
+    return (
+        getEnv('NEXT_PHASE') === 'phase-production-build' ||
+        getEnv('SKIP_WORKER_INIT') === 'true' ||
+        getEnv('SKIP_GLOBAL_ERROR_HANDLER') === 'true'
+    )
+}
+
 function collectErrorContext() {
     const proc = getNodeProcess()
 
@@ -59,6 +67,12 @@ function formatError(error) {
 function registerNodeProcessHandlers() {
     const proc = getNodeProcess()
     if (!proc || typeof proc.on !== 'function') {
+        return
+    }
+
+    // Build workers are short-lived and receive control signals from Next.js.
+    // Registering process-level handlers there can keep workers alive unexpectedly.
+    if (isBuildPhase()) {
         return
     }
 
