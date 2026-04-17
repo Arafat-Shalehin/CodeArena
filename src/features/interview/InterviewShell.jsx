@@ -489,8 +489,10 @@ export default function InterviewShell({
     useEffect(() => {
         if (!wsTokenState || !sessionId || isRehydrating) return
 
+        const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
+
         const socket = io(
-            `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
+            `${process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl}/interview`,
             {
                 auth: { token: wsTokenState },
                 reconnectionAttempts: 3,
@@ -1010,7 +1012,7 @@ export default function InterviewShell({
             )}
 
             {/* ═══ Top Navbar ════════════════════════════════════════════════ */}
-            <nav className="border-border bg-bg-subtle flex h-[48px] shrink-0 items-center justify-between border-b px-4">
+            <nav className="border-border bg-bg-subtle flex h-12 shrink-0 items-center justify-between border-b px-4">
                 {/* Left */}
                 <div className="flex items-center gap-3">
                     <AreanaLogo
@@ -1022,7 +1024,7 @@ export default function InterviewShell({
                     {problem && (
                         <>
                             <div className="bg-border h-4 w-px" />
-                            <span className="text-text-primary max-w-[200px] truncate text-xs font-semibold">
+                            <span className="text-text-primary max-w-50 truncate text-xs font-semibold">
                                 {problem.title}
                             </span>
                         </>
@@ -1104,7 +1106,7 @@ export default function InterviewShell({
                     className="border-border bg-bg-subtle flex flex-col overflow-hidden rounded-xl border"
                     style={{ width: `${leftPct}%` }}
                 >
-                    <div className="border-border bg-bg-subtle flex h-[42px] shrink-0 items-center gap-2 border-b px-4">
+                    <div className="border-border bg-bg-subtle flex h-10.5 shrink-0 items-center gap-2 border-b px-4">
                         <span className="text-text-primary text-xs font-bold">📄 Problem</span>
                     </div>
                     <ProblemPanel problem={problemState} />
@@ -1113,7 +1115,7 @@ export default function InterviewShell({
                 {/* ── Left drag handle ── */}
                 <div
                     onMouseDown={startDragLeft}
-                    className="bg-bg-page hover:bg-accent/40 flex w-[8px] cursor-col-resize items-center justify-center transition-colors"
+                    className="bg-bg-page hover:bg-accent/40 flex w-2 cursor-col-resize items-center justify-center transition-colors"
                 >
                     <GripVertical size={12} className="text-text-muted" />
                 </div>
@@ -1151,7 +1153,7 @@ export default function InterviewShell({
                 {/* ── Right drag handle ── */}
                 <div
                     onMouseDown={startDragRight}
-                    className="bg-bg-page hover:bg-accent/40 flex w-[8px] cursor-col-resize items-center justify-center transition-colors"
+                    className="bg-bg-page hover:bg-accent/40 flex w-2 cursor-col-resize items-center justify-center transition-colors"
                 >
                     <GripVertical size={12} className="text-text-muted" />
                 </div>

@@ -18,6 +18,12 @@ services:
         value: 0.0.0.0
       - key: PROCESS_TYPE
         value: API
+      - key: SOCKET_PORT
+        value: 3002
+      - key: NEXT_PUBLIC_SOCKET_PORT
+        value: 3002
+      - key: NEXT_PUBLIC_SOCKET_URL
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET

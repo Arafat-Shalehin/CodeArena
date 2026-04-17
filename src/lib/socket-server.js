@@ -9,6 +9,12 @@ let io
 let initPromise = null
 const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true'
 const SOCKET_DEBUG_SAMPLE_RATE = Number.parseFloat(process.env.SOCKET_DEBUG_SAMPLE_RATE || '0')
+const parsedSocketPort = Number.parseInt(
+    process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || '3002',
+    10
+)
+const SOCKET_PORT =
+    Number.isInteger(parsedSocketPort) && parsedSocketPort > 0 ? parsedSocketPort : 3002
 
 function shouldLogSocketDebug() {
     if (SOCKET_DEBUG) return true
@@ -44,7 +50,7 @@ export async function initSocketServer() {
     // Start initialization
     initPromise = (async () => {
         try {
-            const port = 3002
+            const port = SOCKET_PORT
 
             // Parse allowed origins from environment (comma-separated)
             const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')

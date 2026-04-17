@@ -6,6 +6,12 @@ import { redisClient } from '@/lib/redis'
 
 const LOCAL_LEADERBOARD_CACHE_TTL_MS = 20_000
 const localLeaderboardCache = new Map()
+const parsedSocketPort = Number.parseInt(
+    process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || '3002',
+    10
+)
+const LIVE_SOCKET_PORT =
+    Number.isInteger(parsedSocketPort) && parsedSocketPort > 0 ? parsedSocketPort : 3002
 
 function getLocalLeaderboard(cacheKey) {
     const cached = localLeaderboardCache.get(cacheKey)
@@ -210,7 +216,7 @@ export async function GET(request) {
                 limit,
                 pages: Math.ceil(total / limit),
             },
-            livePort: 3002,
+            livePort: LIVE_SOCKET_PORT,
         }
 
         try {

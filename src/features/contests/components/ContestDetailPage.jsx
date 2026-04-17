@@ -47,7 +47,9 @@ export default function ContestDetailPage({ contestId }) {
     useEffect(() => {
         if (!contestId) return
 
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002', {
+        const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
+
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl, {
             reconnection: true,
         })
 
