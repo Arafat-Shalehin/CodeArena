@@ -9,6 +9,8 @@ import { Redis } from 'ioredis'
 import { getWorkers, getWorkerStats } from '@/lib/worker-manager.js'
 import { isMongoDbReady, getDbState, getLoggingHealth } from '@/lib/safe-logger.js'
 import { getErrorHandlerStatus, getErrorContext } from '@/lib/global-error-handler.js'
+import { isApiProcess } from '@/lib/process-type.js'
+import dbConnect from '@/lib/mongodb.js'
 
 // Redis client instance (shared across app)
 let redisClient = null
@@ -183,11 +185,24 @@ export async function getDetailedHealthContext() {
  * @returns {Promise<Object>} Quick status
  */
 export async function getQuickHealthStatus() {
-    const dbReady = isMongoDbReady()
+    let dbReady = isMongoDbReady()
+
+    // Connection is initialized lazily in request handlers.
+    // For health probes, attempt one connect so status reflects real DB reachability.
+    if (!dbReady) {
+        try {
+            await dbConnect()
+            dbReady = isMongoDbReady()
+        } catch {
+            dbReady = false
+        }
+    }
+
     const workerCount = getWorkers().size
+    const workersHealthy = isApiProcess() ? true : workerCount > 0
 
     return {
-        ok: dbReady && workerCount > 0,
+        ok: dbReady && workersHealthy,
         database: dbReady,
         workers: workerCount,
         uptime: process.uptime(),

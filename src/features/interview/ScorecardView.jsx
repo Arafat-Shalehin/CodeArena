@@ -73,8 +73,10 @@ export default function ScorecardView({ sessionId }) {
                 const json = await res.json()
                 if (!json.success || isUnmounted) return
 
+                const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
+
                 const socket = io(
-                    `${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002'}/interview`,
+                    `${process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl}/interview`,
                     {
                         auth: { token: json.data.wsToken },
                         reconnectionAttempts: 5,
@@ -292,13 +294,13 @@ export default function ScorecardView({ sessionId }) {
             </header>
 
             {/* Main Scorecard Content - 12 Column Grid */}
-            <main className="mx-auto max-w-[1500px] px-8 pt-15 print:pt-0">
+            <main className="mx-auto max-w-375 px-8 pt-15 print:pt-0">
                 <div className="grid grid-cols-12 gap-8 lg:gap-12">
                     {/* Overall Score Hero Card - 7 Columns */}
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="matte-surface relative col-span-12 flex flex-col justify-center overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-7 lg:h-[450px]"
+                        className="matte-surface relative col-span-12 flex flex-col justify-center overflow-hidden rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-7 lg:h-112.5"
                     >
                         <div className="bg-accent/10 absolute -top-24 -right-24 h-64 w-64 blur-[100px]" />
                         <div className="relative z-10 flex flex-col items-center justify-between gap-10 md:flex-row">
@@ -366,7 +368,7 @@ export default function ScorecardView({ sessionId }) {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="matte-surface col-span-12 flex flex-col rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-5 lg:h-[450px]"
+                        className="matte-surface col-span-12 flex flex-col rounded-[3rem] p-10 shadow-2xl md:p-14 lg:col-span-5 lg:h-112.5"
                     >
                         <div className="mb-8 flex shrink-0 items-center gap-4">
                             <div className="bg-accent/10 rounded-2xl p-3 shadow-inner">

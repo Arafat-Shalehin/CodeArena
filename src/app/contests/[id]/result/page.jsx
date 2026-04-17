@@ -62,7 +62,9 @@ export default function PersonalResultPage() {
         let socket
         try {
             const { io } = require('socket.io-client')
-            socket = io(`http://${window.location.hostname}:3002`)
+            const socketPort = process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'
+            const fallbackSocketUrl = `${window.location.protocol}//${window.location.hostname}:${socketPort}`
+            socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketUrl)
 
             socket.on('connect', () => {
                 console.log('[ResultPage] Socket connected, listening for result_finalized')
