@@ -789,7 +789,7 @@ async function runContainer(container, timeLimit, skipCompile = false) {
                 stdoutStream.destroy()
                 stderrStream.destroy()
                 execStream.destroy()
-                container.stop({ t: 0 }).catch(() => {})
+                container.stop({ t: 0 }).catch(() => { })
                 resolve() // Unblock the race so we can return a verdict
             }
 
