@@ -18,6 +18,8 @@ services:
         value: 0.0.0.0
       - key: PROCESS_TYPE
         value: API
+      - key: ENABLE_API_WORKERS
+        value: "false"
       - key: SOCKET_PORT
         value: 3002
       - key: NEXT_PUBLIC_SOCKET_PORT

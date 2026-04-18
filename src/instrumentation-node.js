@@ -15,8 +15,13 @@ let globalWorkers = {
     interviewSummarize: null,
 }
 
-function shouldStartSystemWorkers(isDev) {
+function isApiWorkerModeEnabled() {
+    return process.env.ENABLE_API_WORKERS === 'true'
+}
+
+function shouldStartSystemWorkers(isDev, apiWorkerModeEnabled) {
     if (isWorkerProcess()) return true
+    if (apiWorkerModeEnabled) return true
     return isDev && process.env.DISABLE_DEV_SYSTEM_WORKERS !== 'true'
 }
 
@@ -26,13 +31,13 @@ function startWorkerOnce(workerName, initFn) {
     registerWorker(workerName, globalWorkers[workerName])
 }
 
-async function initializeWorkersOnce(isDev) {
+async function initializeWorkersOnce(isDev, apiWorkerModeEnabled) {
     if (globalThis._workersInitialized) return
     if (globalThis.__workersInitPromise) return globalThis.__workersInitPromise
 
     globalThis.__workersInitPromise = (async () => {
         console.log(
-            `[INSTRUMENTATION] PROCESS_TYPE is ${getProcessType()} (isDev: ${isDev}). Initializing workers...`
+            `[INSTRUMENTATION] PROCESS_TYPE is ${getProcessType()} (isDev: ${isDev}, apiWorkerMode: ${apiWorkerModeEnabled}). Initializing workers...`
         )
 
         const { initInterviewAIWorker } = await import('@/services/interviewAI.worker')
@@ -46,8 +51,9 @@ async function initializeWorkersOnce(isDev) {
         startWorkerOnce('interviewExecution', initInterviewExecutionWorker)
         startWorkerOnce('interviewSummarize', initInterviewSummarizeWorker)
 
-        // In dev, keep current "single process" convenience unless explicitly disabled.
-        if (shouldStartSystemWorkers(isDev)) {
+        // In worker process, in dev, or when ENABLE_API_WORKERS=true,
+        // run system workers in the current process.
+        if (shouldStartSystemWorkers(isDev, apiWorkerModeEnabled)) {
             const { initSubmissionWorker } = await import('@/services/submission.worker')
             const { initStatsWorker } = await import('@/services/stats.worker')
             const { initAIWorker } = await import('@/services/ai.worker')
@@ -146,9 +152,15 @@ export async function registerNodeInstrumentation() {
     }
 
     const isDev = process.env.NODE_ENV === 'development'
+    const apiWorkerModeEnabled = isApiWorkerModeEnabled()
 
-    if (isWorkerProcess() || isDev) {
-        await initializeWorkersOnce(isDev)
+    if (isWorkerProcess() || isDev || apiWorkerModeEnabled) {
+        if (apiWorkerModeEnabled && !isWorkerProcess()) {
+            console.log(
+                '[INSTRUMENTATION] ENABLE_API_WORKERS=true -> starting workers in API process'
+            )
+        }
+        await initializeWorkersOnce(isDev, apiWorkerModeEnabled)
     }
 
     if (!isWorkerProcess() && !globalThis._schedulerInitialized) {
