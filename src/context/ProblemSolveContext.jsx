@@ -312,9 +312,10 @@ function ProblemSolveProviderInner({
                 })
 
                 if (!data.success) {
-                    console.error('[FRONTEND] Submission failed:', data.message)
-                    toast.error(data.message || 'Submission failed')
-                    execution.setTestResult({ status: 'error', error: data.message })
+                    const errorMessage = data.message || data.error || 'Submission failed'
+                    console.error('[FRONTEND] Submission failed:', errorMessage)
+                    toast.error(errorMessage)
+                    execution.setTestResult({ status: 'error', error: errorMessage })
                     execution.setIsSubmitting(false)
                 } else {
                     const submissionId = data.data._id || data.data.id
@@ -406,9 +407,10 @@ function ProblemSolveProviderInner({
             })
 
             if (!data.success) {
-                console.error('[FRONTEND] Submission failed:', data.message)
-                toast.error(data.message || 'Submission failed')
-                execution.setTestResult({ status: 'error', error: data.message })
+                const errorMessage = data.message || data.error || 'Submission failed'
+                console.error('[FRONTEND] Submission failed:', errorMessage)
+                toast.error(errorMessage)
+                execution.setTestResult({ status: 'error', error: errorMessage })
                 execution.setIsSubmitting(false)
             } else {
                 const submissionId = data.data._id || data.data.id

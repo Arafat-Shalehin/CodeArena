@@ -26,9 +26,11 @@ export async function authRateLimitMiddleware(req) {
         await consumeRateLimit(authLimiter, ip)
     } catch (error) {
         if (error.isRateLimiterError) {
+            const message = 'Too many authentication attempts. Please try again later.'
             const errorResponse = {
                 success: false,
-                error: 'Too many authentication attempts. Please try again later.',
+                message,
+                error: message,
                 retryAfter: error.retryAfter,
             }
             return new Response(JSON.stringify(errorResponse), {
@@ -66,9 +68,11 @@ export async function submissionRateLimitMiddleware(req, userId) {
         await consumeRateLimit(submissionLimiter, userId)
     } catch (error) {
         if (error.isRateLimiterError) {
+            const message = 'Too many submission requests. Please slow down.'
             const errorResponse = {
                 success: false,
-                error: 'Too many submission requests. Please slow down.',
+                message,
+                error: message,
                 retryAfter: error.retryAfter,
             }
             return new Response(JSON.stringify(errorResponse), {
@@ -96,9 +100,11 @@ export async function generalRateLimitMiddleware(req) {
         await consumeRateLimit(generalLimiter, ip)
     } catch (error) {
         if (error.isRateLimiterError) {
+            const message = 'Rate limit exceeded. Please try again later.'
             const errorResponse = {
                 success: false,
-                error: 'Rate limit exceeded. Please try again later.',
+                message,
+                error: message,
                 retryAfter: error.retryAfter,
             }
             return new Response(JSON.stringify(errorResponse), {
