@@ -16,6 +16,28 @@ const parsedSocketPort = Number.parseInt(
 const SOCKET_PORT =
     Number.isInteger(parsedSocketPort) && parsedSocketPort > 0 ? parsedSocketPort : 3002
 
+async function safeConnectRedisClient(client, label) {
+    try {
+        if (!client.isOpen) {
+            await client.connect()
+        }
+        return true
+    } catch (error) {
+        console.warn(`[Socket.IO] ${label} unavailable: ${error.message}`)
+        return false
+    }
+}
+
+async function safeQuitRedisClient(client) {
+    try {
+        if (client?.isOpen) {
+            await client.quit()
+        }
+    } catch {
+        // Ignore cleanup errors for best-effort shutdown.
+    }
+}
+
 function shouldLogSocketDebug() {
     if (SOCKET_DEBUG) return true
     if (
@@ -85,20 +107,51 @@ export async function initSocketServer() {
                 pingTimeout: 5000,
             })
 
-            // Setup Redis Adapter for multi-node scaling
+            // Setup Redis adapter when available, but keep Socket.IO online without it.
+            let adapterEnabled = false
             const pubClient = redisClient.duplicate()
             const subClient = redisClient.duplicate()
-            await Promise.all([pubClient.connect(), subClient.connect()])
-            serverIo.adapter(createAdapter(pubClient, subClient))
+            try {
+                const [pubReady, subReady] = await Promise.all([
+                    safeConnectRedisClient(pubClient, 'Redis adapter pubClient'),
+                    safeConnectRedisClient(subClient, 'Redis adapter subClient'),
+                ])
+
+                if (pubReady && subReady) {
+                    serverIo.adapter(createAdapter(pubClient, subClient))
+                    adapterEnabled = true
+                } else {
+                    await Promise.all([
+                        safeQuitRedisClient(pubClient),
+                        safeQuitRedisClient(subClient),
+                    ])
+                    console.warn('[Socket.IO] Redis adapter disabled, running in single-node mode')
+                }
+            } catch (adapterError) {
+                await Promise.all([safeQuitRedisClient(pubClient), safeQuitRedisClient(subClient)])
+                console.warn(
+                    `[Socket.IO] Redis adapter setup failed, continuing without adapter: ${adapterError.message}`
+                )
+            }
 
             global._io = serverIo
             console.log(`[Socket.IO] Real-time server started on port ${port}`)
+            if (adapterEnabled) {
+                console.log('[Socket.IO] Redis adapter enabled')
+            }
 
             // 🔐 SECURITY: Apply global authentication middleware
             serverIo.use(createAuthMiddleware())
 
-            // 🔐 SECURITY: Apply rate limiting middleware
-            serverIo.use(createRateLimitMiddleware(redisClient, 60000, 10))
+            // 🔐 SECURITY: Apply Redis-backed rate limiting middleware only when Redis is live.
+            const redisRateLimitMiddleware = createRateLimitMiddleware(redisClient, 60000, 10)
+            serverIo.use((socket, next) => {
+                if (!redisClient?.isOpen) {
+                    socketDebugLog('[Socket.IO] Redis unavailable, skipping socket rate limiting')
+                    return next()
+                }
+                return redisRateLimitMiddleware(socket, next)
+            })
 
             // 🔐 SECURITY: Handle authentication errors
             serverIo.on('connect_error', (error) => {
