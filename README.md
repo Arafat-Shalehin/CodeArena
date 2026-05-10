@@ -1,11 +1,15 @@
+<div align="center">
+
 ```
-     ██████╗   ██████╗  ██████╗  ███████╗  █████╗  ██████╗  ███████╗ ███╗   ██╗  █████╗
-  ██╔════╝   ██╔═══██╗  ██╔══██╗ ██╔════╝  ██╔══██╗ ██╔══██╗ ██╔════╝ ████╗  ██║ ██╔══██╗
-  ██║        ██║   ██║  ██║  ██║ █████╗    ███████║ ██████╔╝ █████╗   ██╔██╗ ██║ ███████║
-  ██║        ██║   ██║  ██║  ██║ ██╔══╝    ██╔══██║ ██╔══██╗ ██╔══╝   ██║╚██╗██║ ██╔══██║
-    ╚██████╗ ╚██████╔  ╝██████╔ ╝███████  ╗██║  ██║ ██║  ██ ║███████ ╗██║ ╚████ ║██║  ██║
-     ╚═════╝  ╚═════╝   ╚═════╝  ╚══════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═══╝ ╚═╝  ╚═╝
+ ██████╗  ██████╗ ██████╗ ███████╗██████╗ ███████╗███╗   ██╗ █████╗
+██╔════╝ ██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔════╝████╗  ██║██╔══██╗
+██║      ██║   ██║██║  ██║█████╗  ██████╔╝█████╗  ██╔██╗ ██║███████║
+██║      ██║   ██║██║  ██║██╔══╝  ██╔══██╗██╔══╝  ██║╚██╗██║██╔══██║
+╚██████╗ ╚██████╔╝██████╔╝███████╗██║  ██║███████╗██║ ╚████║██║  ██║
+ ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝
 ```
+
+</div>
 
 A competitive programming platform built around **secure code execution**, **real-time collaboration**, and **AI-driven feedback**.
 
@@ -16,9 +20,9 @@ A competitive programming platform built around **secure code execution**, **rea
 [![Docker](https://img.shields.io/badge/Docker-24.x-2496ED)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-![Landing Page](public/screenshots/landing.png)
+![Landing Page](public/screenshots/landingPage.png)
 
-**Video Overview of the Platform:** [Google Drive Link]
+**Video Overview of the Platform:** 
 
 ## Table of Contents
 
@@ -74,17 +78,25 @@ The design prioritizes **security** (sandboxed execution), **scalability** (hori
 | **Contests** | Real-time ICPC-style leaderboards with plagiarism detection |
 | **Community** | Developer feed, solution sharing, tag-based recommendations |
 
+### Problem Browser
+
+![Problem Browser](public/screenshots/problems.png)
+
 ### Problem Solving
 
 ![Problem Editor](public/screenshots/editor.png)
 
-### Contests & Leaderboards
+### Contests & Leaderboards (75% Zoom-Out)
 
-![Leaderboard](public/screenshots/leaderboard.png)
+![Leaderboard](public/screenshots/leaderboardPage.png)
 
 ### AI Interview System
 
 ![AI Interview](public/screenshots/interview.png)
+
+### User Profile
+
+![Profile](public/screenshots/profile.png)
 
 ---
 
