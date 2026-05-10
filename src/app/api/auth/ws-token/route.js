@@ -45,8 +45,12 @@ export const POST = asyncHandler(async (req) => {
 
     const forwardedProto = req.headers.get('x-forwarded-proto')
     const forwardedHost = req.headers.get('x-forwarded-host')
-    const requestHostRaw = (forwardedHost || req.nextUrl.host || 'localhost').split(',')[0].trim()
-    const requestHost = requestHostRaw.replace(/:\d+$/, '')
+    const hostHeader = req.headers.get('host')
+
+    const requestHostRaw = (forwardedHost || hostHeader || req.nextUrl.host || 'localhost')
+        .split(',')[0]
+        .trim()
+    const requestHost = requestHostRaw.replace(/:\d+$/, '') || 'localhost'
     const requestProtocol = (forwardedProto || req.nextUrl.protocol || 'http').replace(':', '')
 
     const socketUrl =

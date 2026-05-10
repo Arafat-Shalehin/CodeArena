@@ -49,8 +49,8 @@ export function HostingAlert() {
                             Hosting Notice
                         </h3>
                         <p className="text-text-secondary mb-6 text-sm leading-relaxed">
-                            Welcome to CodeArena! We have recently migrated to a free hosting tier
-                            on Vercel. Due to platform limitations, some features may experience
+                            Welcome to CodeArena! We have recently migrated to a free hosting tier.
+                            Due to platform limitations, some features may experience
                             degraded performance or be temporarily unavailable. We apologize for any
                             inconvenience and appreciate your understanding.
                         </p>
