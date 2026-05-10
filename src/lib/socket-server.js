@@ -199,6 +199,17 @@ export async function initSocketServer() {
                 console.log('[Socket.IO] Redis adapter enabled')
             }
 
+            // Ensure MongoDB connection is established before applying auth middleware.
+            // If DB is not available, fail fast so we don't accept connections that will
+            // immediately error due to model buffering timeouts.
+            try {
+                await dbConnect()
+                console.log('[Socket.IO] MongoDB connected for auth middleware')
+            } catch (err) {
+                console.error('[Socket.IO] MongoDB unavailable for auth middleware:', err.message)
+                throw err
+            }
+
             // 🔐 SECURITY: Apply global authentication middleware
             serverIo.use(createAuthMiddleware())
 
