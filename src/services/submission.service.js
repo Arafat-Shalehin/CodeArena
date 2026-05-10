@@ -4,7 +4,7 @@ import { User } from '@/models/User.models'
 import { Problem } from '@/models/Problem.models'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
 import { Contest } from '@/models/Contest.models'
-import { getSubmissionQueue } from '@/lib/queue'
+import { executionPort } from '@/lib/execution'
 import { redisClient } from '@/lib/redis'
 
 /**
@@ -151,20 +151,10 @@ export async function createSubmission(data) {
         // 7️⃣ Push to Message Queue (BullMQ) - ONLY if not using cached result
         if (!cachedResult) {
             try {
-                const queue = getSubmissionQueue()
-                console.log('[SERVICE] Adding job to submission-queue...')
-                await queue.add('process-submission', {
-                    submissionId: submission._id,
-                })
-                console.log('[SERVICE] Job added to queue successfully')
+                await executionPort.submit(submission._id)
+                console.log('[SERVICE] Added job to submission-queue...')
 
-                let waitingCount = 0
-                try {
-                    waitingCount = await queue.getWaitingCount()
-                } catch (err) {
-                    console.warn('[SERVICE] Failed to read queue waiting count:', err?.message)
-                }
-
+                const waitingCount = await executionPort.getWaitingCount()
                 const queueAhead = Math.max(0, waitingCount - 1)
                 const queueMessage =
                     queueAhead > 0

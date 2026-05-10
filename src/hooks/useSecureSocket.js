@@ -108,6 +108,11 @@ export function useSecureSocket(namespace = '', options = {}) {
 
             const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl
 
+            if (!socketUrl_ || socketUrl_ === 'undefined' || socketUrl_.includes('undefined')) {
+                console.error('[useSecureSocket] Invalid socket URL:', socketUrl_)
+                throw new Error('Socket server URL is not configured correctly')
+            }
+
             console.log(`[useSecureSocket] Connecting to ${socketUrl_}${namespace}`)
 
             const newSocket = io(`${socketUrl_}${namespace}`, {

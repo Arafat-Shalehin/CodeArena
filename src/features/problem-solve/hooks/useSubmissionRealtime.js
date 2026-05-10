@@ -263,7 +263,7 @@ export function useSubmissionRealtime({
 
             if (activeSubmissionRoomRef.current === `submission_${submissionId}`) {
                 console.log('[Socket] Leaving submission room:', activeSubmissionRoomRef.current)
-                newSocket.emit('leave_room', activeSubmissionRoomRef.current)
+                socket.emit('leave_room', activeSubmissionRoomRef.current)
                 activeSubmissionRoomRef.current = null
             }
         }
