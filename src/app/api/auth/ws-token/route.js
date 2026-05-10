@@ -36,21 +36,33 @@ export const POST = asyncHandler(async (req) => {
         scope,
     })
 
-    const parsedSocketPort = Number.parseInt(
-        process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || '3002',
-        10
-    )
-    const socketPort =
+    const explicitSocketPortRaw =
+        process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || ''
+    const parsedSocketPort = Number.parseInt(explicitSocketPortRaw || '3002', 10)
+    let socketPort =
         Number.isInteger(parsedSocketPort) && parsedSocketPort > 0 ? parsedSocketPort : 3002
 
     const forwardedProto = req.headers.get('x-forwarded-proto')
     const forwardedHost = req.headers.get('x-forwarded-host')
     const requestHostRaw = (forwardedHost || req.nextUrl.host || 'localhost').split(',')[0].trim()
+    const requestPortMatch = requestHostRaw.match(/:(\d+)$/)
+    const requestPort = requestPortMatch ? Number.parseInt(requestPortMatch[1], 10) : null
     const requestHost = requestHostRaw.replace(/:\d+$/, '')
     const requestProtocol = (forwardedProto || req.nextUrl.protocol || 'http').replace(':', '')
 
+    if (
+        !explicitSocketPortRaw &&
+        Number.isInteger(requestPort) &&
+        requestPort > 0 &&
+        requestPort === socketPort
+    ) {
+        socketPort = requestPort + 1
+    }
+
     const socketUrl =
-        process.env.NEXT_PUBLIC_SOCKET_URL || `${requestProtocol}://${requestHost}:${socketPort}`
+        process.env.NEXT_PUBLIC_SOCKET_URL ||
+        process.env.SOCKET_PUBLIC_URL ||
+        `${requestProtocol}://${requestHost}:${socketPort}`
 
     void logger.auth
         .info('WebSocket token generated', {

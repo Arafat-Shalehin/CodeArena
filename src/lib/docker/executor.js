@@ -86,6 +86,16 @@ function isDockerSocketUnreachable(errorOrMessage) {
     ].some((token) => message.includes(token))
 }
 
+function isDockerImageMissing(errorOrMessage) {
+    const message = getErrorMessage(errorOrMessage).toLowerCase()
+    if (!message) return false
+
+    return (
+        message.includes('no such image') ||
+        (message.includes('docker image') && message.includes('not found'))
+    )
+}
+
 function markDockerUnavailable(errorOrMessage) {
     dockerUnavailableReason = getErrorMessage(errorOrMessage) || 'Docker socket unreachable'
     docker = null
@@ -315,6 +325,13 @@ export async function executeMultipleInputs({
     } catch (err) {
         if (isDockerSocketUnreachable(err)) {
             markDockerUnavailable(err)
+            return null
+        }
+
+        if (isDockerImageMissing(err)) {
+            console.warn(
+                `[EXECUTOR] executeMultipleInputs: Docker image missing (${err.message}). Falling back to sequential execution path.`
+            )
             return null
         }
 

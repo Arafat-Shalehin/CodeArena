@@ -3,6 +3,16 @@ import { User } from '@/models/User.models'
 import { redisClient } from '@/lib/redis'
 import { sendPushToUser } from '@/lib/web-push'
 
+function isAiInsightNotificationPayload(data) {
+    if (!data) return false
+
+    const type = String(data.type || '').toLowerCase()
+    if (type === 'ai_insight') return true
+
+    const message = String(data.message || '').toLowerCase()
+    return message.includes('ai insight') || message.includes('ai insights')
+}
+
 /**
  * Send a notification to a specific user
  * @param {Object} data - Notification data
@@ -16,6 +26,11 @@ import { sendPushToUser } from '@/lib/web-push'
  */
 export async function sendNotification(data) {
     try {
+        if (isAiInsightNotificationPayload(data)) {
+            console.log('[NotificationService] AI insight notification disabled by policy')
+            return null
+        }
+
         const dedupeKey = data?.metadata?.dedupeKey
 
         if (dedupeKey && redisClient.isOpen) {

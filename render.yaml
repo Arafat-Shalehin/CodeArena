@@ -20,11 +20,17 @@ services:
         value: API
       - key: ENABLE_API_WORKERS
         value: "false"
+      - key: ENABLE_SOCKET_SERVER
+        value: "false"
+      - key: ENABLE_API_SCHEDULERS
+        value: "true"
       - key: SOCKET_PORT
         value: 3002
       - key: NEXT_PUBLIC_SOCKET_PORT
         value: 3002
       - key: NEXT_PUBLIC_SOCKET_URL
+        sync: false
+      - key: SOCKET_PUBLIC_URL
         sync: false
       - key: MONGODB_URI
         sync: false
@@ -60,6 +66,40 @@ services:
         sync: false
       - key: EXECUTION_SERVICE_TIMEOUT
         value: 90000
+
+  - type: web
+    name: codearena-socket
+    runtime: node
+    plan: starter
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: node scripts/start-process.js SOCKET
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: PROCESS_TYPE
+        value: SOCKET
+      - key: ENABLE_API_WORKERS
+        value: "false"
+      - key: ENABLE_SOCKET_SERVER
+        value: "true"
+      - key: ENABLE_API_SCHEDULERS
+        value: "false"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_TLS_INSECURE
+        value: "false"
+      - key: ALLOWED_ORIGINS
+        sync: false
 
   - type: worker
     name: codearena-worker

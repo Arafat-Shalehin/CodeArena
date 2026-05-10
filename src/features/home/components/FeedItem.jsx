@@ -66,12 +66,28 @@ function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
     const [congratulated, setCongratulated] = useState(item.hasLiked || false)
     const [likeCount, setLikeCount] = useState(item.likes || 0)
     const [isLoading, setIsLoading] = useState(false)
+    const localPatchRef = React.useRef(false)
 
     // Sync state with props in case the parent re-fetches or feed data changes
+    // But avoid overriding optimistic updates while a request is in-flight
     useEffect(() => {
+        if (isLoading) return
+
+        // If we've applied a local optimistic patch for this item, don't override
+        if (localPatchRef.current) {
+            // If server props match our local state, clear the patch flag
+            const serverHas = Boolean(item.hasLiked)
+            const serverLikes = Number(item.likes || 0)
+            if (serverHas === congratulated && serverLikes === likeCount) {
+                localPatchRef.current = false
+            } else {
+                return
+            }
+        }
+
         setCongratulated(item.hasLiked || false)
         setLikeCount(item.likes || 0)
-    }, [item.hasLiked, item.likes])
+    }, [item.hasLiked, item.likes, isLoading, congratulated, likeCount])
 
     const isPost = item.type === 'post'
     const langKey = item.language?.toLowerCase() || 'javascript'
@@ -99,9 +115,11 @@ function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
 
             // Optimistic update
             const wasCongratulated = congratulated
-            setCongratulated(!wasCongratulated)
+            const newHas = !wasCongratulated
+            setCongratulated(newHas)
             setLikeCount((prev) => (wasCongratulated ? prev - 1 : prev + 1))
             setIsLoading(true)
+            localPatchRef.current = true
 
             if (!wasCongratulated) {
                 // Fire confetti right away for instant feedback
@@ -120,10 +138,18 @@ function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
                     ? `/api/posts/${item.id || item._id}/like`
                     : `/api/submissions/${item.id || item._id}/congratulate`
 
+                if (!item.id && !item._id) {
+                    throw new Error('Missing submission id for congratulate')
+                }
+
+                console.debug('[FeedItem] sending congratulate request to', endpoint)
                 const res = await fetch(endpoint, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                 })
                 const data = await res.json()
+                console.debug('[FeedItem] congratulate response', { status: res.status, data })
 
                 if (!res.ok || !data.success) {
                     throw new Error(data.message || 'Failed to toggle congratulate')
@@ -133,6 +159,8 @@ function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
                 setLikeCount(data.likes)
                 const nowCongratulated = data.action === 'liked' || data.action === 'congratulated'
                 setCongratulated(nowCongratulated)
+                // Server confirmed — clear local optimistic patch so parent sync can win
+                localPatchRef.current = false
                 onStatsChange?.(item.id || item._id, {
                     likes: data.likes,
                     hasLiked: nowCongratulated,
@@ -142,6 +170,7 @@ function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
                 // Revert optimistic update
                 setCongratulated(wasCongratulated)
                 setLikeCount((prev) => (wasCongratulated ? prev + 1 : prev - 1))
+                localPatchRef.current = false
             } finally {
                 setIsLoading(false)
             }
@@ -221,7 +250,7 @@ function FeedItem({ item, getDifficultyClass, onOpenDetail, onStatsChange }) {
 
             {/* Story/Flex Message or Post Content */}
             <div
-                className={`bg-bg-page border-border mb-5 rounded-md border p-3 ${isPost ? 'border-none bg-transparent !p-0' : ''}`}
+                className={`bg-bg-page border-border mb-5 rounded-md border p-3 ${isPost ? 'border-none bg-transparent p-0' : ''}`}
                 role="button"
                 tabIndex={0}
                 onClick={() => handleOpenDetail(false)}

@@ -26,9 +26,13 @@ export function initSubmissionWorker() {
         1,
         Number.parseInt(process.env.SUBMISSION_WORKER_CONCURRENCY || '4', 10) || 4
     )
+    const defaultProgressStride = process.env.NODE_ENV === 'development' ? '1' : '4'
     const progressEventStride = Math.max(
         1,
-        Number.parseInt(process.env.SUBMISSION_PROGRESS_EVENT_STRIDE || '4', 10) || 4
+        Number.parseInt(
+            process.env.SUBMISSION_PROGRESS_EVENT_STRIDE || defaultProgressStride,
+            10
+        ) || Number.parseInt(defaultProgressStride, 10)
     )
 
     const worker = new Worker(

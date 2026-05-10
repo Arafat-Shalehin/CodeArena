@@ -1,5 +1,5 @@
 // Node runtime bootstrap for workers, socket server, and schedulers.
-import { isWorkerProcess, getProcessType } from '@/lib/process-type'
+import { isWorkerProcess, isSocketProcess, getProcessType } from '@/lib/process-type'
 import { registerWorker, setupShutdownHandlers } from '@/lib/worker-manager'
 
 // Initialize global error handlers (must be early to catch all errors)
@@ -17,6 +17,22 @@ let globalWorkers = {
 
 function isApiWorkerModeEnabled() {
     return process.env.ENABLE_API_WORKERS === 'true'
+}
+
+function shouldStartSocketServer() {
+    if (isWorkerProcess()) return false
+    if (isSocketProcess()) {
+        return process.env.ENABLE_SOCKET_SERVER !== 'false'
+    }
+    return process.env.ENABLE_SOCKET_SERVER !== 'false'
+}
+
+function shouldStartSchedulers() {
+    if (isWorkerProcess()) return false
+    if (isSocketProcess()) {
+        return process.env.ENABLE_API_SCHEDULERS === 'true'
+    }
+    return process.env.ENABLE_API_SCHEDULERS !== 'false'
 }
 
 function shouldStartSystemWorkers(isDev, apiWorkerModeEnabled) {
@@ -87,48 +103,61 @@ async function initializeApiInfrastructureOnce() {
 
     globalThis.__apiInfraInitPromise = (async () => {
         globalThis._schedulerInitialized = true
-        console.log('[INSTRUMENTATION] PROCESS_TYPE is API. Initializing Socket server...')
-        try {
-            const { initSocketServer } = await import('@/lib/socket-server')
-            await initSocketServer()
-            console.log('>>> CodeArena Socket Server Initialized')
-        } catch (err) {
-            console.error('[CRITICAL] Failed to initialize Socket Server:', err.message)
+        if (shouldStartSocketServer()) {
+            console.log(
+                `[INSTRUMENTATION] PROCESS_TYPE is ${getProcessType()}. Initializing Socket server...`
+            )
+            try {
+                const { initSocketServer } = await import('@/lib/socket-server')
+                await initSocketServer()
+                console.log('>>> CodeArena Socket Server Initialized')
+            } catch (err) {
+                console.error('[CRITICAL] Failed to initialize Socket Server:', err.message)
+            }
+        } else {
+            console.log('[INSTRUMENTATION] Socket server startup is disabled for this process')
         }
 
-        // Start Reaction Sync Worker (runs every 5 minutes)
-        try {
-            const { default: syncReactions } = await import('@/scripts/reactionSyncWorker')
-            setInterval(
-                () => {
-                    syncReactions().catch((err) => {
-                        console.error('[ERROR] Reaction Sync Worker failed:', err.message)
-                    })
-                },
-                5 * 60 * 1000
-            )
-            console.log('>>> CodeArena Reaction Sync Scheduler Initialized')
-        } catch (err) {
-            console.error('[CRITICAL] Failed to initialize Reaction Sync Scheduler:', err.message)
-        }
+        if (shouldStartSchedulers()) {
+            // Start Reaction Sync Worker (runs every 5 minutes)
+            try {
+                const { default: syncReactions } = await import('@/scripts/reactionSyncWorker')
+                setInterval(
+                    () => {
+                        syncReactions().catch((err) => {
+                            console.error('[ERROR] Reaction Sync Worker failed:', err.message)
+                        })
+                    },
+                    5 * 60 * 1000
+                )
+                console.log('>>> CodeArena Reaction Sync Scheduler Initialized')
+            } catch (err) {
+                console.error(
+                    '[CRITICAL] Failed to initialize Reaction Sync Scheduler:',
+                    err.message
+                )
+            }
 
-        // Start Contest Reminder Worker (runs every 5 minutes)
-        try {
-            const { checkUpcomingContests } = await import('@/services/notification.service')
-            setInterval(
-                () => {
-                    checkUpcomingContests().catch((err) => {
-                        console.error('[ERROR] Contest Reminder Worker failed:', err.message)
-                    })
-                },
-                5 * 60 * 1000
-            )
-            console.log('>>> CodeArena Contest Reminder Scheduler Initialized')
-        } catch (err) {
-            console.error(
-                '[CRITICAL] Failed to initialize Contest Reminder Scheduler:',
-                err.message
-            )
+            // Start Contest Reminder Worker (runs every 5 minutes)
+            try {
+                const { checkUpcomingContests } = await import('@/services/notification.service')
+                setInterval(
+                    () => {
+                        checkUpcomingContests().catch((err) => {
+                            console.error('[ERROR] Contest Reminder Worker failed:', err.message)
+                        })
+                    },
+                    5 * 60 * 1000
+                )
+                console.log('>>> CodeArena Contest Reminder Scheduler Initialized')
+            } catch (err) {
+                console.error(
+                    '[CRITICAL] Failed to initialize Contest Reminder Scheduler:',
+                    err.message
+                )
+            }
+        } else {
+            console.log('[INSTRUMENTATION] API schedulers are disabled for this process')
         }
     })().finally(() => {
         globalThis.__apiInfraInitPromise = null
@@ -154,7 +183,7 @@ export async function registerNodeInstrumentation() {
     const isDev = process.env.NODE_ENV === 'development'
     const apiWorkerModeEnabled = isApiWorkerModeEnabled()
 
-    if (isWorkerProcess() || isDev || apiWorkerModeEnabled) {
+    if (isWorkerProcess() || (!isSocketProcess() && (isDev || apiWorkerModeEnabled))) {
         if (apiWorkerModeEnabled && !isWorkerProcess()) {
             console.log(
                 '[INSTRUMENTATION] ENABLE_API_WORKERS=true -> starting workers in API process'

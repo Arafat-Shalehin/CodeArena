@@ -30,6 +30,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     const tokenRequestRef = useRef(null)
     const connectingRef = useRef(false)
     const connectRef = useRef(null)
+    const attemptCountRef = useRef(0)
 
     const {
         onConnect,
@@ -85,6 +86,9 @@ export function useSecureSocket(namespace = '', options = {}) {
      * Connect to Socket.IO with authentication
      */
     const connect = useCallback(async () => {
+        // Only attempt to connect in the browser and when we have a user
+        if (typeof window === 'undefined') return
+
         if (!user) {
             console.warn('[useSecureSocket] User not authenticated, skipping connection')
             return
@@ -103,10 +107,61 @@ export function useSecureSocket(namespace = '', options = {}) {
         try {
             connectingRef.current = true
 
-            // Get fresh token before connecting
-            const { wsToken, socketUrl } = await fetchWsToken()
+            // Attempt to fetch a token with retries/backoff in case auth cookies aren't ready yet.
+            const MAX_ATTEMPTS = 3
+            const backoffMs = (attempt) => 200 * Math.pow(2, attempt - 1)
 
-            const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl
+            let wsToken
+            let socketUrl
+
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                try {
+                    attemptCountRef.current = attempt
+                    const res = await fetchWsToken()
+                    wsToken = res.wsToken
+                    socketUrl = res.socketUrl
+                    break
+                } catch (err) {
+                    // If final attempt, rethrow so outer catch handles it
+                    if (attempt === MAX_ATTEMPTS) {
+                        throw err
+                    }
+
+                    console.warn(
+                        `[useSecureSocket] Token fetch attempt ${attempt} failed, retrying in ${backoffMs(attempt)}ms`
+                    )
+                    // Wait before retrying
+                    // eslint-disable-next-line no-await-in-loop
+                    await new Promise((r) => setTimeout(r, backoffMs(attempt)))
+                }
+            }
+
+            // Validate token and socket URL to avoid attempting connection to 'undefined'
+            if (!wsToken) {
+                console.warn('[useSecureSocket] Token unavailable after retries; will retry later')
+                // Schedule a delayed retry to allow auth state / cookies to settle
+                setTimeout(() => {
+                    try {
+                        connectRef.current?.()
+                    } catch {
+                        /* swallow */
+                    }
+                }, 2000)
+                return
+            }
+
+            let socketUrl_ = socketUrl || process.env.NEXT_PUBLIC_SOCKET_URL
+
+            // If server didn't provide a socketUrl and we're in the browser, derive a sensible fallback
+            if (!socketUrl_) {
+                const loc = window.location
+                const fallbackPort = loc.port ? String(Number(loc.port) + 1) : ''
+                socketUrl_ = `${loc.protocol}//${loc.hostname}${fallbackPort ? ':' + fallbackPort : ''}`
+                console.warn(
+                    '[useSecureSocket] socketUrl not provided by token endpoint; using fallback',
+                    socketUrl_
+                )
+            }
 
             console.log(`[useSecureSocket] Connecting to ${socketUrl_}${namespace}`)
 

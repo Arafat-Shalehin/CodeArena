@@ -1,20 +1,44 @@
 import { Server } from 'socket.io'
+import { createServer } from 'node:http'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { redisClient } from '@/lib/redis'
 import dbConnect from '@/lib/mongodb'
 import { User } from '@/models/User.models'
 import { createAuthMiddleware, createRateLimitMiddleware } from '@/lib/socket-auth'
+import { isSocketProcess } from '@/lib/process-type'
 
 let io
 let initPromise = null
 const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true'
 const SOCKET_DEBUG_SAMPLE_RATE = Number.parseFloat(process.env.SOCKET_DEBUG_SAMPLE_RATE || '0')
+const explicitSocketPortRaw = process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || ''
+const appPort = Number.parseInt(process.env.PORT || '0', 10)
+
 const parsedSocketPort = Number.parseInt(
-    process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || '3002',
+    isSocketProcess()
+        ? process.env.SOCKET_PORT ||
+              process.env.PORT ||
+              process.env.NEXT_PUBLIC_SOCKET_PORT ||
+              '3002'
+        : process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || '3002',
     10
 )
-const SOCKET_PORT =
+
+let SOCKET_PORT =
     Number.isInteger(parsedSocketPort) && parsedSocketPort > 0 ? parsedSocketPort : 3002
+
+if (
+    !isSocketProcess() &&
+    !explicitSocketPortRaw &&
+    Number.isInteger(appPort) &&
+    appPort > 0 &&
+    SOCKET_PORT === appPort
+) {
+    SOCKET_PORT = appPort + 1
+    console.warn(
+        `[Socket.IO] No explicit SOCKET_PORT configured and app is running on ${appPort}. Using ${SOCKET_PORT} to avoid port collision.`
+    )
+}
 
 async function safeConnectRedisClient(client, label) {
     try {
@@ -56,6 +80,20 @@ function socketDebugLog(...args) {
     }
 }
 
+function isLoopbackOrigin(origin) {
+    if (!origin) return false
+    try {
+        const parsed = new URL(origin)
+        return (
+            parsed.hostname === 'localhost' ||
+            parsed.hostname === '127.0.0.1' ||
+            parsed.hostname === '::1'
+        )
+    } catch {
+        return false
+    }
+}
+
 export async function initSocketServer() {
     // If already initialized, return cached instance
     if (global._io) {
@@ -78,16 +116,32 @@ export async function initSocketServer() {
             const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
                 .split(',')
                 .map((origin) => origin.trim())
+                .filter(Boolean)
+            const isDev = process.env.NODE_ENV !== 'production'
 
             console.log('[Socket.IO] Allowed origins:', allowedOrigins)
 
-            const serverIo = new Server(port, {
+            const socketHttpServer = createServer((req, res) => {
+                if (req.url?.startsWith('/healthz')) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' })
+                    res.end(JSON.stringify({ ok: true, service: 'socket' }))
+                    return
+                }
+
+                res.writeHead(404, { 'Content-Type': 'text/plain' })
+                res.end('Not Found')
+            })
+
+            const serverIo = new Server(socketHttpServer, {
                 cors: {
                     origin: (origin, callback) => {
                         // Allow no origin (ws:// connections)
                         if (!origin) return callback(null, true)
 
                         if (allowedOrigins.includes(origin)) {
+                            callback(null, true)
+                        } else if (isDev && isLoopbackOrigin(origin)) {
+                            // Local dev can run on dynamic ports; allow loopback origins.
                             callback(null, true)
                         } else {
                             console.warn(`[Socket.IO] CORS rejected origin: ${origin}`)
@@ -105,6 +159,11 @@ export async function initSocketServer() {
                 // Set appropriate timeouts
                 pingInterval: 25000,
                 pingTimeout: 5000,
+            })
+
+            await new Promise((resolve, reject) => {
+                socketHttpServer.once('error', reject)
+                socketHttpServer.listen(port, resolve)
             })
 
             // Setup Redis adapter when available, but keep Socket.IO online without it.

@@ -138,20 +138,38 @@ export default function DashboardHome({ user: initialUser }) {
     const handleFeedItemStatsChange = (itemId, patch) => {
         if (!itemId || !patch) return
 
-        setFeed((prev) =>
-            prev.map((entry) => {
-                const currentId = String(entry.id || entry._id)
-                if (currentId !== String(itemId)) return entry
+        // Update SWR cached feed immutably using mutate
+        mutateFeed(
+            (prev) => {
+                // `prev` is the raw fetcher response (e.g. { success: true, data: [...] })
+                const arr =
+                    prev?.success && Array.isArray(prev.data)
+                        ? prev.data
+                        : Array.isArray(prev)
+                          ? prev
+                          : null
+                if (!arr) return prev
 
-                return {
-                    ...entry,
-                    ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
-                    ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
-                    ...(patch.commentCount !== undefined
-                        ? { commentCount: patch.commentCount }
-                        : {}),
+                const updated = arr.map((entry) => {
+                    const currentId = String(entry.id || entry._id)
+                    if (currentId !== String(itemId)) return entry
+
+                    return {
+                        ...entry,
+                        ...(patch.likes !== undefined ? { likes: patch.likes } : {}),
+                        ...(patch.hasLiked !== undefined ? { hasLiked: patch.hasLiked } : {}),
+                        ...(patch.commentCount !== undefined
+                            ? { commentCount: patch.commentCount }
+                            : {}),
+                    }
+                })
+
+                if (prev && prev.success) {
+                    return { ...prev, data: updated }
                 }
-            })
+                return updated
+            },
+            { revalidate: false }
         )
 
         setSelectedFeedItem((prev) => {
@@ -202,7 +220,7 @@ export default function DashboardHome({ user: initialUser }) {
                 {/* MAIN FEED (6 cols on desktop) */}
                 <section className="no-scrollbar col-span-1 flex h-[calc(100vh-5rem)] flex-col gap-6 overflow-y-auto px-1 pt-8 pb-8 lg:col-span-6">
                     {/* Mobile Only: Progress/Streak Banner */}
-                    <div className="from-accent/10 to-bg-subtle border-accent/20 rounded-lg border bg-gradient-to-r p-4 shadow-sm lg:hidden">
+                    <div className="from-accent/10 to-bg-subtle border-accent/20 rounded-lg border bg-linear-to-r p-4 shadow-sm lg:hidden">
                         <div className="mb-2 flex items-center justify-between">
                             <span className="text-text-primary flex items-center gap-2 font-bold">
                                 <Flame className="text-error fill-error/20 h-4 w-4" />
@@ -349,7 +367,7 @@ export default function DashboardHome({ user: initialUser }) {
 
             {/* Post Creation Modal */}
             {isPostModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     <div
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setIsPostModalOpen(false)}
@@ -381,7 +399,7 @@ export default function DashboardHome({ user: initialUser }) {
                                 </div>
                             </div>
                             <textarea
-                                className="bg-bg-page border-border text-text-primary focus:border-accent focus:ring-accent min-h-[150px] w-full resize-none rounded-lg border p-3 text-sm outline-none focus:ring-1"
+                                className="bg-bg-page border-border text-text-primary focus:border-accent focus:ring-accent min-h-37.5 w-full resize-none rounded-lg border p-3 text-sm outline-none focus:ring-1"
                                 placeholder="Share your coding progress or ask for a hint..."
                                 value={postContent}
                                 onChange={(e) => setPostContent(e.target.value)}
