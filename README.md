@@ -1,7 +1,3 @@
-<div align="center">
-
-<br/>
-
 ```
      ██████╗   ██████╗  ██████╗  ███████╗  █████╗  ██████╗  ███████╗ ███╗   ██╗  █████╗
   ██╔════╝   ██╔═══██╗  ██╔══██╗ ██╔════╝  ██╔══██╗ ██╔══██╗ ██╔════╝ ████╗  ██║ ██╔══██╗
@@ -11,222 +7,260 @@
      ╚═════╝  ╚═════╝   ╚═════╝  ╚══════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═══╝ ╚═╝  ╚═╝
 ```
 
-**A full-stack online judge & competitive programming platform**
+A competitive programming platform built around **secure code execution**, **real-time collaboration**, and **AI-driven feedback**.
 
----
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8.x-47A248)](https://www.mongodb.com/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-24.x-2496ED)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-# 🌌 CodeArena
+![Landing Page](public/screenshots/landing.png)
 
-### **Elevate Your Engineering Soul**
+**Video Overview of the Platform:** [Google Drive Link]
 
-**The Ultimate Production-Grade Competitive Programming & AI Coaching Ecosystem**
+## Table of Contents
 
----
+- [🏗️ Overview](#overview)
+- [⚡ Capabilities](#capabilities)
+- [🔧 Technical Deep Dive](#technical-deep-dive)
+- [🛠️ Stack](#stack)
+- [🚀 Quick Start](#quick-start)
+- [⚙️ How It Works](#how-it-works)
+- [💻 Development](#development)
+- [📦 Deployment](#deployment)
+- [📡 API](#api)
+- [🔒 Security](#security)
+- [📊 Monitoring](#monitoring)
+- [👥 Team](#team)
+- [🤝 Contributing](#contributing)
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.1-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![AI-Powered](https://img.shields.io/badge/AI-Alex_Coach-7C3AED?style=for-the-badge&logo=openai&logoColor=white)](#-ai-career-coach-alex)
-[![Docker](https://img.shields.io/badge/Docker-Sandbox-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+## Overview
 
----
-
-[**Explore Features**](#-key-capabilities) • [**Technical Specs**](#-tech-stack) • [**Quick Start**](#-getting-started) • [**API Docs**](#-api-registry)
-
----
-
-</div>
-
-## 📑 Table of Contents
-
-- [✨ Key Capabilities](#-key-capabilities)
-- [🤖 AI Career Coach (Alex)](#-ai-career-coach-alex)
-- [⚙️ The Judge Engine](#-the-judge-engine)
-- [🛠️ Tech Stack](#-tech-stack)
-- [🌍 Supported Ecosystem](#-supported-ecosystem)
-- [🚀 Getting Started](#-getting-started)
-- [👥 The Team](#-the-team)
-
----
-
-## ✨ Key Capabilities
-
-<div align="center">
-<table>
-  <tr>
-    <td width="33%" valign="top">
-      <h3>🛡️ Secure Judge</h3>
-      <p>Isolated Docker-based execution pipeline supporting 5+ languages with sub-millisecond accuracy.</p>
-    </td>
-    <td width="33%" valign="top">
-      <h3>🤖 AI Alex</h3>
-      <p>Next-gen career coach that simulates real FAANG interviews and evaluates architectural logic.</p>
-    </td>
-    <td width="33%" valign="top">
-      <h3>⚔️ Live Arena</h3>
-      <p>Real-time competitive environment with low-latency leaderboards via Socket.io.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="33%" valign="top">
-      <h3>📱 Dev Feed</h3>
-      <p>Unified developer social stream for sharing solutions, tips, and platform updates.</p>
-    </td>
-    <td width="33%" valign="top">
-      <h3>📊 Performance</h3>
-      <p>Deep analytics including heatmap activity, language proficiency, and weakness detection.</p>
-    </td>
-    <td width="33%" valign="top">
-      <h3>⚙️ Admin Ops</h3>
-      <p>Powerful dashboard for system monitoring, problem design, and user management.</p>
-    </td>
-  </tr>
-</table>
-</div>
-
----
-
-## 🤖 AI Career Coach (Alex)
-
-Alex is not just a chatbot—he is a Senior Staff Engineer simulating the pressure of high-stakes technical interviews.
+CodeArena separates concerns across **stateless API servers**, **background workers**, and **real-time socket clusters** — all coordinated through Redis.
 
 ```mermaid
-graph TD
-    A[Start Session] --> B[AI Selects Problem]
-    B --> C[Real-time Coding]
-    C --> D[Alex Asks Follow-up Questions]
-    D --> E[Behavioral Analysis]
-    E --> F[Performance Scorecard]
-    F --> G[Growth Insights]
+flowchart TB
+    Client[Next.js Client] -->|HTTP| API[Next.js API Routes]
+    Client -->|WebSocket| Socket[Socket.IO Server]
+    
+    API -->|Enqueue| Redis[(Redis)]
+    Socket -->|Pub/Sub| Redis
+    
+    Redis -->|Process| Workers[BullMQ Workers]
+    Workers -->|Execute| Docker[Docker Sandbox]
+    Workers -->|Fallback| Judge0[Judge0 API]
+    Workers -->|Analyze| Groq[Groq AI]
+    
+    API -->|Query| MongoDB[(MongoDB)]
+    Workers -->|Read/Write| MongoDB
+    
+    style Docker fill:#2496ED,stroke:#fff,stroke-width:2px
+    style Redis fill:#DC382D,stroke:#fff,stroke-width:2px
+    style MongoDB fill:#47A248,stroke:#fff,stroke-width:2px
 ```
 
-**What Alex evaluates:**
-
-- **Algorithmic Complexity**: O(n) vs O(n log n) tradeoffs.
-- **Clean Code**: SOLID principles and production-ready structure.
-- **Communication**: Your ability to explain logic under pressure.
+The design prioritizes **security** (sandboxed execution), **scalability** (horizontal socket scaling via Redis adapter), and **resilience** (graceful fallbacks when Docker is unavailable).
 
 ---
 
-## ⚙️ The Judge Engine
+## Capabilities
 
-Our execution environment is built for scale and security, utilizing a multi-layered proxy system to protect the host machine.
+| Feature | Description |
+|---------|-------------|
+| **Competitive Programming** | Multi-language judge (JS, Python, Java, C/C++, Go) with Docker sandboxing. Verdicts: `ACCEPTED` • `WRONG_ANSWER` • `TLE` • `MLE` • `RUNTIME_ERROR` • `COMPILATION_ERROR` |
+| **AI Interviews (Alex)** | 4-phase mock interviews with streaming AI feedback via Socket.IO. Evaluates algorithms, code quality, and communication |
+| **Contests** | Real-time ICPC-style leaderboards with plagiarism detection |
+| **Community** | Developer feed, solution sharing, tag-based recommendations |
 
+### Problem Solving
+
+![Problem Editor](public/screenshots/editor.png)
+
+### Contests & Leaderboards
+
+![Leaderboard](public/screenshots/leaderboard.png)
+
+### AI Interview System
+
+![AI Interview](public/screenshots/interview.png)
+
+---
+
+## Technical Deep Dive
+
+### Execution Engine
+
+**Dual-mode architecture:**
+
+1. **Docker Sandbox** (primary): Seccomp-filtered containers, no network, read-only rootfs, cgroup limits. Handles compiled (C++, Java) and interpreted (Python, JS) languages.
+
+2. **Judge0 API** (fallback): Cloud fallback for Railway, Render, and other environments without Docker socket access.
+
+Security: Pattern-based code validation, execution timeouts, auto-removal.
+
+### Worker Orchestration
+
+Seven BullMQ workers with idempotency guards:
+
+| Worker | Purpose |
+|--------|---------|
+| `submission.worker.js` | Code execution & verdicts |
+| `ai.worker.js` | Post-submission analysis (Groq Llama 3.3 70B) |
+| `interviewAI.worker.js` | Real-time AI streaming |
+| `interviewExecution.worker.js` | Interview code validation |
+| `interviewSummarize.worker.js` | Session summarization |
+| `plagiarism.worker.js` | Similarity detection |
+| `stats.worker.js` | Performance aggregation |
+
+### Real-time Infrastructure
+
+Socket.IO with **Redis adapter** enables horizontal scaling. Multiple server instances share state via Redis pub/sub. JWT tokens secure WebSocket connections; tiered rate limiting protects endpoints.
+
+---
+
+## Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 16, React 19, TailwindCSS 4, shadcn/ui, Monaco Editor |
+| **Backend** | Next.js API Routes, Socket.IO 4, BullMQ 5, JWT, Zod |
+| **Data** | MongoDB 8 (Mongoose), Redis 7 |
+| **Execution** | Docker 24 + seccomp, Judge0 fallback |
+| **AI** | Groq SDK (Llama 3.3 70B) |
+| **Deploy** | Docker Compose, Railway, Render |
+
+---
+
+## Quick Start
+
+**Docker (recommended):**
+```bash
+git clone https://github.com/yourusername/codearena.git
+cd codearena
+chmod +x setup.sh && ./setup.sh
+# Or: docker-compose up -d
+```
+
+**Environment:**
+```env
+MONGODB_URI=mongodb://admin:password@localhost:27017/codearena?authSource=admin
+REDIS_URL=redis://:password@localhost:6379
+JWT_SECRET=your-secret-key-min-32-characters
+```
+
+**Local dev:**
+```bash
+npm install && npm run docker:build
+npm run dev
+node scripts/worker-boot.js  # Separate terminal
+```
+
+---
+
+## How It Works
+
+**Code Submission Flow**
 ```mermaid
 sequenceDiagram
-    participant U as User (Frontend)
-    participant S as Server (Next.js)
-    participant R as Redis (BullMQ)
-    participant J as Judge Service
-    participant D as Docker Proxy
-    participant C as Runner Container
+    Client->>API: POST /api/submissions
+    API->>Redis: Enqueue
+    API->>Client: Job ID
+    Worker->>Redis: Pick up
+    Worker->>MongoDB: Fetch tests
+    Worker->>Docker: Execute
+    Docker->>Worker: Verdict
+    Worker->>Redis: Publish
+    Worker->>MongoDB: Save
+```
 
-    U->>S: Submit Code
-    S->>R: Push Task to Queue
-    R->>J: Fetch Task
-    J->>D: Request Isolated Runtime
-    D->>C: Spin up Container
-    C-->>D: Result (Stdout/Stderr)
-    D-->>J: JSON Verdict
-    J->>S: Final Update
-    S->>U: Real-time Notification
+**Real-time Updates**
+```mermaid
+sequenceDiagram
+    Worker->>Redis: Publish score
+    Redis->>Socket: Broadcast
+    Socket->>Client: Push
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Development
 
-### **Modern Core**
+**Scripts**
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Dev server |
+| `npm run docker:build` | Build executors |
+| `node scripts/worker-boot.js` | Start workers |
+| `node scripts/dev-all.js` | Concurrent mode |
 
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Server Components)
-- **UI Architecture**: [React 19](https://react.dev/) + [Zustand](https://github.com/pmndrs/zustand)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Framer Motion](https://www.framer.com/motion/)
-
-### **High-Performance Infrastructure**
-
-- **Runtime**: [Node.js](https://nodejs.org/) + [Socket.io](https://socket.io/)
-- **Data Layers**: [MongoDB](https://www.mongodb.com/) + [Redis](https://redis.io/)
-- **Job Processing**: [BullMQ](https://docs.bullmq.io/)
-- **Intelligence**: [Google Generative AI](https://ai.google.dev/) (Alex AI)
-
----
-
-## 🌍 Supported Ecosystem
-
-### **Languages**
-
-| 🚀 C++ | 🐍 Python | ☕ Java | 📦 JS | 🐹 Go |
-| :----: | :-------: | :-----: | :---: | :---: |
-|   ✅   |    ✅     |   ✅    |  ✅   |  ✅   |
-
-### **Judge Verdicts**
-
-> `ACCEPTED` • `WRONG_ANSWER` • `TLE` • `MLE` • `RUNTIME_ERROR` • `JUDGING`
-
----
-
-## 🖼️ Visual Gallery
-
-<div align="center">
-<table>
-  <tr>
-    <td align="center"><img src="./public/screenshots/landing.png" alt="Landing" width="400"/><br/><sub><b>Cyber Hero Landing</b></sub></td>
-    <td align="center"><img src="./public/screenshots/problems.png" alt="Problems" width="400"/><br/><sub><b>Problem Ecosystem</b></sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="./public/screenshots/editor.png" alt="Editor" width="400"/><br/><sub><b>Monaco Workspace</b></sub></td>
-    <td align="center"><img src="./public/screenshots/leaderboard.png" alt="Leaderboard" width="400"/><br/><sub><b>Global Rankings</b></sub></td>
-  </tr>
-</table>
-</div>
-
----
-
-## 🚀 Getting Started
-
-### **The 1-Minute Setup**
-
-The fastest way to get CodeArena running is using our automated setup script:
-
-```bash
-# Clone and setup
-git clone https://github.com/rabiulislam5334/CodeArena-TeamProject.git
-cd codearena
-chmod +x setup.sh
-./setup.sh
+**Project Structure**
+```
+src/
+├── app/         # Next.js App Router
+├── features/    # Problem-solve, interview, contests
+├── services/    # BullMQ workers
+├── lib/         # Docker, AI, Socket.IO
+├── models/      # Mongoose schemas
+└── socket/      # Namespaces
 ```
 
-### **Manual Configuration**
+---
 
-1. **Dependencies**: `npm install`
-2. **Environment**: Sync `.env.local` (Requires MongoDB, Redis, and Firebase keys).
-3. **Execute Engine**: `npm run docker:build`
-4. **Dev Start**: `npm run dev`
+## Deployment
+
+| Platform | Command |
+|----------|---------|
+| **Railway** | `railway login && railway link && railway up` |
+| **Render** | Use `render.yaml` blueprint |
+| **Docker** | `docker build -t codearena . && docker run -p 3000:3000 -e MONGODB_URI=... codearena` |
 
 ---
 
-## 👥 The Team
+## API
 
-<div align="center">
+**REST**: Auth, Problems, Submissions, Contests, Interview, Feed, Admin
 
-| Role                                | Talent              |
-| ----------------------------------- | ------------------- |
-| 👑 **Lead**                         | Rabiul Islam        |
-| 🛡️ **Architect / Engine / Backend** | Arafat Salehin      |
-| ⚡ **Core Systems**                 | AH Muzahid          |
-| 🎨 **Architect /UI / UX Master**    | Shahnawas Adeel     |
-| ✨ **Creative Frontend**            | Abdullah Noman      |
-| 🚀 **Content**                      | Ummey Salma Tamanna |
+**WebSocket**: `submission_update`, `contest_update`, `notification`, `interview_ai_stream`
 
-</div>
+**Health**: `GET /api/health`
 
 ---
 
-<div align="center">
+## Security
 
-**Built for the next generation of engineers.**
-Join the revolution.
+| Layer | Measures |
+|-------|----------|
+| **Sandbox** | Seccomp, no network, read-only rootfs, resource limits, pattern detection |
+| **API** | Tiered rate limiting, JWT (httpOnly + Bearer), CORS, Zod validation |
+| **Data** | bcryptjs, strong secrets, MongoDB authSource, Redis password auth |
 
-[⭐ Star on GitHub](https://github.com/rabiulislam5334/CodeArena-TeamProject)
+---
 
-</div>
+## Monitoring
+
+Structured logging (auth, database, contest, system), query performance, cache hit rates, worker metrics. Health: `GET /api/health`
+
+---
+
+## Team
+
+| Role | Member |
+|------|--------|
+| 🏛️ Architecture / Backend | Arafat Salehin |
+| ⚙️ Core Systems | AH Muzahid |
+| 🎨 UI / UX | Shahnawas Adeel |
+| 💻 Frontend / Dashboard | Rabiul Islam |
+| 💻 Frontend | Abdullah Noman |
+| ✍️ Content | Ummey Salma Tamanna |
+
+---
+
+## Contributing
+
+Fork → branch (`feature/name`) → commit → PR. Standards: ESLint, Prettier, Husky.
+
+---
+
+Built with Next.js, React, MongoDB, Redis, Docker, BullMQ, Socket.IO, Groq
