@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { protect } from '@/middlewares/auth.middleware'
 import { redisClient } from '@/lib/redis'
+import { realtimePort } from '@/lib/realtime'
 import { Reaction } from '@/models/Reaction.models'
 import mongoose from 'mongoose'
 
@@ -82,14 +83,11 @@ export async function POST(req, { params }) {
             counts[value] = Math.max(0, score)
         })
 
-        // Broadcast update via Redis Pub/Sub for real-time Socket.io delivery
-        await redisClient.publish(
-            'reaction_updates',
-            JSON.stringify({
-                problemId,
-                counts,
-            })
-        )
+        // Broadcast update via RealtimePort for real-time Socket.io delivery
+        await realtimePort.publish('reaction_updates', {
+            problemId,
+            counts,
+        })
 
         return NextResponse.json({
             success: true,

@@ -106,7 +106,7 @@ export function useSecureSocket(namespace = '', options = {}) {
             // Get fresh token before connecting
             const { wsToken, socketUrl } = await fetchWsToken()
 
-            const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl
+            const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_PORT || socketUrl
 
             if (!socketUrl_ || socketUrl_ === 'undefined' || socketUrl_.includes('undefined')) {
                 console.error('[useSecureSocket] Invalid socket URL:', socketUrl_)

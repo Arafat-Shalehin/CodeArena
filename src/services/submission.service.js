@@ -5,6 +5,7 @@ import { Problem } from '@/models/Problem.models'
 import { ContestParticipant } from '@/models/ContestParticipant.models'
 import { Contest } from '@/models/Contest.models'
 import { executionPort } from '@/lib/execution'
+import { realtimePort } from '@/lib/realtime'
 import { redisClient } from '@/lib/redis'
 
 /**
@@ -178,30 +179,27 @@ export async function createSubmission(data) {
                         event: 'SUBMISSION_STATUS',
                     }
 
-                    redisClient
-                        .publish('submission_updates', JSON.stringify(queuedPayload))
+                    realtimePort
+                        .publish('submission_updates', queuedPayload)
                         .catch(console.error)
 
                     // Backward-compatible stage stream for existing and new clients.
-                    redisClient
-                        .publish(
-                            'submission_updates',
-                            JSON.stringify({
-                                type: 'submission_status',
-                                userId,
-                                submissionId: submission._id,
-                                problemId,
-                                stage: 'queued',
-                                status: 'queued',
-                                verdict: 'PENDING',
-                                progress: 0,
-                                message: queueMessage,
-                                queueAhead,
-                                event: 'SUBMISSION_STATUS',
-                                current: 0,
-                                total: Number(problem?.testCaseCount) || 0,
-                            })
-                        )
+                    realtimePort
+                        .publish('submission_updates', {
+                            type: 'submission_status',
+                            userId,
+                            submissionId: submission._id,
+                            problemId,
+                            stage: 'queued',
+                            status: 'queued',
+                            verdict: 'PENDING',
+                            progress: 0,
+                            message: queueMessage,
+                            queueAhead,
+                            event: 'SUBMISSION_STATUS',
+                            current: 0,
+                            total: Number(problem?.testCaseCount) || 0,
+                        })
                         .catch(console.error)
                 }
             } catch (queueError) {
@@ -211,21 +209,18 @@ export async function createSubmission(data) {
             // 🚀 CACHED RESULT: Publish submission_evaluated event immediately
             console.log('[SERVICE] 🚀 Publishing submission_evaluated event (cached result)...')
             if (redisClient.isOpen) {
-                redisClient
-                    .publish(
-                        'submission_updates',
-                        JSON.stringify({
-                            type: 'submission_evaluated',
-                            userId,
-                            submissionId: submission._id,
-                            problemId,
-                            status: 'completed',
-                            verdict: cachedResult.verdict,
-                            executionTime: cachedResult.executionTime || 0,
-                            memoryUsed: cachedResult.memoryUsed || 0,
-                            error: cachedResult.error || '',
-                        })
-                    )
+                realtimePort
+                    .publish('submission_updates', {
+                        type: 'submission_evaluated',
+                        userId,
+                        submissionId: submission._id,
+                        problemId,
+                        status: 'completed',
+                        verdict: cachedResult.verdict,
+                        executionTime: cachedResult.executionTime || 0,
+                        memoryUsed: cachedResult.memoryUsed || 0,
+                        error: cachedResult.error || '',
+                    })
                     .catch(console.error)
             }
         }
