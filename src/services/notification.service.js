@@ -1,6 +1,7 @@
 import { Notification } from '@/models/Notification.models'
 import { User } from '@/models/User.models'
 import { redisClient } from '@/lib/redis'
+import { realtimePort } from '@/lib/realtime'
 import { sendPushToUser } from '@/lib/web-push'
 
 /**
@@ -53,16 +54,13 @@ export async function sendNotification(data) {
                 console.error('Failed to invalidate notification cache:', err)
             }
 
-            await redisClient.publish(
-                'notifications',
-                JSON.stringify({
-                    recipientId: data.recipientId,
-                    notification: {
-                        ...notification.toObject(),
-                        _id: notification._id.toString(),
-                    },
-                })
-            )
+            await realtimePort.publish('notifications', {
+                recipientId: data.recipientId,
+                notification: {
+                    ...notification.toObject(),
+                    _id: notification._id.toString(),
+                },
+            })
         }
 
         // 3. Send push notification if not skipped
