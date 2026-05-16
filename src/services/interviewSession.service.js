@@ -7,7 +7,7 @@ import {
     updateInterviewState,
     getInterviewState,
 } from '../lib/redis/interviewState.js'
-import { getInterviewAIQueue } from '../lib/queue.js'
+import { aiEnginePort } from '../lib/ai-engine/index.js'
 import { buildPrompt } from './aiConversation.service.js'
 import { generateInterviewChatResponse } from '../lib/ai/interviewGroqClient.js'
 
@@ -276,9 +276,7 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
         await releaseProcessingLock(sessionId)
 
         // Centralized Scorecard generation trigger
-        const queue = getInterviewAIQueue()
-        await queue.add(
-            'process-scorecard',
+        await aiEnginePort.submitScorecard(
             {
                 sessionId: session._id,
                 userId: session.userId,
@@ -342,24 +340,7 @@ export async function transitionPhase(sessionId, newPhase, options = {}) {
 export async function terminateSession(sessionId) {
     // Run cleanup asynchronously so it doesn't block the API response
     const cleanupJobs = async () => {
-        try {
-            const queue = getInterviewAIQueue()
-            // BullMQ: Find jobs for this sessionId and remove them from 'active' and 'waiting'
-            const jobs = await queue.getJobs(['active', 'waiting', 'delayed'])
-            for (const job of jobs) {
-                if (job.data?.sessionId?.toString() === sessionId.toString()) {
-                    console.log(
-                        `[terminateSession] Cancelling job ${job.id} for session ${sessionId}`
-                    )
-                    await job.remove()
-                }
-            }
-        } catch (err) {
-            console.warn(
-                `[terminateSession] Failed to clean up BullMQ jobs for ${sessionId}:`,
-                err.message
-            )
-        }
+        await aiEnginePort.cancelSessionJobs(sessionId)
     }
 
     // Fire and forget

@@ -8,7 +8,7 @@ import { protect } from '@/middlewares/auth.middleware'
 import { signWsToken } from '@/lib/auth/wsToken'
 import { asyncHandler } from '@/lib/asyncHandler'
 import { redisClient } from '@/lib/redis'
-import { getInterviewAIQueue } from '@/lib/queue'
+import { aiEnginePort } from '@/lib/ai-engine'
 import { releaseProcessingLock } from '@/services/interviewSession.service'
 
 export const dynamic = 'force-dynamic'
@@ -52,9 +52,7 @@ export const GET = asyncHandler(async (req, { params }) => {
         const cachedStream = await redisClient.hGetAll(streamKey)
 
         if (cachedStream && Object.keys(cachedStream).length > 0) {
-            const queue = getInterviewAIQueue()
-            const activeJobs = await queue.getActive()
-            const activeJobExists = activeJobs.some((job) => job.data?.sessionId === sessionId)
+            const activeJobExists = await aiEnginePort.hasActiveJob(sessionId)
 
             const lastUpdated = parseInt(cachedStream.lastUpdated || '0', 10)
             const isExpired = Date.now() - lastUpdated > 60000
