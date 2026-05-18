@@ -23,6 +23,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     const { user } = useAuth()
     const [socket, setSocket] = useState(null)
     const [isConnected, setIsConnected] = useState(false)
+    const [isEnabled, setIsEnabled] = useState(true)
     const [error, setError] = useState(null)
     const socketRef = useRef(null)
     const tokenRef = useRef(null)
@@ -104,9 +105,21 @@ export function useSecureSocket(namespace = '', options = {}) {
             connectingRef.current = true
 
             // Get fresh token before connecting
-            const { wsToken, socketUrl } = await fetchWsToken()
+            const data = await fetchWsToken()
 
-            const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_PORT || socketUrl
+            if (data && data.enabled === false) {
+                console.log(
+                    `[useSecureSocket] Real-time sockets are disabled on the server (serverless mode). Bypassing connection to namespace: ${namespace}`
+                )
+                setIsEnabled(false)
+                setIsConnected(false)
+                connectingRef.current = false
+                return
+            }
+
+            const { wsToken, socketUrl } = data
+
+            const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl
 
             if (!socketUrl_ || socketUrl_ === 'undefined' || socketUrl_.includes('undefined')) {
                 console.error('[useSecureSocket] Invalid socket URL:', socketUrl_)
@@ -256,6 +269,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     return {
         socket: socketRef.current,
         isConnected,
+        isEnabled,
         error,
         connect,
         disconnect,

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useSecureSocket } from '@/hooks/useSecureSocket'
 import { toast } from 'sonner'
+import { useRealtime } from '@/context/RealtimeContext'
 
 function getStageBadge(stage, currentCase, totalCount) {
     if (stage === 'compile' || stage === 'compiling' || stage === 'queued') {
@@ -47,7 +48,12 @@ export function useSubmissionRealtime({
     onProblemSolved,
 }) {
     const userId = user?._id || user?.id || null
-    const { socket, isConnected } = useSecureSocket('/', { scope: 'submission' })
+    const { setIsEnabled } = useRealtime()
+    const { socket, isConnected, isEnabled } = useSecureSocket('/', { scope: 'submission' })
+
+    useEffect(() => {
+        setIsEnabled(isEnabled)
+    }, [isEnabled, setIsEnabled])
 
     // Join rooms and set up socket when connection is established
     useEffect(() => {

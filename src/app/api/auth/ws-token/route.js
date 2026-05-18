@@ -28,6 +28,15 @@ export const POST = asyncHandler(async (req) => {
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
+    // Bypass real-time sockets in serverless mode
+    if (process.env.RUNTIME_MODE === 'serverless') {
+        return NextResponse.json({
+            success: true,
+            enabled: false,
+            message: 'Real-time WebSocket connections are bypassed in serverless mode.'
+        })
+    }
+
     const { sessionId, scope = 'general' } = await req.json()
 
     // Generate WebSocket token with optional session context

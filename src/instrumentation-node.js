@@ -153,17 +153,24 @@ export async function registerNodeInstrumentation() {
 
     const isDev = process.env.NODE_ENV === 'development'
     const apiWorkerModeEnabled = isApiWorkerModeEnabled()
+    const isDistributed = (process.env.RUNTIME_MODE || 'distributed') === 'distributed'
 
-    if (isWorkerProcess() || isDev || apiWorkerModeEnabled) {
-        if (apiWorkerModeEnabled && !isWorkerProcess()) {
-            console.log(
-                '[INSTRUMENTATION] ENABLE_API_WORKERS=true -> starting workers in API process'
-            )
+    if (isDistributed) {
+        if (isWorkerProcess() || isDev || apiWorkerModeEnabled) {
+            if (apiWorkerModeEnabled && !isWorkerProcess()) {
+                console.log(
+                    '[INSTRUMENTATION] ENABLE_API_WORKERS=true -> starting workers in API process'
+                )
+            }
+            await initializeWorkersOnce(isDev, apiWorkerModeEnabled)
         }
-        await initializeWorkersOnce(isDev, apiWorkerModeEnabled)
-    }
 
-    if (!isWorkerProcess() && !globalThis._schedulerInitialized) {
-        await initializeApiInfrastructureOnce()
+        if (!isWorkerProcess() && !globalThis._schedulerInitialized) {
+            await initializeApiInfrastructureOnce()
+        }
+    } else {
+        console.log(
+            `[INSTRUMENTATION] RUNTIME_MODE is ${process.env.RUNTIME_MODE}. Distributed mode disabled: bypassing workers, socket server, and schedulers.`
+        )
     }
 }
