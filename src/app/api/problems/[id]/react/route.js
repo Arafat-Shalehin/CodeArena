@@ -32,56 +32,96 @@ export async function POST(req, { params }) {
         const redisCountKey = `reactions:problem:${problemId}`
         const redisDirtyKey = `reactions:dirty_problems`
 
-        // 1. Get current reaction from Redis (fast path)
-        let currentReaction = await redisClient.get(redisUserKey)
+        // 1. Get current reaction (fast path with serverless fallback)
+        let currentReaction = 'NONE'
+        if (redisClient.isOpen) {
+            currentReaction = await redisClient.get(redisUserKey)
 
-        // If not in Redis, check DB (cache miss)
-        if (currentReaction === null) {
+            // If not in Redis, check DB (cache miss)
+            if (currentReaction === null) {
+                await dbConnect()
+                const existingReaction = await Reaction.findOne({ userId, problemId })
+                currentReaction = existingReaction ? existingReaction.type : 'NONE'
+                await redisClient.set(redisUserKey, currentReaction, { EX: 86400 }) // Cache for 24h
+            }
+        } else {
             await dbConnect()
             const existingReaction = await Reaction.findOne({ userId, problemId })
             currentReaction = existingReaction ? existingReaction.type : 'NONE'
-            await redisClient.set(redisUserKey, currentReaction, { EX: 86400 }) // Cache for 24h
         }
 
-        const multi = redisClient.multi()
-
-        if (currentReaction === type) {
-            // Toggle off: User clicked the same reaction again
-            multi.zIncrBy(redisCountKey, -1, type)
-            multi.set(redisUserKey, 'NONE')
-            // Register for async DB deletion
-            await Reaction.deleteOne({ userId, problemId })
-        } else {
-            // If they had a different reaction, decrement the old one
-            if (currentReaction !== 'NONE') {
-                multi.zIncrBy(redisCountKey, -1, currentReaction)
-            }
-            // Increment the new one
-            multi.zIncrBy(redisCountKey, 1, type)
-            multi.set(redisUserKey, type)
-
-            // Register for async DB update (Optimistic: we do it here or let worker handle it?)
-            // The requirement says "Data Integrity: sync Redis counts with MongoDB every few minutes"
-            // But we still need to store individual reactions to know which one the user picked.
-            // I'll update the individual reaction directly for immediate consistency on user profile,
-            // but the counts will be synced in bulk.
-            await Reaction.findOneAndUpdate(
-                { userId, problemId },
-                { type, userId, problemId },
-                { upsert: true }
-            )
-        }
-
-        // Mark problem as dirty for syncing counts
-        multi.sAdd(redisDirtyKey, problemId)
-        await multi.exec()
-
-        // Get updated counts (fast)
-        const countsRaw = await redisClient.zRangeWithScores(redisCountKey, 0, -1)
         const counts = {}
-        countsRaw.forEach(({ value, score }) => {
-            counts[value] = Math.max(0, score)
-        })
+
+        if (redisClient.isOpen) {
+            const multi = redisClient.multi()
+
+            if (currentReaction === type) {
+                // Toggle off: User clicked the same reaction again
+                multi.zIncrBy(redisCountKey, -1, type)
+                multi.set(redisUserKey, 'NONE')
+                // Register for async DB deletion
+                await Reaction.deleteOne({ userId, problemId })
+            } else {
+                // If they had a different reaction, decrement the old one
+                if (currentReaction !== 'NONE') {
+                    multi.zIncrBy(redisCountKey, -1, currentReaction)
+                }
+                // Increment the new one
+                multi.zIncrBy(redisCountKey, 1, type)
+                multi.set(redisUserKey, type)
+
+                await Reaction.findOneAndUpdate(
+                    { userId, problemId },
+                    { type, userId, problemId },
+                    { upsert: true }
+                )
+            }
+
+            // Mark problem as dirty for syncing counts
+            multi.sAdd(redisDirtyKey, problemId)
+            await multi.exec()
+
+            // Get updated counts (fast)
+            const countsRaw = await redisClient.zRangeWithScores(redisCountKey, 0, -1)
+            countsRaw.forEach(({ value, score }) => {
+                counts[value] = Math.max(0, score)
+            })
+        } else {
+            // Serverless/fallback: modify DB directly and also update problem.reactionCounts
+            await dbConnect()
+            const { Problem } = await import('@/models/Problem.models')
+            const problem = await Problem.findById(problemId)
+            
+            if (problem) {
+                if (!problem.reactionCounts) {
+                    problem.reactionCounts = new Map()
+                }
+
+                if (currentReaction === type) {
+                    await Reaction.deleteOne({ userId, problemId })
+                    const currentCount = problem.reactionCounts.get(type) || 0
+                    problem.reactionCounts.set(type, Math.max(0, currentCount - 1))
+                } else {
+                    if (currentReaction !== 'NONE') {
+                        const prevCount = problem.reactionCounts.get(currentReaction) || 0
+                        problem.reactionCounts.set(currentReaction, Math.max(0, prevCount - 1))
+                    }
+                    const newCount = problem.reactionCounts.get(type) || 0
+                    problem.reactionCounts.set(type, newCount + 1)
+                    
+                    await Reaction.findOneAndUpdate(
+                        { userId, problemId },
+                        { type, userId, problemId },
+                        { upsert: true }
+                    )
+                }
+                await problem.save()
+
+                REACTION_TYPES.forEach((t) => {
+                    counts[t] = problem.reactionCounts.get(t) || 0
+                })
+            }
+        }
 
         // Broadcast update via RealtimePort for real-time Socket.io delivery
         await realtimePort.publish('reaction_updates', {
@@ -109,41 +149,59 @@ export async function GET(req, { params }) {
         const user = await protect(req).catch(() => null)
 
         const redisCountKey = `reactions:problem:${problemId}`
+        const counts = {}
+        REACTION_TYPES.forEach((t) => (counts[t] = 0))
 
-        // Try getting from Redis
-        let countsRaw = await redisClient.zRangeWithScores(redisCountKey, 0, -1)
+        if (redisClient.isOpen) {
+            // Try getting from Redis
+            let countsRaw = await redisClient.zRangeWithScores(redisCountKey, 0, -1)
 
-        // If empty, try to populate from MongoDB
-        if (countsRaw.length === 0) {
+            // If empty, try to populate from MongoDB
+            if (countsRaw.length === 0) {
+                await dbConnect()
+                const { Problem } = await import('@/models/Problem.models')
+                const problem = await Problem.findById(problemId)
+                if (problem && problem.reactionCounts) {
+                    const multi = redisClient.multi()
+                    for (const [type, count] of problem.reactionCounts.entries()) {
+                        multi.zAdd(redisCountKey, { score: count, value: type })
+                    }
+                    await multi.exec()
+                    countsRaw = await redisClient.zRangeWithScores(redisCountKey, 0, -1)
+                }
+            }
+
+            countsRaw.forEach(({ value, score }) => {
+                counts[value] = Math.max(0, score)
+            })
+        } else {
             await dbConnect()
             const { Problem } = await import('@/models/Problem.models')
             const problem = await Problem.findById(problemId)
             if (problem && problem.reactionCounts) {
-                const multi = redisClient.multi()
-                for (const [type, count] of problem.reactionCounts.entries()) {
-                    multi.zAdd(redisCountKey, { score: count, value: type })
-                }
-                await multi.exec()
-                countsRaw = await redisClient.zRangeWithScores(redisCountKey, 0, -1)
+                REACTION_TYPES.forEach((t) => {
+                    counts[t] = problem.reactionCounts.get(t) || 0
+                })
             }
         }
-
-        const counts = {}
-        REACTION_TYPES.forEach((t) => (counts[t] = 0))
-        countsRaw.forEach(({ value, score }) => {
-            counts[value] = Math.max(0, score)
-        })
 
         let userReaction = 'NONE'
         if (user) {
             const userId = user._id.toString()
             const redisUserKey = `user:${userId}:reacted:problem:${problemId}`
-            userReaction = await redisClient.get(redisUserKey)
-            if (userReaction === null) {
+
+            if (redisClient.isOpen) {
+                userReaction = await redisClient.get(redisUserKey)
+                if (userReaction === null) {
+                    await dbConnect()
+                    const reaction = await Reaction.findOne({ userId, problemId })
+                    userReaction = reaction ? reaction.type : 'NONE'
+                    await redisClient.set(redisUserKey, userReaction, { EX: 86400 })
+                }
+            } else {
                 await dbConnect()
                 const reaction = await Reaction.findOne({ userId, problemId })
                 userReaction = reaction ? reaction.type : 'NONE'
-                await redisClient.set(redisUserKey, userReaction, { EX: 86400 })
             }
         }
 
