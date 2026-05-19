@@ -47,30 +47,32 @@ export const GET = asyncHandler(async (req, { params }) => {
 
     // 7. Check for partial ghost stream vs active stream
     let currentStreamingMessage = null
-    try {
-        const streamKey = `interview:stream:${sessionId}`
-        const cachedStream = await redisClient.hGetAll(streamKey)
+    if (redisClient.isOpen) {
+        try {
+            const streamKey = `interview:stream:${sessionId}`
+            const cachedStream = await redisClient.hGetAll(streamKey)
 
-        if (cachedStream && Object.keys(cachedStream).length > 0) {
-            const activeJobExists = await aiEnginePort.hasActiveJob(sessionId)
+            if (cachedStream && Object.keys(cachedStream).length > 0) {
+                const activeJobExists = await aiEnginePort.hasActiveJob(sessionId)
 
-            const lastUpdated = parseInt(cachedStream.lastUpdated || '0', 10)
-            const isExpired = Date.now() - lastUpdated > 60000
+                const lastUpdated = parseInt(cachedStream.lastUpdated || '0', 10)
+                const isExpired = Date.now() - lastUpdated > 60000
 
-            if (!activeJobExists || isExpired) {
-                // Ghost stream detected -> release lock & wipe
-                await releaseProcessingLock(sessionId).catch(() => {})
-                await redisClient.del(streamKey)
-            } else {
-                currentStreamingMessage = {
-                    messageId: cachedStream.messageId,
-                    content: cachedStream.content,
-                    sequence: parseInt(cachedStream.sequence || '0', 10),
+                if (!activeJobExists || isExpired) {
+                    // Ghost stream detected -> release lock & wipe
+                    await releaseProcessingLock(sessionId).catch(() => {})
+                    await redisClient.del(streamKey)
+                } else {
+                    currentStreamingMessage = {
+                        messageId: cachedStream.messageId,
+                        content: cachedStream.content,
+                        sequence: parseInt(cachedStream.sequence || '0', 10),
+                    }
                 }
             }
+        } catch (e) {
+            console.error('[Rehydrate] Error checking partial stream:', e)
         }
-    } catch (e) {
-        console.error('[Rehydrate] Error checking partial stream:', e)
     }
 
     return NextResponse.json({

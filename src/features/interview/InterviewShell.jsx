@@ -26,6 +26,7 @@ import AreanaLogo from '@/shared/components/ui/AreanaLogo'
 import { useAuth } from '@/context/AuthContext'
 import EditorPanel from './EditorPanel'
 import AiChatPanel from './components/chat/AiChatPanel'
+import { MockInterviewSocket } from './hooks/useInterviewSocket'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -489,166 +490,114 @@ export default function InterviewShell({
     useEffect(() => {
         if (!wsTokenState || !sessionId || isRehydrating) return
 
+        let active = true
         const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
 
-        const socket = io(
-            `${process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl}/interview`,
-            {
-                auth: { token: wsTokenState },
-                reconnectionAttempts: 3,
-            }
-        )
-        socketRef.current = socket
+        // Define event handler callbacks
+        const handleAiStreamChunk = ({ chunk, done, messageId, sequence, error: streamError }) => {
+            if (!active) return
+            // Idempotency: skip if we've already processed this sequence for THIS message
+            if (
+                sequence &&
+                messageId === currentStreamingId.current &&
+                sequence <= lastSequenceRef.current
+            )
+                return
 
-        socket.on('connect', () => {
-            setConnectionStatus('connected')
-            socket.emit('interview:join')
-            toast.success('Connected to interview session')
-        })
+            if (messageId) currentStreamingId.current = messageId
+            if (sequence) lastSequenceRef.current = sequence
 
-        socket.on('disconnect', (reason) => {
-            console.warn('[Socket] Disconnected:', reason)
-            setIsAiTyping(false) // Force reset typing indicator if disconnected mid-stream
-            if (reason === 'io server disconnect') {
-                // transport-level disconnect
-                setConnectionStatus('failed')
-            } else {
-                setConnectionStatus('disconnected')
-            }
-        })
+            if (!done) {
+                setIsAiTyping(true)
+                setMessages((prev) => {
+                    // 1. Try to find message by ID
+                    const existingIdx = messageId
+                        ? prev.findIndex((m) => m.id === messageId)
+                        : -1
 
-        socket.on('connect_error', (err) => {
-            console.error('[Socket] Connection Error:', err)
-            setIsAiTyping(false) // Force reset typing indicator
-            setConnectionStatus('reconnecting')
-        })
-
-        socket.on('reconnect_attempt', (attempt) => {
-            console.log('[Socket] Reconnecting...', attempt)
-            setConnectionStatus('reconnecting')
-        })
-
-        socket.on('reconnect_failed', () => {
-            setConnectionStatus('failed')
-            setError({
-                type: 'CONNECTION_FAILED',
-                message: 'Lost connection to the interview server. Please check your internet.',
-                fatal: true,
-            })
-        })
-
-        // ── Server-to-client events ──────────────────────────────────────────
-
-        // AI streaming — hardened with messageId + sequence idempotency
-        const lastSequenceRef = { current: 0 }
-        const currentStreamingId = { current: null }
-
-        socket.on(
-            'interview:ai_stream_chunk',
-            ({ chunk, done, messageId, sequence, error: streamError }) => {
-                // Idempotency: skip if we've already processed this sequence for THIS message
-                if (
-                    sequence &&
-                    messageId === currentStreamingId.current &&
-                    sequence <= lastSequenceRef.current
-                )
-                    return
-
-                if (messageId) currentStreamingId.current = messageId
-                if (sequence) lastSequenceRef.current = sequence
-
-                if (!done) {
-                    setIsAiTyping(true)
-                    setMessages((prev) => {
-                        // 1. Try to find message by ID
-                        const existingIdx = messageId
-                            ? prev.findIndex((m) => m.id === messageId)
-                            : -1
-
-                        if (existingIdx !== -1) {
-                            const newMsg = {
-                                ...prev[existingIdx],
-                                content: prev[existingIdx].content + chunk,
-                                streaming: true,
-                            }
-                            const newArr = [...prev]
-                            newArr[existingIdx] = newMsg
-                            return newArr
+                    if (existingIdx !== -1) {
+                        const newMsg = {
+                            ...prev[existingIdx],
+                            content: prev[existingIdx].content + chunk,
+                            streaming: true,
                         }
-
-                        // 2. Fallback: Update last AI message if it matches profile
-                        const last = prev[prev.length - 1]
-                        if (last && last.role === 'ai' && last.streaming) {
-                            return [
-                                ...prev.slice(0, -1),
-                                { ...last, id: messageId, content: last.content + chunk },
-                            ]
-                        }
-
-                        // 3. Last resort: Create new message
-                        const isErr = chunk?.includes('Sorry, I')
-                        return [
-                            ...prev,
-                            {
-                                id: messageId,
-                                role: 'ai',
-                                content: chunk,
-                                streaming: true,
-                                isError: isErr,
-                            },
-                        ]
-                    })
-                } else {
-                    setIsAiTyping(false)
-                    lastSequenceRef.current = 0
-                    currentStreamingId.current = null
-
-                    // Handle "done without content" edge case
-                    if (streamError) {
-                        setMessages((prev) => {
-                            const last = prev[prev.length - 1]
-                            if (last?.streaming) {
-                                const finalContent = last.content || streamError
-                                return [
-                                    ...prev.slice(0, -1),
-                                    {
-                                        ...last,
-                                        content: finalContent,
-                                        streaming: false,
-                                        isError: true,
-                                    },
-                                ]
-                            }
-                            return [...prev, { role: 'ai', content: streamError, isError: true }]
-                        })
-                        return
+                        const newArr = [...prev]
+                        newArr[existingIdx] = newMsg
+                        return newArr
                     }
 
+                    // 2. Fallback: Update last AI message if it matches profile
+                    const last = prev[prev.length - 1]
+                    if (last && last.role === 'ai' && last.streaming) {
+                        return [
+                            ...prev.slice(0, -1),
+                            { ...last, id: messageId, content: last.content + chunk },
+                        ]
+                    }
+
+                    // 3. Last resort: Create new message
+                    const isErr = chunk?.includes('Sorry, I')
+                    return [
+                        ...prev,
+                        {
+                            id: messageId,
+                            role: 'ai',
+                            content: chunk,
+                            streaming: true,
+                            isError: isErr,
+                        },
+                    ]
+                })
+            } else {
+                setIsAiTyping(false)
+                lastSequenceRef.current = 0
+                currentStreamingId.current = null
+
+                // Handle "done without content" edge case
+                if (streamError) {
                     setMessages((prev) => {
                         const last = prev[prev.length - 1]
                         if (last?.streaming) {
-                            // Edge case: empty content on done
-                            if (!last.content) {
-                                return [
-                                    ...prev.slice(0, -1),
-                                    {
-                                        ...last,
-                                        content: 'Something went wrong. Please retry.',
-                                        streaming: false,
-                                        isError: true,
-                                    },
-                                ]
-                            }
-                            return [...prev.slice(0, -1), { ...last, streaming: false }]
+                            const finalContent = last.content || streamError
+                            return [
+                                ...prev.slice(0, -1),
+                                {
+                                    ...last,
+                                    content: finalContent,
+                                    streaming: false,
+                                    isError: true,
+                                },
+                            ]
                         }
-                        return prev
+                        return [...prev, { role: 'ai', content: streamError, isError: true }]
                     })
+                    return
                 }
-            }
-        )
 
-        // Run result
-        socket.on('interview:phase_change', (newPhase) => {
+                setMessages((prev) => {
+                    const last = prev[prev.length - 1]
+                    if (last?.streaming) {
+                        // Edge case: empty content on done
+                        if (!last.content) {
+                            return [
+                                ...prev.slice(0, -1),
+                                {
+                                    ...last,
+                                    content: 'Something went wrong. Please retry.',
+                                    streaming: false,
+                                    isError: true,
+                                },
+                            ]
+                        }
+                        return [...prev.slice(0, -1), { ...last, streaming: false }]
+                    }
+                    return prev
+                })
+            }
+        }
+
+        const handlePhaseChange = (newPhase) => {
+            if (!active) return
             setCurrentPhase((prev) => {
                 if (prev !== newPhase) {
                     setActivePhaseChange(newPhase)
@@ -665,16 +614,17 @@ export default function InterviewShell({
                 setSessionStatus('terminating')
                 setActivePhaseChange('completed') // show the overlay
             }
-        })
+        }
 
-        // Terminal signal allows instant redirect without waiting for UI delays when session forcibly ends
-        socket.on('interview:session_terminal', () => {
+        const handleSessionTerminal = () => {
+            if (!active) return
             console.log('[InterviewShell] Terminal signal received, redirecting instantly...')
             setSessionStatus('completed')
             window.location.href = `/interview/${sessionId}/result`
-        })
+        }
 
-        socket.on('interview:run_result', (result) => {
+        const handleRunResult = (result) => {
+            if (!active) return
             setIsRunning(false)
             if (!result.success) {
                 toast.error(`Execution Failed: ${result.error || result.verdict}`)
@@ -682,10 +632,10 @@ export default function InterviewShell({
                 toast.success('Code executed successfully')
             }
             console.log('[InterviewShell] run_result', result)
-        })
+        }
 
-        // Submission result
-        socket.on('interview:submission_result', (result) => {
+        const handleSubmissionResult = (result) => {
+            if (!active) return
             setIsSubmitting(false)
             if (!result.success || result.verdict === 'SYSTEM_ERROR') {
                 toast.error(`Submission System Error: ${result.error || 'Failed to execute code'}`)
@@ -693,15 +643,15 @@ export default function InterviewShell({
                 toast.success('Submission Received! Alex is evaluating your solution...')
             }
             console.log('[InterviewShell] submission_result', result)
-        })
+        }
 
-        // AI analysis / scorecard
-        socket.on('interview:ai_analysis', (data) => {
+        const handleAiAnalysis = (data) => {
+            if (!active) return
             setMessages((prev) => [...prev, { role: 'ai', content: data.analysis }])
-        })
+        }
 
-        // AFTER — triggers the redirect when scorecard arrives:
-        socket.on('interview:scorecard', (data) => {
+        const handleScorecard = (data) => {
+            if (!active) return
             console.log('[InterviewShell] Scorecard received, redirecting to result page')
             setSessionStatus('completed')
             setIsTerminating(false)
@@ -709,16 +659,16 @@ export default function InterviewShell({
             setTimeout(() => {
                 window.location.href = `/interview/${sessionId}/result`
             }, 1500)
-        })
+        }
 
-        // Timer ended by server
-        socket.on('interview:ended', ({ status } = {}) => {
+        const handleEnded = ({ status } = {}) => {
+            if (!active) return
             setSessionStatus(status || 'expired')
             onEnd?.()
-        })
+        }
 
-        // Reconnection rehydration
-        socket.on('reconnect', async () => {
+        const handleReconnect = async () => {
+            if (!active) return
             console.log('[InterviewShell] Socket reconnected — rehydrating...')
             setIsAiTyping(false) // Reset stuck typing state
             try {
@@ -732,24 +682,154 @@ export default function InterviewShell({
             } catch (err) {
                 console.warn('[InterviewShell] Reconnection rehydration failed:', err)
             }
-        })
+        }
+
+        // AI streaming helper refs
+        const lastSequenceRef = { current: 0 }
+        const currentStreamingId = { current: null }
+
+        const initializeSocket = async () => {
+            try {
+                const res = await fetch('/api/auth/ws-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId, scope: 'interview' }),
+                    credentials: 'include',
+                })
+                if (!active) return
+
+                const data = await res.json()
+                if (!active) return
+
+                if (data.enabled === false) {
+                    console.log('[InterviewShell] Sockets disabled (serverless). Falling back to MockInterviewSocket.')
+                    const mockSocket = new MockInterviewSocket(sessionId)
+                    socketRef.current = mockSocket
+
+                    setConnectionStatus('connected')
+
+                    // Register listeners
+                    mockSocket.on('interview:ai_stream_chunk', handleAiStreamChunk)
+                    mockSocket.on('interview:phase_change', handlePhaseChange)
+                    mockSocket.on('interview:session_terminal', handleSessionTerminal)
+                    mockSocket.on('interview:run_result', handleRunResult)
+                    mockSocket.on('interview:submission_result', handleSubmissionResult)
+                    mockSocket.on('interview:ai_analysis', handleAiAnalysis)
+                    mockSocket.on('interview:scorecard', handleScorecard)
+                    mockSocket.on('interview:ended', handleEnded)
+                    mockSocket.on('reconnect', handleReconnect)
+
+                    // Trigger mock connect
+                    setTimeout(() => {
+                        if (active) {
+                            mockSocket.trigger('connect')
+                        }
+                    }, 100)
+                } else {
+                    let socketUrl_ = data.socketUrl || process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl
+                    
+                    // Localhost protocol sanitization
+                    if (typeof window !== 'undefined') {
+                        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                        const isPageHttp = window.location.protocol === 'http:';
+                        if (isLocalhost && isPageHttp) {
+                            socketUrl_ = socketUrl_.replace(/^https:\/\//i, 'http://');
+                        }
+                    }
+
+                    console.log(`[InterviewShell] Connecting to real socket at: ${socketUrl_}/interview`)
+                    const socket = io(`${socketUrl_}/interview`, {
+                        auth: { token: data.wsToken || wsTokenState },
+                        reconnectionAttempts: 3,
+                    })
+                    socketRef.current = socket
+
+                    socket.on('connect', () => {
+                        if (!active) return
+                        setConnectionStatus('connected')
+                        socket.emit('interview:join')
+                        toast.success('Connected to interview session')
+                    })
+
+                    socket.on('disconnect', (reason) => {
+                        if (!active) return
+                        console.warn('[Socket] Disconnected:', reason)
+                        setIsAiTyping(false)
+                        if (reason === 'io server disconnect') {
+                            setConnectionStatus('failed')
+                        } else {
+                            setConnectionStatus('disconnected')
+                        }
+                    })
+
+                    socket.on('connect_error', (err) => {
+                        if (!active) return
+                        console.error('[Socket] Connection Error:', err)
+                        setIsAiTyping(false)
+                        setConnectionStatus('reconnecting')
+                    })
+
+                    socket.on('reconnect_attempt', (attempt) => {
+                        if (!active) return
+                        console.log('[Socket] Reconnecting...', attempt)
+                        setConnectionStatus('reconnecting')
+                    })
+
+                    socket.on('reconnect_failed', () => {
+                        if (!active) return
+                        setConnectionStatus('failed')
+                        setError({
+                            type: 'CONNECTION_FAILED',
+                            message: 'Lost connection to the interview server. Please check your internet.',
+                            fatal: true,
+                        })
+                    })
+
+                    // Register dynamic event listeners
+                    socket.on('interview:ai_stream_chunk', handleAiStreamChunk)
+                    socket.on('interview:phase_change', handlePhaseChange)
+                    socket.on('interview:session_terminal', handleSessionTerminal)
+                    socket.on('interview:run_result', handleRunResult)
+                    socket.on('interview:submission_result', handleSubmissionResult)
+                    socket.on('interview:ai_analysis', handleAiAnalysis)
+                    socket.on('interview:scorecard', handleScorecard)
+                    socket.on('interview:ended', handleEnded)
+                    socket.on('reconnect', handleReconnect)
+                }
+            } catch (err) {
+                console.error('[InterviewShell] Socket initialization failed:', err)
+                if (active) {
+                    setError({
+                        type: 'CONNECTION_FAILED',
+                        message: 'Failed to establish connection to the interview server.',
+                        fatal: true,
+                    })
+                }
+            }
+        }
+
+        initializeSocket()
 
         return () => {
-            socket.off('connect')
-            socket.off('disconnect')
-            socket.off('connect_error')
-            socket.off('reconnect_attempt')
-            socket.off('reconnect_failed')
-            socket.off('reconnect')
-            socket.off('interview:ai_stream_chunk')
-            socket.off('interview:run_result')
-            socket.off('interview:submission_result')
-            socket.off('interview:ai_analysis')
-            socket.off('interview:scorecard')
-            socket.off('interview:ended')
-            socket.off('interview:phase_change')
-            socket.off('interview:session_terminal')
-            socket.disconnect()
+            active = false
+            if (socketRef.current) {
+                socketRef.current.off('connect')
+                socketRef.current.off('disconnect')
+                socketRef.current.off('connect_error')
+                socketRef.current.off('reconnect_attempt')
+                socketRef.current.off('reconnect_failed')
+                socketRef.current.off('reconnect')
+                socketRef.current.off('interview:ai_stream_chunk')
+                socketRef.current.off('interview:run_result')
+                socketRef.current.off('interview:submission_result')
+                socketRef.current.off('interview:ai_analysis')
+                socketRef.current.off('interview:scorecard')
+                socketRef.current.off('interview:ended')
+                socketRef.current.off('interview:phase_change')
+                socketRef.current.off('interview:session_terminal')
+                socketRef.current.disconnect()
+                socketRef.current = null
+            }
         }
     }, [wsToken, sessionId, onEnd, isRehydrating])
 

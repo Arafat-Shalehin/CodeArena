@@ -106,6 +106,7 @@ export function useSecureSocket(namespace = '', options = {}) {
 
             // Get fresh token before connecting
             const data = await fetchWsToken()
+            // console.log("Socket Console Data: ", data);
 
             if (data && data.enabled === false) {
                 console.log(
@@ -117,9 +118,20 @@ export function useSecureSocket(namespace = '', options = {}) {
                 return
             }
 
-            const { wsToken, socketUrl } = data
+            const { wsToken, socketUrl } = data;
+            //console.log("Socket Console: ", socketUrl);
 
-            const socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl
+            let socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl;
+
+            // Localhost protocol sanitization
+            if (typeof window !== 'undefined') {
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const isPageHttp = window.location.protocol === 'http:';
+                
+                if (isLocalhost && isPageHttp && socketUrl_) {
+                    socketUrl_ = socketUrl_.replace(/^https:\/\//i, 'http://');
+                }
+            }
 
             if (!socketUrl_ || socketUrl_ === 'undefined' || socketUrl_.includes('undefined')) {
                 console.error('[useSecureSocket] Invalid socket URL:', socketUrl_)

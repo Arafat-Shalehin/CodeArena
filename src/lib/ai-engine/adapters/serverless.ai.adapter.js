@@ -268,62 +268,90 @@ export class ServerlessAIAdapter extends AIEnginePort {
     }
 
     async submitSubmissionAnalysis(data) {
-        const { submissionId, problemId, code, language } = data
-        console.log(`[SERVERLESS AI] submitSubmissionAnalysis called for submission: ${submissionId}`)
+        const { sessionId, userId, submissionVerdict, code, language } = data
+        console.log(`[SERVERLESS AI] submitSubmissionAnalysis called for session: ${sessionId}`)
 
-        setTimeout(async () => {
+        // If there's an ongoing job, clear it or skip to avoid duplicate processing
+        if (ServerlessAIAdapter.activeSessions.has(sessionId)) {
+            console.log(`[SERVERLESS AI] Job already active for session ${sessionId}. Skipping duplicate.`)
+            return
+        }
+
+        const timeout = setTimeout(async () => {
             try {
                 await dbConnect()
+                ServerlessAIAdapter.activeSessions.delete(sessionId)
 
-                const submission = await Submission.findById(submissionId)
-                if (!submission) return
-
-                const problem = await Problem.findById(problemId)
-                
-                // Construct feedback
-                let timeComplexity = 'O(N)'
-                let spaceComplexity = 'O(1)'
-                let algorithm = 'Optimized traversal'
-                let optimal_approach = 'Single-pass linear scan'
-                let verdict_explanation = 'The code is correct and handles all standard cases cleanly.'
-                let strengths = ['Correct syntax and formatting', 'Optimal algorithmic complexity']
-                let improvements = ['Include inline documentation for logic gates']
-                let rating = 90
-                let readability = 90
-                let efficiency = 85
-                let correctness = 100
-
-                if (submission.verdict !== 'ACCEPTED') {
-                    correctness = 30
-                    readability = 80
-                    efficiency = 60
-                    rating = 55
-                    verdict_explanation = 'The solution did not pass all the system test cases. Please ensure all corner cases are handled.'
+                const session = await InterviewSession.findById(sessionId).populate('problemIds')
+                if (!session) {
+                    throw new Error(`Interview session ${sessionId} not found`)
                 }
 
-                const aiFeedback = {
-                    timeComplexity,
-                    spaceComplexity,
-                    algorithm,
-                    optimal_approach,
-                    verdict_explanation,
-                    strengths,
-                    improvements,
-                    rating,
-                    code_quality: {
-                        readability,
-                        efficiency,
-                        correctness,
+                // 1. Transition session to 'evaluation' phase
+                await transitionPhase(sessionId, 'evaluation')
+
+                const problem = session.problemIds?.[0]
+
+                // 2. Generate the AI evaluation review
+                let aiResponse = ''
+                if (process.env.GROQ_API_KEY) {
+                    try {
+                        const history = await InterviewMessage.find({ sessionId }).sort({ ts: 1 })
+                        const { systemPrompt, messages } = buildPrompt({
+                            problemTitle: problem?.title || '',
+                            problemDescription: problem?.description || '',
+                            currentCode: code || '',
+                            language: language || 'python',
+                            phase: 'evaluation',
+                            submissionVerdict: submissionVerdict || null,
+                            userMessage: '',
+                            history,
+                            evaluationMetadata: {
+                                correctAnswer: problem?.correctAnswer,
+                                expectedConcepts: problem?.expectedConcepts,
+                                evaluationCriteria: problem?.evaluationCriteria,
+                            }
+                        })
+
+                        const generator = generateInterviewChatResponse({ systemPrompt, messages })
+                        for await (const chunk of generator) {
+                            aiResponse += chunk
+                        }
+                    } catch (groqErr) {
+                        console.error('[SERVERLESS AI] Groq generation failed. Falling back to local response.', groqErr)
                     }
                 }
 
-                await Submission.findByIdAndUpdate(submissionId, { aiFeedback })
-                console.log(`[SERVERLESS AI] AI Analysis saved for submission: ${submissionId}`)
+                // Local fallback response containing the essential <WRAP_UP /> tag
+                if (!aiResponse) {
+                    aiResponse = this._generateMockChatResponse('evaluation', problem, '')
+                }
+
+                // 3. Save assistant message to DB
+                await InterviewMessage.create({
+                    id: crypto.randomUUID(),
+                    sessionId,
+                    role: 'ai',
+                    phase: 'evaluation',
+                    content: aiResponse,
+                    ts: new Date(),
+                })
+
+                // 4. Transition to 'completed' phase (which automatically triggers scorecard generation)
+                if (aiResponse.includes('<WRAP_UP />')) {
+                    await transitionPhase(sessionId, 'completed')
+                }
+
+                await releaseProcessingLock(sessionId)
             } catch (err) {
-                console.error('[SERVERLESS AI] Error in submitSubmissionAnalysis:', err)
+                console.error('[SERVERLESS AI] Error in submitSubmissionAnalysis background task:', err)
+                await releaseProcessingLock(sessionId).catch(console.error)
             }
         }, 1000)
+
+        ServerlessAIAdapter.activeSessions.set(sessionId, timeout)
     }
+
 
     async cancelSessionJobs(sessionId) {
         console.log(`[SERVERLESS AI] Cancelling jobs for session: ${sessionId}`)
