@@ -44,6 +44,7 @@ export default function DashboardLeftSidebar({
                                         value={newGoal}
                                         onChange={(e) => setNewGoal(e.target.value)}
                                         className="bg-bg-muted border-border w-12 rounded border px-1 text-center text-xs font-bold"
+                                        aria-label="Weekly Goal"
                                         autoFocus
                                     />
                                     <button

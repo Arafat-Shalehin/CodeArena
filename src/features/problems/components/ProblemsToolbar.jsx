@@ -40,6 +40,7 @@ export default function ProblemsToolbar({ sortBy, setSortBy, setSidebarOpen, tot
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     className="bg-bg-page border-border text-text-primary focus:ring-accent duration-normal cursor-pointer rounded-md border px-3 py-2 pr-8 text-sm transition-colors focus:border-transparent focus:ring-2 focus:outline-none"
+                    aria-label="Sort by"
                 >
                     <option>Difficulty</option>
                     <option>Acceptance Rate</option>
