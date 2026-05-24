@@ -69,7 +69,7 @@ export default function Home() {
                     </ErrorBoundary>
 
                     <ErrorBoundary>
-                        <section className="bg-bg-page relative mx-auto max-w-7xl px-4 py-16 md:py-24">
+                        <section className="bg-bg-page relative mx-auto max-w-7xl px-4 py-12 md:py-16">
                             <FeaturesHeader />
                             <FeaturesBentoGrid />
                         </section>
