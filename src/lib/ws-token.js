@@ -18,7 +18,7 @@ export function signWsToken(payload) {
     if (!JWT_SECRET) {
         throw new Error('JWT_SECRET environment variable is required')
     }
-    return jwt.sign({ ...payload, type: 'websocket' }, JWT_SECRET, { expiresIn: '15m' })
+    return jwt.sign({ ...payload, type: 'websocket' }, JWT_SECRET, { expiresIn: WS_TOKEN_EXPIRY })
 }
 
 export function generateWsToken(userId, sessionData = {}) {

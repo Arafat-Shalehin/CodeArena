@@ -393,8 +393,8 @@ export default function ScorecardView({ sessionId }) {
                         {
                             label: 'Technical Accuracy',
                             val: result.approachScore,
-                            color: 'text-purple-500',
-                            bg: 'bg-purple-500',
+                            color: 'text-cyan-500',
+                            bg: 'bg-cyan-500',
                             icon: Trophy,
                         },
                     ].map((item, i) => {

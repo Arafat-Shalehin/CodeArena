@@ -121,6 +121,7 @@ export default function HelpCenterPage() {
                                     placeholder="Search for questions (e.g. 'contests', 'verdicts')..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    aria-label="Search FAQs"
                                     className="bg-bg-subtle border-border focus:bg-bg-page focus:border-accent/20 focus:ring-accent/5 placeholder:text-text-muted w-full rounded-2xl border py-4 pr-6 pl-14 text-lg shadow-2xl transition-all focus:ring-8 focus:outline-none"
                                 />
                             </div>

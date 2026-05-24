@@ -14,7 +14,7 @@ export default function FeaturesSection() {
     const containerRef = useRef(null)
     const shouldReduceMotion = useSafeReducedMotion()
 
-    // Track scroll progress through the entire section
+    // Track scroll progress through the entire section (Framer Motion useScroll handles throttling internally via requestAnimationFrame)
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ['start start', 'end end'],

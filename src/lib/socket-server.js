@@ -221,6 +221,10 @@ export async function initSocketServer() {
 
             // Redis Subscriber for submission events
             try {
+                if (!redisClient) {
+                    console.warn('[Socket.IO] Redis unavailable, skipping subscriber setup')
+                    throw new Error('Redis client unavailable')
+                }
                 const redisSubClient = redisClient.duplicate()
                 await redisSubClient.connect()
 

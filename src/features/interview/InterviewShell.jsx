@@ -237,8 +237,8 @@ const PHASE_CONFIG = {
         title: 'Performance Review',
         subtitle: 'AI is analyzing your submission',
         icon: <Target size={24} />,
-        color: 'text-purple-400',
-        bg: 'bg-purple-400/10',
+        color: 'text-cyan-400',
+        bg: 'bg-cyan-400/10',
     },
     completed: {
         title: 'Interview Finalized',

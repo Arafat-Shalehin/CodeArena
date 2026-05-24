@@ -165,7 +165,7 @@ export default function PersonalResultPage() {
         return (
             <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center p-6 text-center">
                 <XCircle className="text-error mb-4 size-16 opacity-20" />
-                <h1 className="text-text-primary text-2xl font-black">Result Not Ready</h1>
+                <h2 className="text-text-primary text-2xl font-black">Result Not Ready</h2>
                 <p className="text-text-muted mt-2 max-w-md font-medium">
                     {data?.message ||
                         "We couldn't find your result for this contest. You may not have participated or the results are still being processed."}

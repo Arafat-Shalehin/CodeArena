@@ -142,7 +142,7 @@ export default function BlogDetailPage() {
     if (!post) {
         return (
             <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center p-4 text-center">
-                <h1 className="text-text-primary text-4xl font-bold">Post not found</h1>
+                <h2 className="text-text-primary text-4xl font-bold">Post not found</h2>
                 <Link href="/blog" className="text-accent mt-6 font-semibold hover:underline">
                     Return to Arena Journal
                 </Link>

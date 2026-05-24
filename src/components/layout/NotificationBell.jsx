@@ -10,7 +10,7 @@ const TYPE_ICONS = {
     social: <MessageSquare className="h-4 w-4 text-blue-500" />,
     contest: <Trophy className="h-4 w-4 text-yellow-500" />,
     judging: <Code2 className="h-4 w-4 text-green-500" />,
-    ai_insight: <Sparkles className="h-4 w-4 text-purple-500" />,
+    ai_insight: <Sparkles className="h-4 w-4 text-cyan-500" />,
 }
 
 export default function NotificationBell() {

@@ -218,12 +218,12 @@ export function InterviewProvider({
             toast.custom(
                 () => (
                     <div className="border-border bg-bg-subtle text-text-primary rounded-xl border p-4 shadow-xl">
-                        <h4 className="font-bold tracking-tight text-purple-400 uppercase">
+                        <h4 className="font-bold tracking-tight text-cyan-400 uppercase">
                             Phase Changed
                         </h4>
                         <p className="mt-1 text-sm">
                             The interview has moved to{' '}
-                            <strong className="underline decoration-purple-500/50 decoration-2 underline-offset-2">
+                            <strong className="underline decoration-cyan-500/50 decoration-2 underline-offset-2">
                                 {newPhase.replace('_', ' ')}
                             </strong>
                             .

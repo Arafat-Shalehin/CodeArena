@@ -282,6 +282,7 @@ export default function ReplayPlayer({ sessionId }) {
                                 setIsPlaying(false)
                             }}
                             className="bg-bg-muted accent-accent h-1.5 flex-1 cursor-pointer appearance-none rounded-lg"
+                            aria-label="Timeline progress"
                         />
                         <span className="font-mono text-[10px] text-slate-500">
                             {timeline[currentIndex]
