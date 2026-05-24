@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
-import { io } from 'socket.io-client'
+import React, { useEffect, useState } from 'react'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 import {
     Award,
     Download,
@@ -24,8 +24,10 @@ export default function ScorecardView({ sessionId }) {
     const [result, setResult] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [isSocketConnected, setIsSocketConnected] = useState(false)
-    const socketRef = useRef(null)
+    const { socket, isConnected: socketConnected } = useSecureSocket('/interview', {
+        sessionId,
+        scope: 'interview',
+    })
 
     useEffect(() => {
         // Use a ref to track result so fallbackPoll doesn't use a stale closure
@@ -67,46 +69,6 @@ export default function ScorecardView({ sessionId }) {
             }
         }
 
-        const setupSocket = async () => {
-            try {
-                const res = await fetch(`/api/interview/sessions/${sessionId}/rehydrate`)
-                const json = await res.json()
-                if (!json.success || isUnmounted) return
-
-                const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
-
-                const socket = io(
-                    `${process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl}/interview`,
-                    {
-                        auth: { token: json.data.wsToken },
-                        reconnectionAttempts: 5,
-                    }
-                )
-                socketRef.current = socket
-
-                socket.on('connect', async () => {
-                    setIsSocketConnected(true)
-                    socket.emit('interview:join')
-                    // ✅ Bug 4 Fix: immediately fetch on connect.
-                    // For already-completed sessions the scorecard socket event
-                    // will never replay — so we fetch right away on connection.
-                    if (!resultFoundRef.current) {
-                        await fetchResult()
-                    }
-                })
-
-                socket.on('disconnect', () => setIsSocketConnected(false))
-
-                socket.on('interview:scorecard', async () => {
-                    if (isUnmounted) return
-                    console.log('[ScorecardView] Received push update via socket')
-                    await fetchResult()
-                })
-            } catch (err) {
-                console.error('[ScorecardView] Socket setup failed:', err)
-            }
-        }
-
         const runLogic = async () => {
             const found = await fetchResult()
             if (found || isUnmounted) return
@@ -120,9 +82,6 @@ export default function ScorecardView({ sessionId }) {
                     setLoading(false)
                 }
             }, 60_000)
-
-            // Set up socket for live push
-            await setupSocket()
 
             // ✅ Bug 3 Fix: poll every 3s instead of 15s
             // ✅ Bug 2 Fix: use resultFoundRef instead of stale `result` closure
@@ -146,11 +105,33 @@ export default function ScorecardView({ sessionId }) {
         return () => {
             isUnmounted = true
             clearTimeout(pollTimer)
-            if (socketRef.current) {
-                socketRef.current.disconnect()
-            }
         }
     }, [sessionId])
+
+    // Socket event listeners
+    useEffect(() => {
+        if (!socket) return
+
+        const handleScorecard = async () => {
+            console.log('[ScorecardView] Received push update via socket')
+            try {
+                const res = await fetch(`/api/interview/sessions/${sessionId}/result`)
+                const json = await res.json()
+                if (json.success && json.status !== 'pending') {
+                    setResult(json.data)
+                    setLoading(false)
+                    setError(null)
+                }
+            } catch {}
+        }
+
+        socket.on('interview:scorecard', handleScorecard)
+        socket.emit('interview:join')
+
+        return () => {
+            socket.off('interview:scorecard', handleScorecard)
+        }
+    }, [socket, sessionId])
 
     const exportMarkdown = () => {
         window.location.href = `/api/interview/sessions/${sessionId}/export`
@@ -221,11 +202,9 @@ export default function ScorecardView({ sessionId }) {
                 {/* Connection Status Indicator */}
                 <div className="border-border bg-bg-muted text-text-muted mt-6 flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold transition-all">
                     <div
-                        className={`h-1.5 w-1.5 rounded-full ${isSocketConnected ? 'bg-success animate-pulse' : 'bg-text-muted'}`}
+                        className={`h-1.5 w-1.5 rounded-full ${socketConnected ? 'bg-success animate-pulse' : 'bg-text-muted'}`}
                     />
-                    {isSocketConnected
-                        ? 'LIVE UPDATES ACTIVE'
-                        : 'CONNECTING TO REAL-TIME SERVER...'}
+                    {socketConnected ? 'LIVE UPDATES ACTIVE' : 'CONNECTING TO REAL-TIME SERVER...'}
                 </div>
             </div>
         )

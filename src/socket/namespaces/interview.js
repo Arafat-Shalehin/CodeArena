@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { verifyWsToken } from '@/lib/auth/wsToken'
+import { verifyWsToken } from '@/lib/ws-token'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'

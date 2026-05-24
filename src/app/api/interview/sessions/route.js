@@ -4,7 +4,7 @@ import { InterviewSession } from '@/models/InterviewSession.model'
 import { createSession } from '@/services/interviewSession.service'
 import dbConnect from '@/lib/mongodb'
 import { asyncHandler } from '@/lib/asyncHandler'
-import { signWsToken } from '@/lib/auth/wsToken'
+import { signWsToken } from '@/lib/ws-token'
 import { Problem } from '@/models/Problem.models'
 
 export const POST = asyncHandler(async (req) => {

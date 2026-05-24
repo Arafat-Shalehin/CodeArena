@@ -109,26 +109,34 @@ export async function initSocketServer() {
 
             // Setup Redis adapter when available, but keep Socket.IO online without it.
             let adapterEnabled = false
-            const pubClient = redisClient.duplicate()
-            const subClient = redisClient.duplicate()
+            let pubClient = null
+            let subClient = null
             try {
-                const [pubReady, subReady] = await Promise.all([
-                    safeConnectRedisClient(pubClient, 'Redis adapter pubClient'),
-                    safeConnectRedisClient(subClient, 'Redis adapter subClient'),
-                ])
-
-                if (pubReady && subReady) {
-                    serverIo.adapter(createAdapter(pubClient, subClient))
-                    adapterEnabled = true
+                pubClient = redisClient?.duplicate()
+                subClient = redisClient?.duplicate()
+                if (!pubClient || !subClient) {
+                    console.warn('[Socket.IO] Redis client unavailable, running without adapter')
                 } else {
-                    await Promise.all([
-                        safeQuitRedisClient(pubClient),
-                        safeQuitRedisClient(subClient),
+                    const [pubReady, subReady] = await Promise.all([
+                        safeConnectRedisClient(pubClient, 'Redis adapter pubClient'),
+                        safeConnectRedisClient(subClient, 'Redis adapter subClient'),
                     ])
-                    console.warn('[Socket.IO] Redis adapter disabled, running in single-node mode')
+                    if (pubReady && subReady) {
+                        serverIo.adapter(createAdapter(pubClient, subClient))
+                        adapterEnabled = true
+                    } else {
+                        await Promise.all([
+                            safeQuitRedisClient(pubClient),
+                            safeQuitRedisClient(subClient),
+                        ])
+                        console.warn(
+                            '[Socket.IO] Redis adapter disabled, running in single-node mode'
+                        )
+                    }
                 }
             } catch (adapterError) {
-                await Promise.all([safeQuitRedisClient(pubClient), safeQuitRedisClient(subClient)])
+                if (pubClient) safeQuitRedisClient(pubClient)
+                if (subClient) safeQuitRedisClient(subClient)
                 console.warn(
                     `[Socket.IO] Redis adapter setup failed, continuing without adapter: ${adapterError.message}`
                 )
