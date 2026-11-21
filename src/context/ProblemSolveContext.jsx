@@ -73,7 +73,15 @@ function ProblemSolveProviderInner({
 
     // Local UI state
     const [isConsoleOpen, setIsConsoleOpen] = useState(true)
-    const [leftTab, setLeftTabState] = useState(() => readSavedLeftTab(problemId))
+    const [leftTab, setLeftTabState] = useState('description')
+
+    // Restore persisted tab after hydration to avoid SSR/client mismatch
+    useEffect(() => {
+        const savedTab = readSavedLeftTab(problemId)
+        if (savedTab !== 'description') {
+            setLeftTabState(savedTab)
+        }
+    }, [problemId])
 
     const setLeftTab = useCallback((nextTab) => {
         setLeftTabState((prevTab) => {

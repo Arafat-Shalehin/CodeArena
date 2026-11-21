@@ -12,7 +12,7 @@ interface ScrollRevealCardProps {
 export const ScrollRevealCard = ({ title, children, className }: ScrollRevealCardProps) => {
     const containerRef = useRef<HTMLDivElement>(null)
 
-    // Track scroll progress of the container
+    // Track scroll progress of the container (Framer Motion useScroll handles throttling via requestAnimationFrame internally)
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ['start end', 'end start'],

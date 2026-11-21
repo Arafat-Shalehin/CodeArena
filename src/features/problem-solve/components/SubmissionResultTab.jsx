@@ -147,8 +147,13 @@ export default function SubmissionResultTab() {
         viewSubmissionDetails,
     } = useProblemSolve()
     const { user } = useAuth()
+    const [mounted, setMounted] = useState(false)
     const [copied, setCopied] = useState(false)
     const restoreAttemptedRef = useRef(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     useEffect(() => {
         if (result || restoreAttemptedRef.current) return
@@ -165,7 +170,7 @@ export default function SubmissionResultTab() {
         })
     }, [result, viewSubmissionDetails])
 
-    if (!result) {
+    if (!mounted || !result) {
         return (
             <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
                 <Loader2 size={24} className="text-accent animate-spin" />

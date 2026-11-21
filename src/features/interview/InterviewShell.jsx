@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { io } from 'socket.io-client'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 import {
     Loader2,
     Clock,
@@ -237,8 +237,8 @@ const PHASE_CONFIG = {
         title: 'Performance Review',
         subtitle: 'AI is analyzing your submission',
         icon: <Target size={24} />,
-        color: 'text-purple-400',
-        bg: 'bg-purple-400/10',
+        color: 'text-cyan-400',
+        bg: 'bg-cyan-400/10',
     },
     completed: {
         title: 'Interview Finalized',
@@ -412,6 +412,11 @@ export default function InterviewShell({
     // ── Socket.IO connection ─────────────────────────────────────────────────
     const socketRef = useRef(null)
 
+    const { socket: hookSocket, isConnected: socketConnected } = useSecureSocket('/interview', {
+        sessionId,
+        scope: 'interview',
+    })
+
     // ── Rehydration ──────────────────────────────────────────────────────────
     useEffect(() => {
         const rehydrate = async () => {
@@ -491,7 +496,6 @@ export default function InterviewShell({
         if (!wsTokenState || !sessionId || isRehydrating) return
 
         let active = true
-        const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
 
         // Define event handler callbacks
         const handleAiStreamChunk = ({ chunk, done, messageId, sequence, error: streamError }) => {
@@ -511,9 +515,7 @@ export default function InterviewShell({
                 setIsAiTyping(true)
                 setMessages((prev) => {
                     // 1. Try to find message by ID
-                    const existingIdx = messageId
-                        ? prev.findIndex((m) => m.id === messageId)
-                        : -1
+                    const existingIdx = messageId ? prev.findIndex((m) => m.id === messageId) : -1
 
                     if (existingIdx !== -1) {
                         const newMsg = {
@@ -688,150 +690,76 @@ export default function InterviewShell({
         const lastSequenceRef = { current: 0 }
         const currentStreamingId = { current: null }
 
-        const initializeSocket = async () => {
-            try {
-                const res = await fetch('/api/auth/ws-token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId, scope: 'interview' }),
-                    credentials: 'include',
-                })
-                if (!active) return
+        if (!hookSocket) return
 
-                const data = await res.json()
-                if (!active) return
+        const socket = hookSocket
+        socketRef.current = socket
 
-                if (data.enabled === false) {
-                    console.log('[InterviewShell] Sockets disabled (serverless). Falling back to MockInterviewSocket.')
-                    const mockSocket = new MockInterviewSocket(sessionId)
-                    socketRef.current = mockSocket
+        socket.on('connect', () => {
+            if (!active) return
+            setConnectionStatus('connected')
+            socket.emit('interview:join')
+            toast.success('Connected to interview session')
+        })
 
-                    setConnectionStatus('connected')
-
-                    // Register listeners
-                    mockSocket.on('interview:ai_stream_chunk', handleAiStreamChunk)
-                    mockSocket.on('interview:phase_change', handlePhaseChange)
-                    mockSocket.on('interview:session_terminal', handleSessionTerminal)
-                    mockSocket.on('interview:run_result', handleRunResult)
-                    mockSocket.on('interview:submission_result', handleSubmissionResult)
-                    mockSocket.on('interview:ai_analysis', handleAiAnalysis)
-                    mockSocket.on('interview:scorecard', handleScorecard)
-                    mockSocket.on('interview:ended', handleEnded)
-                    mockSocket.on('reconnect', handleReconnect)
-
-                    // Trigger mock connect
-                    setTimeout(() => {
-                        if (active) {
-                            mockSocket.trigger('connect')
-                        }
-                    }, 100)
-                } else {
-                    let socketUrl_ = data.socketUrl || process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl
-                    
-                    // Localhost protocol sanitization
-                    if (typeof window !== 'undefined') {
-                        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                        const isPageHttp = window.location.protocol === 'http:';
-                        if (isLocalhost && isPageHttp) {
-                            socketUrl_ = socketUrl_.replace(/^https:\/\//i, 'http://');
-                        }
-                    }
-
-                    console.log(`[InterviewShell] Connecting to real socket at: ${socketUrl_}/interview`)
-                    const socket = io(`${socketUrl_}/interview`, {
-                        auth: { token: data.wsToken || wsTokenState },
-                        reconnectionAttempts: 3,
-                    })
-                    socketRef.current = socket
-
-                    socket.on('connect', () => {
-                        if (!active) return
-                        setConnectionStatus('connected')
-                        socket.emit('interview:join')
-                        toast.success('Connected to interview session')
-                    })
-
-                    socket.on('disconnect', (reason) => {
-                        if (!active) return
-                        console.warn('[Socket] Disconnected:', reason)
-                        setIsAiTyping(false)
-                        if (reason === 'io server disconnect') {
-                            setConnectionStatus('failed')
-                        } else {
-                            setConnectionStatus('disconnected')
-                        }
-                    })
-
-                    socket.on('connect_error', (err) => {
-                        if (!active) return
-                        console.error('[Socket] Connection Error:', err)
-                        setIsAiTyping(false)
-                        setConnectionStatus('reconnecting')
-                    })
-
-                    socket.on('reconnect_attempt', (attempt) => {
-                        if (!active) return
-                        console.log('[Socket] Reconnecting...', attempt)
-                        setConnectionStatus('reconnecting')
-                    })
-
-                    socket.on('reconnect_failed', () => {
-                        if (!active) return
-                        setConnectionStatus('failed')
-                        setError({
-                            type: 'CONNECTION_FAILED',
-                            message: 'Lost connection to the interview server. Please check your internet.',
-                            fatal: true,
-                        })
-                    })
-
-                    // Register dynamic event listeners
-                    socket.on('interview:ai_stream_chunk', handleAiStreamChunk)
-                    socket.on('interview:phase_change', handlePhaseChange)
-                    socket.on('interview:session_terminal', handleSessionTerminal)
-                    socket.on('interview:run_result', handleRunResult)
-                    socket.on('interview:submission_result', handleSubmissionResult)
-                    socket.on('interview:ai_analysis', handleAiAnalysis)
-                    socket.on('interview:scorecard', handleScorecard)
-                    socket.on('interview:ended', handleEnded)
-                    socket.on('reconnect', handleReconnect)
-                }
-            } catch (err) {
-                console.error('[InterviewShell] Socket initialization failed:', err)
-                if (active) {
-                    setError({
-                        type: 'CONNECTION_FAILED',
-                        message: 'Failed to establish connection to the interview server.',
-                        fatal: true,
-                    })
-                }
+        socket.on('disconnect', (reason) => {
+            if (!active) return
+            console.warn('[Socket] Disconnected:', reason)
+            setIsAiTyping(false)
+            if (reason === 'io server disconnect') {
+                setConnectionStatus('failed')
+            } else {
+                setConnectionStatus('disconnected')
             }
-        }
+        })
 
-        initializeSocket()
+        socket.on('connect_error', (err) => {
+            if (!active) return
+            console.error('[Socket] Connection Error:', err)
+            setIsAiTyping(false)
+            setConnectionStatus('reconnecting')
+        })
+
+        socket.on('reconnect_attempt', (attempt) => {
+            if (!active) return
+            console.log('[Socket] Reconnecting...', attempt)
+            setConnectionStatus('reconnecting')
+        })
+
+        socket.on('reconnect_failed', () => {
+            if (!active) return
+            setConnectionStatus('failed')
+            setError({
+                type: 'CONNECTION_FAILED',
+                message: 'Lost connection to the interview server. Please check your internet.',
+                fatal: true,
+            })
+        })
+
+        // Register dynamic event listeners
+        socket.on('interview:ai_stream_chunk', handleAiStreamChunk)
+        socket.on('interview:phase_change', handlePhaseChange)
+        socket.on('interview:session_terminal', handleSessionTerminal)
+        socket.on('interview:run_result', handleRunResult)
+        socket.on('interview:submission_result', handleSubmissionResult)
+        socket.on('interview:ai_analysis', handleAiAnalysis)
+        socket.on('interview:scorecard', handleScorecard)
+        socket.on('interview:ended', handleEnded)
+        socket.on('reconnect', handleReconnect)
 
         return () => {
             active = false
-            if (socketRef.current) {
-                socketRef.current.off('connect')
-                socketRef.current.off('disconnect')
-                socketRef.current.off('connect_error')
-                socketRef.current.off('reconnect_attempt')
-                socketRef.current.off('reconnect_failed')
-                socketRef.current.off('reconnect')
-                socketRef.current.off('interview:ai_stream_chunk')
-                socketRef.current.off('interview:run_result')
-                socketRef.current.off('interview:submission_result')
-                socketRef.current.off('interview:ai_analysis')
-                socketRef.current.off('interview:scorecard')
-                socketRef.current.off('interview:ended')
-                socketRef.current.off('interview:phase_change')
-                socketRef.current.off('interview:session_terminal')
-                socketRef.current.disconnect()
-                socketRef.current = null
-            }
         }
-    }, [wsToken, sessionId, onEnd, isRehydrating])
+    }, [wsToken, sessionId, onEnd, isRehydrating, hookSocket])
+
+    // Sync socket connection status
+    useEffect(() => {
+        if (!hookSocket) return
+        socketRef.current = hookSocket
+        if (socketConnected) {
+            setConnectionStatus('connected')
+        }
+    }, [hookSocket, socketConnected])
 
     // ── Hard timeout for stuck AI streaming ──────────────────────────────────
     const MAX_STREAM_TIME = 45_000 // 45 seconds to allow for high-load cold-starts

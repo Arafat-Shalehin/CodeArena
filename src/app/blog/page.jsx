@@ -130,6 +130,7 @@ export default function BlogListingPage() {
                             placeholder="Search articles..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            aria-label="Search articles"
                             className="bg-bg-subtle border-border text-text-primary placeholder:text-text-muted focus:ring-accent w-full rounded-md border py-2 pr-4 pl-10 text-sm transition-all focus:ring-2 focus:outline-none"
                         />
                     </div>
@@ -170,6 +171,7 @@ export default function BlogListingPage() {
                         <input
                             type="email"
                             placeholder="engineer@example.com"
+                            aria-label="Email address for newsletter"
                             className="bg-bg-page border-border focus:ring-accent flex-grow rounded-md border px-4 py-2.5 text-sm transition-all outline-none focus:ring-2"
                         />
                         <button className="bg-accent hover:bg-accent-hover duration-normal rounded-md px-8 py-2.5 text-sm font-semibold text-white transition-colors">

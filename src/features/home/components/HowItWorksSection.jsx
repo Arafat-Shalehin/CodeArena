@@ -12,13 +12,14 @@ export default function HowItWorksSection() {
     const sectionRef = useRef(null)
     const { scrollYProgress } = useScroll({
         target: sectionRef,
-        offset: ['start end', 'end start'],
+        offset: ['start center', 'end center'],
     })
 
     const [elevationValue, setElevationValue] = useState(0)
     const rawElevation = useTransform(scrollYProgress, [0, 1], [0, 4000])
 
     useMotionValueEvent(rawElevation, 'change', (v) => {
+        // requestAnimationFrame / throttle
         setElevationValue(Math.round(v))
     })
 
@@ -80,37 +81,20 @@ export default function HowItWorksSection() {
                     </p>
                 </motion.div>
 
-                {/* Camps */}
+                {/* Camps / Steps Timeline */}
                 <div className="relative mx-auto max-w-4xl">
-                    {/* Connecting path (desktop) */}
-                    <div className="pointer-events-none absolute inset-0 hidden lg:block">
-                        <svg
-                            className="h-full w-full"
-                            viewBox="0 0 800 600"
-                            fill="none"
-                            preserveAspectRatio="xMidYMax meet"
-                        >
-                            <motion.path
-                                d="M 120 80 C 200 80, 250 120, 300 160 C 350 200, 400 200, 450 240 C 500 280, 520 320, 580 360 C 640 400, 680 400, 700 440"
-                                stroke="var(--color-accent)"
-                                strokeWidth="1.5"
-                                strokeDasharray="8 6"
-                                initial={{ pathLength: 0, opacity: 0 }}
-                                whileInView={{ pathLength: 1, opacity: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 2, ease: 'easeInOut' }}
-                                className="opacity-30"
-                            />
-                            <motion.path
-                                d="M 120 80 C 200 80, 250 120, 300 160 C 350 200, 400 200, 450 240 C 500 280, 520 320, 580 360 C 640 400, 680 400, 700 440"
-                                stroke="var(--color-accent)"
-                                strokeWidth="1.5"
-                                initial={{ pathLength: 0 }}
-                                whileInView={{ pathLength: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 2.5, ease: 'easeInOut', delay: 0.3 }}
-                            />
-                        </svg>
+                    {/* Responsive Straight Center Timeline Track (Desktop only) */}
+                    <div className="pointer-events-none absolute left-1/2 top-[40px] bottom-[40px] w-0.5 -translate-x-1/2 hidden lg:block z-0">
+                        {/* Background track line */}
+                        <div className="w-full h-full bg-border/20" />
+                        {/* Glowing active scroll progress line */}
+                        <motion.div
+                            className="absolute top-0 left-0 w-full bg-accent origin-top shadow-[0_0_8px_var(--color-accent)]"
+                            style={{
+                                height: '100%',
+                                scaleY: scrollYProgress,
+                            }}
+                        />
                     </div>
 
                     {stepsData.map((step, idx) => {
@@ -119,41 +103,41 @@ export default function HowItWorksSection() {
                         return (
                             <motion.div
                                 key={idx}
-                                initial={{ opacity: 0, y: 40 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true, margin: '-40px' }}
+                                initial={{ opacity: 0, x: isLeft ? -50 : 50, y: 20 }}
+                                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                                viewport={{ once: true, margin: '-100px' }}
                                 transition={{
-                                    duration: 0.6,
-                                    delay: idx * 0.15,
+                                    duration: 0.8,
                                     ease: [0.16, 1, 0.3, 1],
                                 }}
                                 className={cn(
-                                    'relative mb-6 last:mb-0 lg:mb-0 lg:w-1/2',
-                                    isLeft ? 'lg:pr-12 lg:text-right' : 'lg:ml-auto lg:pl-12'
+                                    'relative mb-12 last:mb-0 lg:mb-0 lg:w-1/2',
+                                    isLeft ? 'lg:pr-16' : 'lg:ml-auto lg:pl-16'
                                 )}
                             >
-                                {/* Vertical connector (mobile) */}
+                                {/* Vertical connector (mobile only) */}
                                 {idx < stepsData.length - 1 && (
-                                    <div className="from-border/50 absolute top-[60px] bottom-[-24px] left-[23px] w-px bg-gradient-to-b to-transparent lg:hidden" />
+                                    <div className="from-border/50 absolute top-[60px] bottom-[-48px] left-[23px] w-px bg-gradient-to-b to-transparent lg:hidden" />
                                 )}
 
                                 {/* Camp card */}
                                 <div className="group relative">
-                                    {/* Step marker dot — positioned on the dividing line */}
+                                    {/* Double-ring Step marker dot — positioned exactly on the dividing line */}
                                     <div
                                         className={cn(
-                                            'absolute top-6 z-10 hidden lg:flex',
-                                            isLeft ? 'right-[-20px]' : 'left-[-20px]'
+                                            'absolute top-6 z-20 hidden lg:flex items-center justify-center size-10 rounded-full bg-bg-page',
+                                            isLeft ? 'right-0 translate-x-1/2' : 'left-0 -translate-x-1/2'
                                         )}
                                     >
-                                        <div className="bg-accent flex size-10 items-center justify-center rounded-full shadow-[0_0_16px_rgba(2,186,76,0.15)]">
-                                            <span className="text-bg-page font-mono text-xs font-bold">
+                                        <div className="size-8 rounded-full bg-bg-subtle border border-border flex items-center justify-center group-hover:bg-accent group-hover:text-bg-page group-hover:border-accent group-hover:shadow-[0_0_15px_rgba(2,186,76,0.5)] transition-all duration-300">
+                                            <span className="font-mono text-xs font-bold">
                                                 {String(step.step).padStart(2, '0')}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="bg-bg-subtle/40 border-border/50 hover:border-accent/30 relative rounded-xl border p-5 transition-colors duration-300 sm:p-6">
+                                    {/* Interactive card content */}
+                                    <div className="bg-bg-subtle/40 border-border/50 hover:border-accent/30 hover:bg-bg-subtle/60 relative rounded-xl border p-5 transition-all duration-300 hover:scale-[1.02] sm:p-6 shadow-xs hover:shadow-md">
                                         {/* Mobile step number */}
                                         <div className="bg-accent/10 border-accent/30 mb-4 flex size-9 items-center justify-center rounded-full border lg:hidden">
                                             <span className="text-accent font-mono text-xs font-bold">
@@ -161,19 +145,28 @@ export default function HowItWorksSection() {
                                             </span>
                                         </div>
 
-                                        {/* Elevation badge */}
-                                        <div className="mb-3 flex items-center gap-2">
-                                            <span className="text-text-muted font-mono text-[10px] font-bold">
-                                                ▲ {step.elevation}
-                                            </span>
-                                            <span className="text-accent/70 text-[9px] font-bold tracking-[0.15em] uppercase">
-                                                {step.tag}
-                                            </span>
+                                        {/* Card Header (Elevation, Tag & Icon) */}
+                                        <div className="mb-4 flex items-start justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-text-muted font-mono text-[10px] font-bold">
+                                                        ▲ {step.elevation}
+                                                    </span>
+                                                    <span className="text-accent/70 text-[9px] font-bold tracking-[0.15em] uppercase">
+                                                        {step.tag}
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-text-primary mt-1 text-base font-bold tracking-tight sm:text-lg">
+                                                    {step.title}
+                                                </h3>
+                                            </div>
+                                            {/* Lucide Step Icon with hover styling */}
+                                            <div className="text-accent bg-accent/5 border border-accent/15 flex size-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:bg-accent/10 group-hover:border-accent/30">
+                                                {step.icon}
+                                            </div>
                                         </div>
 
-                                        <h3 className="text-text-primary mb-1.5 text-base font-bold tracking-tight sm:text-lg">
-                                            {step.title}
-                                        </h3>
+                                        {/* Description */}
                                         <p className="text-text-secondary text-xs leading-relaxed font-medium">
                                             {step.desc}
                                         </p>

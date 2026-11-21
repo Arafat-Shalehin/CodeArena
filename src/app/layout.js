@@ -7,6 +7,7 @@ import { HydrationWrapper } from '@/components/providers/HydrationWrapper'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
 import ServiceWorkerRegistration from '@/components/providers/ServiceWorkerRegistration'
+import DevNoticeModal from '@/shared/components/ui/DevNoticeModal'
 import { WarningModal } from '@/components/ui/WarningModal'
 
 const inter = Inter({
@@ -56,6 +57,7 @@ export default function RootLayout({ children }) {
             >
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                     <HydrationWrapper>
+                        <DevNoticeModal />
                         <AuthProvider>
                             <CodeEditorProvider>{children}</CodeEditorProvider>
                         </AuthProvider>

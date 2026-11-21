@@ -220,7 +220,7 @@ export default function SettingsPage() {
                     {/* Content Section */}
                     <div className="lg:col-span-9">
                         {activeSection === 'profile' && (
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" aria-label="Edit Profile">
                                 <ProfilePictureCard
                                     avatarSeed={avatarSeed}
                                     onSelectSeed={(seed) => setValue('avatarSeed', seed)}

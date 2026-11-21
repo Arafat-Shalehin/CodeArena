@@ -52,7 +52,7 @@ const CORE_RULES = [
         title: 'Protect Privacy',
         description:
             'Never share personal information about yourself or others. Do not post private conversations without explicit consent.',
-        color: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
+        color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
     },
     {
         icon: <Users className="size-6" />,

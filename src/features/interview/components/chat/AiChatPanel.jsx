@@ -130,7 +130,7 @@ export default function AiChatPanel({
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                                     isUser
                                         ? 'bg-accent/20 text-accent'
-                                        : 'bg-purple-500/20 text-purple-400'
+                                        : 'bg-cyan-500/20 text-cyan-400'
                                 }`}
                             >
                                 {isUser ? <UserIcon size={14} /> : <Bot size={14} />}
@@ -158,7 +158,7 @@ export default function AiChatPanel({
 
                 {isAiTyping && !error && (
                     <div className="flex gap-2.5">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">
                             <Bot size={14} />
                         </div>
                         <div className="bg-bg-muted flex items-center gap-1 rounded-2xl rounded-tl-none px-4 py-3">

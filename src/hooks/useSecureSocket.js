@@ -31,6 +31,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     const tokenRequestRef = useRef(null)
     const connectingRef = useRef(false)
     const connectRef = useRef(null)
+    const connectGenRef = useRef(0)
 
     const {
         onConnect,
@@ -50,28 +51,29 @@ export function useSecureSocket(namespace = '', options = {}) {
         }
 
         try {
-            tokenRequestRef.current = fetch('/api/auth/ws-token', {
+            const promise = fetch('/api/auth/ws-token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ sessionId, scope }),
                 credentials: 'include',
+            }).then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Token fetch failed: ${response.status}`)
+                }
+
+                const data = await response.json()
+                if (!data.success) {
+                    throw new Error(data.error || 'Token generation failed')
+                }
+
+                tokenRef.current = data.wsToken
+                return data
             })
 
-            const response = await tokenRequestRef.current
-
-            if (!response.ok) {
-                throw new Error(`Token fetch failed: ${response.status}`)
-            }
-
-            const data = await response.json()
-            if (!data.success) {
-                throw new Error(data.error || 'Token generation failed')
-            }
-
-            tokenRef.current = data.wsToken
-            return data
+            tokenRequestRef.current = promise
+            return await promise
         } catch (err) {
             console.error('[useSecureSocket] Token fetch error:', err.message)
             setError(err.message)
@@ -91,10 +93,7 @@ export function useSecureSocket(namespace = '', options = {}) {
             return
         }
 
-        if (connectingRef.current) {
-            console.log('[useSecureSocket] Connection already in progress')
-            return
-        }
+        const gen = ++connectGenRef.current
 
         if (socketRef.current?.connected) {
             console.log('[useSecureSocket] Already connected')
@@ -108,6 +107,8 @@ export function useSecureSocket(namespace = '', options = {}) {
             const data = await fetchWsToken()
             // console.log("Socket Console Data: ", data);
 
+            if (gen !== connectGenRef.current) return
+
             if (data && data.enabled === false) {
                 console.log(
                     `[useSecureSocket] Real-time sockets are disabled on the server (serverless mode). Bypassing connection to namespace: ${namespace}`
@@ -118,18 +119,23 @@ export function useSecureSocket(namespace = '', options = {}) {
                 return
             }
 
-            const { wsToken, socketUrl } = data;
+            const { wsToken, socketUrl } = data
+            if (!wsToken) {
+                throw new Error('WebSocket token is empty')
+            }
             //console.log("Socket Console: ", socketUrl);
 
-            let socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl;
+            let socketUrl_ = process.env.NEXT_PUBLIC_SOCKET_URL || socketUrl
 
             // Localhost protocol sanitization
             if (typeof window !== 'undefined') {
-                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const isPageHttp = window.location.protocol === 'http:';
-                
+                const isLocalhost =
+                    window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1'
+                const isPageHttp = window.location.protocol === 'http:'
+
                 if (isLocalhost && isPageHttp && socketUrl_) {
-                    socketUrl_ = socketUrl_.replace(/^https:\/\//i, 'http://');
+                    socketUrl_ = socketUrl_.replace(/^https:\/\//i, 'http://')
                 }
             }
 
@@ -198,7 +204,9 @@ export function useSecureSocket(namespace = '', options = {}) {
             console.warn('[useSecureSocket] Connection failed:', err.message)
             setError(err.message)
         } finally {
-            connectingRef.current = false
+            if (gen === connectGenRef.current) {
+                connectingRef.current = false
+            }
         }
     }, [user, namespace, fetchWsToken, onConnect, onDisconnect, onError, autoReconnect])
 
@@ -221,10 +229,15 @@ export function useSecureSocket(namespace = '', options = {}) {
                     const { wsToken } = await fetchWsToken()
                     tokenRef.current = wsToken
 
-                    // Reconnect with new token if needed
-                    if (socketRef.current?.disconnected) {
-                        await connect()
+                    // Force reconnect to apply the updated auth token
+                    if (socketRef.current?.connected) {
+                        socketRef.current.removeAllListeners()
+                        socketRef.current.disconnect()
+                        socketRef.current = null
+                        setSocket(null)
+                        setIsConnected(false)
                     }
+                    await connect()
                 } catch (err) {
                     console.error('[useSecureSocket] Token refresh failed:', err.message)
                     // Token refresh failed, will attempt on next connect
@@ -251,6 +264,9 @@ export function useSecureSocket(namespace = '', options = {}) {
         connectRef.current?.()
 
         return () => {
+            // Increment generation to invalidate any in-flight connect call
+            connectGenRef.current++
+
             // Cleanup timeout
             if (refreshTimerRef.current) {
                 clearTimeout(refreshTimerRef.current)
@@ -262,7 +278,6 @@ export function useSecureSocket(namespace = '', options = {}) {
             socketRef.current = null
             setSocket(null)
             setIsConnected(false)
-            connectingRef.current = false
         }
     }, [user])
 

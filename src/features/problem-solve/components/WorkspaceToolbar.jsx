@@ -106,7 +106,7 @@ export default function WorkspaceToolbar() {
                 {testResult?.status === 'done' && (
                     <button
                         onClick={fetchAiFeedback}
-                        className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-purple-400 transition-colors hover:bg-purple-500/10"
+                        className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-cyan-400 transition-colors hover:bg-cyan-500/10"
                     >
                         <Sparkles size={13} /> AI
                     </button>

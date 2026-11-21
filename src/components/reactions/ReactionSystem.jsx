@@ -11,7 +11,7 @@ const REACTION_CONFIG = {
     LIKE: { icon: ThumbsUp, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Like' },
     LOVE: { icon: Heart, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Love' },
     CLAP: { icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: 'Clap' },
-    THINKING: { icon: Smile, color: 'text-purple-500', bg: 'bg-purple-500/10', label: 'Thinking' },
+    THINKING: { icon: Smile, color: 'text-cyan-500', bg: 'bg-cyan-500/10', label: 'Thinking' },
     ROCKET: { icon: Rocket, color: 'text-orange-500', bg: 'bg-orange-500/10', label: 'Rocket' },
     WOW: { icon: Zap, color: 'text-pink-500', bg: 'bg-pink-500/10', label: 'Wow' },
 }
