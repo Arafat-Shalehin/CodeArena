@@ -6,8 +6,18 @@ import { useSecureSocket } from './useSecureSocket'
 import { toast } from 'sonner'
 
 const RECENT_NOTIFICATION_FETCH_TTL_MS = 5000
+const TOAST_DEDUPE_WINDOW_MS = 10000
 const notificationInflightByUser = new Map()
 const notificationRecentDataByUser = new Map()
+const recentToastSignatureAt = new Map()
+
+function isAiInsightNotification(notification) {
+    const type = String(notification?.type || '').toLowerCase()
+    if (type === 'ai_insight') return true
+
+    const message = String(notification?.message || '').toLowerCase()
+    return message.includes('ai insight') || message.includes('ai insights')
+}
 
 async function fetchNotificationsForUser(userId) {
     const cached = notificationRecentDataByUser.get(userId)
@@ -48,8 +58,11 @@ export function useNotification() {
         if (!user?._id) return
         try {
             const list = await fetchNotificationsForUser(String(user._id))
-            setNotifications(list)
-            setUnreadCount(list.filter((n) => !n.isRead).length)
+            const filteredList = list.filter(
+                (notification) => !isAiInsightNotification(notification)
+            )
+            setNotifications(filteredList)
+            setUnreadCount(filteredList.filter((n) => !n.isRead).length)
         } catch (error) {
             console.error('Error fetching notifications:', error)
         }
@@ -68,7 +81,35 @@ export function useNotification() {
         // Join the user's notification room
         socket.emit('join_room', user._id)
 
+        const shouldShowToast = (notification) => {
+            const signature =
+                notification?._id ||
+                `${notification?.type || 'unknown'}|${notification?.message || ''}|${notification?.link || ''}`
+
+            const now = Date.now()
+            const lastSeen = recentToastSignatureAt.get(signature)
+            if (lastSeen && now - lastSeen < TOAST_DEDUPE_WINDOW_MS) {
+                return false
+            }
+
+            recentToastSignatureAt.set(signature, now)
+
+            if (recentToastSignatureAt.size > 200) {
+                for (const [key, ts] of recentToastSignatureAt.entries()) {
+                    if (now - ts > TOAST_DEDUPE_WINDOW_MS * 6) {
+                        recentToastSignatureAt.delete(key)
+                    }
+                }
+            }
+
+            return true
+        }
+
         socket.on('notification_received', (notification) => {
+            if (isAiInsightNotification(notification)) {
+                return
+            }
+
             setNotifications((prev) => {
                 if (prev.some((item) => item._id === notification._id)) {
                     return prev
@@ -76,6 +117,10 @@ export function useNotification() {
                 setUnreadCount((count) => count + 1)
                 return [notification, ...prev]
             })
+
+            if (!shouldShowToast(notification)) {
+                return
+            }
 
             // Play a subtle notification sound (Professional simple UI bubble pop)
             const audio = new Audio(
