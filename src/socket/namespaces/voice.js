@@ -1,5 +1,5 @@
 import { DeepgramClient } from '@deepgram/sdk'
-import { verifyWsToken } from '@/lib/auth/wsToken'
+import { verifyWsToken } from '@/lib/ws-token'
 import { isSessionActive } from '@/services/sessionGuard'
 import { hasVoiceAccess } from '@/services/accessControl.service'
 

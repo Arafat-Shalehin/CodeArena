@@ -1,5 +1,6 @@
 import { Submission } from '@/models/Submission.models'
 import { redisClient } from '@/lib/redis'
+import { realtimePort } from '@/lib/realtime'
 import { normalizeCode } from '@/lib/plagiarism/normalizeCode'
 import { jaccardSimilarity } from '@/lib/plagiarism/similarityEngine'
 import dbConnect from '@/lib/mongodb'
@@ -132,16 +133,13 @@ export async function checkSubmissionPlagiarism(submissionId) {
 
         // 6. Notify admin via Redis if flagged
         if (suspectedPlagiarism && redisClient.isOpen) {
-            await redisClient.publish(
-                'plagiarism:flagged',
-                JSON.stringify({
-                    submissionId: target._id,
-                    userId: target.userId,
-                    contestId: target.contestId,
-                    problemId: target.problemId,
-                    score: highestSimilarity,
-                })
-            )
+            await realtimePort.publish('plagiarism:flagged', {
+                submissionId: target._id,
+                userId: target.userId,
+                contestId: target.contestId,
+                problemId: target.problemId,
+                score: highestSimilarity,
+            })
         }
 
         return { success: true, similarityScore: highestSimilarity, suspectedPlagiarism }

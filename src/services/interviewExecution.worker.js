@@ -15,7 +15,7 @@ import dbConnect from '@/lib/mongodb'
 import { Problem } from '@/models/Problem.models'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { executeCode } from '@/lib/docker/executor'
-import { getInterviewAIQueue } from '@/lib/queue'
+import { aiEnginePort } from '@/lib/ai-engine'
 
 const redisUrl = process.env.REDIS_URL || ''
 const redisConfig = redisUrl
@@ -127,8 +127,7 @@ export function initInterviewExecutionWorker() {
                     // Trigger AI evaluation analysis for this submission
                     // Only trigger if it's not a complete system failure
                     if (result.verdict !== 'SYSTEM_ERROR') {
-                        const aiQueue = getInterviewAIQueue()
-                        await aiQueue.add('process-submission-analysis', {
+                        await aiEnginePort.submitSubmissionAnalysis({
                             sessionId,
                             userId,
                             submissionVerdict: result,

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useEffect } from 'react'
 import useSWR from 'swr'
-import { io } from 'socket.io-client'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 import { useContest } from '@/hooks/useContest'
 import { useContestTimer } from '@/hooks/useContestTimer'
 import ContestDetailHero from './ContestDetailHero'
@@ -43,35 +43,39 @@ export default function ContestDetailPage({ contestId }) {
     const isRegistered = regData?.isRegistered || false
     const totalParticipants = participantsData?.pagination?.total || participants.length
 
+    const { socket } = useSecureSocket('', {
+        scope: 'general',
+    })
+
     // Real-time synchronization
     useEffect(() => {
-        if (!contestId) return
+        if (!socket || !contestId) return
 
-        const fallbackSocketBaseUrl = `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`
-
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketBaseUrl, {
-            reconnection: true,
-        })
-
-        socket.on('connect', () => {
+        const handleConnect = () => {
             console.log(`[ContestDetail] Joined room contest_${contestId}`)
             socket.emit('join_room', `contest_${contestId}`)
-        })
+        }
 
-        socket.on('contest:updated', (data) => {
+        const handleUpdated = (data) => {
             console.log('[ContestDetail] Contest updated, refreshing state...', data)
             mutate()
-        })
+        }
 
-        socket.on('contest:deleted', () => {
+        const handleDeleted = () => {
             console.log('[ContestDetail] Contest deleted, redirecting...')
             window.location.href = '/contests'
-        })
+        }
+
+        socket.on('connect', handleConnect)
+        socket.on('contest:updated', handleUpdated)
+        socket.on('contest:deleted', handleDeleted)
 
         return () => {
-            socket.disconnect()
+            socket.off('connect', handleConnect)
+            socket.off('contest:updated', handleUpdated)
+            socket.off('contest:deleted', handleDeleted)
         }
-    }, [contestId, mutate])
+    }, [socket, contestId, mutate])
 
     useContestTimer(contest?.startTime, contest?.endTime) // pre-warm timer
 

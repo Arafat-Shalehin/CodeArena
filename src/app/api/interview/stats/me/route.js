@@ -19,18 +19,20 @@ export async function GET(req) {
 
         // 2. Redis Cache Lookup
         const cacheKey = `user:stats:${user.id}`
-        try {
-            const cachedParams = await redisClient.get(cacheKey)
-            if (cachedParams) {
-                const parsed = JSON.parse(cachedParams)
-                // Cache hit! Ensure we slice it to the user's current tier limit
-                // in case their subscription status just changed.
-                parsed.stats = parsed.stats.slice(0, LIMIT)
-                parsed.isPremium = isPremium
-                return NextResponse.json(parsed, { status: 200 })
+        if (redisClient.isOpen) {
+            try {
+                const cachedParams = await redisClient.get(cacheKey)
+                if (cachedParams) {
+                    const parsed = JSON.parse(cachedParams)
+                    // Cache hit! Ensure we slice it to the user's current tier limit
+                    // in case their subscription status just changed.
+                    parsed.stats = parsed.stats.slice(0, LIMIT)
+                    parsed.isPremium = isPremium
+                    return NextResponse.json(parsed, { status: 200 })
+                }
+            } catch (err) {
+                console.warn('[API/stats/me] Redis cache read failed:', err.message)
             }
-        } catch (err) {
-            console.warn('[API/stats/me] Redis cache read failed:', err.message)
         }
 
         // 3. Optimized Aggregate Data Lookup
@@ -125,10 +127,12 @@ export async function GET(req) {
         }
 
         // 6. Redis Cache Write (TTL: 10 minutes)
-        try {
-            await redisClient.set(cacheKey, JSON.stringify(responsePayload), { EX: 600 })
-        } catch (err) {
-            console.warn('[API/stats/me] Redis cache write failed:', err.message)
+        if (redisClient.isOpen) {
+            try {
+                await redisClient.set(cacheKey, JSON.stringify(responsePayload), { EX: 600 })
+            } catch (err) {
+                console.warn('[API/stats/me] Redis cache write failed:', err.message)
+            }
         }
 
         return NextResponse.json(responsePayload, { status: 200 })

@@ -23,6 +23,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     const { user } = useAuth()
     const [socket, setSocket] = useState(null)
     const [isConnected, setIsConnected] = useState(false)
+    const [isEnabled, setIsEnabled] = useState(true)
     const [error, setError] = useState(null)
     const socketRef = useRef(null)
     const tokenRef = useRef(null)
@@ -31,6 +32,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     const connectingRef = useRef(false)
     const connectRef = useRef(null)
     const attemptCountRef = useRef(0)
+    const connectGenRef = useRef(0)
 
     const {
         onConnect,
@@ -50,28 +52,29 @@ export function useSecureSocket(namespace = '', options = {}) {
         }
 
         try {
-            tokenRequestRef.current = fetch('/api/auth/ws-token', {
+            const promise = fetch('/api/auth/ws-token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ sessionId, scope }),
                 credentials: 'include',
+            }).then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Token fetch failed: ${response.status}`)
+                }
+
+                const data = await response.json()
+                if (!data.success) {
+                    throw new Error(data.error || 'Token generation failed')
+                }
+
+                tokenRef.current = data.wsToken
+                return data
             })
 
-            const response = await tokenRequestRef.current
-
-            if (!response.ok) {
-                throw new Error(`Token fetch failed: ${response.status}`)
-            }
-
-            const data = await response.json()
-            if (!data.success) {
-                throw new Error(data.error || 'Token generation failed')
-            }
-
-            tokenRef.current = data.wsToken
-            return data
+            tokenRequestRef.current = promise
+            return await promise
         } catch (err) {
             console.error('[useSecureSocket] Token fetch error:', err.message)
             setError(err.message)
@@ -94,10 +97,7 @@ export function useSecureSocket(namespace = '', options = {}) {
             return
         }
 
-        if (connectingRef.current) {
-            console.log('[useSecureSocket] Connection already in progress')
-            return
-        }
+        const gen = ++connectGenRef.current
 
         if (socketRef.current?.connected) {
             console.log('[useSecureSocket] Already connected')
@@ -205,13 +205,14 @@ export function useSecureSocket(namespace = '', options = {}) {
             })
 
             newSocket.on('connect_error', (error) => {
-                console.error('[useSecureSocket] Connection error:', error.message)
+                // Use warn instead of error to prevent Next.js dev overlay popup for expected Vercel socket limitations
+                console.warn('[useSecureSocket] Connection error:', error.message)
                 setError(error.message)
                 onError?.(error)
             })
 
             newSocket.on('error', (error) => {
-                console.error('[useSecureSocket] Socket error:', error)
+                console.warn('[useSecureSocket] Socket error:', error)
                 setError(error)
                 onError?.(new Error(error))
             })
@@ -219,10 +220,12 @@ export function useSecureSocket(namespace = '', options = {}) {
             socketRef.current = newSocket
             setSocket(newSocket)
         } catch (err) {
-            console.error('[useSecureSocket] Connection failed:', err.message)
+            console.warn('[useSecureSocket] Connection failed:', err.message)
             setError(err.message)
         } finally {
-            connectingRef.current = false
+            if (gen === connectGenRef.current) {
+                connectingRef.current = false
+            }
         }
     }, [user, namespace, fetchWsToken, onConnect, onDisconnect, onError, autoReconnect])
 
@@ -245,10 +248,15 @@ export function useSecureSocket(namespace = '', options = {}) {
                     const { wsToken } = await fetchWsToken()
                     tokenRef.current = wsToken
 
-                    // Reconnect with new token if needed
-                    if (socketRef.current?.disconnected) {
-                        await connect()
+                    // Force reconnect to apply the updated auth token
+                    if (socketRef.current?.connected) {
+                        socketRef.current.removeAllListeners()
+                        socketRef.current.disconnect()
+                        socketRef.current = null
+                        setSocket(null)
+                        setIsConnected(false)
                     }
+                    await connect()
                 } catch (err) {
                     console.error('[useSecureSocket] Token refresh failed:', err.message)
                     // Token refresh failed, will attempt on next connect
@@ -275,6 +283,9 @@ export function useSecureSocket(namespace = '', options = {}) {
         connectRef.current?.()
 
         return () => {
+            // Increment generation to invalidate any in-flight connect call
+            connectGenRef.current++
+
             // Cleanup timeout
             if (refreshTimerRef.current) {
                 clearTimeout(refreshTimerRef.current)
@@ -286,7 +297,6 @@ export function useSecureSocket(namespace = '', options = {}) {
             socketRef.current = null
             setSocket(null)
             setIsConnected(false)
-            connectingRef.current = false
         }
     }, [user])
 
@@ -305,6 +315,7 @@ export function useSecureSocket(namespace = '', options = {}) {
     return {
         socket: socketRef.current,
         isConnected,
+        isEnabled,
         error,
         connect,
         disconnect,

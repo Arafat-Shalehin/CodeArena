@@ -73,7 +73,15 @@ function ProblemSolveProviderInner({
 
     // Local UI state
     const [isConsoleOpen, setIsConsoleOpen] = useState(true)
-    const [leftTab, setLeftTabState] = useState(() => readSavedLeftTab(problemId))
+    const [leftTab, setLeftTabState] = useState('description')
+
+    // Restore persisted tab after hydration to avoid SSR/client mismatch
+    useEffect(() => {
+        const savedTab = readSavedLeftTab(problemId)
+        if (savedTab !== 'description') {
+            setLeftTabState(savedTab)
+        }
+    }, [problemId])
 
     const setLeftTab = useCallback((nextTab) => {
         setLeftTabState((prevTab) => {
@@ -334,6 +342,12 @@ function ProblemSolveProviderInner({
                     let joinAttempts = 0
                     const maxAttempts = 50
                     const attemptJoinRoom = () => {
+                        if (realtime.isEnabled === false) {
+                            console.log(
+                                '[FRONTEND] Real-time socket connections are bypassed in serverless mode. Skipping join room attempts (cached).'
+                            )
+                            return
+                        }
                         joinAttempts++
                         const socket = realtimeSocketRef.current
                         const socketConnected = Boolean(socket?.connected)
@@ -429,6 +443,12 @@ function ProblemSolveProviderInner({
                 let joinAttempts = 0
                 const maxAttempts = 50
                 const attemptJoinRoom = () => {
+                    if (realtime.isEnabled === false) {
+                        console.log(
+                            '[FRONTEND] Real-time socket connections are bypassed in serverless mode. Skipping join room attempts.'
+                        )
+                        return
+                    }
                     joinAttempts++
                     const socket = realtimeSocketRef.current
                     const socketConnected = Boolean(socket?.connected)

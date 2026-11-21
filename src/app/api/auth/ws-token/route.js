@@ -28,6 +28,15 @@ export const POST = asyncHandler(async (req) => {
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
+    // Bypass real-time sockets in serverless mode
+    if (process.env.RUNTIME_MODE === 'serverless') {
+        return NextResponse.json({
+            success: true,
+            enabled: false,
+            message: 'Real-time WebSocket connections are bypassed in serverless mode.'
+        })
+    }
+
     const { sessionId, scope = 'general' } = await req.json()
 
     // Generate WebSocket token with optional session context
@@ -44,10 +53,12 @@ export const POST = asyncHandler(async (req) => {
 
     const forwardedProto = req.headers.get('x-forwarded-proto')
     const forwardedHost = req.headers.get('x-forwarded-host')
-    const requestHostRaw = (forwardedHost || req.nextUrl.host || 'localhost').split(',')[0].trim()
-    const requestPortMatch = requestHostRaw.match(/:(\d+)$/)
-    const requestPort = requestPortMatch ? Number.parseInt(requestPortMatch[1], 10) : null
-    const requestHost = requestHostRaw.replace(/:\d+$/, '')
+    const hostHeader = req.headers.get('host')
+
+    const requestHostRaw = (forwardedHost || hostHeader || req.nextUrl.host || 'localhost')
+        .split(',')[0]
+        .trim()
+    const requestHost = requestHostRaw.replace(/:\d+$/, '') || 'localhost'
     const requestProtocol = (forwardedProto || req.nextUrl.protocol || 'http').replace(':', '')
 
     if (

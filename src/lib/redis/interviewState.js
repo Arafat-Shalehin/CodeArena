@@ -10,9 +10,9 @@ export async function setInterviewState(sessionId, stateData, durationMins) {
 
     // Hash fields
     const fields = {
-        userId: stateData.userId.toString(),
-        problemId: stateData.problemId.toString(),
-        startedAt: stateData.startedAt.toString() || Date.now().toString(),
+        userId: stateData.userId?.toString() || '',
+        problemId: stateData.problemId?.toString() || '',
+        startedAt: stateData.startedAt?.toString() || Date.now().toString(),
         timeLimit: (durationMins * 60).toString(),
         currentPhase: stateData.currentPhase || 'intro',
         aiContextLen: (stateData.aiContextLen || 0).toString(),
@@ -20,12 +20,14 @@ export async function setInterviewState(sessionId, stateData, durationMins) {
         hintsUsed: (stateData.hintsUsed || 0).toString(),
     }
 
-    // Use HSET for fields
-    await redisClient.hSet(key, fields)
+    if (redisClient.isOpen) {
+        // Use HSET for fields
+        await redisClient.hSet(key, fields)
 
-    // Set TTL to durationMins + 30 minutes padding
-    const ttlSeconds = (durationMins + 30) * 60
-    await redisClient.expire(key, ttlSeconds)
+        // Set TTL to durationMins + 30 minutes padding
+        const ttlSeconds = (durationMins + 30) * 60
+        await redisClient.expire(key, ttlSeconds)
+    }
 
     return fields
 }
@@ -34,6 +36,9 @@ export async function setInterviewState(sessionId, stateData, durationMins) {
  * Retrieves the interview session state from Redis.
  */
 export async function getInterviewState(sessionId) {
+    if (!redisClient.isOpen) {
+        return null
+    }
     const key = getKey(sessionId)
     const data = await redisClient.hGetAll(key)
 
@@ -57,6 +62,9 @@ export async function getInterviewState(sessionId) {
  * Updates specific fields in the interview session state.
  */
 export async function updateInterviewState(sessionId, updates) {
+    if (!redisClient.isOpen) {
+        return
+    }
     const key = getKey(sessionId)
 
     const fields = {}
@@ -75,6 +83,9 @@ export async function updateInterviewState(sessionId, updates) {
  * Increments a numeric field in the interview session state.
  */
 export async function incrementInterviewStateField(sessionId, field, incrementBy = 1) {
+    if (!redisClient.isOpen) {
+        return incrementBy
+    }
     const key = getKey(sessionId)
     return redisClient.hIncrBy(key, field, incrementBy)
 }
@@ -83,6 +94,9 @@ export async function incrementInterviewStateField(sessionId, field, incrementBy
  * Removes the interview session state from Redis.
  */
 export async function deleteInterviewState(sessionId) {
+    if (!redisClient.isOpen) {
+        return 0
+    }
     const key = getKey(sessionId)
     return redisClient.del(key)
 }

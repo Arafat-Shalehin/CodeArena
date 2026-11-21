@@ -61,9 +61,11 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
     const getSavedLanguage = () => {
         try {
             if (typeof window === 'undefined') return 'python'
-            const savedLanguage = localStorage.getItem(`codearena_lang_${problemId}`)
-            if (savedLanguage && LANG_LABELS[savedLanguage]) {
-                return savedLanguage
+            if (problemId && problemId !== 'undefined') {
+                const savedLanguage = localStorage.getItem(`codearena_lang_${problemId}`)
+                if (savedLanguage && LANG_LABELS[savedLanguage]) {
+                    return savedLanguage
+                }
             }
 
             const storeLanguage = useProblemSolveStore.getState().language
@@ -79,6 +81,7 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
     const getSavedCodeForLanguage = (lang) => {
         try {
             if (typeof window === 'undefined') return null
+            if (!problemId || problemId === 'undefined') return null
             return localStorage.getItem(`codearena_code_${problemId}_${lang}`)
         } catch (e) {
             console.warn('[CodeEditor] Error reading saved code:', e)
@@ -108,6 +111,7 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
 
     // Only reset when problemId actually changes, not on first mount
     useEffect(() => {
+        if (!problemId || problemId === 'undefined') return
         const savedLanguage = getSavedLanguage()
         setLanguage(savedLanguage)
         setActiveFileIndex(0)
@@ -116,6 +120,8 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
 
     // Load persisted code when mounting OR language changes
     useEffect(() => {
+        if (!problemId || problemId === 'undefined') return
+
         try {
             if (typeof window !== 'undefined') {
                 localStorage.setItem(`codearena_lang_${problemId}`, language)
@@ -144,16 +150,20 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
         (newCode) => {
             setCode(newCode)
             // Save to localStorage with problem+language key
-            const problemLanguageKey = `codearena_code_${problemId}_${language}`
-            if (typeof window !== 'undefined') {
-                localStorage.setItem(problemLanguageKey, newCode)
+            if (problemId && problemId !== 'undefined') {
+                const problemLanguageKey = `codearena_code_${problemId}_${language}`
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem(problemLanguageKey, newCode)
+                }
+                console.log('[CodeEditor] Saved code to:', problemLanguageKey)
             }
-            console.log('[CodeEditor] Saved code to:', problemLanguageKey)
 
             // Also sync to Zustand for current session
             zustandStore.setCode(newCode)
             zustandStore.setLanguage(language)
-            zustandStore.setCurrentProblemId(problemId)
+            if (problemId && problemId !== 'undefined') {
+                zustandStore.setCurrentProblemId(problemId)
+            }
 
             // Sync active file content
             setFiles((prev) => {
@@ -217,10 +227,12 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
         (lang) => {
             if (!LANG_LABELS[lang]) return
 
-            try {
-                localStorage.setItem(`codearena_lang_${problemId}`, lang)
-            } catch (e) {
-                console.warn('[CodeEditor] Error saving language selection:', e)
+            if (problemId && problemId !== 'undefined') {
+                try {
+                    localStorage.setItem(`codearena_lang_${problemId}`, lang)
+                } catch (e) {
+                    console.warn('[CodeEditor] Error saving language selection:', e)
+                }
             }
 
             setLanguage(lang)
@@ -236,11 +248,16 @@ export function CodeEditorProvider({ children, problemId, initialCode }) {
         setCode(starterCode)
         setFiles([{ filename: defaultFileName, content: starterCode, isMain: true }])
         setActiveFileIndex(0)
-        localStorage.removeItem(`codearena_code_${problemId}_${language}`)
+
+        if (problemId && problemId !== 'undefined') {
+            localStorage.removeItem(`codearena_code_${problemId}_${language}`)
+        }
 
         zustandStore.setCode(starterCode)
         zustandStore.setLanguage(language)
-        zustandStore.setCurrentProblemId(problemId)
+        if (problemId && problemId !== 'undefined') {
+            zustandStore.setCurrentProblemId(problemId)
+        }
     }, [language, problemId])
 
     const value = {

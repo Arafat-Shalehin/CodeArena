@@ -27,15 +27,16 @@ export function SmoothScroll({ children }) {
         })
 
         // Synchronize Lenis with RequestAnimationFrame
+        let rafId
         function raf(time) {
             lenis.raf(time)
-            requestAnimationFrame(raf)
+            rafId = requestAnimationFrame(raf)
         }
+        rafId = requestAnimationFrame(raf)
 
-        requestAnimationFrame(raf)
-
-        // Cleanup on unmount
+        // Cancel the loop AND destroy lenis on unmount to prevent memory leaks
         return () => {
+            cancelAnimationFrame(rafId)
             lenis.destroy()
         }
     }, [])

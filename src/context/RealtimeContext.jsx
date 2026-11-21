@@ -6,12 +6,15 @@ const RealtimeContext = createContext()
 
 export function RealtimeProvider({ children }) {
     const [socket, setSocket] = useState(null)
+    const [isEnabled, setIsEnabled] = useState(true)
     const [latestSubmissionEvent, setLatestSubmissionEvent] = useState(null)
     const [submissionResult, setSubmissionResult] = useState(null)
 
     const value = {
         socket,
         setSocket,
+        isEnabled,
+        setIsEnabled,
         latestSubmissionEvent,
         setLatestSubmissionEvent,
         submissionResult,

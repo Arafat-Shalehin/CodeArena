@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -7,15 +8,33 @@ import { cn } from '@/lib/utils'
 /**
  * @component ThemeToggle
  * @description A modern, toggle-style theme switcher with smooth transitions.
+ * Includes a hydration fix to ensure server and client match perfectly.
  */
 export function ThemeToggle({ className }) {
+    const [mounted, setMounted] = useState(false)
     const { setTheme, resolvedTheme } = useTheme()
 
-    // Use resolvedTheme which is available immediately during SSR
+    // When mounted on client, now we can show the UI
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     const isDark = resolvedTheme === 'dark'
 
     const toggleTheme = () => {
         setTheme(isDark ? 'light' : 'dark')
+    }
+
+    // Prevent hydration mismatch: do not render anything until client-side mounted
+    if (!mounted) {
+        return (
+            <div
+                className={cn(
+                    'group relative flex h-8 w-16 cursor-pointer rounded-full p-1 opacity-0 transition-all duration-300',
+                    className
+                )}
+            />
+        )
     }
 
     return (

@@ -1,42 +1,43 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-motion'
+import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
 import { stepsData } from '../data/steps.data'
-import { useSafeReducedMotion } from '@/hooks/useSafeReducedMotion'
 import { cn } from '@/lib/utils'
 
+const mountainPath =
+    'M0 240 L60 220 L120 235 L200 180 L280 210 L360 140 L440 170 L520 90 L600 130 L680 50 L760 100 L840 30 L920 80 L1000 40 L1080 70 L1200 120 L1200 300 L0 300 Z'
+
 export default function HowItWorksSection() {
-    const containerRef = useRef(null)
-    const reducedMotion = useSafeReducedMotion()
+    const sectionRef = useRef(null)
     const { scrollYProgress } = useScroll({
-        target: containerRef,
+        target: sectionRef,
         offset: ['start center', 'end center'],
     })
-    const isInView = useInView(containerRef, { once: true, margin: '240px' })
 
-    // Drawing Path Logic (SVG)
-    const pathLength = useSpring(scrollYProgress, { stiffness: 40, damping: 15 })
+    const [elevationValue, setElevationValue] = useState(0)
+    const rawElevation = useTransform(scrollYProgress, [0, 1], [0, 4000])
+
+    useMotionValueEvent(rawElevation, 'change', (v) => {
+        // requestAnimationFrame / throttle
+        setElevationValue(Math.round(v))
+    })
 
     return (
-        <section ref={containerRef} className="bg-bg-page relative overflow-hidden py-32 md:py-40">
-            {/* Background Decor */}
-            <div className="bg-dot-matrix pointer-events-none absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_85%)] opacity-[0.4]" />
+        <section ref={sectionRef} className="bg-bg-page relative overflow-hidden py-16 md:py-24">
+            {/* Gradient background — dark valley floor → lighter summit zone */}
+            <div className="from-bg-page via-bg-subtle/30 to-bg-page pointer-events-none absolute inset-0 bg-gradient-to-b opacity-60" />
 
-            {/* LASER PATH SVG (Desktop only for precision) */}
-            <div className="pointer-events-none absolute inset-0 z-0 hidden lg:block">
-                <svg
-                    className="h-full w-full opacity-10"
-                    viewBox="0 0 1200 800"
-                    fill="none"
-                    preserveAspectRatio="none"
-                >
+            {/* Mountain silhouette */}
+            <div className="pointer-events-none absolute inset-0 flex items-end opacity-[0.04]">
+                <svg viewBox="0 0 1200 300" className="w-full" preserveAspectRatio="xMidYMax slice">
                     <motion.path
-                        d="M 150 400 C 300 400, 300 600, 450 600 C 600 600, 600 400, 750 400 C 900 400, 900 600, 1050 600"
-                        stroke="var(--color-accent)"
-                        strokeWidth="2"
-                        strokeDasharray="12 12"
-                        style={{ pathLength: pathLength }}
+                        d={mountainPath}
+                        fill="var(--color-accent)"
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1.5 }}
                     />
                 </svg>
             </div>
@@ -47,131 +48,138 @@ export default function HowItWorksSection() {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="mb-24 text-center"
+                    transition={{ duration: 0.6 }}
+                    className="mb-16 text-center"
                 >
-                    <h2 className="font-display text-text-primary mb-6 text-4xl leading-tight font-black tracking-tight [text-wrap:balance] md:text-7xl lg:text-7xl">
+                    <div className="mb-4 flex items-center justify-center gap-3">
+                        <span className="text-accent text-[10px] font-bold tracking-[0.2em] uppercase">
+                            Ascent
+                        </span>
+                        <span className="bg-border/30 h-px w-8" />
+                        <span className="text-text-muted font-mono text-[10px] font-bold">
+                            {elevationValue} / 4,000m
+                        </span>
+                    </div>
+
+                    <h2 className="font-display text-text-primary text-2xl leading-tight font-semibold tracking-tight [text-wrap:balance] sm:text-4xl md:text-5xl">
                         The <span className="text-accent italic">Path</span> to Mastery
                     </h2>
-                    <p className="text-text-secondary mx-auto max-w-2xl text-sm leading-relaxed font-medium md:text-base lg:text-lg">
-                        A structured progression designed to transform your algorithmic intuition
-                        into professional-grade engineering expertise.
+                    <p className="text-text-secondary mx-auto mt-3 max-w-xl text-sm leading-relaxed font-medium">
+                        Four stages from base camp to summit — each one engineered to push you
+                        higher.
+                    </p>
+
+                    {/* Elevation progress bar */}
+                    <div className="bg-border/20 mx-auto mt-8 h-1 w-full max-w-xs overflow-hidden rounded-full">
+                        <motion.div
+                            className="bg-accent h-full rounded-full"
+                            style={{ scaleX: scrollYProgress, transformOrigin: 'left' }}
+                        />
+                    </div>
+                    <p className="text-text-muted mt-2 font-mono text-[10px] font-bold tracking-wider">
+                        <span className="text-accent">{elevationValue}m</span> ascended
                     </p>
                 </motion.div>
 
-                {/* Steps Grid */}
-                <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-                    {stepsData.map((step, idx) => (
-                        <StepCard
-                            key={idx}
-                            step={step}
-                            index={idx}
-                            progress={scrollYProgress}
-                            reducedMotion={reducedMotion}
-                            isLast={idx === stepsData.length - 1}
+                {/* Camps / Steps Timeline */}
+                <div className="relative mx-auto max-w-4xl">
+                    {/* Responsive Straight Center Timeline Track (Desktop only) */}
+                    <div className="pointer-events-none absolute left-1/2 top-[40px] bottom-[40px] w-0.5 -translate-x-1/2 hidden lg:block z-0">
+                        {/* Background track line */}
+                        <div className="w-full h-full bg-border/20" />
+                        {/* Glowing active scroll progress line */}
+                        <motion.div
+                            className="absolute top-0 left-0 w-full bg-accent origin-top shadow-[0_0_8px_var(--color-accent)]"
+                            style={{
+                                height: '100%',
+                                scaleY: scrollYProgress,
+                            }}
                         />
-                    ))}
+                    </div>
+
+                    {stepsData.map((step, idx) => {
+                        const isLeft = idx % 2 === 0
+
+                        return (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, x: isLeft ? -50 : 50, y: 20 }}
+                                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                                viewport={{ once: true, margin: '-100px' }}
+                                transition={{
+                                    duration: 0.8,
+                                    ease: [0.16, 1, 0.3, 1],
+                                }}
+                                className={cn(
+                                    'relative mb-12 last:mb-0 lg:mb-0 lg:w-1/2',
+                                    isLeft ? 'lg:pr-16' : 'lg:ml-auto lg:pl-16'
+                                )}
+                            >
+                                {/* Vertical connector (mobile only) */}
+                                {idx < stepsData.length - 1 && (
+                                    <div className="from-border/50 absolute top-[60px] bottom-[-48px] left-[23px] w-px bg-gradient-to-b to-transparent lg:hidden" />
+                                )}
+
+                                {/* Camp card */}
+                                <div className="group relative">
+                                    {/* Double-ring Step marker dot — positioned exactly on the dividing line */}
+                                    <div
+                                        className={cn(
+                                            'absolute top-6 z-20 hidden lg:flex items-center justify-center size-10 rounded-full bg-bg-page',
+                                            isLeft ? 'right-0 translate-x-1/2' : 'left-0 -translate-x-1/2'
+                                        )}
+                                    >
+                                        <div className="size-8 rounded-full bg-bg-subtle border border-border flex items-center justify-center group-hover:bg-accent group-hover:text-bg-page group-hover:border-accent group-hover:shadow-[0_0_15px_rgba(2,186,76,0.5)] transition-all duration-300">
+                                            <span className="font-mono text-xs font-bold">
+                                                {String(step.step).padStart(2, '0')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Interactive card content */}
+                                    <div className="bg-bg-subtle/40 border-border/50 hover:border-accent/30 hover:bg-bg-subtle/60 relative rounded-xl border p-5 transition-all duration-300 hover:scale-[1.02] sm:p-6 shadow-xs hover:shadow-md">
+                                        {/* Mobile step number */}
+                                        <div className="bg-accent/10 border-accent/30 mb-4 flex size-9 items-center justify-center rounded-full border lg:hidden">
+                                            <span className="text-accent font-mono text-xs font-bold">
+                                                {String(step.step).padStart(2, '0')}
+                                            </span>
+                                        </div>
+
+                                        {/* Card Header (Elevation, Tag & Icon) */}
+                                        <div className="mb-4 flex items-start justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-text-muted font-mono text-[10px] font-bold">
+                                                        ▲ {step.elevation}
+                                                    </span>
+                                                    <span className="text-accent/70 text-[9px] font-bold tracking-[0.15em] uppercase">
+                                                        {step.tag}
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-text-primary mt-1 text-base font-bold tracking-tight sm:text-lg">
+                                                    {step.title}
+                                                </h3>
+                                            </div>
+                                            {/* Lucide Step Icon with hover styling */}
+                                            <div className="text-accent bg-accent/5 border border-accent/15 flex size-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:bg-accent/10 group-hover:border-accent/30">
+                                                {step.icon}
+                                            </div>
+                                        </div>
+
+                                        {/* Description */}
+                                        <p className="text-text-secondary text-xs leading-relaxed font-medium">
+                                            {step.desc}
+                                        </p>
+
+                                        {/* Terrain accent line */}
+                                        <div className="bg-accent/20 mt-4 h-0.5 w-0 rounded-full transition-all duration-500 group-hover:w-1/3" />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )
+                    })}
                 </div>
             </div>
         </section>
-    )
-}
-
-/* ----------------- STEP CARD ----------------- */
-
-function StepCard({ step, index, progress, reducedMotion, isLast }) {
-    const activationPoint = index * 0.25
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-
-    const handleMouseMove = (e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        setMousePos({
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-        })
-    }
-
-    // Activation states based on scroll
-    const opacityActive = useTransform(progress, [activationPoint - 0.1, activationPoint], [0.4, 1])
-    const bgColorActive = useTransform(
-        progress,
-        [activationPoint - 0.05, activationPoint],
-        ['var(--color-bg-subtle)', 'var(--color-accent)']
-    )
-    const textColorActive = useTransform(
-        progress,
-        [activationPoint - 0.05, activationPoint],
-        ['var(--color-text-muted)', 'var(--color-text-inverse)']
-    )
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1, duration: 0.8 }}
-            onMouseMove={handleMouseMove}
-            className="group relative"
-        >
-            <div className="bg-bg-subtle border-border hover:border-accent/40 group-hover:shadow-accent/5 relative flex h-full flex-col items-center rounded-3xl border p-8 transition-[border-color,transform,box-shadow] duration-500 group-hover:shadow-lg lg:items-start">
-                {/* Spotlight hover effect */}
-                <div
-                    className="pointer-events-none absolute inset-0 z-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
-                    style={{
-                        background: `radial-gradient(400px circle at ${mousePos.x}px ${mousePos.y}px, var(--color-accent), transparent 40%)`,
-                    }}
-                />
-
-                {/* Vertical Path Mobile */}
-                {!isLast && (
-                    <div className="from-border/50 absolute top-[100%] left-1/2 h-12 w-px -translate-x-1/2 bg-gradient-to-b to-transparent sm:hidden" />
-                )}
-
-                {/* Step Marker */}
-                <div className="relative mb-8 flex flex-col items-center lg:items-start">
-                    <motion.div
-                        style={{
-                            backgroundColor: bgColorActive,
-                            color: textColorActive,
-                            opacity: opacityActive,
-                        }}
-                        className="group-hover:shadow-accent-glow relative z-10 flex size-12 items-center justify-center rounded-2xl font-mono text-lg font-bold shadow-sm transition-shadow duration-500 sm:size-14 sm:text-xl"
-                    >
-                        {step.step < 10 ? `0${step.step}` : step.step}
-                    </motion.div>
-
-                    {/* Icon Overlay */}
-                    <motion.div
-                        style={{
-                            opacity: useTransform(
-                                progress,
-                                [activationPoint, activationPoint + 0.05],
-                                [0, 1]
-                            ),
-                        }}
-                        className="bg-accent text-text-inverse shadow-accent/20 ring-bg-page absolute -top-4 -right-4 flex size-8 items-center justify-center rounded-xl shadow-lg ring-4 sm:size-10 lg:-top-5 lg:-right-5 lg:size-11"
-                    >
-                        <div
-                            className="transition-transform duration-300 group-hover:scale-110"
-                            aria-hidden="true"
-                        >
-                            {step.icon}
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Text Content */}
-                <div className="relative z-10 text-center lg:text-left">
-                    <h3 className="text-text-primary mb-2 text-base font-bold tracking-tight sm:mb-3 sm:text-xl">
-                        {step.title}
-                    </h3>
-                    <p className="text-text-secondary text-xs leading-relaxed font-medium sm:text-sm">
-                        {step.desc}
-                    </p>
-                </div>
-
-                {/* Hover Reveal Detail */}
-                <div className="bg-accent/10 mt-6 h-1 w-0 rounded-full transition-all duration-500 group-hover:w-1/3" />
-            </div>
-        </motion.div>
     )
 }

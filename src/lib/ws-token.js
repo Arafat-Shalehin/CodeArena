@@ -8,6 +8,19 @@ const JWT_SECRET = process.env.JWT_SECRET
 const WS_TOKEN_EXPIRY = '1h' // WebSocket tokens live 1 hour
 const REFRESH_THRESHOLD = 5 * 60 * 1000 // Refresh token if < 5 min left
 
+/**
+ * Generates a short-lived token for WebSocket authentication.
+ * Required payload keys: { userId, sessionId }
+ * @param {Object} payload — must include userId and sessionId
+ * @returns {string} Signed JWT valid for 15 minutes with type: 'websocket'
+ */
+export function signWsToken(payload) {
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is required')
+    }
+    return jwt.sign({ ...payload, type: 'websocket' }, JWT_SECRET, { expiresIn: WS_TOKEN_EXPIRY })
+}
+
 export function generateWsToken(userId, sessionData = {}) {
     if (!JWT_SECRET) {
         throw new Error('JWT_SECRET environment variable is required')

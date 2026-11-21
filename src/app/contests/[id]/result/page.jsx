@@ -23,6 +23,7 @@ import Confetti from 'react-confetti'
 import { useWindowSize } from 'react-use'
 import { toPng } from 'html-to-image'
 import { toast } from 'sonner'
+import { useSecureSocket } from '@/hooks/useSecureSocket'
 
 const fetcher = (url) => fetch(url).then((res) => res.json())
 
@@ -34,6 +35,9 @@ export default function PersonalResultPage() {
     const resultRef = useRef(null)
     const [isSharing, setIsSharing] = useState(false)
     const [isDownloading, setIsDownloading] = useState(false)
+    const { socket } = useSecureSocket('', {
+        scope: 'general',
+    })
 
     const { data, error, isLoading, mutate } = useSWR(
         contestId ? `/api/contests/${contestId}/my-result` : null,
@@ -57,34 +61,21 @@ export default function PersonalResultPage() {
     // Listen for the worker's 'contest:result_finalized' signal via Socket.IO
     // This instantly kills polling and triggers a final SWR revalidation
     useEffect(() => {
-        if (!contestId || isResultConsistent) return
+        if (!socket || !contestId || isResultConsistent) return
 
-        let socket
-        try {
-            const { io } = require('socket.io-client')
-            const socketPort = process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'
-            const fallbackSocketUrl = `${window.location.protocol}//${window.location.hostname}:${socketPort}`
-            socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || fallbackSocketUrl)
-
-            socket.on('connect', () => {
-                console.log('[ResultPage] Socket connected, listening for result_finalized')
-            })
-
-            socket.on('contest:result_finalized', (payload) => {
-                console.log('[ResultPage] Received contest:result_finalized:', payload)
-                if (payload.contestId === contestId) {
-                    // Immediately revalidate SWR to get the final, consistent data
-                    mutate()
-                }
-            })
-        } catch (err) {
-            console.warn('[ResultPage] Socket connection failed, relying on polling:', err)
+        const handleResultFinalized = (payload) => {
+            console.log('[ResultPage] Received contest:result_finalized:', payload)
+            if (payload.contestId === contestId) {
+                mutate()
+            }
         }
+
+        socket.on('contest:result_finalized', handleResultFinalized)
 
         return () => {
-            if (socket) socket.disconnect()
+            socket.off('contest:result_finalized', handleResultFinalized)
         }
-    }, [contestId, isResultConsistent, mutate])
+    }, [socket, contestId, isResultConsistent, mutate])
 
     // Format penalty (seconds to HH:MM:SS)
     const formatPenalty = (seconds) => {
@@ -174,7 +165,7 @@ export default function PersonalResultPage() {
         return (
             <div className="bg-bg-page flex min-h-screen flex-col items-center justify-center p-6 text-center">
                 <XCircle className="text-error mb-4 size-16 opacity-20" />
-                <h1 className="text-text-primary text-2xl font-black">Result Not Ready</h1>
+                <h2 className="text-text-primary text-2xl font-black">Result Not Ready</h2>
                 <p className="text-text-muted mt-2 max-w-md font-medium">
                     {data?.message ||
                         "We couldn't find your result for this contest. You may not have participated or the results are still being processed."}

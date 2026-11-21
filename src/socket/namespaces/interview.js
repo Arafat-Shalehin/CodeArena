@@ -1,12 +1,13 @@
 import crypto from 'crypto'
-import { verifyWsToken } from '@/lib/auth/wsToken'
+import { verifyWsToken } from '@/lib/ws-token'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { InterviewMessage } from '@/models/InterviewMessage.model'
 import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { Problem } from '@/models/Problem.models'
 import dbConnect from '@/lib/mongodb'
 import { executeCode } from '@/lib/docker/executor'
-import { getInterviewAIQueue, getInterviewExecutionQueue } from '@/lib/queue'
+import { getInterviewExecutionQueue } from '@/lib/queue'
+import { aiEnginePort } from '@/lib/ai-engine'
 import { interviewAIChannel } from '@/services/interviewAI.worker'
 import { interviewExecutionChannel } from '@/services/interviewExecution.worker'
 import {
@@ -268,8 +269,7 @@ export function registerInterviewNamespace(io) {
 
                 await updateActivity(sessionId)
 
-                const queue = getInterviewAIQueue()
-                await queue.add('process-chat', {
+                await aiEnginePort.submitChat({
                     sessionId,
                     userId: socket.userId,
                     content,

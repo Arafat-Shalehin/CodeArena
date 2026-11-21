@@ -5,10 +5,10 @@ import { InterviewSnapshot } from '@/models/InterviewSnapshot.model'
 import { InterviewSession } from '@/models/InterviewSession.model'
 import { Problem } from '@/models/Problem.models'
 import { protect } from '@/middlewares/auth.middleware'
-import { signWsToken } from '@/lib/auth/wsToken'
+import { signWsToken } from '@/lib/ws-token'
 import { asyncHandler } from '@/lib/asyncHandler'
 import { redisClient } from '@/lib/redis'
-import { getInterviewAIQueue } from '@/lib/queue'
+import { aiEnginePort } from '@/lib/ai-engine'
 import { releaseProcessingLock } from '@/services/interviewSession.service'
 
 export const dynamic = 'force-dynamic'
@@ -47,32 +47,32 @@ export const GET = asyncHandler(async (req, { params }) => {
 
     // 7. Check for partial ghost stream vs active stream
     let currentStreamingMessage = null
-    try {
-        const streamKey = `interview:stream:${sessionId}`
-        const cachedStream = await redisClient.hGetAll(streamKey)
+    if (redisClient.isOpen) {
+        try {
+            const streamKey = `interview:stream:${sessionId}`
+            const cachedStream = await redisClient.hGetAll(streamKey)
 
-        if (cachedStream && Object.keys(cachedStream).length > 0) {
-            const queue = getInterviewAIQueue()
-            const activeJobs = await queue.getActive()
-            const activeJobExists = activeJobs.some((job) => job.data?.sessionId === sessionId)
+            if (cachedStream && Object.keys(cachedStream).length > 0) {
+                const activeJobExists = await aiEnginePort.hasActiveJob(sessionId)
 
-            const lastUpdated = parseInt(cachedStream.lastUpdated || '0', 10)
-            const isExpired = Date.now() - lastUpdated > 60000
+                const lastUpdated = parseInt(cachedStream.lastUpdated || '0', 10)
+                const isExpired = Date.now() - lastUpdated > 60000
 
-            if (!activeJobExists || isExpired) {
-                // Ghost stream detected -> release lock & wipe
-                await releaseProcessingLock(sessionId).catch(() => {})
-                await redisClient.del(streamKey)
-            } else {
-                currentStreamingMessage = {
-                    messageId: cachedStream.messageId,
-                    content: cachedStream.content,
-                    sequence: parseInt(cachedStream.sequence || '0', 10),
+                if (!activeJobExists || isExpired) {
+                    // Ghost stream detected -> release lock & wipe
+                    await releaseProcessingLock(sessionId).catch(() => {})
+                    await redisClient.del(streamKey)
+                } else {
+                    currentStreamingMessage = {
+                        messageId: cachedStream.messageId,
+                        content: cachedStream.content,
+                        sequence: parseInt(cachedStream.sequence || '0', 10),
+                    }
                 }
             }
+        } catch (e) {
+            console.error('[Rehydrate] Error checking partial stream:', e)
         }
-    } catch (e) {
-        console.error('[Rehydrate] Error checking partial stream:', e)
     }
 
     return NextResponse.json({

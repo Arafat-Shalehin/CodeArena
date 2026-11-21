@@ -41,7 +41,9 @@ redisClient.on('error', (err) => {
     }
 })
 
-// Build-time static rendering should not require live Redis.
-if (!isBuildPhase && !redisClient.isOpen) {
+const isServerless = process.env.RUNTIME_MODE === 'serverless'
+
+// Build-time static rendering and serverless mode should not require live Redis.
+if (!isBuildPhase && !isServerless && !redisClient.isOpen) {
     redisClient.connect().catch(console.error)
 }
